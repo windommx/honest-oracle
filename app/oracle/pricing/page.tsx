@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import type { Route } from "next";
 import { Crown, Loader2 } from "lucide-react";
 
 type UsageResp = {
@@ -13,7 +14,7 @@ type UsageResp = {
 
 type PlanCtaLink = {
   label: string;
-  href: string;
+  href: Route;
 };
 
 type PlanCtaAction = {
