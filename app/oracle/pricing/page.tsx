@@ -11,22 +11,28 @@ type UsageResp = {
   limits: { oracleDaily: number | null; apiDaily: number | null };
 };
 
+type PlanCtaLink = {
+  label: string;
+  href: string;
+};
+
+type PlanCtaAction = {
+  label: string;
+  action: () => Promise<void>;
+};
+
 type PlanItem = {
   key: string;
   name: string;
   price: string;
   badge: string;
   features: string[];
-  cta:
-    | {
-        label: string;
-        href: string;
-      }
-    | {
-        label: string;
-        action: () => Promise<void>;
-      };
+  cta: PlanCtaLink | PlanCtaAction;
 };
+
+function isLinkCta(cta: PlanItem["cta"]): cta is PlanCtaLink {
+  return "href" in cta;
+}
 
 export default function OraclePricingPage() {
   const [usage, setUsage] = useState<UsageResp | null>(null);
@@ -155,7 +161,7 @@ export default function OraclePricingPage() {
                     </li>
                   ))}
                 </ul>
-                {"href" in p.cta ? (
+                {isLinkCta(p.cta) ? (
                   <Link
                     href={p.cta.href}
                     className={`w-full inline-block text-center px-4 py-3 rounded-xl font-semibold transition-colors ${
