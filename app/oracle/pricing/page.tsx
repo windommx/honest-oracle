@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import type { Route } from "next";
 import { Crown, Loader2 } from "lucide-react";
 
 type UsageResp = {
@@ -14,7 +13,7 @@ type UsageResp = {
 
 type PlanCtaLink = {
   label: string;
-  href: Route;
+  href: string;
 };
 
 type PlanCtaAction = {
@@ -163,7 +162,7 @@ export default function OraclePricingPage() {
                   ))}
                 </ul>
                 {isLinkCta(p.cta) ? (
-                  <Link
+                  <a
                     href={p.cta.href}
                     className={`w-full inline-block text-center px-4 py-3 rounded-xl font-semibold transition-colors ${
                       p.key === "pro"
@@ -172,7 +171,7 @@ export default function OraclePricingPage() {
                     }`}
                   >
                     {p.cta.label}
-                  </Link>
+                  </a>
                 ) : (
                   <button
                     onClick={p.cta.action}
