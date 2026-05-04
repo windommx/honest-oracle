@@ -1,16 +1,8 @@
-// app/api/child/route.ts
 import { analyzeChildName } from "@/lib/engine";
 import { Gender, DayOfWeek } from "@/lib/engine";
-import { prisma } from "@/lib/prisma";  // ✅ แก้เป็นแบบนี้
-import { NextRequest } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { NextRequest, NextResponse } from "next/server";
 
-export async function POST(request: NextRequest) {
-  try {
-    // code ของคุณ
-  } catch (error) {
-    // handle error
-  }
-}
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();

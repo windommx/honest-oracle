@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { analyzeRename } from "@/lib/engine";
 import { DayOfWeek } from "@/lib/engine";
-import prisma from "@/lib/prisma";
-
+import { prisma } from "@/lib/prisma";
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
