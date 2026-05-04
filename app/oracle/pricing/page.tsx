@@ -11,6 +11,23 @@ type UsageResp = {
   limits: { oracleDaily: number | null; apiDaily: number | null };
 };
 
+type PlanItem = {
+  key: string;
+  name: string;
+  price: string;
+  badge: string;
+  features: string[];
+  cta:
+    | {
+        label: string;
+        href: string;
+      }
+    | {
+        label: string;
+        action: () => Promise<void>;
+      };
+};
+
 export default function OraclePricingPage() {
   const [usage, setUsage] = useState<UsageResp | null>(null);
   const [loading, setLoading] = useState(true);
@@ -46,7 +63,7 @@ export default function OraclePricingPage() {
     }
   };
 
-  const plans = [
+  const plans: PlanItem[] = [
     {
       key: "free",
       name: "Free",
@@ -173,4 +190,3 @@ export default function OraclePricingPage() {
     </div>
   );
 }
-
