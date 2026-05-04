@@ -139,7 +139,7 @@ function getForbiddenLetters(day: DayOfWeek): string[] {
     }
   });
   
-  return [...new Set(forbidden)];
+  return Array.from(new Set(forbidden));
 }
 
 export function checkKalaigani(name: string, day: DayOfWeek): { violations: string[]; forbiddenLetters: string[] } {
@@ -157,8 +157,8 @@ export function checkKalaigani(name: string, day: DayOfWeek): { violations: stri
   });
   
   return {
-    violations: [...new Set(foundForbidden)],
-    forbiddenLetters: [...new Set(foundForbidden)],
+    violations: Array.from(new Set(foundForbidden)),
+    forbiddenLetters: Array.from(new Set(foundForbidden)),
   };
 }
 
