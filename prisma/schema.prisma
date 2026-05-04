@@ -1,0 +1,156 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  name      String?
+  plan      String   @default("free")
+  role      String   @default("user")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  analyses  Analysis[]
+  corporateAnalyses CorporateAnalysis[]
+  childAnalyses ChildAnalysis[]
+  renameAnalyses RenameAnalysis[]
+  oracleReadings OracleReading[]
+  apiKeys   ApiKey[]
+  usage     UsageDay[]
+  subscription Subscription?
+}
+
+model Analysis {
+  id           String   @id @default(cuid())
+  userId       String?
+  firstName    String
+  lastName     String
+  birthday     String
+  totalScore   Float
+  kalaiganiScore Float
+  numerologyScore Float
+  taksaScore   Float
+  phoneticScore Float
+  elementScore Float
+  details      String
+  createdAt    DateTime @default(now())
+  user         User?    @relation(fields: [userId], references: [id])
+}
+
+model CorporateAnalysis {
+  id              String   @id @default(cuid())
+  userId          String?
+  brandName       String
+  founderBirthday String
+  industryType    String
+  targetAudience  String
+  cai             Float
+  s1              Float
+  s2              Float
+  s3              Float
+  elementBalance  Float
+  phoneticPricing String
+  memorabilityScore Float
+  resonanceTriangle String
+  warnings        String
+  recommendations String
+  createdAt      DateTime @default(now())
+  user           User?    @relation(fields: [userId], references: [id])
+}
+
+model ChildAnalysis {
+  id                 String   @id @default(cuid())
+  userId             String?
+  gender             String
+  birthDay           String
+  parentGoals        String
+  recommendedLetters String
+  avoidedLetters     String
+  targetNumber       Int
+  ayatana            Int
+  warakkasaEmphasis  String
+  suggestedNames     String
+  createdAt          DateTime @default(now())
+  user               User?    @relation(fields: [userId], references: [id])
+}
+
+model RenameAnalysis {
+  id                   String   @id @default(cuid())
+  userId               String?
+  currentName          String
+  currentSurname       String
+  birthDay             String
+  goals                String
+  problemAreas         String
+  targetNumber         Int
+  targetAyatana        Int
+  recommendedWarakkasa String
+  suggestedNewNames    String
+  softTransitionTips   String
+  createdAt            DateTime @default(now())
+  user                 User?    @relation(fields: [userId], references: [id])
+}
+
+model OracleReading {
+  id          String   @id @default(cuid())
+  userId      String?
+  inputName   String
+  birthDate   DateTime
+  birthTime   String?
+  birthPlace  String?
+  result      Json
+  visibility  String   @default("private")
+  shareToken  String   @unique
+  createdAt   DateTime @default(now())
+
+  user        User?    @relation(fields: [userId], references: [id])
+}
+
+model ApiKey {
+  id         String   @id @default(cuid())
+  userId     String
+  label      String
+  prefix     String
+  keyHash    String   @unique
+  createdAt  DateTime @default(now())
+  lastUsedAt DateTime?
+  revokedAt  DateTime?
+
+  user       User     @relation(fields: [userId], references: [id])
+}
+
+model Subscription {
+  id                   String   @id @default(cuid())
+  userId               String   @unique
+  provider             String
+  plan                 String
+  status               String
+  currentPeriodEnd     DateTime?
+  cancelAtPeriodEnd    Boolean  @default(false)
+  stripeCustomerId     String?  @unique
+  stripeSubscriptionId String?  @unique
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  user                 User     @relation(fields: [userId], references: [id])
+}
+
+model UsageDay {
+  id         String   @id @default(cuid())
+  userId     String
+  day        DateTime
+  oracleReads Int     @default(0)
+  apiCalls   Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  user       User     @relation(fields: [userId], references: [id])
+
+  @@unique([userId, day])
+}
