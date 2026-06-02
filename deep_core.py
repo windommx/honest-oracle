@@ -33,7 +33,7 @@ import random
 import time
 import unittest
 from collections import defaultdict, deque
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Callable, Optional
 
@@ -729,6 +729,32 @@ class BiasResolver:
         winner = max(cands, key=lambda b: (b.strength, b.name))
         return [winner]
 
+    def process_symbolic(self, text: str, emotion: Vector3, sentiment: float,
+                         source_authority: float = 0.5) -> "SymbolicPerception":
+        """
+        Structured counterpart to process(). Reuses the single-winner string
+        path (so the same, non-contradictory bias wins) and projects it into a
+        machine-readable SymbolicPerception for LLM / Z3 / generation control.
+        """
+        ap = self.process(text, emotion, sentiment, source_authority)
+        threat = ap.threat_multiplier
+        # Salience tracks how far the threat appraisal departs from neutral.
+        salience = max(0.0, min(1.0, 0.5 + (threat - 1.0) * 0.5))
+        if ap.bias is None:
+            confidence = 1.0
+        elif ap.suppressed:
+            confidence = 0.5
+        else:
+            confidence = 0.7
+        return SymbolicPerception(
+            original_content=text,
+            perceived_threat_level=threat,
+            salience=salience,
+            confidence=confidence,
+            suppressed=ap.suppressed,
+            biases_applied=tuple(ap.bias.split("+")) if ap.bias else (),
+        )
+
     @staticmethod
     def is_overloaded(e: Vector3) -> bool:
         return e.arousal > 0.8 and e.dominance < 0.2
@@ -884,6 +910,255 @@ class DPOPairBuilder:
         tipping = sum(1 for v in self._runs.values() for r in v if r["tipping"])
         return {"scenarios": len(self._runs), "total_runs": total,
                 "tipping": tipping, "pairs_available": len(self.build_pairs())}
+
+
+# ═══════════════════════════════════════════
+#  SECTION 7.5: SYMBOLIC PERCEPTION
+#  Structured (non-string) bias output for LLM / Z3 / generation control.
+#  Builds on the corrected single-winner BiasResolver — no contradictory
+#  frames, no string-only distortion that downstream code can't parse.
+# ═══════════════════════════════════════════
+
+@dataclass(frozen=True)
+class SymbolicPerception:
+    """
+    Machine-readable perception. Unlike a distorted string, every consumer
+    (prompt builder, generation controller, Z3 physics) can act on the fields
+    directly instead of re-parsing English.
+
+    perceived_threat_level: 0..2  (1.0 = neutral, >1 amplified, <1 downplayed)
+    salience:               0..1  (attention weight)
+    confidence:             0..1  (how trustworthy this perception is)
+    """
+    original_content: str
+    perceived_threat_level: float
+    salience: float
+    confidence: float
+    suppressed: bool
+    biases_applied: tuple[str, ...] = ()
+
+    def to_prompt_context(self) -> str:
+        """Render as a compact tag prefix for an LLM prompt."""
+        if self.suppressed:
+            return f"[IGNORED] {self.original_content}"
+        threat = ("CRITICAL" if self.perceived_threat_level > 1.5
+                  else "ELEVATED" if self.perceived_threat_level > 1.0
+                  else "DOWNPLAYED" if self.perceived_threat_level < 1.0
+                  else "NORMAL")
+        att = ("HIGH" if self.salience > 0.7
+               else "LOW" if self.salience < 0.3 else "NORMAL")
+        return f"[THREAT={threat} ATTENTION={att}] {self.original_content}"
+
+    def to_generation_directives(self) -> dict:
+        """
+        Model-agnostic generation intent. Deliberately NOT raw token-id
+        logit_bias: those ids are tokenizer-specific, so emitting them here
+        (encoded with the wrong tokenizer) silently biases the wrong tokens.
+        A serving layer maps these directives to its own tokenizer.
+        """
+        if self.suppressed:
+            return {"suppress": True, "emphasis": 0.0}
+        return {
+            "suppress": False,
+            "emphasis": round(max(0.0, self.perceived_threat_level - 1.0), 4),
+            "attention": round(self.salience, 4),
+        }
+
+    def to_z3_constraints(self, entity_id: str) -> dict[str, bool]:
+        """Project the perception onto boolean facts a physics engine can check."""
+        constraints = {f"{entity_id}__aware": not self.suppressed}
+        if self.perceived_threat_level > 1.5 and not self.suppressed:
+            constraints[f"{entity_id}__must_react"] = True
+        return constraints
+
+
+# ═══════════════════════════════════════════
+#  SECTION 7.6: EVENT BUS
+#  Event-driven agent communication with propagation delay.
+#  Replaces strict turn-taking: agents publish/subscribe, messages
+#  arrive after a delay (sound/word travel time).
+# ═══════════════════════════════════════════
+
+@dataclass(frozen=True)
+class AgentEvent:
+    event_type: str            # "speech", "action", "emotion_change", ...
+    source_agent: str
+    content: Any
+    timestamp: float
+    target_agents: tuple[str, ...] = ()   # empty = broadcast
+    priority: int = 0
+
+
+@dataclass
+class _Subscription:
+    sub_id: str
+    agent_id: str
+    event_types: frozenset[str]
+    handler: Callable[[AgentEvent], None]
+
+
+class EventBus:
+    """
+    Deterministic, time-stepped event bus.
+
+    publish(event, delay) queues delivery at current_time+delay; tick(dt)
+    advances time and delivers everything now due. A monotonic sequence
+    counter keeps ordering stable (and avoids comparing AgentEvent objects
+    when delivery times tie).
+    """
+
+    def __init__(self):
+        self._subs: list[_Subscription] = []
+        self._pending: list[tuple[float, int, AgentEvent]] = []  # heap
+        self._delivered: list[AgentEvent] = []
+        self._seq = 0
+        self.current_time = 0.0
+
+    def subscribe(self, agent_id: str, event_types: list[str],
+                  handler: Callable[[AgentEvent], None]) -> str:
+        sub_id = f"sub_{agent_id}_{len(self._subs)}"
+        self._subs.append(_Subscription(
+            sub_id, agent_id, frozenset(event_types), handler))
+        return sub_id
+
+    def publish(self, event: AgentEvent, delay: float = 0.0):
+        heapq.heappush(self._pending,
+                       (self.current_time + max(0.0, delay), self._seq, event))
+        self._seq += 1
+
+    def tick(self, dt: float = 0.1) -> list[AgentEvent]:
+        """Advance time by dt; deliver all due events. Returns what was delivered."""
+        self.current_time += dt
+        just_delivered: list[AgentEvent] = []
+        while self._pending and self._pending[0][0] <= self.current_time + 1e-12:
+            _, _, event = heapq.heappop(self._pending)
+            self._deliver(event)
+            just_delivered.append(event)
+        return just_delivered
+
+    def _deliver(self, event: AgentEvent):
+        self._delivered.append(event)
+        for sub in self._subs:
+            if event.event_type not in sub.event_types:
+                continue
+            if event.target_agents and sub.agent_id not in event.target_agents:
+                continue
+            if sub.agent_id == event.source_agent:   # no echo to sender
+                continue
+            try:
+                sub.handler(event)
+            except Exception as exc:   # one bad handler must not stall the bus
+                self._delivered.append(AgentEvent(
+                    "handler_error", "event_bus",
+                    {"sub": sub.sub_id, "error": str(exc)}, self.current_time))
+
+    @property
+    def delivered(self) -> list[AgentEvent]:
+        return list(self._delivered)
+
+    @property
+    def pending_count(self) -> int:
+        return len(self._pending)
+
+
+# ═══════════════════════════════════════════
+#  SECTION 7.7: NEURAL-SYMBOLIC BRIDGE
+#  LLM (natural language) ↔ Z3 (symbolic). Force the LLM to emit JSON,
+#  parse it, project to Z3 facts, and validate FAIL-CLOSED.
+# ═══════════════════════════════════════════
+
+@dataclass
+class LLMActionOutput:
+    action: str
+    confidence: float
+    reasoning: str = ""
+    preconditions: dict[str, bool] = field(default_factory=dict)
+    effects: dict[str, bool] = field(default_factory=dict)
+
+
+class NeuralSymbolicBridge:
+    """
+    Bridges an LLM's structured output to the Z3 physics engine.
+
+    Flow: prompt(schema) → LLM JSON → parse → to_z3_constraints →
+    IncrementalZ3.validate → (valid? execute : retry_prompt(violations)).
+
+    Validation is FAIL-CLOSED: a malformed/unparseable response or a solver
+    that cannot prove satisfiability is treated as INVALID, never as a pass.
+    """
+
+    ACTION_SCHEMA = {
+        "type": "object",
+        "properties": {
+            "action": {"type": "string"},
+            "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+            "reasoning": {"type": "string"},
+            "preconditions": {"type": "object",
+                              "additionalProperties": {"type": "boolean"}},
+            "effects": {"type": "object",
+                        "additionalProperties": {"type": "boolean"}},
+        },
+        "required": ["action", "confidence", "preconditions"],
+    }
+
+    def parse(self, json_str: str) -> Optional[LLMActionOutput]:
+        """Parse + minimally validate. Returns None (not garbage) on failure."""
+        try:
+            data = json.loads(json_str)
+        except (json.JSONDecodeError, TypeError):
+            return None
+        if not isinstance(data, dict):
+            return None
+        if "action" not in data or "confidence" not in data:
+            return None
+        try:
+            conf = float(data["confidence"])
+        except (TypeError, ValueError):
+            return None
+        pre = data.get("preconditions", {}) or {}
+        eff = data.get("effects", {}) or {}
+        if not isinstance(pre, dict) or not isinstance(eff, dict):
+            return None
+        return LLMActionOutput(
+            action=str(data["action"]),
+            confidence=max(0.0, min(1.0, conf)),
+            reasoning=str(data.get("reasoning", "")),
+            preconditions={str(k): bool(v) for k, v in pre.items()},
+            effects={str(k): bool(v) for k, v in eff.items()},
+        )
+
+    def to_z3_constraints(self, output: LLMActionOutput) -> dict[str, bool]:
+        return dict(output.preconditions)
+
+    def validate(self, engine: "IncrementalZ3",
+                 output: Optional[LLMActionOutput]) -> tuple[bool, list[str]]:
+        """
+        FAIL-CLOSED validation against the (correct) IncrementalZ3 engine.
+        None output → invalid. No preconditions to check → trivially valid.
+        """
+        if output is None:
+            return False, ["unparseable_or_missing_fields"]
+        constraints = self.to_z3_constraints(output)
+        if not constraints:
+            return True, []
+        v = engine.validate(constraints)
+        return v.valid, list(v.violated_rules)
+
+    def build_prompt(self, context: dict) -> str:
+        return (
+            "You are an agent acting in a simulated world.\n\n"
+            f"CONTEXT:\n{json.dumps(context, ensure_ascii=False, indent=2)}\n\n"
+            "Respond ONLY with JSON matching this schema:\n"
+            f"{json.dumps(self.ACTION_SCHEMA, indent=2)}\n"
+        )
+
+    def build_retry_prompt(self, prior_json: str, violations: list[str]) -> str:
+        bullets = "\n".join(f"- {v}" for v in violations) or "- (unspecified)"
+        return (
+            "Your previous response violated these constraints:\n"
+            f"{bullets}\n\nPREVIOUS:\n{prior_json}\n\n"
+            "Respond again with JSON that satisfies every constraint."
+        )
 
 
 # ═══════════════════════════════════════════
@@ -1701,6 +1976,127 @@ class TestIntegration(unittest.TestCase):
         self.assertGreaterEqual(peak_influencer, peak_observer - 0.1)
 
 
+class TestSymbolicPerception(unittest.TestCase):
+    def test_catastrophizing_is_structured(self):
+        b = BiasResolver()
+        sp = b.process_symbolic("Market crashed", Vector3(-0.3, 0.8, 0.1), -0.8)
+        self.assertIn("catastrophizing", sp.biases_applied)
+        self.assertGreater(sp.perceived_threat_level, 1.5)
+        self.assertFalse(sp.suppressed)
+        self.assertIn("CRITICAL", sp.to_prompt_context())
+
+    def test_tunnel_vision_suppressed(self):
+        b = BiasResolver()
+        sp = b.process_symbolic("Good news", Vector3(-0.5, 0.9, 0.1), 0.7)
+        self.assertTrue(sp.suppressed)
+        self.assertEqual(sp.to_generation_directives()["suppress"], True)
+        self.assertFalse(sp.to_z3_constraints("a")["a__aware"])
+
+    def test_neutral_is_baseline(self):
+        b = BiasResolver()
+        sp = b.process_symbolic("Cloudy weather", Vector3(0, 0.3, 0.5), 0.0)
+        self.assertEqual(sp.biases_applied, ())
+        self.assertAlmostEqual(sp.perceived_threat_level, 1.0, 4)
+        self.assertTrue(sp.to_z3_constraints("a")["a__aware"])
+
+    def test_must_react_on_high_threat(self):
+        b = BiasResolver()
+        sp = b.process_symbolic("Bombs", Vector3(-0.5, 0.95, 0.05), -0.9)
+        self.assertTrue(sp.to_z3_constraints("x").get("x__must_react", False))
+
+
+class TestEventBus(unittest.TestCase):
+    def test_delay_delivery(self):
+        bus = EventBus()
+        got = []
+        bus.subscribe("b", ["speech"], lambda e: got.append(e))
+        bus.publish(AgentEvent("speech", "a", "hi", 0.0), delay=0.5)
+        bus.tick(0.3)
+        self.assertEqual(len(got), 0)   # not due yet
+        bus.tick(0.3)
+        self.assertEqual(len(got), 1)   # now past 0.5
+
+    def test_no_echo_to_sender(self):
+        bus = EventBus()
+        got = []
+        bus.subscribe("a", ["speech"], lambda e: got.append(e))
+        bus.publish(AgentEvent("speech", "a", "hi", 0.0))
+        bus.tick(0.1)
+        self.assertEqual(got, [])
+
+    def test_targeted_vs_broadcast(self):
+        bus = EventBus()
+        b_got, c_got = [], []
+        bus.subscribe("b", ["speech"], lambda e: b_got.append(e))
+        bus.subscribe("c", ["speech"], lambda e: c_got.append(e))
+        bus.publish(AgentEvent("speech", "a", "to b only", 0.0, target_agents=("b",)))
+        bus.tick(0.1)
+        self.assertEqual(len(b_got), 1)
+        self.assertEqual(len(c_got), 0)
+
+    def test_event_type_filter(self):
+        bus = EventBus()
+        got = []
+        bus.subscribe("b", ["action"], lambda e: got.append(e))
+        bus.publish(AgentEvent("speech", "a", "x", 0.0))
+        bus.tick(0.1)
+        self.assertEqual(got, [])
+
+    def test_handler_error_isolated(self):
+        bus = EventBus()
+        ok = []
+        bus.subscribe("b", ["speech"], lambda e: (_ for _ in ()).throw(RuntimeError("boom")))
+        bus.subscribe("c", ["speech"], lambda e: ok.append(e))
+        bus.publish(AgentEvent("speech", "a", "x", 0.0))
+        bus.tick(0.1)
+        self.assertEqual(len(ok), 1)   # second handler still ran
+        self.assertTrue(any(e.event_type == "handler_error" for e in bus.delivered))
+
+
+class TestNeuralSymbolicBridge(unittest.TestCase):
+    def test_parse_valid(self):
+        br = NeuralSymbolicBridge()
+        out = br.parse('{"action":"attack","confidence":0.7,'
+                       '"preconditions":{"has_weapon":true}}')
+        self.assertIsNotNone(out)
+        self.assertEqual(out.action, "attack")
+        self.assertEqual(out.preconditions, {"has_weapon": True})
+
+    def test_parse_invalid_returns_none(self):
+        br = NeuralSymbolicBridge()
+        self.assertIsNone(br.parse("not json"))
+        self.assertIsNone(br.parse('{"confidence":0.5}'))   # missing action
+        self.assertIsNone(br.parse('[1,2,3]'))
+
+    def test_confidence_clamped(self):
+        br = NeuralSymbolicBridge()
+        out = br.parse('{"action":"x","confidence":5,"preconditions":{}}')
+        self.assertEqual(out.confidence, 1.0)
+
+    def test_validate_fail_closed_on_none(self):
+        br = NeuralSymbolicBridge()
+        valid, viol = br.validate(None, None)
+        self.assertFalse(valid)
+        self.assertTrue(viol)
+
+    @unittest.skipUnless(_Z3, "z3-solver not installed")
+    def test_validate_against_z3(self):
+        br = NeuralSymbolicBridge()
+        e = IncrementalZ3(timeout_ms=500)
+        e.set_fact("alice__dead", True)
+        e.add_rule("mortal_alice",
+                   Implies(e._b("alice__dead"), Not(e._b("alice__can_act"))))
+        # LLM wants to act while dead -> precondition can_act must hold -> UNSAT
+        bad = br.parse('{"action":"run","confidence":0.9,'
+                       '"preconditions":{"alice__can_act":true}}')
+        valid, viol = br.validate(e, bad)
+        self.assertFalse(valid)
+        self.assertIn("mortal_alice", viol)
+        # A precondition that does not contradict any rule -> valid
+        ok = br.parse('{"action":"wait","confidence":0.9,"preconditions":{}}')
+        self.assertTrue(br.validate(e, ok)[0])
+
+
 # ═══════════════════════════════════════════
 #  SECTION 10: DEMO + MAIN
 # ═══════════════════════════════════════════
@@ -1824,7 +2220,8 @@ def main():
             TestVector3, TestSentiment, TestIncrementalZ3, TestCausalDAG,
             TestGillespieSSA, TestNetworkGraph, TestBiasResolver,
             TestBifocalMemory, TestDPOPairBuilder, TestSimulationEngine,
-            TestIntegration,
+            TestIntegration, TestSymbolicPerception, TestEventBus,
+            TestNeuralSymbolicBridge,
         ]
         for cls in classes:
             suite.addTests(loader.loadTestsFromTestCase(cls))
