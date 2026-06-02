@@ -63,7 +63,8 @@ class SimulationEngine:
                 And(Implies(self._z3._b(f"{aid}__dead"),
                             Not(self._z3._b(f"{aid}__can_act"))),
                     Implies(self._z3._b(f"{aid}__dead"),
-                            Not(self._z3._b(f"{aid}__can_speak"))))
+                            Not(self._z3._b(f"{aid}__can_speak")))),
+                priority=10, category="physics", mutable=False,
             )
 
     def add_trust_edge(self, src: str, dst: str, trust: float = 0.5):

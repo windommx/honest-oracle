@@ -6,7 +6,7 @@ and IncrementalZ3() raises on construction; everything else still imports.
 from __future__ import annotations
 import time
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Optional
 from .foundations import AgentAction, ActionType
 
 try:
@@ -27,6 +27,22 @@ class Validation:
     ms: float
 
 
+@dataclass
+class Rule:
+    """A tracked Z3 constraint plus management metadata.
+
+    priority : higher = "stronger"; UNSAT cores are reported strongest-first.
+    category : free-form tag, e.g. "physics" (hard) vs "norm" (soft).
+    mutable  : if False, remove_rule/replace_rule refuse (protects invariants
+               like mortality from accidental edits).
+    """
+    name: str
+    formula: Any
+    priority: int = 0
+    category: str = "constraint"
+    mutable: bool = True
+
+
 class IncrementalZ3:
     """
     Z3 solver with push/pop for temporary validation and
@@ -44,7 +60,7 @@ class IncrementalZ3:
         self._solver.set("timeout", timeout_ms)
         self._bools: dict[str, Any] = {}
         self._tracks: dict[str, str] = {}   # track_label -> rule_name
-        self._rules: list[tuple[str, Any]] = []  # (name, formula) for rebuild
+        self._rules: dict[str, Rule] = {}   # name -> Rule (for rebuild + CRUD)
         self._permanent: list[tuple[str, bool]] = []
 
     def _b(self, name: str):
@@ -63,17 +79,21 @@ class IncrementalZ3:
         self._solver = Solver()
         self._solver.set("timeout", self._timeout_ms)
         self._tracks = {}
-        for name, formula in self._rules:
-            label = f"track__{name}"
-            self._solver.assert_and_track(formula, label)
-            self._tracks[label] = name
+        for rule in self._rules.values():
+            label = f"track__{rule.name}"
+            self._solver.assert_and_track(rule.formula, label)
+            self._tracks[label] = rule.name
         for name, value in self._permanent:
             var = self._b(name)
             self._solver.add(var if value else Not(var))
 
-    def add_rule(self, name: str, formula):
+    # ── Rule management (full CRUD) ──────────────────────────────────────
+
+    def add_rule(self, name: str, formula, priority: int = 0,
+                 category: str = "constraint", mutable: bool = True):
         """Register a permanent rule via assert_and_track (label -> name) so the
-        UNSAT core can report violated rules by name.
+        UNSAT core can report violated rules by name, strongest (highest
+        priority) first.
 
         NOTE: a rule is a live Z3 expression, which is NOT JSON-serializable.
         Checkpoints therefore capture facts only (see snapshot/load_facts); to
@@ -81,10 +101,50 @@ class IncrementalZ3:
         with the same setup) before loading facts. This is a Z3 constraint, not
         a bug — formulas are code, not data.
         """
+        if name in self._rules:
+            raise ValueError(f"rule '{name}' already exists; use replace_rule()")
+        self._rules[name] = Rule(name, formula, priority, category, mutable)
         label = f"track__{name}"
         self._solver.assert_and_track(formula, label)
         self._tracks[label] = name
-        self._rules.append((name, formula))
+
+    def get_rule(self, name: str) -> Optional[Rule]:
+        return self._rules.get(name)
+
+    @property
+    def rules(self) -> dict[str, Rule]:
+        return dict(self._rules)
+
+    def remove_rule(self, name: str):
+        """Delete a rule and rebuild the solver. Raises KeyError if the rule is
+        unknown, ValueError if it is immutable. O(n): Z3's base solver cannot
+        drop a single tracked assertion, so the surviving rules+facts are
+        replayed into a fresh solver."""
+        if name not in self._rules:
+            raise KeyError(f"no such rule: {name}")
+        if not self._rules[name].mutable:
+            raise ValueError(f"rule '{name}' is immutable")
+        del self._rules[name]
+        self._rebuild()
+
+    def replace_rule(self, name: str, formula, priority: Optional[int] = None,
+                     category: Optional[str] = None,
+                     mutable: Optional[bool] = None):
+        """Swap an existing rule's formula (and optionally metadata), then
+        rebuild. Raises KeyError if unknown, ValueError if immutable.
+        Use for non-monotonic rule changes, e.g. lifting martial law."""
+        if name not in self._rules:
+            raise KeyError(f"no such rule: {name}")
+        old = self._rules[name]
+        if not old.mutable:
+            raise ValueError(f"rule '{name}' is immutable")
+        self._rules[name] = Rule(
+            name, formula,
+            old.priority if priority is None else priority,
+            old.category if category is None else category,
+            old.mutable if mutable is None else mutable,
+        )
+        self._rebuild()
 
     def set_fact(self, name: str, value: bool):
         var = self._b(name)
@@ -138,6 +198,9 @@ class IncrementalZ3:
         if result == unsat:
             core_labels = {str(c) for c in self._solver.unsat_core()}
             violated = [self._tracks[lbl] for lbl in core_labels if lbl in self._tracks]
+            # Report strongest-first: higher priority, then name for determinism.
+            violated.sort(key=lambda nm: (-self._rules[nm].priority, nm)
+                          if nm in self._rules else (0, nm))
             self._solver.pop()
             return Validation(False, violated, ms)
 
@@ -176,7 +239,13 @@ class IncrementalZ3:
 
     def snapshot(self) -> dict:
         """Serializable state. `permanent` is the full fact list and can be
-        restored via load_facts(); `rules` lists rule NAMES only — the formulas
-        are not serializable, so restoring requires re-running add_rule with the
-        identical formulas (see add_rule)."""
-        return {"permanent": list(self._permanent), "rules": list(self._tracks.values())}
+        restored via load_facts(); `rules`/`rule_meta` describe rules by NAME and
+        metadata only — the formulas are not serializable, so restoring requires
+        re-running add_rule with the identical formulas (see add_rule)."""
+        return {
+            "permanent": list(self._permanent),
+            "rules": list(self._rules.keys()),
+            "rule_meta": {n: {"priority": r.priority, "category": r.category,
+                              "mutable": r.mutable}
+                          for n, r in self._rules.items()},
+        }

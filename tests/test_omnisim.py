@@ -1119,3 +1119,77 @@ class TestCalibration(unittest.TestCase):
         self.assertAlmostEqual(fit["sse"], 0.0, places=8)
         self.assertEqual(fit["evaluations"], 9)
 
+
+
+# ── New: complete rule-management method (CRUD + priority + mutability) ───
+
+@unittest.skipUnless(_Z3, "z3-solver not installed")
+class TestRuleManagement(unittest.TestCase):
+    def test_add_get_rule_metadata(self):
+        e = IncrementalZ3(timeout_ms=500)
+        e.add_rule("curfew", Not(e._b("out")), priority=7,
+                   category="norm", mutable=True)
+        r = e.get_rule("curfew")
+        self.assertEqual(r.priority, 7)
+        self.assertEqual(r.category, "norm")
+        self.assertTrue(r.mutable)
+        self.assertIn("curfew", e.rules)
+
+    def test_duplicate_rule_raises(self):
+        e = IncrementalZ3(timeout_ms=500)
+        e.add_rule("r", e._b("x"))
+        with self.assertRaises(ValueError):
+            e.add_rule("r", e._b("y"))
+
+    def test_remove_rule_lifts_constraint(self):
+        e = IncrementalZ3(timeout_ms=500)
+        e.set_fact("martial_law", True)
+        e.add_rule("curfew",
+                   Implies(e._b("martial_law"), Not(e._b("can_go_out"))))
+        self.assertFalse(e.validate({"can_go_out": True}).valid)
+        e.remove_rule("curfew")            # lift martial law
+        self.assertTrue(e.validate({"can_go_out": True}).valid)
+
+    def test_remove_unknown_raises(self):
+        e = IncrementalZ3(timeout_ms=500)
+        with self.assertRaises(KeyError):
+            e.remove_rule("ghost")
+
+    def test_remove_immutable_raises(self):
+        e = IncrementalZ3(timeout_ms=500)
+        e.add_rule("hard", e._b("x"), mutable=False)
+        with self.assertRaises(ValueError):
+            e.remove_rule("hard")
+
+    def test_replace_rule_changes_constraint(self):
+        e = IncrementalZ3(timeout_ms=500)
+        e.add_rule("r", Not(e._b("x")))            # forbids x
+        self.assertFalse(e.validate({"x": True}).valid)
+        e.replace_rule("r", e._b("x"))             # now requires x
+        self.assertTrue(e.validate({"x": True}).valid)
+        self.assertFalse(e.validate({"x": False}).valid)
+
+    def test_replace_immutable_raises(self):
+        e = IncrementalZ3(timeout_ms=500)
+        e.add_rule("hard", e._b("x"), mutable=False)
+        with self.assertRaises(ValueError):
+            e.replace_rule("hard", e._b("y"))
+
+    def test_unsat_core_priority_ordered(self):
+        e = IncrementalZ3(timeout_ms=500)
+        # Two jointly-necessary rules: x->y (weak) and x->not y (strong).
+        e.add_rule("weak", Implies(e._b("x"), e._b("y")), priority=1)
+        e.add_rule("strong", Implies(e._b("x"), Not(e._b("y"))), priority=9)
+        v = e.validate({"x": True})
+        self.assertFalse(v.valid)
+        self.assertEqual(v.violated_rules, ["strong", "weak"])  # strongest first
+
+    def test_engine_mortality_is_immutable_physics(self):
+        e = SimulationEngine(SimulationConfig(), seed=1)
+        e.add_agent("a", "A", "r")
+        rule = e.z3_engine.get_rule("mort_a")
+        self.assertEqual(rule.category, "physics")
+        self.assertFalse(rule.mutable)
+        self.assertEqual(rule.priority, 10)
+        with self.assertRaises(ValueError):
+            e.z3_engine.remove_rule("mort_a")     # invariant is protected
