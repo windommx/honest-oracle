@@ -79,21 +79,32 @@ class CausalDAG:
                     queue.append(child)
         return visited
 
-    def causal_paths(self, src: str, dst: str) -> list[list[str]]:
-        """All directed paths from src to dst (DFS)."""
+    def causal_paths(self, src: str, dst: str,
+                     max_paths: int = 10000) -> list[list[str]]:
+        """All directed paths from src to dst (DFS).
+
+        Path enumeration is exponential in dense graphs. `max_paths` is a
+        guard-rail: if the count would exceed it, raise ValueError instead of
+        hanging, so a caller can't accidentally wedge the process. Raise the
+        limit deliberately if you really need every path on a small graph.
+        """
         paths: list[list[str]] = []
-        self._dfs(src, dst, [], paths, set())
+        self._dfs(src, dst, [], paths, set(), max_paths)
         return paths
 
-    def _dfs(self, cur, dst, path, paths, visited):
+    def _dfs(self, cur, dst, path, paths, visited, max_paths):
         path.append(cur)
         visited.add(cur)
         if cur == dst:
             paths.append(list(path))
+            if len(paths) > max_paths:
+                raise ValueError(
+                    f"causal_paths exceeded max_paths={max_paths} "
+                    f"(path explosion between '{path[0]}' and '{dst}')")
         else:
             for nxt in self._adj.get(cur, set()):
                 if nxt not in visited:
-                    self._dfs(nxt, dst, path, paths, visited)
+                    self._dfs(nxt, dst, path, paths, visited, max_paths)
         path.pop()
         visited.discard(cur)
 

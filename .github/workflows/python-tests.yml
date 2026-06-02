@@ -34,3 +34,16 @@ jobs:
         run: pip install z3-solver
       - name: Run test suite
         run: python deep_core.py --test
+
+  typecheck:
+    runs-on: ubuntu-latest
+    name: mypy
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install mypy + z3 (for typed imports)
+        run: pip install mypy z3-solver
+      - name: Static type check
+        run: mypy

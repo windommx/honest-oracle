@@ -50,7 +50,8 @@ class NetworkGraph:
         return len(activated)
 
     def kkt_greedy(self, k: int, mc_runs: int = 500,
-                   seed: Optional[int] = None) -> list[str]:
+                   seed: Optional[int] = None,
+                   warn_threshold: int = 5_000_000) -> list[str]:
         """
         Greedy influence maximization with (1-1/e) guarantee.
 
@@ -59,8 +60,21 @@ class NetworkGraph:
         comparison low-variance, the spread of the already-selected set is
         estimated ONCE per round and reused across candidates.
 
-        Complexity: O(k × n × mc_runs × (n + m))
+        Complexity: O(k × n × mc_runs × (n + m)). Guard-rail: if the spread-
+        evaluation budget (k × n × mc_runs) exceeds warn_threshold, a warning
+        is emitted recommending CELF/CELF++ — this method does not scale past a
+        few hundred nodes. Set warn_threshold=0 to silence.
         """
+        n = len(self._nodes)
+        budget = k * n * mc_runs
+        if warn_threshold and budget > warn_threshold:
+            import warnings
+            warnings.warn(
+                f"kkt_greedy budget k*n*mc_runs={budget:,} exceeds "
+                f"{warn_threshold:,}; this is O(k*n*mc*(n+m)) and will be slow. "
+                f"Use CELF/CELF++ or reduce mc_runs for n={n} nodes.",
+                stacklevel=2,
+            )
         rng = random.Random(seed)
         selected: list[str] = []
         remaining = set(self._nodes)

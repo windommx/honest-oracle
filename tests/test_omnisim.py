@@ -1283,3 +1283,49 @@ class TestAPIGuards(unittest.TestCase):
         r = e.run(max_time=2.0)           # no agents, no reactions
         self.assertEqual(r.exit_reason, "completed")
         self.assertIsNone(r.tipping_point)
+
+
+# ── New: performance guard-rails ─────────────────────────────────────────
+
+import warnings as _warnings
+
+
+class TestGuardRails(unittest.TestCase):
+    def test_causal_paths_explosion_raises(self):
+        d = CausalDAG()
+        # diamond chain -> 2^k paths; cap low so it must trip the guard
+        d.add_edge("s", "a0"); d.add_edge("s", "b0")
+        prev = ["a0", "b0"]
+        for i in range(1, 6):
+            a, b = f"a{i}", f"b{i}"
+            for p in prev:
+                d.add_edge(p, a); d.add_edge(p, b)
+            prev = [a, b]
+        for p in prev:
+            d.add_edge(p, "t")
+        with self.assertRaises(ValueError):
+            d.causal_paths("s", "t", max_paths=5)
+
+    def test_causal_paths_within_limit_ok(self):
+        d = CausalDAG()
+        d.add_edge("a", "b"); d.add_edge("b", "d")
+        d.add_edge("a", "c"); d.add_edge("c", "d")
+        self.assertEqual(len(d.causal_paths("a", "d", max_paths=10)), 2)
+
+    def test_kkt_warns_over_budget(self):
+        g = NetworkGraph()
+        for i in range(10):
+            g.add_edge("hub", f"n{i}", 0.5)
+        with _warnings.catch_warnings(record=True) as w:
+            _warnings.simplefilter("always")
+            g.kkt_greedy(k=1, mc_runs=10, seed=1, warn_threshold=1)
+            self.assertTrue(any("kkt_greedy budget" in str(x.message) for x in w))
+
+    def test_kkt_silent_under_threshold(self):
+        g = NetworkGraph()
+        g.add_edge("hub", "a", 0.9)
+        g.add_edge("hub", "b", 0.9)
+        with _warnings.catch_warnings(record=True) as w:
+            _warnings.simplefilter("always")
+            g.kkt_greedy(k=1, mc_runs=50, seed=1)   # tiny budget -> no warning
+            self.assertFalse(any("kkt_greedy budget" in str(x.message) for x in w))
