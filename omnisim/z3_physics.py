@@ -97,6 +97,12 @@ class IncrementalZ3:
         self._permanent.append((name, value))
         self._rebuild()
 
+    def load_facts(self, facts: list[tuple[str, bool]]):
+        """Replace all permanent facts (e.g. when restoring a checkpoint) and
+        rebuild. Rules are NOT touched — they must already be registered."""
+        self._permanent = [(n, bool(v)) for n, v in facts]
+        self._rebuild()
+
     def validate(self, proposed: dict[str, bool],
                  fail_closed: bool = True) -> Validation:
         """

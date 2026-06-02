@@ -1,5 +1,6 @@
 """Simulation engine integrating all components via Gillespie SSA."""
 from __future__ import annotations
+import json
 import random
 from typing import Callable, Optional
 from .foundations import (
@@ -323,6 +324,68 @@ class SimulationEngine:
         self._dag.add_node(fact_id)
         self._dag.add_edge(aid, fact_id)
         return action
+
+    # ── Checkpoint / restore ─────────────────────────────────────────────
+    # IMPORTANT (honest limitation): contagion reactions, crises and
+    # interventions are Python closures — they cannot be serialized. A
+    # checkpoint captures the DYNAMIC state only (agent emotions/locations,
+    # sim time, RNG stream, Z3 facts, memory, trajectory). To resume:
+    #
+    #     e2 = SimulationEngine(cfg, seed=...)   # rebuild with the SAME setup:
+    #     e2.add_agent(...); e2.add_trust_edge(...); ...  # (re-declare dynamics)
+    #     e2.restore_state(checkpoint)           # reapply the frozen state
+    #     e2.run(max_time=...)                   # continues identically
+    #
+    # Because the RNG state is restored, the stochastic stream picks up exactly
+    # where it left off. (Do NOT re-inject one-shot events that already fired
+    # before the checkpoint, or they will fire again.)
+
+    def checkpoint(self) -> dict:
+        gs = self._gillespie.rng_state()
+        return {
+            "version": 1,
+            "time": self._gillespie.time,
+            "gillespie_rng": [gs[0], list(gs[1]), gs[2]],
+            "agents": {
+                aid: {
+                    "name": a["name"], "role": a["role"],
+                    "emotion": [a["emotion"].pleasure, a["emotion"].arousal,
+                                a["emotion"].dominance],
+                    "location": a["location"],
+                }
+                for aid, a in self._agents.items()
+            },
+            "z3_permanent": ([[n, v] for n, v in self._z3.snapshot()["permanent"]]
+                             if self._z3 is not None else None),
+            "memory_facts": self._memory._facts,
+            "trajectory": self._traj,
+        }
+
+    def restore_state(self, cp: dict):
+        """Reapply a checkpoint onto an engine already configured with the same
+        agents/edges/events. Assumes matching agent ids and Z3 rules exist."""
+        self._gillespie.set_time(float(cp["time"]))
+        gs = cp["gillespie_rng"]
+        self._gillespie.set_rng_state((gs[0], tuple(gs[1]), gs[2]))
+        for aid, a in cp["agents"].items():
+            if aid in self._agents:
+                p, ar, d = a["emotion"]
+                self._agents[aid]["emotion"] = Vector3(p, ar, d)
+                self._agents[aid]["location"] = a["location"]
+        if self._z3 is not None and cp.get("z3_permanent"):
+            self._z3.load_facts([(n, v) for n, v in cp["z3_permanent"]])
+        if cp.get("memory_facts"):
+            self._memory._facts = dict(cp["memory_facts"])
+        self._traj = list(cp.get("trajectory", []))
+
+    def save_checkpoint(self, path: str) -> str:
+        with open(path, "w") as f:
+            json.dump(self.checkpoint(), f)
+        return path
+
+    def load_checkpoint(self, path: str):
+        with open(path) as f:
+            self.restore_state(json.load(f))
 
     @property
     def dag(self) -> CausalDAG:

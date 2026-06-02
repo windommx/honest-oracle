@@ -956,3 +956,78 @@ class TestAftermathMetrics(unittest.TestCase):
         e.add_agent("a", "A", "r", Vector3(0.0, 0.1, 0.5))
         r = e.run(max_time=5.0)
         self.assertIsNone(r.aftermath)
+
+
+# ── New: checkpoint / restore (honest — state only, closures re-declared) ──
+
+class TestCheckpoint(unittest.TestCase):
+    def _build(self):
+        # tipping_arousal=0.99 so the run never enters the aftermath branch,
+        # keeping the resume comparison about pure contagion + decay dynamics.
+        cfg = SimulationConfig(contagion_rate=1.0, decay_rate=0.02,
+                               tipping_arousal=0.99)
+        e = SimulationEngine(cfg, seed=42)
+        e.add_agent("p", "P", "r", Vector3(-0.6, 0.9, 0.1))
+        e.add_agent("c", "C", "r", Vector3(0.4, 0.2, 0.6))
+        e.add_trust_edge("p", "c", 0.9)
+        e.add_trust_edge("c", "p", 0.5)
+        return e
+
+    def _emotions(self, e):
+        return {aid: (round(a["emotion"].pleasure, 6),
+                      round(a["emotion"].arousal, 6),
+                      round(a["emotion"].dominance, 6))
+                for aid, a in e._agents.items()}
+
+    def test_checkpoint_is_json_serializable(self):
+        e = self._build()
+        e.run(max_time=3.0, max_steps=80)
+        cp = e.checkpoint()
+        round_tripped = json.loads(json.dumps(cp))   # must not raise
+        self.assertEqual(set(round_tripped["agents"]), {"p", "c"})
+        self.assertIn("time", round_tripped)
+
+    def test_resume_matches_uninterrupted_run(self):
+        # Ground truth: run straight through to t=8.
+        a = self._build()
+        a.run(max_time=8.0, max_steps=400)
+        gt_emotions = self._emotions(a)
+        gt_time = a._gillespie.time
+
+        # Interrupted: run to t=4, checkpoint (through JSON), resume on a fresh
+        # but identically-configured engine, continue to t=8.
+        b = self._build()
+        b.run(max_time=4.0, max_steps=400)
+        cp = json.loads(json.dumps(b.checkpoint()))
+
+        c = self._build()                # same setup -> same reactions
+        c.restore_state(cp)
+        c.run(max_time=8.0, max_steps=400)
+
+        self.assertAlmostEqual(c._gillespie.time, gt_time, places=6)
+        self.assertEqual(self._emotions(c), gt_emotions)
+
+    def test_save_and_load_file(self):
+        import os, tempfile
+        e = self._build()
+        e.run(max_time=3.0, max_steps=80)
+        path = os.path.join(tempfile.gettempdir(), "omnisim_ckpt.json")
+        e.save_checkpoint(path)
+
+        e2 = self._build()
+        e2.load_checkpoint(path)
+        self.assertEqual(self._emotions(e2), self._emotions(e))
+        self.assertAlmostEqual(e2._gillespie.time, e._gillespie.time, places=6)
+        os.unlink(path)
+
+    @unittest.skipUnless(_Z3, "z3-solver not installed")
+    def test_checkpoint_preserves_incapacitation(self):
+        e = self._build()
+        e.incapacitate("p")           # p is now dead in the solver
+        cp = json.loads(json.dumps(e.checkpoint()))
+        e2 = self._build()
+        e2.restore_state(cp)
+        # A dead agent's speak must still be blocked after restore.
+        res = e2.attempt_action(AgentAction("p", ActionType.SPEAK))
+        self.assertEqual(res.action_type, ActionType.BLOCKED)
+        self.assertIn("mort_p", res.reason)

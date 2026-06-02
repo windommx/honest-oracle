@@ -106,6 +106,21 @@ class GillespieSSA:
             log.append((self._t, name))
         return log
 
+    # ── checkpoint support ──────────────────────────────────────────────
+    # Reactions and scheduled events are CODE (closures) and cannot be
+    # serialized; only the time and RNG stream are. To resume, rebuild the
+    # reactions with the same setup, then restore time + RNG so the stochastic
+    # stream continues identically.
+
+    def rng_state(self):
+        return self._rng.getstate()
+
+    def set_rng_state(self, state):
+        self._rng.setstate(state)
+
+    def set_time(self, t: float):
+        self._t = t
+
     @property
     def time(self) -> float:
         return self._t
