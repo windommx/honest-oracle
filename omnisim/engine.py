@@ -46,6 +46,10 @@ class SimulationEngine:
     def add_agent(self, aid: str, name: str, role: str,
                   emotion: Optional[Vector3] = None,
                   location: str = "hq"):
+        # Hardening: a duplicate id would silently overwrite an agent's state
+        # AND re-add its Z3 facts/rules (a duplicate-rule error). Reject early.
+        if aid in self._agents:
+            raise ValueError(f"agent '{aid}' already exists")
         self._agents[aid] = {
             "name": name, "role": role,
             "emotion": emotion or Vector3(), "location": location,

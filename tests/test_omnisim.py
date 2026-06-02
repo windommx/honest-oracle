@@ -1193,3 +1193,93 @@ class TestRuleManagement(unittest.TestCase):
         self.assertEqual(rule.priority, 10)
         with self.assertRaises(ValueError):
             e.z3_engine.remove_rule("mort_a")     # invariant is protected
+
+
+# ── New: hardening — invariants under random input + API guards ──────────
+
+class TestInvariants(unittest.TestCase):
+    def test_vector3_always_clamped(self):
+        rng = random.Random(0)
+        for _ in range(1000):
+            v = Vector3(rng.uniform(-9, 9), rng.uniform(-9, 9), rng.uniform(-9, 9))
+            self.assertTrue(-1.0 <= v.pleasure <= 1.0)
+            self.assertTrue(0.0 <= v.arousal <= 1.0)
+            self.assertTrue(-1.0 <= v.dominance <= 1.0)
+
+    def test_blend_stays_in_bounds(self):
+        rng = random.Random(1)
+        for _ in range(500):
+            a = Vector3(rng.uniform(-1, 1), rng.uniform(0, 1), rng.uniform(-1, 1))
+            b = Vector3(rng.uniform(-1, 1), rng.uniform(0, 1), rng.uniform(-1, 1))
+            r = a.blend(b, rng.uniform(-2, 2))   # weight is clamped internally
+            self.assertTrue(0.0 <= r.arousal <= 1.0)
+
+    def test_gillespie_time_monotonic_random_seeds(self):
+        for seed in range(25):
+            g = GillespieSSA(seed=seed)
+            g.add_reaction("a", lambda: 1.0, lambda: None)
+            g.add_reaction("b", lambda: 0.3, lambda: None)
+            prev = 0.0
+            for _ in range(50):
+                r = g.step()
+                if r is None:
+                    break
+                self.assertGreaterEqual(g.time, prev)
+                prev = g.time
+
+    def test_engine_run_never_raises_on_random_configs(self):
+        rng = random.Random(7)
+        for _ in range(20):
+            cfg = SimulationConfig(
+                contagion_rate=rng.uniform(0.0, 1.0),
+                decay_rate=rng.uniform(0.0, 0.3),
+                tipping_threshold=rng.uniform(0.1, 0.9),
+            )
+            e = SimulationEngine(cfg, seed=rng.randint(0, 9999))
+            for i in range(rng.randint(1, 4)):
+                e.add_agent(f"a{i}", f"A{i}", "r",
+                            Vector3(rng.uniform(-1, 1), rng.uniform(0, 1),
+                                    rng.uniform(-1, 1)))
+            r = e.run(max_time=rng.uniform(1, 8), max_steps=80)
+            self.assertIsInstance(r.trajectory, list)
+            self.assertGreater(len(r.trajectory), 0)
+
+    def test_checkpoint_roundtrip_random(self):
+        rng = random.Random(11)
+        for _ in range(10):
+            cr = rng.uniform(0.2, 1.0)
+            def build():
+                cfg = SimulationConfig(contagion_rate=cr, decay_rate=0.02,
+                                       tipping_arousal=0.99)
+                e = SimulationEngine(cfg, seed=42)
+                e.add_agent("p", "P", "r", Vector3(-0.5, 0.9, 0.0))
+                e.add_agent("q", "Q", "r", Vector3(0.3, 0.1, 0.0))
+                e.add_trust_edge("p", "q", 0.9)
+                return e
+
+            straight = build()
+            straight.run(max_time=6.0, max_steps=200)
+            gt = round(straight._agents["q"]["emotion"].arousal, 6)
+
+            part = build()
+            part.run(max_time=3.0, max_steps=200)
+            cp = json.loads(json.dumps(part.checkpoint()))
+            resumed = build()
+            resumed.restore_state(cp)
+            resumed.run(max_time=6.0, max_steps=200)
+            got = round(resumed._agents["q"]["emotion"].arousal, 6)
+            self.assertEqual(got, gt)
+
+
+class TestAPIGuards(unittest.TestCase):
+    def test_duplicate_agent_rejected(self):
+        e = SimulationEngine(SimulationConfig(), seed=1)
+        e.add_agent("a", "A", "r")
+        with self.assertRaises(ValueError):
+            e.add_agent("a", "A2", "r")
+
+    def test_empty_engine_runs_cleanly(self):
+        e = SimulationEngine(SimulationConfig(), seed=1)
+        r = e.run(max_time=2.0)           # no agents, no reactions
+        self.assertEqual(r.exit_reason, "completed")
+        self.assertIsNone(r.tipping_point)
