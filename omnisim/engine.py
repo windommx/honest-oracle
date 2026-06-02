@@ -142,6 +142,64 @@ class SimulationEngine:
                 return i
         return None
 
+    @staticmethod
+    def _avg_arousal(snap: dict) -> float:
+        es = snap["emotions"].values()
+        return sum(e["a"] for e in es) / len(es) if es else 0.0
+
+    def _panic_fraction(self, snap: dict) -> float:
+        es = snap["emotions"].values()
+        if not es:
+            return 0.0
+        n = sum(1 for e in es
+                if e["a"] > self.cfg.tipping_arousal and e["p"] < self.cfg.tipping_pleasure)
+        return n / len(es)
+
+    def _aftermath_metrics(self, tipping_time: float) -> dict:
+        """
+        Honest aftermath metrics, derived only from snapshots actually
+        recorded (tipping + aftermath phases) — nothing fabricated.
+
+        - cascade_count: secondary spikes (max arousal jumps >0.2 vs prev snap)
+        - peak_arousal:  highest individual arousal observed post-tipping
+        - affected_agents: agents that crossed the panic arousal threshold
+        - total_damage:  discrete integral of avg-arousal above the pre-crisis
+                         baseline (how far, and how long, above normal)
+        - recovery_time: sim-time from tipping to first snapshot back below the
+                         tipping threshold; None if it never recovered
+        """
+        baseline = self._avg_arousal(self._traj[0]) if self._traj else 0.0
+        post = [s for s in self._traj if s["phase"] in ("tipping", "aftermath")]
+
+        cascade = 0
+        affected: set[str] = set()
+        damage = 0.0
+        peak = 0.0
+        recovery_time: Optional[float] = None
+        prev_max: Optional[float] = None
+
+        for s in post:
+            arousals = [e["a"] for e in s["emotions"].values()]
+            mx = max(arousals, default=0.0)
+            peak = max(peak, mx)
+            if prev_max is not None and mx > prev_max + 0.2:
+                cascade += 1
+            prev_max = mx
+            for aid, e in s["emotions"].items():
+                if e["a"] > self.cfg.tipping_arousal:
+                    affected.add(aid)
+            damage += max(0.0, self._avg_arousal(s) - baseline)
+            if recovery_time is None and self._panic_fraction(s) < self.cfg.tipping_threshold:
+                recovery_time = round(s["time"] - tipping_time, 4)
+
+        return {
+            "cascade_count": cascade,
+            "peak_arousal": round(peak, 4),
+            "affected_agents": sorted(affected),
+            "total_damage": round(damage, 4),
+            "recovery_time": recovery_time,
+        }
+
     def run(self, max_time: float = 100.0, max_steps: int = 500,
             action_policy: Optional[Callable[[str, dict],
                                               Optional[AgentAction]]] = None
@@ -207,6 +265,7 @@ class SimulationEngine:
             self._snapshot(event_name, phase="pre")
 
         recovered = (not self._check_tipping()) if tipping_time is not None else None
+        aftermath = self._aftermath_metrics(tipping_time) if tipping_time is not None else None
 
         return SimulationResult(
             trajectory=self._traj,
@@ -217,6 +276,7 @@ class SimulationEngine:
             dag_edges=self._dag.edge_count,
             tipping_time=tipping_time,
             recovered=recovered,
+            aftermath=aftermath,
         )
 
     # ── Z3-gated action layer ────────────────────────────────────────────

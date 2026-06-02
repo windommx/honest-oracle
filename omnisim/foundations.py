@@ -104,6 +104,9 @@ class SimulationResult:
     # had fallen back below the tipping threshold (it recovered); False if it
     # stayed tipped; None if it never tipped.
     recovered: Optional[bool] = None
+    # Metrics computed over the post-tipping window (None if never tipped):
+    # cascade_count, peak_arousal, affected_agents, total_damage, recovery_time.
+    aftermath: Optional[dict] = None
 
 
 class SentimentAnalyzer:

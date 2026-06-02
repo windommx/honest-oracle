@@ -909,3 +909,50 @@ class TestActionPolicyInLoop(unittest.TestCase):
         self.assertGreater(calls["n"], 0)
         self.assertTrue(any("performed observe" in m.objective
                             for m in e.memory.recall("a")))
+
+
+# ── New: honest aftermath metrics (derived from real snapshots) ──────────
+
+class TestAftermathMetrics(unittest.TestCase):
+    def _tip_engine(self, interventions=()):
+        cfg = SimulationConfig(
+            tipping_threshold=0.3, tipping_arousal=0.5, tipping_pleasure=-0.1,
+            contagion_rate=0.5, decay_rate=0.02, tipping_observation_time=8.0)
+        e = SimulationEngine(cfg, seed=42)
+        for i in range(5):
+            e.add_agent(f"p{i}", f"P{i}", "r", Vector3(-0.3, 0.4, 0.3))
+        for i in range(4):
+            e.add_trust_edge(f"p{i}", f"p{i+1}", 0.9)
+        e.inject_crisis(0.5, "meltdown", intensity=1.0)
+        for t in interventions:
+            e.schedule_intervention(t)
+        return e
+
+    def test_metrics_present_and_shaped(self):
+        r = self._tip_engine().run(max_time=40, max_steps=400)
+        self.assertIsInstance(r.aftermath, dict)
+        for key in ("cascade_count", "peak_arousal", "affected_agents",
+                    "total_damage", "recovery_time"):
+            self.assertIn(key, r.aftermath)
+        self.assertIsInstance(r.aftermath["cascade_count"], int)
+        self.assertGreaterEqual(r.aftermath["total_damage"], 0.0)
+        self.assertGreater(r.aftermath["peak_arousal"], self._tip_engine().cfg.tipping_arousal)
+        self.assertTrue(set(r.aftermath["affected_agents"]) <= {f"p{i}" for i in range(5)})
+
+    def test_recovery_time_none_without_intervention(self):
+        r = self._tip_engine().run(max_time=40, max_steps=400)
+        self.assertFalse(r.recovered)
+        self.assertIsNone(r.aftermath["recovery_time"])
+
+    def test_recovery_time_set_with_intervention(self):
+        r = self._tip_engine(interventions=(1, 2, 3, 4, 5, 6)).run(
+            max_time=40, max_steps=400)
+        self.assertTrue(r.recovered)
+        self.assertIsNotNone(r.aftermath["recovery_time"])
+        self.assertGreaterEqual(r.aftermath["recovery_time"], 0.0)
+
+    def test_no_aftermath_when_no_tipping(self):
+        e = SimulationEngine(SimulationConfig(), seed=7)
+        e.add_agent("a", "A", "r", Vector3(0.0, 0.1, 0.5))
+        r = e.run(max_time=5.0)
+        self.assertIsNone(r.aftermath)
