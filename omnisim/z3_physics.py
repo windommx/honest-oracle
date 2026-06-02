@@ -82,6 +82,21 @@ class IncrementalZ3:
         self._solver.add(var if value else Not(var))
         self._permanent.append((name, value))
 
+    def retract_fact(self, name: str):
+        """Remove every permanent assertion of `name` (rebuild required)."""
+        before = len(self._permanent)
+        self._permanent = [(n, v) for n, v in self._permanent if n != name]
+        if len(self._permanent) != before:
+            self._rebuild()
+
+    def update_fact(self, name: str, value: bool):
+        """Non-monotonic update: drop any prior `name` fact, assert the new
+        value, and rebuild. Use this to flip a fact (e.g. dead False -> True)
+        without leaving the contradictory old assertion in the solver."""
+        self._permanent = [(n, v) for n, v in self._permanent if n != name]
+        self._permanent.append((name, value))
+        self._rebuild()
+
     def validate(self, proposed: dict[str, bool],
                  fail_closed: bool = True) -> Validation:
         """

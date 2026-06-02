@@ -85,6 +85,9 @@ class SimulationConfig:
     tipping_threshold: float = 0.5
     tipping_arousal: float = 0.7
     tipping_pleasure: float = -0.3
+    # How long (in sim-time, not steps) to keep observing AFTER a tipping
+    # point is first reached, so the cascade — and any recovery — is captured.
+    tipping_observation_time: float = 5.0
 
 
 @dataclass
@@ -95,6 +98,12 @@ class SimulationResult:
     total_events: int
     dag_nodes: int
     dag_edges: int
+    # Set when a tipping point was reached:
+    tipping_time: Optional[float] = None
+    # True if, by the end of the post-tipping observation window, the system
+    # had fallen back below the tipping threshold (it recovered); False if it
+    # stayed tipped; None if it never tipped.
+    recovered: Optional[bool] = None
 
 
 class SentimentAnalyzer:

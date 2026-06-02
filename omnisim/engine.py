@@ -1,9 +1,10 @@
 """Simulation engine integrating all components via Gillespie SSA."""
 from __future__ import annotations
 import random
-from typing import Optional
+from typing import Callable, Optional
 from .foundations import (
     Vector3, SimulationConfig, SimulationResult, SentimentAnalyzer,
+    AgentAction, ActionType,
 )
 from .gillespie import GillespieSSA
 from .z3_physics import IncrementalZ3, _Z3, And, Or, Not, Implies
@@ -113,10 +114,11 @@ class SimulationEngine:
         for agent in self._agents.values():
             agent["emotion"] = agent["emotion"].decay_toward(Vector3(), rate)
 
-    def _snapshot(self, event: str = ""):
+    def _snapshot(self, event: str = "", phase: str = "pre"):
         self._traj.append({
             "time": self._gillespie.time,
             "event": event,
+            "phase": phase,   # "pre" | "tipping" | "aftermath"
             "emotions": {aid: a["emotion"].to_dict() for aid, a in self._agents.items()},
             "locations": {aid: a["location"] for aid, a in self._agents.items()},
         })
@@ -140,10 +142,34 @@ class SimulationEngine:
                 return i
         return None
 
-    def run(self, max_time: float = 100.0,
-            max_steps: int = 500) -> SimulationResult:
-        self._snapshot("initial")
+    def run(self, max_time: float = 100.0, max_steps: int = 500,
+            action_policy: Optional[Callable[[str, dict],
+                                              Optional[AgentAction]]] = None
+            ) -> SimulationResult:
+        """
+        Drive the simulation.
+
+        action_policy (optional): called as policy(agent_id, agent_state) after
+        each event. If it returns an AgentAction, that action is gated through
+        Z3 (fail-closed) via attempt_action() — this is where the solver
+        actually participates in the loop. Default None preserves the pure
+        contagion/decay behavior.
+
+        After a tipping point is first reached, the run continues for
+        cfg.tipping_observation_time of sim-time (the AFTERMATH window) so the
+        cascade and any recovery are recorded, then stops.
+        """
+        self._snapshot("initial", phase="pre")
         events = 0
+        tipping_time: Optional[float] = None
+
+        def _maybe_act():
+            if action_policy is None:
+                return
+            for aid in list(self._agents):
+                proposed = action_policy(aid, self._agents[aid])
+                if proposed is not None:
+                    self.attempt_action(proposed)
 
         for _ in range(max_steps):
             if self._gillespie.time >= max_time:
@@ -154,19 +180,19 @@ class SimulationEngine:
                 break
 
             dt, event_name, effect_fn = result
-
-            # Deterministic decay for elapsed time
-            self._apply_decay(dt)
-
-            # Execute the stochastic or scheduled event
-            effect_fn()
+            self._apply_decay(dt)        # deterministic decay for elapsed time
+            effect_fn()                  # execute stochastic/scheduled event
             events += 1
-
-            self._snapshot(event_name)
+            _maybe_act()
 
             if self._check_tipping():
-                # Run a few more to observe cascade
-                for _ in range(5):
+                tipping_time = self._gillespie.time
+                self._snapshot(event_name, phase="tipping")
+
+                # AFTERMATH: keep observing until the time window elapses.
+                window_end = tipping_time + self.cfg.tipping_observation_time
+                while (self._gillespie.time < window_end
+                       and events < max_steps):
                     r2 = self._gillespie.step()
                     if r2 is None:
                         break
@@ -174,8 +200,13 @@ class SimulationEngine:
                     self._apply_decay(dt2)
                     ef2()
                     events += 1
-                    self._snapshot(en2)
+                    _maybe_act()
+                    self._snapshot(en2, phase="aftermath")
                 break
+
+            self._snapshot(event_name, phase="pre")
+
+        recovered = (not self._check_tipping()) if tipping_time is not None else None
 
         return SimulationResult(
             trajectory=self._traj,
@@ -184,7 +215,54 @@ class SimulationEngine:
             total_events=events,
             dag_nodes=self._dag.node_count,
             dag_edges=self._dag.edge_count,
+            tipping_time=tipping_time,
+            recovered=recovered,
         )
+
+    # ── Z3-gated action layer ────────────────────────────────────────────
+    # This is the layer where the solver belongs: discrete agent ACTIONS with
+    # logical preconditions (speak/move/act), NOT the continuous PAD/contagion
+    # updates. Gating is fail-closed; on success the action is committed to the
+    # solver AND written to memory + the causal DAG (the Bifocal write path).
+
+    def incapacitate(self, aid: str):
+        """Mark an agent dead. Retracts its capability facts so the mortality
+        rule (not a pinned fact) derives that it can no longer act/speak —
+        which keeps the UNSAT core naming the rule when a dead agent tries."""
+        if self._z3 is None:
+            return
+        self._z3.retract_fact(f"{aid}__can_act")
+        self._z3.retract_fact(f"{aid}__can_speak")
+        self._z3.update_fact(f"{aid}__dead", True)
+
+    def attempt_action(self, action: AgentAction) -> AgentAction:
+        """
+        Gate a discrete action through Z3 (fail-closed). On success: commit the
+        logical effect and record it to memory + the causal DAG, then return
+        the action. On failure: return a BLOCKED action whose reason names the
+        violated rule(s). Without a solver, the action is recorded but ungated.
+        """
+        aid = action.agent_id
+        if self._z3 is not None:
+            v = self._z3.validate_action(action)
+            if not v.valid:
+                return AgentAction(
+                    aid, ActionType.BLOCKED, blocked=True,
+                    reason="; ".join(v.violated_rules) or "__undetermined__",
+                )
+            self._z3.commit_action(action)
+
+        # Write path: the simulation records what just happened.
+        t = self._gillespie.time
+        fact_id = f"{aid}__{action.action_type.value}__{t:.4f}"
+        detail = action.action_type.value
+        if action.new_location:
+            self._agents[aid]["location"] = action.new_location
+            detail += f"->{action.new_location}"
+        self._memory.add_fact(fact_id, f"{aid} performed {detail} at t={t:.2f}")
+        self._dag.add_node(fact_id)
+        self._dag.add_edge(aid, fact_id)
+        return action
 
     @property
     def dag(self) -> CausalDAG:

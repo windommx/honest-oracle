@@ -803,3 +803,109 @@ class TestNeuralSymbolicBridge(unittest.TestCase):
         # A precondition that does not contradict any rule -> valid
         ok = br.parse('{"action":"wait","confidence":0.9,"preconditions":{}}')
         self.assertTrue(br.validate(e, ok)[0])
+
+
+# ── New: time-bounded aftermath window, phase labels, recovery flag ──────
+
+class TestAftermath(unittest.TestCase):
+    def _tip_engine(self, observation_time=8.0, interventions=()):
+        cfg = SimulationConfig(
+            tipping_threshold=0.3, tipping_arousal=0.5, tipping_pleasure=-0.1,
+            contagion_rate=0.5, decay_rate=0.02,
+            tipping_observation_time=observation_time)
+        e = SimulationEngine(cfg, seed=42)
+        for i in range(5):
+            e.add_agent(f"p{i}", f"P{i}", "r", Vector3(-0.3, 0.4, 0.3))
+        for i in range(4):
+            e.add_trust_edge(f"p{i}", f"p{i+1}", 0.9)
+        e.inject_crisis(0.5, "meltdown", intensity=1.0)
+        for t in interventions:
+            e.schedule_intervention(t)
+        return e
+
+    def test_phases_and_tipping_recorded(self):
+        r = self._tip_engine().run(max_time=40, max_steps=400)
+        self.assertIsNotNone(r.tipping_point)
+        self.assertIsNotNone(r.tipping_time)
+        self.assertGreater(r.tipping_time, 0.0)
+        phases = {s["phase"] for s in r.trajectory}
+        self.assertTrue(phases <= {"pre", "tipping", "aftermath"})
+        self.assertEqual(r.trajectory[0]["phase"], "pre")
+        self.assertIn("tipping", phases)
+        self.assertIn("aftermath", phases)
+        self.assertIsInstance(r.recovered, bool)
+        self.assertFalse(r.recovered)   # no intervention -> stays tipped
+
+    def test_window_scales_with_config(self):
+        short = self._tip_engine(observation_time=1.0).run(max_time=40, max_steps=400)
+        long = self._tip_engine(observation_time=8.0).run(max_time=40, max_steps=400)
+        self.assertAlmostEqual(short.tipping_time, long.tipping_time, places=6)
+        # A longer observation window must observe at least as long.
+        self.assertGreaterEqual(long.final_time, short.final_time)
+
+    def test_recovery_detected_with_interventions(self):
+        r = self._tip_engine(interventions=(1, 2, 3, 4, 5, 6)).run(
+            max_time=40, max_steps=400)
+        self.assertIsNotNone(r.tipping_time)
+        self.assertTrue(r.recovered)    # interventions pulled it back below threshold
+
+    def test_no_tipping_leaves_fields_none(self):
+        e = SimulationEngine(SimulationConfig(), seed=7)
+        e.add_agent("a", "A", "r", Vector3(0.0, 0.1, 0.5))
+        r = e.run(max_time=5.0)
+        self.assertIsNone(r.tipping_point)
+        self.assertIsNone(r.tipping_time)
+        self.assertIsNone(r.recovered)
+        self.assertTrue(all(s["phase"] == "pre" for s in r.trajectory))
+
+
+# ── New: Z3-gated action layer (fail-closed) + Bifocal write path ────────
+
+@unittest.skipUnless(_Z3, "z3-solver not installed")
+class TestActionGate(unittest.TestCase):
+    def test_alive_action_allowed_and_recorded(self):
+        e = SimulationEngine(SimulationConfig(), seed=1)
+        e.add_agent("a", "A", "r")
+        res = e.attempt_action(AgentAction("a", ActionType.SPEAK, content="hi"))
+        self.assertEqual(res.action_type, ActionType.SPEAK)
+        self.assertFalse(res.blocked)
+        # write path: the action is now in the agent's memory
+        self.assertTrue(any("performed speak" in m.objective
+                            for m in e.memory.recall("a")))
+
+    def test_dead_action_blocked_names_rule(self):
+        e = SimulationEngine(SimulationConfig(), seed=1)
+        e.add_agent("a", "A", "r")
+        e.incapacitate("a")
+        res = e.attempt_action(AgentAction("a", ActionType.SPEAK))
+        self.assertEqual(res.action_type, ActionType.BLOCKED)
+        self.assertTrue(res.blocked)
+        self.assertIn("mort_a", res.reason)
+        # blocked action must NOT be recorded as if it happened
+        self.assertFalse(any("performed speak" in m.objective
+                             for m in e.memory.recall("a")))
+
+    def test_move_commits_location(self):
+        e = SimulationEngine(SimulationConfig(), seed=1)
+        e.add_agent("a", "A", "r", location="hq")
+        res = e.attempt_action(AgentAction("a", ActionType.MOVE, new_location="field"))
+        self.assertEqual(res.action_type, ActionType.MOVE)
+        perm = e.z3_engine.snapshot()["permanent"]
+        self.assertTrue(any(n == "a__at__field" and v for n, v in perm))
+
+
+class TestActionPolicyInLoop(unittest.TestCase):
+    def test_policy_actions_recorded_during_run(self):
+        e = SimulationEngine(SimulationConfig(), seed=3)
+        e.add_agent("a", "A", "r", Vector3(0.0, 0.2, 0.5))
+        e.inject_crisis(0.5, "x", intensity=0.5)
+        calls = {"n": 0}
+
+        def policy(aid, state):
+            calls["n"] += 1
+            return AgentAction(aid, ActionType.OBSERVE)
+
+        e.run(max_time=5.0, action_policy=policy)
+        self.assertGreater(calls["n"], 0)
+        self.assertTrue(any("performed observe" in m.objective
+                            for m in e.memory.recall("a")))
