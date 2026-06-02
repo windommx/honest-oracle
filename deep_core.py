@@ -224,8 +224,17 @@ class IncrementalZ3:
         self._solver.add(var if value else Not(var))
         self._permanent.append((name, value))
 
-    def validate(self, proposed: dict[str, bool]) -> Validation:
-        """Test proposed facts in a temporary scope. Does NOT commit."""
+    def validate(self, proposed: dict[str, bool],
+                 fail_closed: bool = True) -> Validation:
+        """
+        Test proposed facts in a temporary scope. Does NOT commit.
+
+        FAIL-CLOSED by default: if the solver returns `unknown` (e.g. it hits
+        the timeout) the check is reported INVALID, not valid. Treating an
+        undetermined result as permission to act is unsafe in any gating use
+        (an action slips through precisely when the prover ran out of time).
+        Pass fail_closed=False only for non-gating, best-effort queries.
+        """
         self._solver.push()
         for name, value in proposed.items():
             self._solver.add(self._b(name) if value else Not(self._b(name)))
@@ -244,7 +253,10 @@ class IncrementalZ3:
             self._solver.pop()
             return Validation(False, violated, ms)
 
+        # result == unknown (solver could not decide within the timeout)
         self._solver.pop()
+        if fail_closed:
+            return Validation(False, ["__undetermined__"], ms)
         return Validation(True, [], ms)
 
     def commit(self, name: str, value: bool):
@@ -840,8 +852,23 @@ class DPOPairBuilder:
     Collects simulation runs per scenario and constructs
     DPO training pairs: (prompt, chosen, rejected).
 
+    Direction is explicit, not assumed. In DPO `chosen` is the PREFERRED
+    response, so the prompt and the chosen/rejected roles must agree on what
+    "preferred" means. The objective is `prefer`:
+
+      prefer="stable"  (default) -> chosen = a run that did NOT tip (the group
+                                     stayed regulated), rejected = a run that
+                                     tipped into a runaway crisis.
+      prefer="tipping"           -> the reverse (e.g. for red-teaming / studying
+                                     escalation dynamics).
+
+    The earlier draft hard-coded chosen=tipping while the prompt asked to
+    "predict" tipping — an incoherent pairing that taught the model to prefer
+    runaway crises. The prompt now states the de-escalation objective so the
+    response roles actually match the task.
+
     Stratification ensures balanced representation:
-    - Same scenario, different outcomes (tipping vs non-tipping)
+    - Same scenario, both outcomes present (tipping vs non-tipping)
     - Capped per scenario to prevent dominance
     - Shuffled globally to prevent ordering bias
     """
@@ -857,7 +884,10 @@ class DPOPairBuilder:
             "metadata": metadata or {},
         })
 
-    def build_pairs(self, max_per_scenario: int = 10) -> list[dict]:
+    def build_pairs(self, max_per_scenario: int = 10,
+                    prefer: str = "stable") -> list[dict]:
+        if prefer not in ("stable", "tipping"):
+            raise ValueError("prefer must be 'stable' or 'tipping'")
         rng = random.Random(0)
         pairs: list[dict] = []
 
@@ -872,28 +902,36 @@ class DPOPairBuilder:
             t_sample = rng.sample(tipping, n)
             nt_sample = rng.sample(not_tipping, n)
 
-            prompt = self._describe_scenario(scenario)
+            prompt = self._describe_scenario(scenario, prefer)
 
             for t_run, nt_run in zip(t_sample, nt_sample):
+                # chosen = the run matching the stated objective
+                chosen_run = nt_run if prefer == "stable" else t_run
+                rejected_run = t_run if prefer == "stable" else nt_run
                 pairs.append({
                     "prompt": prompt,
-                    "chosen": self._serialize(t_run["trajectory"]),
-                    "rejected": self._serialize(nt_run["trajectory"]),
+                    "chosen": self._serialize(chosen_run["trajectory"]),
+                    "rejected": self._serialize(rejected_run["trajectory"]),
                     "scenario": scenario,
                 })
 
         rng.shuffle(pairs)
         return pairs
 
-    def export_jsonl(self, path: str) -> int:
-        pairs = self.build_pairs()
+    def export_jsonl(self, path: str, prefer: str = "stable") -> int:
+        pairs = self.build_pairs(prefer=prefer)
         with open(path, "w") as f:
             for p in pairs:
                 f.write(json.dumps(p) + "\n")
         return len(pairs)
 
-    def _describe_scenario(self, scenario: str) -> str:
-        return f"Social scenario: {scenario}. Predict whether tipping point is reached."
+    def _describe_scenario(self, scenario: str, prefer: str = "stable") -> str:
+        goal = ("keeps the group regulated and avoids a runaway crisis "
+                "(no tipping point)" if prefer == "stable"
+                else "escalates the group into a runaway crisis (reaches a "
+                     "tipping point)")
+        return (f"Social scenario: {scenario}. Produce the emotional-dynamics "
+                f"trajectory that {goal}.")
 
     def _serialize(self, traj: list[dict]) -> str:
         parts = []
@@ -1468,6 +1506,22 @@ class TestIncrementalZ3(unittest.TestCase):
         self.assertFalse(v.valid)
         self.assertIn("not_x_rule", v.violated_rules)
 
+    def test_timeout_fails_closed(self):
+        # A solver forced to give up (1ms) on a hard parity problem returns
+        # `unknown`; fail-closed must report INVALID, not valid.
+        e = IncrementalZ3(timeout_ms=1)
+        xs = [e._b(f"p{i}") for i in range(60)]
+        e.add_rule("parity", Or(*xs))
+        for i in range(60):
+            e.set_fact(f"p{i}", False)  # forces deep search before UNSAT
+        v = e.validate({})
+        if v.violated_rules == ["__undetermined__"]:
+            self.assertFalse(v.valid)                      # timed out -> invalid
+            self.assertTrue(e.validate({}, fail_closed=False).valid)  # opt-out
+        else:
+            # Solver decided fast (UNSAT); still must be invalid, just not a timeout
+            self.assertFalse(v.valid)
+
 
 class TestCausalDAG(unittest.TestCase):
     def test_add_and_sort(self):
@@ -1773,6 +1827,32 @@ class TestDPOPairBuilder(unittest.TestCase):
         b.add_run("s1", [], True)
         b.add_run("s1", [], True)
         self.assertEqual(len(b.build_pairs()), 0)
+
+    def test_chosen_is_stable_by_default(self):
+        b = DPOPairBuilder()
+        stable = [{"time": 0, "emotions": {"a": {"p": 0.5, "a": 0.1, "d": 0.5}}}]
+        crisis = [{"time": 0, "emotions": {"a": {"p": -0.9, "a": 0.95, "d": 0.0}}}]
+        b.add_run("s1", crisis, True)
+        b.add_run("s1", stable, False)
+        p = b.build_pairs()[0]
+        # chosen must be the non-tipping (stable) run, not the crisis run
+        self.assertEqual(p["chosen"], b._serialize(stable))
+        self.assertEqual(p["rejected"], b._serialize(crisis))
+        self.assertIn("avoids a runaway crisis", p["prompt"])
+
+    def test_prefer_tipping_flips_direction(self):
+        b = DPOPairBuilder()
+        stable = [{"time": 0, "emotions": {"a": {"p": 0.5, "a": 0.1, "d": 0.5}}}]
+        crisis = [{"time": 0, "emotions": {"a": {"p": -0.9, "a": 0.95, "d": 0.0}}}]
+        b.add_run("s1", crisis, True)
+        b.add_run("s1", stable, False)
+        p = b.build_pairs(prefer="tipping")[0]
+        self.assertEqual(p["chosen"], b._serialize(crisis))
+        self.assertEqual(p["rejected"], b._serialize(stable))
+
+    def test_invalid_prefer_raises(self):
+        with self.assertRaises(ValueError):
+            DPOPairBuilder().build_pairs(prefer="whatever")
 
     def test_stratified_cap(self):
         b = DPOPairBuilder()
