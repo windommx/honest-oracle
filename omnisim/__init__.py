@@ -10,8 +10,9 @@ z3-solver is optional; without it the Z3 engine is disabled (_Z3 is False).
 """
 from .foundations import (
     ActionType, Vector3, AgentAction, AgentPerception,
-    SimulationConfig, SimulationResult, SentimentAnalyzer,
+    SimulationConfig, SimulationResult, SentimentAnalyzer, LLMSentimentAnalyzer,
 )
+from .calibration import fit_parameters, sample_arousal_trace
 from .z3_physics import (
     IncrementalZ3, Validation, _Z3,
     And, Or, Not, Implies, Bool, Solver, sat, unsat,
@@ -30,6 +31,7 @@ from .demo import run_demo
 __all__ = [
     "ActionType", "Vector3", "AgentAction", "AgentPerception",
     "SimulationConfig", "SimulationResult", "SentimentAnalyzer",
+    "LLMSentimentAnalyzer", "fit_parameters", "sample_arousal_trace",
     "IncrementalZ3", "Validation", "_Z3",
     "And", "Or", "Not", "Implies", "Bool", "Solver", "sat", "unsat",
     "CausalDAG", "GillespieSSA", "NetworkGraph",

@@ -1,9 +1,9 @@
 """Shared value types: PAD emotion vector, actions, configs, sentiment."""
 from __future__ import annotations
 import math
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
-from typing import Optional
+from typing import Callable, Optional
 
 
 class ActionType(Enum):
@@ -88,6 +88,10 @@ class SimulationConfig:
     # How long (in sim-time, not steps) to keep observing AFTER a tipping
     # point is first reached, so the cascade — and any recovery — is captured.
     tipping_observation_time: float = 5.0
+    # Graceful degradation: how many per-event failures to absorb before the
+    # run stops early with partial results. Normal runs never raise, so this
+    # only matters when an injected effect/policy throws.
+    error_tolerance: int = 3
 
 
 @dataclass
@@ -107,6 +111,10 @@ class SimulationResult:
     # Metrics computed over the post-tipping window (None if never tipped):
     # cascade_count, peak_arousal, affected_agents, total_damage, recovery_time.
     aftermath: Optional[dict] = None
+    # Per-event failures captured instead of crashing the whole run.
+    errors: list[dict] = field(default_factory=list)
+    # "completed" or "error_tolerance_exceeded".
+    exit_reason: str = "completed"
 
 
 class SentimentAnalyzer:
@@ -121,3 +129,41 @@ class SentimentAnalyzer:
         words = set(text.lower().split())
         n, p = len(words & self.NEG), len(words & self.POS)
         return round((p - n) / (n + p), 4) if (n + p) else 0.0
+
+
+class LLMSentimentAnalyzer:
+    """
+    Pluggable sentiment analyzer. Same .analyze(text)->float interface as the
+    keyword analyzer, so it drops into SimulationEngine(sentiment=...).
+
+    Wraps an arbitrary `llm_call(text) -> float in [-1, 1]`, with:
+      - an in-memory cache (identical texts cost nothing twice), and
+      - a fail-safe fallback to the keyword analyzer if no llm_call is wired
+        or the call raises (so production never hard-crashes on a flaky API).
+
+    No network/SDK dependency is taken here — the caller injects llm_call.
+    """
+
+    def __init__(self, llm_call: Optional[Callable[[str], float]] = None,
+                 fallback: Optional["SentimentAnalyzer"] = None):
+        self._llm = llm_call
+        self._fallback = fallback or SentimentAnalyzer()
+        self._cache: dict[str, float] = {}
+        self.cache_hits = 0
+        self.fallback_uses = 0
+
+    def analyze(self, text: str) -> float:
+        if text in self._cache:
+            self.cache_hits += 1
+            return self._cache[text]
+        if self._llm is None:
+            self.fallback_uses += 1
+            value = self._fallback.analyze(text)
+        else:
+            try:
+                value = max(-1.0, min(1.0, float(self._llm(text))))
+            except Exception:
+                self.fallback_uses += 1
+                value = self._fallback.analyze(text)
+        self._cache[text] = value
+        return value

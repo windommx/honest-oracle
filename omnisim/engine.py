@@ -7,6 +7,7 @@ from .foundations import (
     Vector3, SimulationConfig, SimulationResult, SentimentAnalyzer,
     AgentAction, ActionType,
 )
+from typing import Any
 from .gillespie import GillespieSSA
 from .z3_physics import IncrementalZ3, _Z3, And, Or, Not, Implies
 from .causal_dag import CausalDAG
@@ -26,7 +27,8 @@ class SimulationEngine:
     """
 
     def __init__(self, config: SimulationConfig,
-                 seed: Optional[int] = None):
+                 seed: Optional[int] = None,
+                 sentiment: Optional[Any] = None):
         self.cfg = config
         self._rng = random.Random(seed)
         self._gillespie = GillespieSSA(seed=seed)
@@ -35,9 +37,11 @@ class SimulationEngine:
         self._memory = BifocalMemory()
         self._bias = BiasResolver()
         self._network = NetworkGraph()
-        self._sentiment = SentimentAnalyzer()
+        # Pluggable: any object with .analyze(text)->float (default keyword).
+        self._sentiment = sentiment or SentimentAnalyzer()
         self._agents: dict[str, dict] = {}
         self._traj: list[dict] = []
+        self._errors: list[dict] = []
 
     def add_agent(self, aid: str, name: str, role: str,
                   emotion: Optional[Vector3] = None,
@@ -219,16 +223,31 @@ class SimulationEngine:
         cascade and any recovery are recorded, then stops.
         """
         self._snapshot("initial", phase="pre")
+        self._errors = []
         events = 0
         tipping_time: Optional[float] = None
+        exit_reason = "completed"
 
-        def _maybe_act():
-            if action_policy is None:
-                return
-            for aid in list(self._agents):
-                proposed = action_policy(aid, self._agents[aid])
-                if proposed is not None:
-                    self.attempt_action(proposed)
+        def _apply_event(dt, event_name, effect_fn) -> bool:
+            """Run one event's effects fault-tolerantly. Returns False (and
+            records the error) instead of propagating, so one bad effect or
+            policy cannot crash the whole simulation."""
+            try:
+                self._apply_decay(dt)
+                effect_fn()
+                if action_policy is not None:
+                    for aid in list(self._agents):
+                        proposed = action_policy(aid, self._agents[aid])
+                        if proposed is not None:
+                            self.attempt_action(proposed)
+                return True
+            except Exception as exc:
+                self._errors.append({
+                    "time": self._gillespie.time,
+                    "event": event_name,
+                    "error": repr(exc),
+                })
+                return False
 
         for _ in range(max_steps):
             if self._gillespie.time >= max_time:
@@ -239,10 +258,13 @@ class SimulationEngine:
                 break
 
             dt, event_name, effect_fn = result
-            self._apply_decay(dt)        # deterministic decay for elapsed time
-            effect_fn()                  # execute stochastic/scheduled event
+            _apply_event(dt, event_name, effect_fn)
             events += 1
-            _maybe_act()
+
+            if len(self._errors) > self.cfg.error_tolerance:
+                exit_reason = "error_tolerance_exceeded"
+                self._snapshot(event_name, phase="pre")
+                break
 
             if self._check_tipping():
                 tipping_time = self._gillespie.time
@@ -256,11 +278,12 @@ class SimulationEngine:
                     if r2 is None:
                         break
                     dt2, en2, ef2 = r2
-                    self._apply_decay(dt2)
-                    ef2()
+                    _apply_event(dt2, en2, ef2)
                     events += 1
-                    _maybe_act()
                     self._snapshot(en2, phase="aftermath")
+                    if len(self._errors) > self.cfg.error_tolerance:
+                        exit_reason = "error_tolerance_exceeded"
+                        break
                 break
 
             self._snapshot(event_name, phase="pre")
@@ -278,6 +301,8 @@ class SimulationEngine:
             tipping_time=tipping_time,
             recovered=recovered,
             aftermath=aftermath,
+            errors=list(self._errors),
+            exit_reason=exit_reason,
         )
 
     # ── Z3-gated action layer ────────────────────────────────────────────

@@ -1031,3 +1031,91 @@ class TestCheckpoint(unittest.TestCase):
         res = e2.attempt_action(AgentAction("p", ActionType.SPEAK))
         self.assertEqual(res.action_type, ActionType.BLOCKED)
         self.assertIn("mort_p", res.reason)
+
+
+# ── New: graceful error handling, pluggable sentiment, calibration ───────
+
+from omnisim import LLMSentimentAnalyzer, fit_parameters, sample_arousal_trace
+
+
+class TestErrorHandling(unittest.TestCase):
+    def test_failing_effect_is_absorbed_then_aborts(self):
+        cfg = SimulationConfig(error_tolerance=2)
+        e = SimulationEngine(cfg, seed=1)
+        e.add_agent("a", "A", "r", Vector3(0.0, 0.6, 0.3))
+        e.add_agent("b", "B", "r", Vector3(0.0, 0.6, 0.3))
+        # A reaction whose effect always raises.
+        e._gillespie.add_reaction("boom", lambda: 5.0,
+                                  lambda: (_ for _ in ()).throw(RuntimeError("boom")))
+        r = e.run(max_time=50.0, max_steps=200)
+        self.assertEqual(r.exit_reason, "error_tolerance_exceeded")
+        self.assertGreater(len(r.errors), cfg.error_tolerance)
+        self.assertIn("boom", r.errors[0]["error"])
+
+    def test_clean_run_has_no_errors(self):
+        e = SimulationEngine(SimulationConfig(), seed=1)
+        e.add_agent("a", "A", "r")
+        r = e.run(max_time=3.0)
+        self.assertEqual(r.exit_reason, "completed")
+        self.assertEqual(r.errors, [])
+
+
+class TestPluggableSentiment(unittest.TestCase):
+    def test_fallback_without_llm(self):
+        s = LLMSentimentAnalyzer()                 # no llm wired
+        self.assertLess(s.analyze("danger crisis threat"), 0)
+        self.assertEqual(s.fallback_uses, 1)
+
+    def test_cache_hit(self):
+        s = LLMSentimentAnalyzer(llm_call=lambda t: 0.5)
+        self.assertEqual(s.analyze("x"), 0.5)
+        self.assertEqual(s.analyze("x"), 0.5)
+        self.assertEqual(s.cache_hits, 1)
+
+    def test_llm_exception_falls_back(self):
+        def boom(_):
+            raise RuntimeError("api down")
+        s = LLMSentimentAnalyzer(llm_call=boom)
+        val = s.analyze("victory hope success")    # falls back to keyword
+        self.assertGreater(val, 0)
+        self.assertEqual(s.fallback_uses, 1)
+
+    def test_injectable_into_engine(self):
+        s = LLMSentimentAnalyzer(llm_call=lambda t: -0.9)
+        e = SimulationEngine(SimulationConfig(), seed=1, sentiment=s)
+        self.assertIs(e._sentiment, s)
+
+
+class TestCalibration(unittest.TestCase):
+    def _factory(self, params):
+        # One high-arousal seeder spreading to three low-arousal agents, with
+        # no resistance (dominance 0) so contagion fires inside the sample
+        # window. This makes the avg-arousal trace genuinely sensitive to BOTH
+        # parameters, so the true point is uniquely identifiable.
+        cfg = SimulationConfig(contagion_rate=params["contagion_rate"],
+                               decay_rate=params["decay_rate"],
+                               tipping_arousal=0.99)
+        e = SimulationEngine(cfg, seed=7)
+        e.add_agent("s", "S", "r", Vector3(-0.5, 0.95, 0.0))
+        for x in ("a", "b", "c"):
+            e.add_agent(x, x, "r", Vector3(0.3, 0.05, 0.0))
+            e.add_trust_edge("s", x, 0.9)
+        return e
+
+    def test_recovers_known_parameters(self):
+        truth = {"contagion_rate": 0.5, "decay_rate": 0.05}
+        times = [1.0, 2.0, 3.0, 4.0, 5.0]
+        target = sample_arousal_trace(
+            self._factory(truth).run(max_time=6.0, max_steps=300), times)
+
+        grid = {"contagion_rate": [0.3, 0.5, 0.7],
+                "decay_rate": [0.02, 0.05, 0.1]}
+        fit = fit_parameters(self._factory, times, target, grid,
+                             max_time=6.0, max_steps=300)
+        # Target was generated from a grid point and the trace is
+        # parameter-identifiable, so the fit lands on it exactly (zero error),
+        # since the engine is deterministic for a fixed seed.
+        self.assertEqual(fit["params"], truth)
+        self.assertAlmostEqual(fit["sse"], 0.0, places=8)
+        self.assertEqual(fit["evaluations"], 9)
+

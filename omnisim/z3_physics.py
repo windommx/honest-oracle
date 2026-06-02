@@ -72,6 +72,15 @@ class IncrementalZ3:
             self._solver.add(var if value else Not(var))
 
     def add_rule(self, name: str, formula):
+        """Register a permanent rule via assert_and_track (label -> name) so the
+        UNSAT core can report violated rules by name.
+
+        NOTE: a rule is a live Z3 expression, which is NOT JSON-serializable.
+        Checkpoints therefore capture facts only (see snapshot/load_facts); to
+        restore an engine you must re-run the same add_rule calls (i.e. rebuild
+        with the same setup) before loading facts. This is a Z3 constraint, not
+        a bug — formulas are code, not data.
+        """
         label = f"track__{name}"
         self._solver.assert_and_track(formula, label)
         self._tracks[label] = name
@@ -166,4 +175,8 @@ class IncrementalZ3:
             self._rebuild()
 
     def snapshot(self) -> dict:
+        """Serializable state. `permanent` is the full fact list and can be
+        restored via load_facts(); `rules` lists rule NAMES only — the formulas
+        are not serializable, so restoring requires re-running add_rule with the
+        identical formulas (see add_rule)."""
         return {"permanent": list(self._permanent), "rules": list(self._tracks.values())}
