@@ -1675,3 +1675,56 @@ class TestZ3Differential(unittest.TestCase):
             if impl_valid != sat:
                 mismatches += 1
         self.assertEqual(mismatches, 0, f"{mismatches} validate vs brute-force disagreements")
+
+
+# ── New: transactional batch-commit (NeoTIC Rule-4 write-back mandate) ────
+
+@unittest.skipUnless(_Z3, "z3-solver not installed")
+class TestZ3CommitBatch(unittest.TestCase):
+    def test_valid_batch_commits_all(self):
+        e = IncrementalZ3(timeout_ms=500)
+        e.set_fact("alive", True)
+        e.add_rule("r", Implies(Not(e._b("alive")), Not(e._b("can_act"))))
+        v = e.commit_batch({"can_act": True, "can_speak": True})
+        self.assertTrue(v.valid)
+        perm = dict(e.snapshot()["permanent"])
+        self.assertTrue(perm.get("can_act") and perm.get("can_speak"))
+        # committed facts persist: proposing the negation is now invalid
+        self.assertFalse(e.validate({"can_act": False}).valid)
+
+    def test_invalid_batch_is_atomic_noop(self):
+        e = IncrementalZ3(timeout_ms=500)
+        e.set_fact("dead", True)
+        e.add_rule("mort", Implies(e._b("dead"), Not(e._b("can_act"))))
+        before = e.snapshot()
+        v = e.commit_batch({"can_act": True, "happy": True})   # violates mort
+        self.assertFalse(v.valid)
+        self.assertIn("mort", v.violated_rules)
+        # ATOMIC: nothing committed, including the otherwise-fine "happy"
+        self.assertEqual(e.snapshot(), before)
+
+    def test_atomicity_fuzz(self):
+        # rejected batch == no-op; accepted batch keeps the world consistent.
+        rng = random.Random(0)
+        noop_violations = inconsistent = 0
+        for _ in range(150):
+            e = IncrementalZ3(timeout_ms=1000)
+            vs = [f"v{i}" for i in range(rng.randint(2, 4))]
+            for r in range(rng.randint(0, 2)):
+                a, b = rng.sample(vs, 2)
+                e.add_rule(f"r{r}", Implies(e._b(a), Not(e._b(b))))
+            for v in vs:
+                if rng.random() < 0.3:
+                    e.set_fact(v, rng.random() < 0.5)
+            batch = {v: (rng.random() < 0.5) for v in vs if rng.random() < 0.5}
+            before = e.snapshot()
+            res = e.commit_batch(batch)
+            after = e.snapshot()
+            if not res.valid:
+                if after != before:
+                    noop_violations += 1            # rejected must be a no-op
+            else:
+                if not e.validate({}).valid:         # committed world must stay SAT
+                    inconsistent += 1
+        self.assertEqual(noop_violations, 0)
+        self.assertEqual(inconsistent, 0)

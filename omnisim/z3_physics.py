@@ -215,6 +215,20 @@ class IncrementalZ3:
         self._solver.add(self._b(name) if value else Not(self._b(name)))
         self._permanent.append((name, value))
 
+    def commit_batch(self, facts: dict[str, bool],
+                     fail_closed: bool = True) -> Validation:
+        """Write-back mandate: validate a SET of new facts JOINTLY against the
+        rules and current state, then commit ALL of them iff valid, else NONE.
+
+        Atomic: a rejected batch leaves the solver state byte-identical (validate
+        uses push/pop and never mutates, and nothing is committed unless the
+        whole batch is consistent). For non-monotonic flips use update_fact()."""
+        v = self.validate(facts, fail_closed=fail_closed)
+        if v.valid:
+            for name, value in facts.items():
+                self.commit(name, value)
+        return v
+
     def validate_action(self, action: AgentAction) -> Validation:
         proposed: dict[str, bool] = {}
         if action.action_type == ActionType.SPEAK:
