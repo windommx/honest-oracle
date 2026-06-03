@@ -84,3 +84,41 @@ Two honest readings:
   content reduces to a noisier, worse-fit logistic/SIR. To be a method it must
   contribute something BEYOND logistic/SIR — which, on this evidence, it does
   not. (Caveat: 2 targets tried = multiple comparisons; n=47, single dataset.)
+
+---
+
+# Stage-2 option 1: putting the epistemic layer INTO the predictive path
+
+OMNISIM's distinctive parts were not in the forecast path, so we tested whether
+adding one — the rumor-stance signal (OMNISIM's denial/spread idea made
+observable) — improves prediction. Pre-registered BEFORE seeing results to avoid
+p-hacking:
+
+- **Feature (one, pre-committed):** prefix `net_amp = (#support − #deny)/#tweets`
+  (support → spread, deny → denial bias).
+- **Augmented model:** `logistic_final + β·net_amp`, β a single parameter fit by
+  leave-one-out.
+- **Test (one):** paired bootstrap of per-cascade squared error, augmented vs
+  logistic, over LOO. Success = 95% CI excludes 0 AND augmented is better.
+- 53 cascades (≥25 tweets).
+
+## Result
+- corr(net_amp, logistic residual) = **−0.012** (no relationship).
+- LOO RMSE: logistic **33.89**, augmented **34.30** (slightly worse).
+- augmented − logistic mean Δ(sq err) = **+27.8**, 95% CI **[−0.05, 77.6]**
+  (includes 0). **Not significant; if anything, worse.**
+
+## Verdict
+The pre-registered hypothesis is **rejected**: the epistemic/stance feature adds
+no predictive value over the plain logistic curve on this task. Combined with the
+earlier runs, the honest Stage-2 conclusion is:
+
+1. Saturating-curve extrapolation (logistic/SIR) beats climatology for final-size
+   prediction — a real, positive finding about the model FAMILY.
+2. **OMNISIM specifically adds nothing predictive over textbook logistic/SIR** —
+   on next-bin it loses to persistence; on final-size it is significantly worse
+   than logistic; and wiring in its epistemic signal does not help.
+
+OMNISIM is solid engineering and a useful generative/explanatory sandbox, but on
+this evidence it is **not a predictive method**. (Caveats: small single dataset,
+n≈50, underpowered; one feature; three targets tried — multiple comparisons.)
