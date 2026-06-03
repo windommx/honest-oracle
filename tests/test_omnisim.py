@@ -1515,3 +1515,38 @@ class TestFinalSizeBenchmark(unittest.TestCase):
         self.assertIn("logistic", names)
         self.assertTrue(all(not math.isnan(s.skill) or s.baseline == "mean-final"
                             for s in scores))
+
+
+from omnisim import (
+    paired_bootstrap_ci, significant_improvement, benchmark_significance,
+    make_noise_dataset, make_omnisim_dataset, OmnisimForecaster,
+    LogisticForecaster, SIRForecaster,
+)
+
+
+class TestSignificanceGate(unittest.TestCase):
+    def test_bootstrap_ci_brackets_mean(self):
+        mean, lo, hi = paired_bootstrap_ci([1.0, 2.0, 3.0, 4.0], n_boot=1000, seed=1)
+        self.assertAlmostEqual(mean, 2.5, places=6)
+        self.assertLessEqual(lo, mean)
+        self.assertGreaterEqual(hi, mean)
+
+    def test_detects_real_improvement(self):
+        # OMNISIM predicting its OWN process must be flagged significant.
+        d = make_omnisim_dataset(n=16, length=16, seed=2, engine_seed=0)
+        res = benchmark_significance(d, split_at=8, train_frac=0.5,
+                                     models=[OmnisimForecaster(seed=0)],
+                                     normalize=False, n_boot=2000)
+        self.assertTrue(res["adequate_model_found"])
+        self.assertTrue(res["per_model"][0]["significant"])
+
+    def test_no_false_discovery_on_noise(self):
+        # INTEGRITY (the point): on pure random-walk noise NO model may be flagged
+        # significant — a harness that "finds a law" in noise is worthless.
+        d = make_noise_dataset(n=16, length=16, seed=7)
+        res = benchmark_significance(
+            d, split_at=8, train_frac=0.5,
+            models=[LogisticForecaster(), SIRForecaster(), OmnisimForecaster(seed=0)],
+            normalize=False, n_boot=2000)
+        self.assertFalse(res["adequate_model_found"])
+        self.assertFalse(any(p["significant"] for p in res["per_model"]))

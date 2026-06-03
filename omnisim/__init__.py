@@ -22,6 +22,8 @@ from .validation import (
     parse_series_jsonl, parse_series_csv,
     cumulative_series_from_timestamps,
     prefix_normalize, benchmark, benchmark_final_size, format_scores,
+    paired_bootstrap_ci, significant_improvement, benchmark_significance,
+    make_noise_dataset,
 )
 from .z3_physics import (
     IncrementalZ3, Validation, Rule, _Z3,
@@ -50,6 +52,8 @@ __all__ = [
     "parse_series_jsonl", "parse_series_csv",
     "cumulative_series_from_timestamps",
     "prefix_normalize", "benchmark", "benchmark_final_size", "format_scores",
+    "paired_bootstrap_ci", "significant_improvement", "benchmark_significance",
+    "make_noise_dataset",
     "IncrementalZ3", "Validation", "Rule", "_Z3",
     "And", "Or", "Not", "Implies", "Bool", "Solver", "sat", "unsat",
     "CausalDAG", "GillespieSSA", "NetworkGraph",

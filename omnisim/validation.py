@@ -474,6 +474,104 @@ def benchmark_final_size(dataset: Sequence[Series], split_at: int,
     return scores
 
 
+def paired_bootstrap_ci(diffs: Sequence[float], n_boot: int = 2000,
+                        alpha: float = 0.05, seed: int = 0
+                        ) -> tuple[float, float, float]:
+    """Bootstrap (mean, lo, hi) of paired differences. Deterministic for a seed."""
+    rng = random.Random(seed)
+    n = len(diffs)
+    if n == 0:
+        return (float("nan"), float("nan"), float("nan"))
+    means: list[float] = []
+    for _ in range(n_boot):
+        means.append(sum(diffs[rng.randrange(n)] for _ in range(n)) / n)
+    means.sort()
+    lo = means[int((alpha / 2) * n_boot)]
+    hi = means[int((1 - alpha / 2) * n_boot)]
+    return (sum(diffs) / n, lo, hi)
+
+
+def _per_series_mse(model: Forecaster, baseline: Forecaster,
+                    train: Sequence[Series], test: Sequence[Series],
+                    split_at: int) -> tuple[list[float], list[float]]:
+    model.fit(train)
+    baseline.fit(train)
+    me: list[float] = []
+    be: list[float] = []
+    for s in test:
+        if split_at >= len(s):
+            continue
+        prefix, tail = s[:split_at], s[split_at:]
+        h = len(tail)
+        mp = model.predict(prefix, h)
+        bp = baseline.predict(prefix, h)
+        me.append(sum((mp[i] - tail[i]) ** 2 for i in range(h)) / h)
+        be.append(sum((bp[i] - tail[i]) ** 2 for i in range(h)) / h)
+    return me, be
+
+
+def significant_improvement(model: Forecaster,
+                            train_series: Sequence[Series],
+                            test_series: Sequence[Series], split_at: int,
+                            baseline: Forecaster | None = None,
+                            n_boot: int = 2000, seed: int = 0) -> dict:
+    """Is `model` SIGNIFICANTLY better than `baseline`? Paired bootstrap over
+    per-series MSE; significant iff the 95% CI of the improvement excludes 0
+    (and the model is the better one). Ported from the NeoTIC Rule-3
+    false-discovery discipline."""
+    if baseline is None:
+        baseline = PersistenceForecaster()
+    me, be = _per_series_mse(model, baseline, train_series, test_series, split_at)
+    diffs = [be[i] - me[i] for i in range(len(me))]   # +ve => model beats baseline
+    mean, lo, hi = paired_bootstrap_ci(diffs, n_boot=n_boot, seed=seed)
+    return {"forecaster": model.name, "baseline": baseline.name,
+            "mean_improvement": round(mean, 6), "ci": (round(lo, 6), round(hi, 6)),
+            "n": len(diffs), "significant": bool(mean > 0 and lo > 0)}
+
+
+def benchmark_significance(dataset: Sequence[Series], split_at: int,
+                           train_frac: float = 0.5,
+                           models: Sequence[Forecaster] | None = None,
+                           baseline: Forecaster | None = None,
+                           normalize: bool = True, n_boot: int = 2000,
+                           seed: int = 0) -> dict:
+    """Like benchmark(), but reports whether ANY model SIGNIFICANTLY beats the
+    baseline. `adequate_model_found=False` is the honest 'no signal here' verdict
+    — the harness says it instead of ranking the least-bad model."""
+    data = [prefix_normalize(s, split_at) for s in dataset] if normalize \
+        else [list(s) for s in dataset]
+    cut = max(1, int(len(data) * train_frac))
+    train, test = data[:cut], data[cut:]
+    if not test:
+        test = train
+    if models is None:
+        models = [OmnisimForecaster(), LogisticForecaster(), SIRForecaster()]
+    if baseline is None:
+        baseline = PersistenceForecaster()
+    per = [significant_improvement(m, train, test, split_at, baseline, n_boot, seed)
+           for m in models]
+    winners = [p for p in per if p["significant"]]
+    best = max(winners, key=lambda p: p["mean_improvement"]) if winners else None
+    return {"adequate_model_found": bool(winners), "best": best,
+            "per_model": per, "baseline": baseline.name}
+
+
+def make_noise_dataset(n: int = 16, length: int = 16, seed: int = 0) -> list[Series]:
+    """Pure random-walk series with NO learnable saturation — the integrity
+    fixture: a trustworthy harness must NOT flag any model as significantly
+    beating the baseline here, because there is no signal to find."""
+    out: list[Series] = []
+    for k in range(n):
+        rng = random.Random(seed * 1000 + k)
+        v = 0.0
+        s: Series = []
+        for _ in range(length):
+            v += rng.gauss(0, 1)
+            s.append(v)
+        out.append(s)
+    return out
+
+
 def format_scores(scores: Sequence[Score]) -> str:
     lines = [f"{'model':<14}{'rmse':>10}{'baseline_rmse':>16}{'skill':>10}",
              "-" * 50]
