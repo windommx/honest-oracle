@@ -16,8 +16,9 @@ from .calibration import fit_parameters, sample_arousal_trace
 from .validation import (
     Forecaster, Score, evaluate, compare, rmse,
     PersistenceForecaster, MeanForecaster, ZeroForecaster,
-    LogisticForecaster, SIRForecaster,
-    make_logistic_dataset, make_sir_dataset,
+    LogisticForecaster, SIRForecaster, OmnisimForecaster,
+    make_logistic_dataset, make_sir_dataset, make_omnisim_dataset,
+    load_series_jsonl, load_series_csv,
 )
 from .z3_physics import (
     IncrementalZ3, Validation, Rule, _Z3,
@@ -40,8 +41,9 @@ __all__ = [
     "LLMSentimentAnalyzer", "fit_parameters", "sample_arousal_trace",
     "Forecaster", "Score", "evaluate", "compare", "rmse",
     "PersistenceForecaster", "MeanForecaster", "ZeroForecaster",
-    "LogisticForecaster", "SIRForecaster",
-    "make_logistic_dataset", "make_sir_dataset",
+    "LogisticForecaster", "SIRForecaster", "OmnisimForecaster",
+    "make_logistic_dataset", "make_sir_dataset", "make_omnisim_dataset",
+    "load_series_jsonl", "load_series_csv",
     "IncrementalZ3", "Validation", "Rule", "_Z3",
     "And", "Or", "Not", "Implies", "Bool", "Solver", "sat", "unsat",
     "CausalDAG", "GillespieSSA", "NetworkGraph",
