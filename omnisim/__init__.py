@@ -20,6 +20,7 @@ from .validation import (
     make_logistic_dataset, make_sir_dataset, make_omnisim_dataset,
     load_series_jsonl, load_series_csv, load_series_url,
     parse_series_jsonl, parse_series_csv,
+    cumulative_series_from_timestamps,
     prefix_normalize, benchmark, format_scores,
 )
 from .z3_physics import (
@@ -47,6 +48,7 @@ __all__ = [
     "make_logistic_dataset", "make_sir_dataset", "make_omnisim_dataset",
     "load_series_jsonl", "load_series_csv", "load_series_url",
     "parse_series_jsonl", "parse_series_csv",
+    "cumulative_series_from_timestamps",
     "prefix_normalize", "benchmark", "format_scores",
     "IncrementalZ3", "Validation", "Rule", "_Z3",
     "And", "Or", "Not", "Implies", "Bool", "Solver", "sat", "unsat",

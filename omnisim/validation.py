@@ -23,7 +23,7 @@ import json
 import math
 import random
 from dataclasses import dataclass
-from typing import Protocol, Sequence
+from typing import Optional, Protocol, Sequence
 
 from .engine import SimulationEngine
 from .foundations import SimulationConfig, Vector3
@@ -377,6 +377,25 @@ def load_series_url(url: str, fmt: str = "csv") -> list[Series]:
     with urllib.request.urlopen(req, timeout=30) as resp:
         text = resp.read().decode("utf-8", errors="replace")
     return parse_series_csv(text) if fmt == "csv" else parse_series_jsonl(text)
+
+
+# ── Mapping raw events -> a diffusion series ─────────────────────────────
+
+def cumulative_series_from_timestamps(times: Sequence[float],
+                                      n_bins: int = 16) -> Optional[Series]:
+    """Turn a bag of event epoch-times (e.g. tweet times in one rumor cascade)
+    into a cumulative-count diffusion curve over n_bins equal-width time bins.
+    Returns None if there are too few events or zero time span. This is the
+    Stage-2 mapping used to benchmark OMNISIM on real social cascades."""
+    ts = sorted(times)
+    if len(ts) < 2:
+        return None
+    t0 = ts[0]
+    span = ts[-1] - t0
+    if span <= 0:
+        return None
+    return [float(sum(1 for t in ts if t <= t0 + span * (b / n_bins)))
+            for b in range(1, n_bins + 1)]
 
 
 # ── Leak-free benchmark runner ───────────────────────────────────────────

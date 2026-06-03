@@ -1486,3 +1486,18 @@ class TestStage2Runner(unittest.TestCase):
         self.assertIn("logistic", names)
         self.assertTrue(all(not math.isnan(s.skill) for s in scores))
         self.assertIsInstance(format_scores(scores), str)
+
+
+from omnisim import cumulative_series_from_timestamps
+
+
+class TestDiffusionMapping(unittest.TestCase):
+    def test_cumulative_curve_is_monotone_and_binned(self):
+        # 16 events evenly spread over 16s -> 4 bins -> 4,8,12,16 cumulative
+        times = [float(i) for i in range(16)]
+        s = cumulative_series_from_timestamps(times, n_bins=4)
+        self.assertEqual(s, [4.0, 8.0, 12.0, 16.0])
+
+    def test_too_few_or_zero_span_returns_none(self):
+        self.assertIsNone(cumulative_series_from_timestamps([1.0]))
+        self.assertIsNone(cumulative_series_from_timestamps([5.0, 5.0, 5.0]))
