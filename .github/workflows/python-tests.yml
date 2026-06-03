@@ -1,0 +1,49 @@
+name: omnisim-tests
+
+on:
+  push:
+    paths:
+      - 'omnisim/**'
+      - 'tests/**'
+      - 'deep_core.py'
+      - 'pyproject.toml'
+      - '.github/workflows/python-tests.yml'
+  pull_request:
+    paths:
+      - 'omnisim/**'
+      - 'tests/**'
+      - 'deep_core.py'
+      - 'pyproject.toml'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # Both modes are first-class: full suite WITH z3, graceful-skip WITHOUT.
+        mode: [with-z3, without-z3]
+    name: tests (${{ matrix.mode }})
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install z3-solver
+        if: matrix.mode == 'with-z3'
+        run: pip install z3-solver
+      - name: Run test suite
+        run: python deep_core.py --test
+
+  typecheck:
+    runs-on: ubuntu-latest
+    name: mypy
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install mypy + z3 (for typed imports)
+        run: pip install mypy z3-solver
+      - name: Static type check
+        run: mypy
