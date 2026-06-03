@@ -48,3 +48,39 @@ Fetch cascades from the public repo via `raw.githubusercontent.com`, map with
 `cumulative_series_from_timestamps`, then `benchmark(...)`. No data is committed
 here (third-party provenance); only the numeric result above and the mapping
 code are.
+
+---
+
+# Stage-2 follow-up: alternative target (final-size prediction)
+
+OMNISIM lost on next-bin forecasting, so we tried the target where contagion
+structure *should* help: predict each cascade's FINAL size from its prefix
+(8/16 bins). Baseline = `mean-final` (predict the average final-ratio of the
+training cascades — a strong climatology baseline). Same 47 cascades.
+
+| model    | skill vs mean-final |
+|----------|---------------------|
+| logistic | +0.466 |
+| sir      | +0.463 |
+| **omnisim** | **+0.452** |
+
+Two honest readings:
+
+1. **Positive (for the model FAMILY):** all contagion/saturation models beat
+   the climatology baseline by ~45% RMSE. Extrapolating a saturating curve
+   genuinely helps for early final-size prediction. Good.
+
+2. **Negative (for OMNISIM specifically):** OMNISIM is LAST, and a paired
+   bootstrap (omnisim − logistic squared-error per cascade) gives mean Δ =
+   +1.70 with 95% CI [0.25, 4.06] — **excludes 0**, so OMNISIM is
+   *significantly worse* than a one-line logistic curve.
+
+## Verdict
+- "Saturating-curve extrapolation beats climatology" — supported.
+- "OMNISIM is a method / adds value over textbook baselines" — **NOT supported.**
+  On the fair target it is statistically significantly worse than logistic.
+- This confirms the structural prediction: OMNISIM's distinctive parts (bias,
+  Z3 gate, bifocal memory) are not in the predictive path, so its predictive
+  content reduces to a noisier, worse-fit logistic/SIR. To be a method it must
+  contribute something BEYOND logistic/SIR — which, on this evidence, it does
+  not. (Caveat: 2 targets tried = multiple comparisons; n=47, single dataset.)

@@ -1501,3 +1501,17 @@ class TestDiffusionMapping(unittest.TestCase):
     def test_too_few_or_zero_span_returns_none(self):
         self.assertIsNone(cumulative_series_from_timestamps([1.0]))
         self.assertIsNone(cumulative_series_from_timestamps([5.0, 5.0, 5.0]))
+
+
+from omnisim import benchmark_final_size
+
+
+class TestFinalSizeBenchmark(unittest.TestCase):
+    def test_runs_and_is_finite(self):
+        data = make_logistic_dataset(n=20, length=18, seed=0, noise=0.0)
+        scores = benchmark_final_size(data, split_at=9, train_frac=0.5)
+        names = {s.forecaster for s in scores}
+        self.assertIn("omnisim", names)
+        self.assertIn("logistic", names)
+        self.assertTrue(all(not math.isnan(s.skill) or s.baseline == "mean-final"
+                            for s in scores))

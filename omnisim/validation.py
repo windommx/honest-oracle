@@ -430,6 +430,50 @@ def benchmark(dataset: Sequence[Series], split_at: int,
     return compare(models, train, test, split_at, baseline)
 
 
+def benchmark_final_size(dataset: Sequence[Series], split_at: int,
+                         train_frac: float = 0.5,
+                         models: Sequence[Forecaster] | None = None,
+                         normalize: bool = True) -> list[Score]:
+    """Alternative target: predict each cascade's FINAL size from its prefix
+    (where contagion/saturation structure should matter), not the next bins.
+
+    Baseline = 'mean-final': predict the average final-ratio of the TRAINING
+    cascades (a strong climatology baseline). Persistence here would trivially
+    predict 'no further growth' (1.0 after prefix-normalization), so beating
+    mean-final is the honest bar. skill > 0 means a model beats mean-final.
+    """
+    data = [prefix_normalize(s, split_at) for s in dataset] if normalize \
+        else [list(s) for s in dataset]
+    cut = max(1, int(len(data) * train_frac))
+    train, test = data[:cut], data[cut:]
+    if not test:
+        test = train
+    if models is None:
+        models = [OmnisimForecaster(), LogisticForecaster(), SIRForecaster()]
+
+    train_finals = [s[-1] for s in train if len(s) > split_at] or \
+        [s[-1] for s in train]
+    mean_final = sum(train_finals) / len(train_finals)
+    truth = [s[-1] for s in test if split_at < len(s)]
+    base_sq = [(mean_final - a) ** 2 for a in truth]
+    base_rmse = math.sqrt(sum(base_sq) / len(base_sq)) if base_sq else float("nan")
+
+    scores: list[Score] = []
+    for m in models:
+        m.fit(train)
+        sq: list[float] = []
+        for s in test:
+            if split_at >= len(s):
+                continue
+            pred_final = m.predict(s[:split_at], len(s) - split_at)[-1]
+            sq.append((pred_final - s[-1]) ** 2)
+        mrmse = math.sqrt(sum(sq) / len(sq)) if sq else float("nan")
+        scores.append(Score(m.name, mrmse, "mean-final", base_rmse,
+                            _skill(mrmse, base_rmse)))
+    scores.sort(key=lambda s: s.skill, reverse=True)
+    return scores
+
+
 def format_scores(scores: Sequence[Score]) -> str:
     lines = [f"{'model':<14}{'rmse':>10}{'baseline_rmse':>16}{'skill':>10}",
              "-" * 50]
