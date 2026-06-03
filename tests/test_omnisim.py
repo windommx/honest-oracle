@@ -1451,3 +1451,38 @@ class TestDataLoaders(unittest.TestCase):
         data = load_series_csv(path)
         self.assertEqual(data, [[0.1, 0.2, 0.3], [0.5, 0.4]])
         os.unlink(path)
+
+
+# ── New: Stage-2 runner — parsing, leak-free normalize, benchmark (offline) ─
+
+from omnisim import (
+    parse_series_csv, parse_series_jsonl, prefix_normalize,
+    benchmark, format_scores,
+)
+
+
+class TestStage2Runner(unittest.TestCase):
+    def test_parse_csv_tolerates_date_column(self):
+        text = "2020-01-01,0.1,0.2\n2020-01-02,0.5,0.6\n"
+        self.assertEqual(parse_series_csv(text), [[0.1, 0.2], [0.5, 0.6]])
+
+    def test_parse_jsonl(self):
+        self.assertEqual(parse_series_jsonl("[1,2,3]\n[4,5]\n"),
+                         [[1.0, 2.0, 3.0], [4.0, 5.0]])
+
+    def test_prefix_normalize_no_future_leak(self):
+        # normalization uses only the prefix max; a huge spike AFTER split
+        # must not change the scaling of the prefix.
+        s = [1.0, 2.0, 100.0]
+        out = prefix_normalize(s, split_at=2)
+        self.assertEqual(out[:2], [0.5, 1.0])   # scaled by prefix max (2.0)
+        self.assertEqual(out[2], 50.0)
+
+    def test_benchmark_runs_and_ranks(self):
+        data = make_logistic_dataset(n=20, length=18, seed=0, noise=0.0)
+        scores = benchmark(data, split_at=9, train_frac=0.5)
+        names = {s.forecaster for s in scores}
+        self.assertIn("omnisim", names)
+        self.assertIn("logistic", names)
+        self.assertTrue(all(not math.isnan(s.skill) for s in scores))
+        self.assertIsInstance(format_scores(scores), str)

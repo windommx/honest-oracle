@@ -332,22 +332,89 @@ def make_omnisim_dataset(n: int = 12, length: int = 16, seed: int = 0,
 
 # ── Real-data loaders (the Stage-2 plug-in point) ────────────────────────
 
-def load_series_jsonl(path: str) -> list[Series]:
-    """Load series from JSONL: one JSON array of numbers per line."""
+def parse_series_jsonl(text: str) -> list[Series]:
+    """Parse JSONL text: one JSON array of numbers per line -> a series."""
     out: list[Series] = []
-    with open(path) as fh:
-        for line in fh:
-            line = line.strip()
-            if line:
-                out.append([float(x) for x in json.loads(line)])
+    for line in text.splitlines():
+        line = line.strip()
+        if line:
+            out.append([float(x) for x in json.loads(line)])
     return out
+
+
+def parse_series_csv(text: str) -> list[Series]:
+    """Parse CSV text: one numeric series per row. Non-numeric cells are
+    skipped (so a leading date/id column is tolerated)."""
+    out: list[Series] = []
+    for row in csv.reader(text.splitlines()):
+        vals: Series = []
+        for cell in row:
+            try:
+                vals.append(float(cell))
+            except (TypeError, ValueError):
+                continue
+        if vals:
+            out.append(vals)
+    return out
+
+
+def load_series_jsonl(path: str) -> list[Series]:
+    with open(path) as fh:
+        return parse_series_jsonl(fh.read())
 
 
 def load_series_csv(path: str) -> list[Series]:
-    """Load series from CSV: one numeric series per row."""
-    out: list[Series] = []
-    with open(path, newline="") as fh:
-        for row in csv.reader(fh):
-            if row:
-                out.append([float(x) for x in row])
-    return out
+    with open(path) as fh:
+        return parse_series_csv(fh.read())
+
+
+def load_series_url(url: str, fmt: str = "csv") -> list[Series]:
+    """Fetch real series from a URL (the Stage-2 entry point in this sandbox,
+    where GitHub/PyPI are reachable). fmt is 'csv' or 'jsonl'."""
+    import urllib.request
+    req = urllib.request.Request(
+        url, headers={"User-Agent": "omnisim-research/0.1"})
+    with urllib.request.urlopen(req, timeout=30) as resp:
+        text = resp.read().decode("utf-8", errors="replace")
+    return parse_series_csv(text) if fmt == "csv" else parse_series_jsonl(text)
+
+
+# ── Leak-free benchmark runner ───────────────────────────────────────────
+
+def prefix_normalize(series: Series, split_at: int) -> Series:
+    """Scale a series by the max of its PREFIX only (no future leakage), so
+    raw-scale real data (e.g. pageview counts) becomes comparable to the [0,1]
+    dynamics that logistic/SIR/OMNISIM produce."""
+    head = series[:split_at] if split_at > 0 else series
+    m = max((abs(x) for x in head), default=0.0) or 1.0
+    return [x / m for x in series]
+
+
+def benchmark(dataset: Sequence[Series], split_at: int,
+              train_frac: float = 0.6,
+              models: Sequence[Forecaster] | None = None,
+              baseline: Forecaster | None = None,
+              normalize: bool = True) -> list[Score]:
+    """Run the full OMNISIM-vs-baselines comparison on a dataset of series.
+
+    Out-of-sample by series (train_frac for fitting), temporal split within
+    each test series at `split_at`, prefix-normalized to avoid leakage.
+    """
+    data = [prefix_normalize(s, split_at) for s in dataset] if normalize \
+        else [list(s) for s in dataset]
+    cut = max(1, int(len(data) * train_frac))
+    train, test = data[:cut], data[cut:]
+    if not test:                       # tiny dataset: reuse train as test
+        test = train
+    if models is None:
+        models = [OmnisimForecaster(), LogisticForecaster(), SIRForecaster()]
+    return compare(models, train, test, split_at, baseline)
+
+
+def format_scores(scores: Sequence[Score]) -> str:
+    lines = [f"{'model':<14}{'rmse':>10}{'baseline_rmse':>16}{'skill':>10}",
+             "-" * 50]
+    for s in scores:
+        lines.append(f"{s.forecaster:<14}{s.rmse:>10.4f}"
+                     f"{s.baseline_rmse:>16.4f}{s.skill:>10.3f}")
+    return "\n".join(lines)
