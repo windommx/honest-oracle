@@ -1,6 +1,7 @@
 """Full test suite for the omnisim package (run: python -m pytest tests/
 or python deep_core.py --test)."""
 import json
+import math
 import random
 import unittest
 
@@ -1329,3 +1330,78 @@ class TestGuardRails(unittest.TestCase):
             _warnings.simplefilter("always")
             g.kkt_greedy(k=1, mc_runs=50, seed=1)   # tiny budget -> no warning
             self.assertFalse(any("kkt_greedy budget" in str(x.message) for x in w))
+
+
+# ── New: validation harness (Stage 1 — machinery + integrity check) ──────
+
+from omnisim import (
+    evaluate, compare, rmse, Score,
+    PersistenceForecaster, MeanForecaster, ZeroForecaster,
+    LogisticForecaster, SIRForecaster,
+    make_logistic_dataset, make_sir_dataset,
+)
+
+
+class TestValidationHarness(unittest.TestCase):
+    def _split(self, data, frac=0.5):
+        cut = len(data) // 2
+        return data[:cut], data[cut:]
+
+    def test_persistence_predicts_last(self):
+        p = PersistenceForecaster()
+        self.assertEqual(p.predict([0.1, 0.4, 0.7], 3), [0.7, 0.7, 0.7])
+
+    def test_rmse_zero_on_exact(self):
+        self.assertEqual(rmse([1.0, 2.0], [1.0, 2.0]), 0.0)
+
+    def test_correct_model_beats_baseline(self):
+        # On logistic data, the logistic model must score POSITIVE skill.
+        data = make_logistic_dataset(n=24, length=20, seed=0, noise=0.0)
+        train, test = self._split(data)
+        s = evaluate(LogisticForecaster(), train, test, split_at=10)
+        self.assertGreater(s.skill, 0.0)
+
+    def test_harness_detects_failure(self):
+        # INTEGRITY CHECK: a deliberately-wrong model must score NEGATIVE skill.
+        # If this ever passes a bad model, the harness is rigged and useless.
+        data = make_logistic_dataset(n=24, length=20, seed=0, noise=0.0)
+        train, test = self._split(data)
+        s = evaluate(ZeroForecaster(), train, test, split_at=10)
+        self.assertLess(s.skill, 0.0)
+
+    def test_skill_score_math(self):
+        s = evaluate(LogisticForecaster(),
+                     *self._split(make_logistic_dataset(seed=2)), split_at=10)
+        # skill == 1 - rmse/baseline_rmse, recomputed independently
+        self.assertAlmostEqual(s.skill, 1.0 - s.rmse / s.baseline_rmse, places=9)
+
+    def test_no_leakage_fit_sees_only_train(self):
+        seen = {"n": None}
+
+        class Recorder:
+            name = "recorder"
+            def fit(self, train):
+                seen["n"] = len(train)
+            def predict(self, prefix, horizon):
+                return [prefix[-1]] * horizon if prefix else [0.0] * horizon
+
+        data = make_logistic_dataset(n=10, length=12, seed=3)
+        train, test = data[:7], data[7:]
+        evaluate(Recorder(), train, test, split_at=6)
+        self.assertEqual(seen["n"], 7)   # fit saw exactly the 7 train series
+
+    def test_sir_model_scores_finite(self):
+        data = make_sir_dataset(n=16, length=20, seed=1)
+        train, test = self._split(data)
+        s = evaluate(SIRForecaster(), train, test, split_at=10)
+        self.assertFalse(math.isnan(s.skill))
+        self.assertIsInstance(s, Score)
+
+    def test_compare_ranks_by_skill(self):
+        data = make_logistic_dataset(n=24, length=20, seed=0, noise=0.0)
+        train, test = self._split(data)
+        ranked = compare([ZeroForecaster(), LogisticForecaster(), MeanForecaster()],
+                         train, test, split_at=10)
+        # logistic (correct family) must rank above the zero model
+        names = [s.forecaster for s in ranked]
+        self.assertLess(names.index("logistic"), names.index("zero"))

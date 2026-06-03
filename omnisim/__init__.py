@@ -13,6 +13,12 @@ from .foundations import (
     SimulationConfig, SimulationResult, SentimentAnalyzer, LLMSentimentAnalyzer,
 )
 from .calibration import fit_parameters, sample_arousal_trace
+from .validation import (
+    Forecaster, Score, evaluate, compare, rmse,
+    PersistenceForecaster, MeanForecaster, ZeroForecaster,
+    LogisticForecaster, SIRForecaster,
+    make_logistic_dataset, make_sir_dataset,
+)
 from .z3_physics import (
     IncrementalZ3, Validation, Rule, _Z3,
     And, Or, Not, Implies, Bool, Solver, sat, unsat,
@@ -32,6 +38,10 @@ __all__ = [
     "ActionType", "Vector3", "AgentAction", "AgentPerception",
     "SimulationConfig", "SimulationResult", "SentimentAnalyzer",
     "LLMSentimentAnalyzer", "fit_parameters", "sample_arousal_trace",
+    "Forecaster", "Score", "evaluate", "compare", "rmse",
+    "PersistenceForecaster", "MeanForecaster", "ZeroForecaster",
+    "LogisticForecaster", "SIRForecaster",
+    "make_logistic_dataset", "make_sir_dataset",
     "IncrementalZ3", "Validation", "Rule", "_Z3",
     "And", "Or", "Not", "Implies", "Bool", "Solver", "sat", "unsat",
     "CausalDAG", "GillespieSSA", "NetworkGraph",
