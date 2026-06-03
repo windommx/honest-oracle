@@ -1550,3 +1550,128 @@ class TestSignificanceGate(unittest.TestCase):
             normalize=False, n_boot=2000)
         self.assertFalse(res["adequate_model_found"])
         self.assertFalse(any(p["significant"] for p in res["per_model"]))
+
+
+# ── New: bounded-exhaustive + differential testing vs independent specs ───
+# (ported discipline from the user's NeoTIC theory layers: rule1/rule4 U2)
+
+import itertools as _it
+
+
+def _warshall_closure(n, edge_set):
+    """Independent spec: reachability (path length >= 1) by transitive closure —
+    a DIFFERENT algorithm from CausalDAG's BFS, so it can disagree if BFS is wrong."""
+    R = [[(i, j) in edge_set for j in range(n)] for i in range(n)]
+    for k in range(n):
+        for i in range(n):
+            if R[i][k]:
+                Rk = R[k]
+                Ri = R[i]
+                for j in range(n):
+                    if Rk[j]:
+                        Ri[j] = True
+    return R
+
+
+def _ref_count_paths(n, edge_set, src, dst):
+    adj = {i: [j for j in range(n) if (i, j) in edge_set] for i in range(n)}
+    cnt = 0
+
+    def dfs(cur, visited):
+        nonlocal cnt
+        if cur == dst:
+            cnt += 1
+            return
+        for nx in adj[cur]:
+            if nx not in visited:
+                dfs(nx, visited | {nx})
+    dfs(src, {src})
+    return cnt
+
+
+class TestCausalDAGExhaustive(unittest.TestCase):
+    def test_matches_independent_spec_on_all_4node_graphs(self):
+        N = 4
+        pairs = [(i, j) for i in range(N) for j in range(N) if i != j]  # 12 directed
+        mism = 0
+        for mask in range(1 << len(pairs)):
+            edges = [pairs[i] for i in range(len(pairs)) if mask & (1 << i)]
+            edge_set = set(edges)
+            d = CausalDAG()
+            for i in range(N):
+                d.add_node(str(i))
+            for (a, b) in edges:
+                d.add_edge(str(a), str(b))
+
+            R = _warshall_closure(N, edge_set)
+            # ancestors / descendants vs closure (different algorithm)
+            for node in range(N):
+                exp_anc = {str(i) for i in range(N) if R[i][node]}
+                exp_desc = {str(j) for j in range(N) if R[node][j]}
+                if d.ancestors(str(node)) != exp_anc:
+                    mism += 1
+                if d.descendants(str(node)) != exp_desc:
+                    mism += 1
+            # cycle: closure self-reachability iff a node lies on a cycle
+            exp_cycle = any(R[i][i] for i in range(N))
+            if d.has_cycle() != exp_cycle:
+                mism += 1
+            # topological sort, when acyclic, must respect every edge and cover all nodes
+            if not exp_cycle:
+                order = d.topological_sort()
+                pos = {v: k for k, v in enumerate(order)}
+                if len(order) != N or any(pos[str(a)] >= pos[str(b)] for a, b in edges):
+                    mism += 1
+            # simple-path count vs independent DFS counter
+            if len(d.causal_paths("0", "3")) != _ref_count_paths(N, edge_set, 0, 3):
+                mism += 1
+        self.assertEqual(mism, 0, f"{mism} disagreements vs independent spec")
+
+
+@unittest.skipUnless(_Z3, "z3-solver not installed")
+class TestZ3Differential(unittest.TestCase):
+    def test_validate_matches_bruteforce_sat(self):
+        rng = random.Random(0)
+        mismatches = 0
+        for _ in range(300):
+            k = rng.randint(2, 4)
+            vs = [f"v{i}" for i in range(k)]
+            e = IncrementalZ3(timeout_ms=2000)
+            preds = []   # independent Python predicates mirroring each z3 rule
+            for r in range(rng.randint(0, 3)):
+                a, b = rng.sample(vs, 2)
+                typ = rng.choice(["imp", "impn", "nand", "or"])
+                if typ == "imp":
+                    e.add_rule(f"r{r}", Implies(e._b(a), e._b(b)))
+                    preds.append(lambda m, a=a, b=b: (not m[a]) or m[b])
+                elif typ == "impn":
+                    e.add_rule(f"r{r}", Implies(e._b(a), Not(e._b(b))))
+                    preds.append(lambda m, a=a, b=b: (not m[a]) or (not m[b]))
+                elif typ == "nand":
+                    e.add_rule(f"r{r}", Not(And(e._b(a), e._b(b))))
+                    preds.append(lambda m, a=a, b=b: not (m[a] and m[b]))
+                else:
+                    e.add_rule(f"r{r}", Or(e._b(a), e._b(b)))
+                    preds.append(lambda m, a=a, b=b: m[a] or m[b])
+            perm = {}
+            for v in vs:
+                if rng.random() < 0.4:
+                    perm[v] = rng.random() < 0.5
+                    e.set_fact(v, perm[v])
+            prop = {v: (rng.random() < 0.5) for v in vs if rng.random() < 0.4}
+
+            impl_valid = e.validate(prop).valid
+            # brute force: does ANY assignment satisfy perm + prop + all rules?
+            sat = False
+            for bits in _it.product([False, True], repeat=k):
+                m = dict(zip(vs, bits))
+                if any(m[v] != val for v, val in perm.items()):
+                    continue
+                if any(m[v] != val for v, val in prop.items()):
+                    continue
+                if all(p(m) for p in preds):
+                    sat = True
+                    break
+            if impl_valid != sat:
+                mismatches += 1
+        self.assertEqual(mismatches, 0, f"{mismatches} validate vs brute-force disagreements")
