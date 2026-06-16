@@ -47,6 +47,8 @@ export interface BookConfig {
   language: Language;
   /** Optional outline / beat notes threaded into chapter prompts. */
   outline?: string;
+  /** Editable continuity STATE / codex, injected as source-of-truth into every chapter prompt. */
+  storyBible?: string;
   /** Language of the prompt scaffolding itself (not the book output). */
   promptLanguage?: "en" | "th";
 }
@@ -1899,7 +1901,7 @@ export function generateAllPrompts(config: BookConfig, groups: Exclude<PromptGro
   prompts.push(core("MASTER", "Master System Prompt", "Use this as the system prompt for ALL writing sessions.", "Set as the system prompt before any chapter writing.", generateMasterSystemPrompt(config, architecture)));
   prompts.push(core("OVERVIEW", "Book Overview / Plan", "Establishes the complete book plan.", "Send once before writing Chapter 1.", generateOverviewPrompt(config, architecture)));
   architecture.chapters.forEach((ch, idx) => {
-    prompts.push(core(`CH_${ch.number}`, `Chapter ${ch.number}`, ch.purpose, `Send to write Chapter ${ch.number} (${ch.type ?? ch.sceneType ?? "section"}).`, generateChapterPrompt(config, architecture, idx)));
+    prompts.push(core(`CH_${ch.number}`, `Chapter ${ch.number}`, ch.purpose, `Send to write Chapter ${ch.number} (${ch.type ?? ch.sceneType ?? "section"}).`, generateChapterPrompt(config, architecture, idx, { storyBible: config.storyBible })));
   });
   prompts.push(core("ANALYSIS", "Quality Analysis Prompt", "Analyze each chapter draft for quality.", "Send after each chapter draft with the draft text.", generateAnalysisPrompt(config)));
   prompts.push(core("REVISION", "Revision Prompt", "Revise a chapter based on analysis feedback.", "Send with the draft + analysis report to revise.", generateRevisionPrompt(config)));

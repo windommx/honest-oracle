@@ -79,6 +79,7 @@ export default function RushPage() {
   const [citationStyle, setCitationStyle] = useState("inline");
   const [language, setLanguage] = useState<BookConfig["language"]>("thai");
   const [outline, setOutline] = useState("");
+  const [storyBible, setStoryBible] = useState("");
   const [promptLanguage, setPromptLanguage] = useState<"en" | "th">("en");
 
   const [groups, setGroups] = useState<OptionalGroup[]>(defaultGroupsFor("nonfiction"));
@@ -106,9 +107,10 @@ export default function RushPage() {
       citationStyle,
       language,
       outline: outline || undefined,
+      storyBible: storyBible || undefined,
       promptLanguage,
     }),
-    [type, title, thesis, reader, voice, chapters, wordsPerChapter, subGenre, citationStyle, language, outline, promptLanguage]
+    [type, title, thesis, reader, voice, chapters, wordsPerChapter, subGenre, citationStyle, language, outline, storyBible, promptLanguage]
   );
 
   const totalWords = chapters * wordsPerChapter;
@@ -222,6 +224,7 @@ export default function RushPage() {
       setCitationStyle(cfg.citationStyle);
       setLanguage(cfg.language);
       setOutline(cfg.outline ?? "");
+      setStoryBible(cfg.storyBible ?? "");
       setPromptLanguage(cfg.promptLanguage ?? "en");
       setProjectId(project.id);
       const g = defaultGroupsFor(cfg.type);
@@ -467,6 +470,30 @@ export default function RushPage() {
 
             {/* OUTPUT */}
             <main>
+              <div className="glass-card rounded-2xl p-4 mb-4 border border-white/5">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-xs font-semibold tracking-widest text-gray-400 uppercase flex items-center gap-2">
+                    <BookOpen className="w-3.5 h-3.5 text-[#c9a84c]" />
+                    Story Bible / STATE
+                    {storyBible.trim() && <span className="text-[0.6rem] text-green-400 normal-case">● injected</span>}
+                  </h3>
+                  {storyBible.trim() && (
+                    <button onClick={() => setStoryBible("")} className="text-[0.65rem] text-gray-500 hover:text-red-400">
+                      Clear
+                    </button>
+                  )}
+                </div>
+                <textarea
+                  value={storyBible}
+                  onChange={(e) => setStoryBible(e.target.value)}
+                  placeholder="วาง/แก้ codex ที่นี่ — หรือคัดลอกบล็อก <<<STATE>>> ที่โมเดลสร้างจากบทล่าสุดมาวาง แล้วกด Generate ใหม่ → ฉีดเป็น 'แหล่งความจริง' เข้าทุกบทอัตโนมัติ"
+                  className="input min-h-[80px] resize-y font-mono text-[0.72rem]"
+                />
+                <p className="text-[0.62rem] text-gray-600 mt-1">
+                  ปิดช่องว่าง continuity แบบ Sudowrite ด้วย prompt ล้วน — แก้ที่นี่ที่เดียว ใช้กับทุกบท (กด Generate Prompts ใหม่เพื่อใช้ค่าล่าสุด)
+                </p>
+              </div>
+
               {prompts.length === 0 ? (
                 <div className="glass-card rounded-2xl p-10 text-center text-gray-500">
                   <Sparkles className="w-10 h-10 mx-auto mb-3 text-[#c9a84c]/40" />
