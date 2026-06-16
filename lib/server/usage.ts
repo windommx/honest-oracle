@@ -4,7 +4,7 @@ export function utcDay(d: Date): Date {
   return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
 }
 
-type UsageField = "oracleReads" | "apiCalls";
+type UsageField = "oracleReads" | "apiCalls" | "bookChapters";
 
 export async function getUsageDay(userId: string, day: Date) {
   const normalized = utcDay(day);
@@ -32,6 +32,7 @@ export async function incrementUsageDay(params: {
       day: normalized,
       oracleReads: params.field === "oracleReads" ? by : 0,
       apiCalls: params.field === "apiCalls" ? by : 0,
+      bookChapters: params.field === "bookChapters" ? by : 0,
     },
     update: update as any,
   });

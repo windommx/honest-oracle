@@ -1117,12 +1117,19 @@ function getQualityChecklist(type: BookTypeKey): string {
   return checklists[type] ?? checklists.nonfiction;
 }
 
+export interface ContinuityState {
+  previousSummary?: string;
+  storyBible?: string;
+}
+
 export function generateChapterPrompt(
   config: BookConfig,
   architecture: Architecture,
   chapterIndex: number,
-  previousSummary?: string
+  continuity?: ContinuityState
 ): string {
+  const previousSummary = continuity?.previousSummary;
+  const storyBible = continuity?.storyBible;
   const chapter = architecture.chapters[chapterIndex];
   const prevChapter = chapterIndex > 0 ? architecture.chapters[chapterIndex - 1] : null;
   const nextChapter = chapterIndex < architecture.chapters.length - 1 ? architecture.chapters[chapterIndex + 1] : null;
@@ -1132,6 +1139,13 @@ export function generateChapterPrompt(
   p += `TYPE: ${chapter.type ?? chapter.sceneType ?? "section"}\n`;
   p += `PURPOSE: ${chapter.purpose}\n`;
   p += `WORD TARGET: ${chapter.wordTarget} words (±20%)\n\n`;
+
+  if (storyBible && storyBible.trim()) {
+    p += `═══ STORY BIBLE / CONTINUITY STATE (carry-forward) ═══\n`;
+    p += `${storyBible.trim()}\n`;
+    p += `→ Stay strictly consistent with every name, fact, place, rule, and unresolved thread above.\n`;
+    p += `→ Do not contradict or re-introduce things already established.\n\n`;
+  }
 
   if (prevChapter) {
     p += `═══ PREVIOUS CHAPTER (Ch.${prevChapter.number}) CONTEXT ═══\n`;
@@ -1179,5 +1193,115 @@ export function generateChapterPrompt(
 
   p += `\n═══ QUALITY CHECKLIST (verify before finalizing) ═══\n` + getQualityChecklist(config.type);
   p += `\n\nNow write Chapter ${chapter.number} in full. Output only the chapter prose (Markdown), no commentary.`;
+  return p;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  ANALYSIS + REVISION + BIBLE (quality loop & continuity)
+// ═══════════════════════════════════════════════════════════════
+
+export function getAnalysisMetrics(type: BookTypeKey): string {
+  if (type === "novel") {
+    return `1. SHOW vs TELL: Is ≥70% showing (action/sensory/dialogue) vs telling?
+2. SENSORY DETAIL: ≥2 distinct senses present?
+3. VOICE CONSISTENCY: Narration voice consistent?
+4. DIALOGUE QUALITY: Does each line advance plot or reveal character?
+5. TENSION: Conflict present and escalating appropriately?
+6. HOOK: Does the chapter end with a compelling hook?
+7. PACING: Variation between fast and slow moments?
+8. CHARACTER CONSISTENCY: Behaviour consistent with the story bible?
+9. CLICHÉ: Any clichés or overused phrasing?
+10. WORD COUNT: Within ±20% of target?`;
+  }
+  if (type === "kids") {
+    return `1. AGE-APPROPRIATE VOCABULARY: Within the target reading level?
+2. READ-ALOUD FLOW: Rhythm and cadence when read aloud?
+3. ENGAGEMENT: Repetition, sound play, interactivity?
+4. ILLUSTRATION NOTES: Present for each spread?
+5. POSITIVE MESSAGE: Empowering, not preachy?
+6. LENGTH: Within target word count?`;
+  }
+  if (type === "poetry") {
+    return `1. IMAGERY: Concrete and original?
+2. LINE BREAKS: Intentional and meaningful?
+3. ECONOMY: Every word earns its place?
+4. SOUND: Reads well aloud?
+5. RESONANCE: Does it echo after reading?`;
+  }
+  return `1. ARGUMENT STRENGTH: Are claims supported by evidence? (0-1)
+2. EVIDENCE QUALITY: Strength per the evidence hierarchy?
+3. CLARITY: Sentence length, jargon defined, readability? (0-1)
+4. LOGIC FLOW: Explicit connections between paragraphs?
+5. PEDAGOGY: Objectives, examples, exercises, takeaways present?
+6. TONE: Consistent with the author voice?
+7. WORD COUNT: Within ±20% of target?
+8. CONTRADICTIONS: Any conflict with the story bible / earlier chapters?
+9. ENGAGEMENT: Examples, variety, actionable content?
+10. CITATIONS: Sources attributed in the chosen style?`;
+}
+
+/** Instructions for the analysis pass. Pair with a json_schema output_config. */
+export function generateAnalysisInstructions(config: BookConfig): string {
+  const type = BOOK_TYPES[config.type];
+  return `You are a rigorous ${type.label.toLowerCase()} editor performing a quality gate on a single chapter draft.
+
+Target: ${config.wordsPerChapter} words (±20%), ${config.language} language, "${config.voice}" voice.
+
+Evaluate the draft against these metrics:
+${getAnalysisMetrics(config.type)}
+
+Decide PASS or FAIL. Fail only if there are concrete, fixable problems worth a revision pass (not nitpicks). Report each issue plainly, choose the most useful revision_mode, and give specific, actionable fixes the writer can apply directly.`;
+}
+
+export function getRevisionRules(): string {
+  return `═══ REVISION RULES ═══
+1. Preserve the author's voice, intent, and continuity with the story bible.
+2. Only change what the analysis flagged — do not rewrite passing material.
+3. Keep the chapter within ±20% of the target word count.
+4. Apply the specified revision mode:
+   - polish: fix surface issues (grammar, word choice, flow)
+   - strengthen_evidence: add sources, data, examples
+   - clarify: simplify sentences, define terms, add logic connections
+   - restructure: reorder sections for better flow
+   - deepen: add sensory detail, emotion, character depth
+   - rewrite: major revision while keeping core content
+5. Output the COMPLETE revised chapter as Markdown — not a diff, not commentary.`;
+}
+
+export function generateRevisionPrompt(
+  config: BookConfig,
+  draft: string,
+  feedback: string,
+  revisionMode: string,
+  storyBible?: string
+): string {
+  let p = `You are a master ${BOOK_TYPES[config.type].label.toLowerCase()} editor revising a chapter draft based on editorial feedback.\n\n`;
+  p += getRevisionRules() + "\n\n";
+  p += `═══ REVISION MODE: ${revisionMode} ═══\n\n`;
+  if (storyBible && storyBible.trim()) {
+    p += `═══ STORY BIBLE / CONTINUITY ═══\n${storyBible.trim()}\n\n`;
+  }
+  p += `═══ EDITORIAL FEEDBACK ═══\n${feedback}\n\n`;
+  p += `═══ ORIGINAL DRAFT ═══\n${draft}\n\n`;
+  p += `Now output the complete revised chapter (Markdown only, no commentary).`;
+  return p;
+}
+
+/** Prompt for updating the running story bible after a chapter. Use a cheap model. */
+export function generateBibleUpdatePrompt(
+  config: BookConfig,
+  priorBible: string,
+  chapterNumber: number,
+  chapterContent: string
+): string {
+  const isFiction = config.type === "novel" || config.type === "memoir" || config.type === "kids";
+  const trackList = isFiction
+    ? "CHARACTERS (name + key traits/relationships), SETTINGS/PLACES, WORLD RULES & KEY FACTS, TIMELINE, UNRESOLVED THREADS / OPEN QUESTIONS, FORESHADOWING PLANTED"
+    : "KEY CLAIMS PROVEN SO FAR, FRAMEWORK/CONCEPTS INTRODUCED, EVIDENCE & SOURCES USED, TERMS DEFINED, RUNNING EXAMPLES, OPEN QUESTIONS / PROMISES TO THE READER";
+  let p = `You maintain a compact "story bible" — the running continuity state for a book in progress.\n\n`;
+  p += `Merge the PRIOR BIBLE with what CHAPTER ${chapterNumber} just established. Track: ${trackList}.\n`;
+  p += `Output a tight, scannable bible (≤ 400 words) using short bulleted sections. Keep only what future chapters must stay consistent with. Drop nothing important; do not include prose — facts only. Output the bible text only.\n\n`;
+  p += `═══ PRIOR BIBLE ═══\n${priorBible.trim() || "(empty — this is the first chapter)"}\n\n`;
+  p += `═══ CHAPTER ${chapterNumber} CONTENT ═══\n${chapterContent}\n`;
   return p;
 }
