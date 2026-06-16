@@ -130,6 +130,10 @@ Apply:
 
 Output: the revised dialogue, then a 2-3 bullet note on what you changed and why.
 
+EXAMPLE
+  Before: "I'm really angry at you," she said angrily. "How could you do this to me?"
+  After:  She set the keys on the table, one at a time. "Three years. You knew for three years."
+
 ═══ DIALOGUE DRAFT ═══
 [INSERT DIALOGUE HERE]`;
 }

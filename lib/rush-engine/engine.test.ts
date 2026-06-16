@@ -217,6 +217,17 @@ describe("Thai prompt mode", () => {
     }
   });
 
+  it("localizes chapter purpose + card metadata (no English architecture labels leak)", () => {
+    const pack = generateAllPrompts(cfg({ promptLanguage: "th", chapters: 12 }), []);
+    const ch6 = pack.find((p) => p.id === "CH_6")!; // midpoint
+    expect(ch6.prompt).toContain("จุดกึ่งกลาง");
+    expect(ch6.prompt).not.toContain("MIDPOINT");
+    expect(THAI.test(ch6.description)).toBe(true); // localized card description
+    expect(ch6.usage).toContain("ส่งเพื่อเขียนบทที่ 6");
+    const master = pack.find((p) => p.id === "MASTER")!;
+    expect(master.description).toBe("system prompt หลักสำหรับทุกเซสชัน");
+  });
+
   it("leaves English scaffolding intact when promptLanguage is en", () => {
     const master = generateAllPrompts(cfg({ promptLanguage: "en" })).find((p) => p.id === "MASTER")!;
     expect(master.prompt).toContain("OUTPUT FORMAT");
@@ -246,5 +257,15 @@ describe("snapshots", () => {
   it("nonfiction pack with nonfiction + prose", () => {
     const c = cfg({ type: "nonfiction", subGenre: "self_help", chapters: 6, language: "thai" });
     expect(generateAllPrompts(c, ["nonfiction", "prose"])).toMatchSnapshot();
+  });
+
+  it("native Thai novel pack with craft", () => {
+    const c = cfg({ type: "novel", chapters: 6, language: "thai", promptLanguage: "th" });
+    expect(generateAllPrompts(c, ["craft"])).toMatchSnapshot();
+  });
+
+  it("how-to pack with nonfiction modules", () => {
+    const c = cfg({ type: "howto", subGenre: "diy", chapters: 6 });
+    expect(generateAllPrompts(c, ["nonfiction"])).toMatchSnapshot();
   });
 });

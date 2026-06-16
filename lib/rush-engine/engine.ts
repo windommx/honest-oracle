@@ -25,10 +25,12 @@ import {
 } from "./core-prompts";
 import { MODULE_CATALOG } from "./modules";
 import {
+  TH_META,
   TH_MODULES,
   thAnalysis,
   thBackMatter,
   thChapter,
+  thChapterMeta,
   thFeedback,
   thFrontMatter,
   thMaster,
@@ -73,6 +75,19 @@ export function generateAllPrompts(config: BookConfig, groups: Exclude<PromptGro
       const body = th && TH_MODULES[m.id] ? TH_MODULES[m.id](config) : m.build(config);
       prompts.push({ id: m.id, group: m.group, name: m.name, description: m.description, usage: m.usage, prompt: body });
     }
+  }
+
+  // Localize card metadata (description/usage) in Thai mode.
+  if (th) {
+    return prompts.map((p) => {
+      if (p.id.startsWith("CH_")) {
+        const ch = architecture.chapters[parseInt(p.id.slice(3), 10) - 1];
+        const meta = thChapterMeta(ch);
+        return { ...p, description: meta.description, usage: meta.usage };
+      }
+      const meta = TH_META[p.id];
+      return meta ? { ...p, description: meta.description, usage: meta.usage } : p;
+    });
   }
 
   return prompts;

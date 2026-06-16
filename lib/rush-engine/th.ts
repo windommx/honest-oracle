@@ -8,6 +8,57 @@ import type { Architecture, BookConfig, BookTypeKey, ChapterPlan } from "./types
 
 const isFiction = (t: BookTypeKey) => t === "novel" || t === "memoir" || t === "kids" || t === "poetry";
 
+// Thai labels/purposes so the scaffolding is 100% Thai (architecture stores English).
+const TH_TYPE_LABEL: Record<string, string> = {
+  opening: "เปิดเรื่อง", setup: "ปูเรื่อง", turning_point: "จุดพลิก", escalation: "ยกระดับ",
+  midpoint: "จุดกึ่งกลาง", complication: "ปมซับซ้อน", dark_moment: "ช่วงมืด", pre_climax: "ก่อนไคลแมกซ์",
+  climax: "ไคลแมกซ์", resolution: "บทสรุป",
+  introduction: "บทนำ", story: "เรื่องเล่า", evidence: "หลักฐาน", theory: "ทฤษฎี/กรอบคิด",
+  practice: "ฝึกปฏิบัติ", case_study: "กรณีศึกษา", counter: "ข้อโต้แย้ง", synthesis: "สังเคราะห์",
+  action: "ลงมือทำ", reflection: "ใคร่ครวญ", conclusion: "บทสรุป", epilogue: "ส่งท้าย",
+  skill_step: "ขั้นทักษะ", lesson: "บทเรียน", page_spread: "หน้าคู่", recipe_chapter: "บทสูตรอาหาร",
+  memoir_episode: "ตอนความทรงจำ", poem: "บทกวี",
+};
+
+const TH_SCENE_PURPOSE: Record<string, string> = {
+  opening: "HOOK: พาผู้อ่านเข้าสู่ฉากที่น่าติดตามทันที",
+  setup: "ปักหลัก: โลก ตัวละคร เดิมพัน และเหตุการณ์จุดประกาย",
+  turning_point: "จุดไม่หวนกลับ: ตัวเอกตัดสินใจลงมือ",
+  escalation: "ยกระดับ: ความขัดแย้งทวีขึ้น พันธมิตร/ศัตรูใหม่",
+  midpoint: "จุดกึ่งกลาง: การเปิดเผยหรือการพลิกผัน",
+  complication: "ปมซับซ้อน: เดิมพันสูงสุด ช่วงมืดใกล้เข้ามา",
+  dark_moment: "ค่ำคืนมืดมิด: ตัวเอกตกต่ำที่สุด",
+  pre_climax: "รวมพล: เตรียมการครั้งสุดท้าย",
+  climax: "ไคลแมกซ์: การเผชิญหน้าครั้งสุดท้าย",
+  resolution: "บทสรุป: ภาวะปกติใหม่ และถ้อยแถลงแก่นเรื่อง",
+};
+
+const TH_NF_PURPOSE: Record<string, string> = {
+  introduction: "HOOK: ดึงความสนใจ ตั้งปัญหา",
+  story: "ทำให้ปัญหาจริงผ่านเรื่องเล่า",
+  evidence: "พิสูจน์ด้วยงานวิจัยและข้อมูล",
+  theory: "อธิบายองค์ประกอบของกรอบแนวคิดพร้อมกลไก",
+  practice: "ให้ผู้อ่านลงมือฝึก",
+  case_study: "สาธิตกรอบแนวคิดในสถานการณ์จริง",
+  counter: "โต้แย้งข้อคัดค้านอย่างเป็นธรรม",
+  synthesis: "บูรณาการองค์ประกอบทั้งหมดเป็นระบบ",
+  action: "แผนลงมือทำสำหรับผู้อ่าน",
+  reflection: "เชื่อมเนื้อหากับประสบการณ์ผู้อ่าน",
+  conclusion: "ย้ำแก่นเรื่อง เชิญชวนลงมือ",
+};
+
+/** Thai purpose for a chapter (architecture stores English purposes). */
+function thPurpose(chapter: ChapterPlan): string {
+  if (chapter.sceneType && TH_SCENE_PURPOSE[chapter.sceneType]) return TH_SCENE_PURPOSE[chapter.sceneType];
+  if (chapter.type && TH_NF_PURPOSE[chapter.type]) return TH_NF_PURPOSE[chapter.type];
+  return chapter.purpose;
+}
+
+function thTypeLabel(chapter: ChapterPlan): string {
+  const t = chapter.type ?? chapter.sceneType ?? "section";
+  return TH_TYPE_LABEL[t] ?? t;
+}
+
 function thQualityStandards(type: BookTypeKey): string {
   const m: Record<string, string> = {
     novel: `- โชว์มากกว่าเล่า (แสดงผ่านการกระทำ/ประสาทสัมผัส)\n- มีรายละเอียดประสาทสัมผัสอย่างน้อย 2 อย่างต่อฉาก\n- จบทุกบทด้วย hook (คำถาม/การเปิดเผย/พลิกผัน)\n- เสียงตัวละครต่างกันชัด แยกออกได้จากบทพูด\n- ความตึงเครียดต้องไต่ระดับขึ้นทั้งเล่ม\n- ทุกฉากมี: ความขัดแย้ง + จุดพลิก + ผลลัพธ์`,
@@ -126,7 +177,7 @@ export function thOverview(config: BookConfig, architecture: Architecture): stri
   p += `═══ ส่วน (Parts) ═══\n`;
   p += architecture.parts.map((pp) => `• ${pp.name} — บท ${pp.chapters[0]}-${pp.chapters[1]}${pp.purpose ? ` — ${pp.purpose}` : ""}`).join("\n");
   p += `\n\n═══ แผนผังบท ═══\n`;
-  p += architecture.chapters.map((c) => `บท ${c.number} [${c.type ?? c.sceneType ?? "section"}] — ${c.purpose}`).join("\n");
+  p += architecture.chapters.map((c) => `บท ${c.number} [${thTypeLabel(c)}] — ${thPurpose(c)}`).join("\n");
   if (config.outline && config.outline.trim()) {
     p += `\n\n═══ โครงเรื่องของผู้เขียน ═══\n${config.outline.trim()}`;
   }
@@ -205,8 +256,8 @@ export function thChapter(config: BookConfig, architecture: Architecture, chapte
   p += `หนังสือ: "${config.title}" — ${config.subGenre.replace(/_/g, " ")}\n`;
   p += `แก่นเรื่อง: ${config.thesis}\n`;
   p += `บทที่: ${chapter.number} จาก ${config.chapters}\n`;
-  p += `ประเภท: ${chapter.type ?? chapter.sceneType ?? "section"}\n`;
-  p += `วัตถุประสงค์: ${chapter.purpose}\n`;
+  p += `ประเภท: ${thTypeLabel(chapter)}\n`;
+  p += `วัตถุประสงค์: ${thPurpose(chapter)}\n`;
   p += `เป้าหมายความยาว: ~${chapter.wordTarget} คำ (±20% ให้เนื้อหากำหนดความยาวจริง)\n\n`;
 
   if (storyBible && storyBible.trim()) {
@@ -220,13 +271,13 @@ export function thChapter(config: BookConfig, architecture: Architecture, chapte
   }
 
   if (prev) {
-    p += `═══ บริบทบทก่อนหน้า (บท ${prev.number}) ═══\nประเภท: ${prev.type ?? prev.sceneType}\nวัตถุประสงค์: ${prev.purpose}\n→ ต่อยอดสิ่งที่ตั้งไว้ อย่าเล่าซ้ำ คงโทน สถานะตัวละคร และเส้นเวลา\n\n`;
+    p += `═══ บริบทบทก่อนหน้า (บท ${prev.number}) ═══\nประเภท: ${thTypeLabel(prev)}\nวัตถุประสงค์: ${thPurpose(prev)}\n→ ต่อยอดสิ่งที่ตั้งไว้ อย่าเล่าซ้ำ คงโทน สถานะตัวละคร และเส้นเวลา\n\n`;
   }
 
   p += thChapterBody(config, chapter);
 
   if (next) {
-    p += `\n\n═══ เชื่อมไปบทที่ ${next.number} ═══\nบทถัดไป: ${next.type ?? next.sceneType} — ${next.purpose}\n→ จบบทนี้ในแบบที่นำไปสู่บทถัดไปอย่างเป็นธรรมชาติ`;
+    p += `\n\n═══ เชื่อมไปบทที่ ${next.number} ═══\nบทถัดไป: ${thTypeLabel(next)} — ${thPurpose(next)}\n→ จบบทนี้ในแบบที่นำไปสู่บทถัดไปอย่างเป็นธรรมชาติ`;
   }
 
   p += `\n\n═══ เช็คลิสต์คุณภาพ (ตรวจก่อนจบ) ═══\n${thChecklist(config.type)}`;
@@ -333,7 +384,7 @@ export const TH_MODULES: Record<string, (c: BookConfig) => string> = {
   SCENE: () =>
     `สร้างฉากเดียวด้วยโมเดล Scene/Sequel (Swain/Bickham) ใช้เมื่อบทต้องการหน่วยดราม่าที่แน่น\n\nSCENE (การกระทำ):\n1. เป้าหมาย — ตัวละคร POV ต้องการอะไรในฉากนี้\n2. ความขัดแย้ง — อะไรขวาง (ยกระดับขึ้น)\n3. หายนะ — จบแย่กว่าตอนเริ่ม ("ได้ แต่..." / "ไม่ และ...")\n\nSEQUEL (ปฏิกิริยา) — ตามหลังฉาก (ไม่บังคับ):\n1. ปฏิกิริยา — การตอบสนองทางอารมณ์\n2. ภาวะกลืนไม่เข้าคายไม่ออก — ทางเลือกแย่ ๆ ที่เหลือ\n3. การตัดสินใจ — กลายเป็นเป้าหมายของฉากถัดไป\n\nกฎ: เหตุก่อนผล ประสาทสัมผัส ≥2 ไม่ใช้กริยากรอง (เห็น/รู้สึก/ได้ยิน) จบด้วยจุดพลิก\n\n═══ บรีฟฉาก ═══\nPOV: [ ] · เป้าหมาย: [ ] · อุปสรรค: [ ] · ตำแหน่งในบท: [ ]`,
   DIALOGUE: () =>
-    `ขัดเกลาบทสนทนาให้คมขึ้น คงความหมาย\n\nใช้:\n- action beat แทน dialogue tag ส่วนใหญ่ ("เธอวางถ้วยลง" ไม่ใช่ "เธอพูดอย่างโกรธ")\n- subtext: ตัวละครไม่ค่อยพูดตรงสิ่งที่คิด สร้างช่องว่างระหว่างคำกับการกระทำ\n- ตัดคำทักทาย คำเติม และการอธิบายตรง ๆ\n- แต่ละบรรทัดต้องขับเคลื่อนเรื่องหรือเผยตัวละคร\n- คงเสียงเฉพาะตัวของแต่ละคน\n\nผลลัพธ์: บทสนทนาที่แก้แล้ว + โน้ต 2-3 ข้อว่าแก้อะไรทำไม\n\n═══ ดราฟต์บทสนทนา ═══\n[วางบทสนทนาที่นี่]`,
+    `ขัดเกลาบทสนทนาให้คมขึ้น คงความหมาย\n\nใช้:\n- action beat แทน dialogue tag ส่วนใหญ่ ("เธอวางถ้วยลง" ไม่ใช่ "เธอพูดอย่างโกรธ")\n- subtext: ตัวละครไม่ค่อยพูดตรงสิ่งที่คิด สร้างช่องว่างระหว่างคำกับการกระทำ\n- ตัดคำทักทาย คำเติม และการอธิบายตรง ๆ\n- แต่ละบรรทัดต้องขับเคลื่อนเรื่องหรือเผยตัวละคร\n- คงเสียงเฉพาะตัวของแต่ละคน\n\nผลลัพธ์: บทสนทนาที่แก้แล้ว + โน้ต 2-3 ข้อว่าแก้อะไรทำไม\n\nตัวอย่าง\n  ก่อน: "ฉันโกรธเธอมาก" เธอพูดอย่างโมโห "ทำกับฉันได้ยังไง"\n  หลัง: เธอวางกุญแจลงบนโต๊ะทีละดอก "สามปี เธอรู้มาตลอดสามปี"\n\n═══ ดราฟต์บทสนทนา ═══\n[วางบทสนทนาที่นี่]`,
   FACT_CHECK: (c) =>
     `ตรวจการอ้างอิงและข้อเท็จจริงของดราฟต์สารคดี ดราฟต์ AI มักแต่งแหล่งอ้างอิง หน้าที่คุณคือทำให้ทุกข้ออ้างตรวจสอบได้ ห้ามแต่งขึ้นเอง\n\n1. ดึงทุกข้ออ้าง สถิติ คำพูดอ้าง และงานวิจัยที่อ้างถึง\n2. แต่ละอัน: ข้ออ้าง | ประเภท | สถานะ (ตรวจสอบได้/ต้องการแหล่ง/น่าจะผิด) | แหล่งที่ยืนยันได้ (DOI/URL/หนังสือ+หน้า)\n3. ถ้าหาแหล่งจริงไม่ได้ ให้ทำเครื่องหมาย "ยังไม่ยืนยัน — ห้ามตีพิมพ์จนกว่าจะมีอ้างอิงจริง" ห้ามแต่งอ้างอิง\n4. ข้ออ้างที่ควรลดน้ำหนัก/ตัด\n5. จัดอ้างอิงรูปแบบ ${c.citationStyle} พร้อมที่ว่าง [ตรวจสอบ]\n\n═══ ดราฟต์ ═══\n[วางดราฟต์ที่นี่]`,
   ARG_MAP: (c) =>
@@ -379,4 +430,47 @@ export const TH_MODULES: Record<string, (c: BookConfig) => string> = {
     `ดูแล "สรุปต่อเนื่อง" (chain-of-density) — สรุปสั้นที่ส่งต่อเข้าบทถัดไปเพื่อคงความต่อเนื่องโดยไม่ต้องอ่านซ้ำทั้งหมด\n\nจากสรุปก่อนหน้า + บทที่เพิ่งจบ ให้ output สรุปอัปเดตที่:\n- ความยาวคงที่ (~150-200 คำ) หนาแน่นด้วยชื่อ/สถานที่/ข้อเท็จจริง/ปมที่ค้าง\n- พัฒนาการใหม่สุดขึ้นก่อน ตัดสิ่งที่ไม่สำคัญแล้วทิ้ง\n- ข้อเท็จจริงล้วน ไม่มีสำนวน\n\nใช้เป็นบล็อก "ความเดิม" ที่ต้นพรอมป์ตบทถัดไป\n\n═══ สรุปก่อนหน้า ═══\n[ใส่สรุปก่อนหน้า หรือ "(ไม่มี)"]\n\n═══ บทที่เพิ่งจบ ═══\n[วางบทที่นี่]`,
   BRAINSTORM: () =>
     `ระดมไอเดียด้วย Verbalized Sampling เพื่อเอาชนะผลลัพธ์ซ้ำซาก: ขอตัวเลือกหลายอันพร้อม "ความน่าจะเป็น" ซึ่งคืนความหลากหลายที่การ align ทำให้แบนราบ\n\nสำหรับโจทย์สร้างสรรค์ด้านล่าง สร้าง 8 ตัวเลือกที่ต่างกัน แต่ละอัน: ไอเดีย (1-2 บรรทัด) + ความน่าจะเป็น/ความธรรมดา (0-1) ที่โมเดลจะเลือกโดยปริยาย จากนั้นจงใจใส่ 2-3 ตัวเลือกที่ความน่าจะเป็นต่ำ แปลกจากค่าเฉลี่ย แต่ยังตรงโจทย์\n\nใช้กับ: ชื่อเรื่อง จุดพลิก ชื่อตัวละคร มุมของบท ภาพเปรียบ hook\n\n═══ โจทย์ระดมไอเดีย ═══\n[ใส่สิ่งที่จะระดม + ข้อจำกัด]`,
+};
+
+// ── Thai UI metadata (card description/usage + group labels) ───
+
+export const TH_GROUP_LABEL: Record<string, string> = {
+  core: "หลัก", craft: "งานคราฟต์", nonfiction: "สารคดี", prose: "ขัดเกลาภาษา",
+  thai: "ภาษาไทย", marketing: "การตลาด", advanced: "ขั้นสูง",
+};
+
+export function thChapterMeta(chapter: ChapterPlan): { description: string; usage: string } {
+  return { description: thPurpose(chapter), usage: `ส่งเพื่อเขียนบทที่ ${chapter.number} (${thTypeLabel(chapter)})` };
+}
+
+export const TH_META: Record<string, { description: string; usage: string }> = {
+  MASTER: { description: "system prompt หลักสำหรับทุกเซสชัน", usage: "ตั้งเป็น system prompt ก่อนเขียนทุกบท" },
+  OVERVIEW: { description: "วางแผนทั้งเล่ม", usage: "ส่งครั้งเดียวก่อนเขียนบทที่ 1" },
+  ANALYSIS: { description: "วิเคราะห์คุณภาพดราฟต์แต่ละบท", usage: "ส่งพร้อมดราฟต์หลังเขียนแต่ละบท" },
+  REVISION: { description: "แก้บทตามผลวิเคราะห์", usage: "ส่งพร้อมดราฟต์ + ผลวิเคราะห์" },
+  FRONT_MATTER: { description: "หน้าปกใน คำอุทิศ สารบัญ คำนำ", usage: "สร้างหลังเขียนครบทุกบท" },
+  BACK_MATTER: { description: "ภาคผนวก บรรณานุกรม ดัชนี", usage: "สร้างหลังส่วนหน้าเล่ม" },
+  FEEDBACK: { description: "วิเคราะห์บทที่จบเพื่อสรุปให้บทถัดไป", usage: "ส่งหลังจบแต่ละบท" },
+  STRUCTURE: { description: "โครงเรื่องรายบท (Save the Cat / Hero's Journey / Kishōtenketsu ฯลฯ)", usage: "รันก่อนเขียนเพื่อวางแผนทั้งเล่ม" },
+  VOICE_SHEET: { description: "เสียงเฉพาะตัวของแต่ละตัวละคร", usage: "กรอกตัวละคร แล้ววางผลในพรอมป์ตบท" },
+  CHAR_ARC: { description: "เส้นทางตัวละคร (ความเชื่อผิด vs ความจริง)", usage: "รันหลังโครงเรื่อง ก่อนเขียน" },
+  WORLD_CODEX: { description: "story bible + ตรวจความต่อเนื่องรายบท", usage: "สร้างครั้งเดียว แล้วตรวจทุกบทใหม่" },
+  SCENE: { description: "โครงฉากแบบ Scene/Sequel", usage: "ใช้เมื่อบทต้องการฉากที่แน่น" },
+  DIALOGUE: { description: "action beat, subtext, ตัด tag เกิน", usage: "ส่งบทสนทนาเพื่อขัดเกลา" },
+  FACT_CHECK: { description: "ตรวจทุกข้ออ้าง ห้ามแต่งอ้างอิง", usage: "ส่งดราฟต์สารคดีแต่ละบท" },
+  ARG_MAP: { description: "แผนผัง Toulmin + โต้แย้งอย่างเป็นธรรม", usage: "รันกับข้อโต้แย้งหลักของบท" },
+  EVIDENCE: { description: "จัดเกรดหลักฐาน + รายงานช่องโหว่", usage: "ส่งดราฟต์เพื่อตรวจหลักฐาน" },
+  PEDAGOGY: { description: "objective Bloom + ตัวอย่าง + แบบฝึก", usage: "รันต่อบทสำหรับตำรา/how-to" },
+  CASE_STUDY: { description: "กรณีศึกษาแบบ SPAR", usage: "ใช้ทำแนวคิดให้เป็นรูปธรรม" },
+  VOICE_FP: { description: "สกัดชีตสไตล์จากงานตัวอย่าง", usage: "รันครั้งเดียวพร้อมตัวอย่าง ใช้ซ้ำทุกบท" },
+  ANTI_SLOP: { description: "กำจัด AI slop แปรจังหวะ ทำให้รูปธรรม", usage: "ส่งดราฟต์เพื่อลบความกลาง ๆ" },
+  READABILITY: { description: "รายงาน Flesch-Kincaid + เขียนใหม่คุมระดับ", usage: "ส่งดราฟต์ + ระดับเป้าหมาย" },
+  LINE_EDIT: { description: "คำกรอง คำขยาย passive สำนวนเฝือ การซ้ำ", usage: "ส่งดราฟต์เพื่อแก้ระดับประโยค" },
+  THAI_QA: { description: "ราชาศัพท์ ตัดประโยค ความสม่ำเสมอของคำทับศัพท์", usage: "ส่งต้นฉบับภาษาไทย" },
+  TITLE: { description: "ชื่อเรื่อง+ชื่อรอง 10 แบบ (เล็ง keyword)", usage: "รันเพื่อหาตำแหน่ง/ชื่อ" },
+  BLURB: { description: "คำโปรยปกหลัง + HTML สำหรับ Amazon", usage: "รันเพื่อเขียนคำบรรยายขาย" },
+  KDP_META: { description: "keyword 7 + หมวด 3 + A+ hook", usage: "รันก่อนตีพิมพ์บน KDP" },
+  SUBMISSION: { description: "query + synopsis + comp + ประวัติผู้เขียน", usage: "รันเพื่อส่งสำนักพิมพ์" },
+  RECAP: { description: "สรุปต่อเนื่องแบบ chain-of-density", usage: "อัปเดตหลังแต่ละบท ใส่ต้นบทถัดไป" },
+  BRAINSTORM: { description: "ระดมไอเดียหลากหลาย (verbalized sampling)", usage: "ใช้กับชื่อ จุดพลิก ชื่อตัวละคร hook" },
 };
