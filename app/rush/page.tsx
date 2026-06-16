@@ -21,6 +21,7 @@ import {
 import {
   BOOK_TYPES,
   MODULE_GROUPS,
+  TH_GROUP_LABEL,
   defaultGroupsFor,
   generateAllPrompts,
   type BookConfig,
@@ -28,6 +29,8 @@ import {
   type GeneratedPrompt,
   type PromptGroup,
 } from "@/lib/rush-engine/engine";
+
+const PAGE_SIZE = 40;
 
 type OptionalGroup = Exclude<PromptGroup, "core">;
 
@@ -96,8 +99,10 @@ export default function RushPage() {
   const [notice, setNotice] = useState("");
   const [saving, setSaving] = useState(false);
   const [showGuide, setShowGuide] = useState(false);
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 
   const allGroups = MODULE_GROUPS.map((m) => m.key);
+  const groupLabel = (g: PromptGroup) => (promptLanguage === "th" ? TH_GROUP_LABEL[g] ?? g : titleCase(g));
 
   const config: BookConfig = useMemo(
     () => ({
@@ -120,6 +125,7 @@ export default function RushPage() {
 
   const totalWords = chapters * wordsPerChapter;
   const filtered = filter === "all" ? prompts : prompts.filter((p) => p.group === filter);
+  const shown = filtered.slice(0, visibleCount);
   const presentGroups = useMemo(() => Array.from(new Set(prompts.map((p) => p.group))), [prompts]);
 
   function toggleGroup(g: OptionalGroup) {
@@ -129,6 +135,26 @@ export default function RushPage() {
   useEffect(() => {
     refreshProjects();
   }, []);
+
+  // Reset the visible window when the result set or filter changes.
+  useEffect(() => {
+    setVisibleCount(PAGE_SIZE);
+  }, [filter, prompts]);
+
+  // Auto-regenerate when modules or prompt language change (only if already generated).
+  useEffect(() => {
+    if (prompts.length === 0) return;
+    setPrompts(generateAllPrompts(config, groups));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [groups, promptLanguage]);
+
+  // Close the guide modal on Escape.
+  useEffect(() => {
+    if (!showGuide) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setShowGuide(false);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [showGuide]);
 
   async function refreshProjects() {
     try {
@@ -538,25 +564,25 @@ export default function RushPage() {
                         key={g}
                         active={filter === g}
                         onClick={() => setFilter(g)}
-                        label={`${titleCase(g)} (${prompts.filter((p) => p.group === g).length})`}
+                        label={`${groupLabel(g)} (${prompts.filter((p) => p.group === g).length})`}
                       />
                     ))}
                   </div>
 
                   <div className="space-y-3">
-                    {filtered.map((p) => {
+                    {shown.map((p) => {
                       const open = openId === p.id;
                       return (
                         <div key={p.id} className="glass-card rounded-2xl overflow-hidden border border-white/5">
                           <div className="flex items-center justify-between gap-3 px-5 py-3">
-                            <button onClick={() => setOpenId(open ? null : p.id)} className="flex items-center gap-3 min-w-0 flex-1 text-left">
+                            <button onClick={() => setOpenId(open ? null : p.id)} aria-expanded={open} className="flex items-center gap-3 min-w-0 flex-1 text-left">
                               <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${open ? "rotate-180" : ""}`} />
                               <span className="text-sm font-semibold text-gray-100 whitespace-nowrap">{p.id}</span>
                               <span className="text-xs text-gray-500 truncate">{p.name}</span>
                             </button>
                             <div className="flex items-center gap-2 flex-shrink-0">
-                              <span className={`text-[0.6rem] px-1.5 py-0.5 border rounded ${GROUP_COLORS[p.group]}`}>{p.group}</span>
-                              <button onClick={() => copyPrompt(p)} className="text-gray-400 hover:text-[#c9a84c]" title="Copy">
+                              <span className={`text-[0.6rem] px-1.5 py-0.5 border rounded ${GROUP_COLORS[p.group]}`}>{groupLabel(p.group)}</span>
+                              <button onClick={() => copyPrompt(p)} className="text-gray-400 hover:text-[#c9a84c]" title="Copy" aria-label={`Copy ${p.id}`}>
                                 {copiedId === p.id ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
                               </button>
                             </div>
@@ -574,6 +600,14 @@ export default function RushPage() {
                       );
                     })}
                   </div>
+                  {filtered.length > visibleCount && (
+                    <button
+                      onClick={() => setVisibleCount((c) => c + PAGE_SIZE)}
+                      className="w-full mt-3 py-2.5 border border-white/10 text-gray-400 rounded-xl hover:border-[#c9a84c]/40 hover:text-[#c9a84c] transition-colors text-xs"
+                    >
+                      แสดงเพิ่ม ({filtered.length - visibleCount} ที่เหลือ)
+                    </button>
+                  )}
                 </>
               )}
             </main>
@@ -648,7 +682,7 @@ function GuideModal({ onClose }: { onClose: () => void }) {
   ];
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70" onClick={onClose}>
-      <div className="glass-card rounded-2xl max-w-2xl w-full max-h-[85vh] overflow-y-auto p-6 border border-[#c9a84c]/30" onClick={(e) => e.stopPropagation()}>
+      <div role="dialog" aria-modal="true" aria-label="Rush Engine วิธีใช้" className="glass-card rounded-2xl max-w-2xl w-full max-h-[85vh] overflow-y-auto p-6 border border-[#c9a84c]/30" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-bold gold-gradient">Rush Engine — วิธีใช้</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-white">

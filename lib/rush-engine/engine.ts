@@ -11,6 +11,7 @@ export * from "./context";
 export * from "./architecture";
 export * from "./core-prompts";
 export * from "./modules";
+export { TH_GROUP_LABEL } from "./th";
 
 import { buildArchitecture } from "./architecture";
 import {
