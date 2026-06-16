@@ -56,6 +56,7 @@ const GROUP_COLORS: Record<PromptGroup, string> = {
   thai: "border-pink-400 text-pink-400",
   marketing: "border-orange-400 text-orange-400",
   advanced: "border-cyan-400 text-cyan-400",
+  agents: "border-emerald-400 text-emerald-400",
 };
 
 function titleCase(s: string) {

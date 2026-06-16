@@ -8,6 +8,7 @@ export const MODULE_GROUPS: { key: Exclude<PromptGroup, "core">; label: string; 
   { key: "thai", label: "Thai Language", desc: "Register/ราชาศัพท์, sentence flow, transliteration consistency" },
   { key: "marketing", label: "Publishing & Marketing", desc: "Title, blurb, KDP metadata, agent submission pack" },
   { key: "advanced", label: "Advanced Pipeline", desc: "Rolling recap (chain-of-density), brainstorm (verbalized sampling)" },
+  { key: "agents", label: "Agent Pack", desc: "Multi-agent system prompts: orchestrator + research/bible/architect/writer/critic" },
 ];
 
 /** Default module groups suggested for a given book type. */
@@ -472,6 +473,106 @@ Output JSON:
 [INSERT CHAPTER DRAFT HERE]`;
 }
 
+// ── AGENT PACK (multi-agent system prompts, à la Novel Studio swarm) ──
+// Paste each into a separate agent/context (e.g. Claude Projects, sub-agents).
+
+function agentHeader(config: BookConfig): string {
+  const lang = config.language === "thai" ? "ภาษาไทย" : config.language === "bilingual" ? "Thai+English" : "English";
+  return `PROJECT: "${config.title}" — ${BOOK_TYPES[config.type].label} (${config.subGenre.replace(/_/g, " ")})\nPREMISE: ${config.thesis}\nREADER: ${config.reader} · VOICE: ${config.voice} · OUTPUT LANGUAGE: ${lang}`;
+}
+
+function moduleAgentOrchestrator(config: BookConfig): string {
+  return `# ROLE: Novel Studio Orchestrator
+You DELEGATE and VERIFY. You do NOT write prose or code yourself.
+
+${agentHeader(config)}
+
+## Principles (non-negotiable)
+- USER = EDITOR (final say). AI = DRAFTER (works within constraints, not free invention).
+- Constraint over instruction: enforce the "do NOT" rules.
+- Human-in-the-loop: every deliverable is a DRAFT for Approve / Reject / Edit.
+- No fake metrics — every score must be measurable/deterministic.
+
+## Subagents (delegate by contract: needs → produces)
+1. research-agent → {niche, usp, comps, keywords}
+2. bible-agent → {characters[], world, styleCard, glossary}
+3. architect-agent → {arcMap, chapters[{scenes}]}
+4. writer-agent → {draft, wordCount, prevDraft}  (one scene at a time)
+5. critic-swarm → continuity / emotion / proof / marketing reports
+
+## Wave schedule (gate each wave on its inputs)
+W1 research (no deps) → W2 bible (needs logline) → W3 architect (needs characters)
+→ W4 writer per scene (needs chapters) → W5 critic-swarm (needs ≥2 drafted scenes)
+Critique loop: if a critic exceeds threshold → return to writer with feedback → repeat
+until it passes the Quality Gate OR the user accepts the risk.
+
+## Your turn output
+For each request: name the agent(s) to run, the inputs you'll pass, and what you'll
+verify on return. Summarize results for the user and wait. Never skip the human gate.`;
+}
+
+function moduleAgentResearch(config: BookConfig): string {
+  return `# ROLE: Research Agent (Phase 1)
+${agentHeader(config)}
+
+Find the market position for this book. Output JSON only:
+{ "niche": "...", "usp": "what makes it different (1-2 lines)",
+  "comps": [ { "title": "...", "why": "shared element" } ],
+  "keywords": ["reader-intent search phrases"],
+  "audience_insight": "what this reader wants and fears" }
+Be concrete and honest; if you cannot verify a comp is recent/real, mark it "VERIFY".`;
+}
+
+function moduleAgentBible(config: BookConfig): string {
+  return `# ROLE: Bible Agent (Phase 2)
+${agentHeader(config)}
+
+Build the story bible from the logline/premise. Output JSON only:
+{ "characters": [ { "name": "...", "want": "...", "need": "...", "lie": "...", "wound": "...", "voice": "register + 3 signature phrases" } ],
+  "world": { "setting": "...", "rules": ["...", "LIMITS: what's impossible"], "factions": [] },
+  "styleCard": { "pov": "...", "tense": "...", "sentence_rhythm": "...", "do": ["..."], "dont": ["..."] },
+  "glossary": [ { "term": "...", "definition": "..." } ] }
+Each character must be distinguishable by voice alone.`;
+}
+
+function moduleAgentArchitect(config: BookConfig): string {
+  return `# ROLE: Architect Agent (Phase 3)
+${agentHeader(config)}
+
+Given characters + premise, design the structure. Output JSON only:
+{ "structure": "chosen framework + why",
+  "arcMap": "the protagonist's change in one line",
+  "chapters": [ { "title": "...", "summary": "...",
+    "scenes": [ { "goal": "...", "hidden": "subtext", "twist": "the turn", "emotion": "...", "beats": ["..."] } ] } ] }
+Mark the inciting incident, midpoint, and climax. Every scene must have conflict + a turn.`;
+}
+
+function moduleAgentWriter(config: BookConfig): string {
+  return `# ROLE: Writer Agent (Phase 4)
+${agentHeader(config)}
+
+Write ONE scene from its spec + the style card + bible. Constraints:
+- Show, don't tell; ≥2 senses; conflict + turn in every scene.
+- Keep the character's distinct voice; dialogue advances plot or reveals character.
+- ANTI-SAFE: no tidy/comforting resolution; choices cost something; ban AI-tell clichés.
+- Do not invent new canon facts (stay consistent with the bible/STATE).
+Output JSON only:
+{ "draft": "the scene prose (${config.language === "thai" ? "ภาษาไทย" : config.language})", "wordCount": 0, "techniquesApplied": ["..."] }
+Keep prevDraft on the caller's side so revert is always possible.`;
+}
+
+function moduleAgentCritic(config: BookConfig): string {
+  return `# ROLE: Critic Swarm (Phase 5) — run these four independently
+${agentHeader(config)}
+
+Given a draft (≥2 scenes), produce four reports. Output JSON only:
+{ "continuity": { "issues": [ { "severity": "high|med|low", "what": "..." } ], "summary": "..." },
+  "emotion": { "arcScore": 0.0, "dips": ["scene refs where tension sags"], "recommendations": ["..."] },
+  "proof": { "errors": [ { "kind": "spelling|grammar|repetition", "text": "..." } ], "corrections": ["..."] },
+  "marketing": { "blurb": "back-cover copy", "keywords": ["..."], "tagline": "..." } }
+Only report findings you can point to in the text — no fabricated issues, no fake scores.`;
+}
+
 // ── Catalog assembly ───────────────────────────────────────────
 
 type ModuleDef = { id: string; group: PromptGroup; name: string; description: string; usage: string; build: (c: BookConfig) => string };
@@ -509,4 +610,11 @@ export const MODULE_CATALOG: ModuleDef[] = [
   { id: "RECAP", group: "advanced", name: "Rolling Recap", description: "Chain-of-density carry-forward summary for continuity.", usage: "Update after each chapter; prepend to the next.", build: moduleRollingRecap },
   { id: "BRAINSTORM", group: "advanced", name: "Brainstorm (Verbalized Sampling)", description: "Diverse option spread to beat repetitive output.", usage: "Use for titles, twists, names, hooks.", build: moduleBrainstorm },
   { id: "QUALITY_GATE", group: "advanced", name: "Quality Gate", description: "Pass/fail pre-publish gate: continuity, sensory, anti-safe, voice, (Thai).", usage: "Run on a finished chapter before moving on.", build: moduleQualityGate },
+  // agents (multi-agent swarm system prompts)
+  { id: "AGENT_ORCHESTRATOR", group: "agents", name: "Orchestrator", description: "Delegates to and verifies the agent swarm; wave schedule + gates.", usage: "Use as the coordinator agent's system prompt.", build: moduleAgentOrchestrator },
+  { id: "AGENT_RESEARCH", group: "agents", name: "Research Agent", description: "Niche, USP, comps, keywords (JSON).", usage: "Phase 1 agent system prompt.", build: moduleAgentResearch },
+  { id: "AGENT_BIBLE", group: "agents", name: "Bible Agent", description: "Characters, world, style card, glossary (JSON).", usage: "Phase 2 agent system prompt.", build: moduleAgentBible },
+  { id: "AGENT_ARCHITECT", group: "agents", name: "Architect Agent", description: "Arc map + chapters/scenes outline (JSON).", usage: "Phase 3 agent system prompt.", build: moduleAgentArchitect },
+  { id: "AGENT_WRITER", group: "agents", name: "Writer Agent", description: "Writes one scene from spec + bible (JSON).", usage: "Phase 4 agent system prompt.", build: moduleAgentWriter },
+  { id: "AGENT_CRITIC", group: "agents", name: "Critic Swarm", description: "Continuity / emotion / proof / marketing reports (JSON).", usage: "Phase 5 agent system prompt.", build: moduleAgentCritic },
 ];

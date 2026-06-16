@@ -59,6 +59,11 @@ function thTypeLabel(chapter: ChapterPlan): string {
   return TH_TYPE_LABEL[t] ?? t;
 }
 
+function thAgentHeader(c: BookConfig): string {
+  const lang = c.language === "thai" ? "ภาษาไทย" : c.language === "bilingual" ? "ไทย+อังกฤษ" : "อังกฤษ";
+  return `โปรเจกต์: "${c.title}" — ${BOOK_TYPES[c.type].label} (${c.subGenre.replace(/_/g, " ")})\nแก่นเรื่อง: ${c.thesis}\nผู้อ่าน: ${c.reader} · เสียง: ${c.voice} · ภาษาผลลัพธ์: ${lang}`;
+}
+
 function thQualityStandards(type: BookTypeKey): string {
   const m: Record<string, string> = {
     novel: `- โชว์มากกว่าเล่า (แสดงผ่านการกระทำ/ประสาทสัมผัส)\n- มีรายละเอียดประสาทสัมผัสอย่างน้อย 2 อย่างต่อฉาก\n- จบทุกบทด้วย hook (คำถาม/การเปิดเผย/พลิกผัน)\n- เสียงตัวละครต่างกันชัด แยกออกได้จากบทพูด\n- ความตึงเครียดต้องไต่ระดับขึ้นทั้งเล่ม\n- ทุกฉากมี: ความขัดแย้ง + จุดพลิก + ผลลัพธ์`,
@@ -438,13 +443,25 @@ export const TH_MODULES: Record<string, (c: BookConfig) => string> = {
     `ทำแผนผังความตึงเครียดของดราฟต์ ไม่ให้เรื่องราบ\n\nแต่ละฉาก:\n- ชนิดความขัดแย้ง: ภายนอก / ภายใน / ระหว่างบุคคล (หรือ "ไม่มี" — ทำเครื่องหมาย)\n- ระดับความตึง 0-1 และทิศทาง (ขึ้น/ลง/ราบ)\n- เดิมพันรูปธรรม (อะไรที่เสียได้ตรงนี้)\n\nจากนั้น:\n- วาดเส้นความตึง ทำเครื่องหมายช่วงราบ/ซ้ำ และฉากที่ไม่มีความขัดแย้งจริง\n- แนะนำจุดที่ควรยกเดิมพัน เพิ่มการพลิก หรือแปรจังหวะ (ช่วงเงียบที่ตั้งใจได้ แต่ราบโดยบังเอิญไม่ได้)\n\nผลลัพธ์: ตารางความตึงรายฉาก + รายการแก้\n\n═══ ดราฟต์ ═══\n[วางดราฟต์ที่นี่]`,
   QUALITY_GATE: (c) =>
     `ทำ QUALITY GATE ก่อนตีพิมพ์กับบท/ดราฟต์ที่เสร็จแล้ว ตัดสินแต่ละด่าน ผ่าน/ไม่ผ่าน พร้อมเหตุผลอ้างอิงจากเนื้อความ ห้ามผ่านโดยไม่มีหลักฐาน\n\nด่าน:\n1. ความต่อเนื่อง — ขัดข้อเท็จจริง/บันทึก STATE ที่ตั้งไว้ไหม\n2. ประสาทสัมผัส — แต่ละฉากมี ≥ 3 สัมผัสไหม\n3. ANTI-SAFE — ไม่จบแบบปลอบใจ ความขัดแย้งมีราคาจริง ไม่มีคำคลิเช AI\n4. เสียง — สม่ำเสมอกับเสียงเล่ม และ (นิยาย) เสียงตัวละครต่างกันชัด\n5. ${c.type === "novel" || c.type === "memoir" ? "hook — จบบทด้วยแรงส่งไปข้างหน้าไหม" : "หลักฐาน — ข้ออ้างมีหลักฐานรองรับไหม"}\n6. ภาษาไทย — ระดับภาษาสม่ำเสมอ ไม่ปนอังกฤษเกิน คำทับศัพท์สม่ำเสมอ\n\nOutput JSON:\n{ "gates": [ { "name": "...", "pass": true/false, "reason": "..." } ], "overall_pass": true/false, "must_fix": [ "..." ] }\n\n═══ ดราฟต์ ═══\n[วางดราฟต์บทที่นี่]`,
+  AGENT_ORCHESTRATOR: (c) =>
+    `# บทบาท: Orchestrator (ผู้ประสานงาน)\nคุณ "มอบหมาย" และ "ตรวจสอบ" ไม่เขียนเนื้อหาหรือโค้ดเอง\n\n${thAgentHeader(c)}\n\n## หลักการ (ห้ามละเมิด)\n- ผู้ใช้ = บรรณาธิการ (ตัดสินสุดท้าย); AI = ผู้ร่าง (ทำในกรอบ ไม่คิดอิสระ)\n- เน้นข้อห้ามมากกว่าคำสั่ง; ทุกผลลัพธ์เป็น "ร่าง" ให้ Approve/Reject/Edit\n- ไม่มีคะแนนปลอม — ทุก metric วัดได้จริง\n\n## เอเจนต์ (สัญญา: needs → produces)\n1. research → {niche, usp, comps, keywords}\n2. bible → {characters[], world, styleCard, glossary}\n3. architect → {arcMap, chapters[{scenes}]}\n4. writer → {draft, wordCount} (ทีละฉาก)\n5. critic-swarm → continuity/emotion/proof/marketing\n\n## ตารางคลื่น (gate แต่ละคลื่นตาม input)\nW1 research → W2 bible (ต้องมี logline) → W3 architect (ต้องมี characters) → W4 writer ต่อฉาก → W5 critic (ต้องมีดราฟต์ ≥2 ฉาก)\nวน critique: ถ้า critic เกินเกณฑ์ → ส่งกลับ writer พร้อม feedback จนผ่าน Quality Gate หรือผู้ใช้ยอมรับ\n\nทุกครั้ง: ระบุเอเจนต์ที่จะรัน, input ที่ส่ง, สิ่งที่จะตรวจเมื่อกลับมา แล้วสรุปให้ผู้ใช้และรอ — อย่าข้ามด่านมนุษย์`,
+  AGENT_RESEARCH: (c) =>
+    `# บทบาท: Research Agent (เฟส 1)\n${thAgentHeader(c)}\n\nหาตำแหน่งตลาดของหนังสือ Output เป็น JSON เท่านั้น:\n{ "niche": "...", "usp": "จุดต่าง 1-2 บรรทัด", "comps": [ { "title": "...", "why": "องค์ประกอบที่เหมือน" } ], "keywords": ["วลีค้นหาตามเจตนาผู้อ่าน"], "audience_insight": "สิ่งที่ผู้อ่านต้องการและกลัว" }\nเป็นรูปธรรม ซื่อสัตย์ ถ้าไม่มั่นใจว่า comp ใหม่/จริง ให้ทำเครื่องหมาย "VERIFY"`,
+  AGENT_BIBLE: (c) =>
+    `# บทบาท: Bible Agent (เฟส 2)\n${thAgentHeader(c)}\n\nสร้าง story bible จาก logline/premise Output เป็น JSON เท่านั้น:\n{ "characters": [ { "name": "...", "want": "...", "need": "...", "lie": "...", "wound": "...", "voice": "ระดับคำ + 3 วลีประจำตัว" } ], "world": { "setting": "...", "rules": ["...", "LIMITS: อะไรเป็นไปไม่ได้"], "factions": [] }, "styleCard": { "pov": "...", "tense": "...", "sentence_rhythm": "...", "do": ["..."], "dont": ["..."] }, "glossary": [ { "term": "...", "definition": "..." } ] }\nแต่ละตัวละครต้องแยกออกจากกันได้ด้วยน้ำเสียงเพียงอย่างเดียว`,
+  AGENT_ARCHITECT: (c) =>
+    `# บทบาท: Architect Agent (เฟส 3)\n${thAgentHeader(c)}\n\nจาก characters + premise ออกแบบโครงสร้าง Output เป็น JSON เท่านั้น:\n{ "structure": "โครงที่เลือก + เหตุผล", "arcMap": "การเปลี่ยนของตัวเอกหนึ่งบรรทัด", "chapters": [ { "title": "...", "summary": "...", "scenes": [ { "goal": "...", "hidden": "subtext", "twist": "จุดพลิก", "emotion": "...", "beats": ["..."] } ] } ] }\nระบุเหตุการณ์จุดประกาย จุดกึ่งกลาง และไคลแมกซ์ ทุกฉากต้องมีความขัดแย้ง + จุดพลิก`,
+  AGENT_WRITER: (c) =>
+    `# บทบาท: Writer Agent (เฟส 4)\n${thAgentHeader(c)}\n\nเขียนฉากเดียวจาก spec + style card + bible ข้อจำกัด:\n- โชว์ไม่เล่า; ≥2 สัมผัส; ความขัดแย้ง + จุดพลิกทุกฉาก\n- คงเสียงเฉพาะของตัวละคร; บทพูดขับเคลื่อนเรื่องหรือเผยตัวละคร\n- ANTI-SAFE: ไม่จบแบบปลอบใจ การเลือกมีราคา แบนคำคลิเช AI\n- ห้ามสร้างข้อเท็จจริงใหม่ที่ขัด bible/STATE\nOutput เป็น JSON เท่านั้น:\n{ "draft": "เนื้อฉาก (ภาษาไทย)", "wordCount": 0, "techniquesApplied": ["..."] }\nเก็บ prevDraft ฝั่งผู้เรียกเพื่อให้ revert ได้เสมอ`,
+  AGENT_CRITIC: (c) =>
+    `# บทบาท: Critic Swarm (เฟส 5) — รัน 4 ตัวอิสระ\n${thAgentHeader(c)}\n\nจากดราฟต์ (≥2 ฉาก) ผลิต 4 รายงาน Output เป็น JSON เท่านั้น:\n{ "continuity": { "issues": [ { "severity": "high|med|low", "what": "..." } ], "summary": "..." }, "emotion": { "arcScore": 0.0, "dips": ["ฉากที่ความตึงตก"], "recommendations": ["..."] }, "proof": { "errors": [ { "kind": "spelling|grammar|repetition", "text": "..." } ], "corrections": ["..."] }, "marketing": { "blurb": "คำโปรยปกหลัง", "keywords": ["..."], "tagline": "..." } }\nรายงานเฉพาะสิ่งที่ชี้ได้ในเนื้อความ — ไม่มีปัญหาที่กุขึ้น ไม่มีคะแนนปลอม`,
 };
 
 // ── Thai UI metadata (card description/usage + group labels) ───
 
 export const TH_GROUP_LABEL: Record<string, string> = {
   core: "หลัก", craft: "งานคราฟต์", nonfiction: "สารคดี", prose: "ขัดเกลาภาษา",
-  thai: "ภาษาไทย", marketing: "การตลาด", advanced: "ขั้นสูง",
+  thai: "ภาษาไทย", marketing: "การตลาด", advanced: "ขั้นสูง", agents: "เอเจนต์",
 };
 
 export function thChapterMeta(chapter: ChapterPlan): { description: string; usage: string } {
@@ -485,4 +502,10 @@ export const TH_META: Record<string, { description: string; usage: string }> = {
   SENSORY: { description: "ตรวจ 5 สัมผัสรายฉาก (≥3) + เติมรายละเอียดรูปธรรม", usage: "ส่งดราฟต์เพื่อลงประสาทสัมผัส" },
   CONFLICT_MAP: { description: "เส้นความตึงรายฉาก + แก้จุดราบ", usage: "ส่งดราฟต์เพื่อทำแผนผังความตึง" },
   QUALITY_GATE: { description: "ด่านผ่าน/ไม่ผ่านก่อนตีพิมพ์: ต่อเนื่อง สัมผัส anti-safe เสียง ไทย", usage: "รันกับบทที่เสร็จก่อนไปต่อ" },
+  AGENT_ORCHESTRATOR: { description: "ผู้ประสานงาน swarm: มอบหมาย+ตรวจสอบ ตารางคลื่น", usage: "ใช้เป็น system prompt ของตัวประสานงาน" },
+  AGENT_RESEARCH: { description: "niche, usp, comps, keywords (JSON)", usage: "system prompt เอเจนต์เฟส 1" },
+  AGENT_BIBLE: { description: "ตัวละคร โลก style card glossary (JSON)", usage: "system prompt เอเจนต์เฟส 2" },
+  AGENT_ARCHITECT: { description: "arc map + โครงบท/ฉาก (JSON)", usage: "system prompt เอเจนต์เฟส 3" },
+  AGENT_WRITER: { description: "เขียนหนึ่งฉากจาก spec + bible (JSON)", usage: "system prompt เอเจนต์เฟส 4" },
+  AGENT_CRITIC: { description: "รายงาน continuity/emotion/proof/marketing (JSON)", usage: "system prompt เอเจนต์เฟส 5" },
 };
