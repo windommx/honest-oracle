@@ -12,3 +12,7 @@ Thumbs.db
 
 __pycache__/
 *.pyc
+
+# build artifacts
+next-env.d.ts
+*.tsbuildinfo
