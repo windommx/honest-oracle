@@ -3,7 +3,8 @@
 // ║  Full Thai scaffolding (no regex post-processing / no Thai-glish). ║
 // ╚══════════════════════════════════════════════════════════════════╝
 
-import { BOOK_TYPES, type Architecture, type BookConfig, type BookTypeKey, type ChapterPlan } from "./engine";
+import { BOOK_TYPES } from "./book-types";
+import type { Architecture, BookConfig, BookTypeKey, ChapterPlan } from "./types";
 
 const isFiction = (t: BookTypeKey) => t === "novel" || t === "memoir" || t === "kids" || t === "poetry";
 
