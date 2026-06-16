@@ -18,11 +18,16 @@ import {
 } from "lucide-react";
 import {
   BOOK_TYPES,
+  MODULE_GROUPS,
+  defaultGroupsFor,
   generateAllPrompts,
   type BookConfig,
   type BookTypeKey,
   type GeneratedPrompt,
+  type PromptGroup,
 } from "@/lib/rush-engine/engine";
+
+type OptionalGroup = Exclude<PromptGroup, "core">;
 
 type SavedProject = {
   id: string;
@@ -35,14 +40,14 @@ type SavedProject = {
 const VOICES = ["conversational", "academic", "inspirational", "practical", "storytelling", "witty"];
 const CITATIONS = ["APA", "MLA", "Chicago", "inline", "none"];
 
-const TYPE_COLORS: Record<GeneratedPrompt["type"], string> = {
-  system: "border-[#c9a84c] text-[#c9a84c]",
-  setup: "border-blue-400 text-blue-400",
-  chapter: "border-green-400 text-green-400",
-  analysis: "border-purple-400 text-purple-400",
-  revision: "border-orange-400 text-orange-400",
-  assembly: "border-cyan-400 text-cyan-400",
-  feedback: "border-pink-400 text-pink-400",
+const GROUP_COLORS: Record<PromptGroup, string> = {
+  core: "border-[#c9a84c] text-[#c9a84c]",
+  craft: "border-green-400 text-green-400",
+  nonfiction: "border-blue-400 text-blue-400",
+  prose: "border-purple-400 text-purple-400",
+  thai: "border-pink-400 text-pink-400",
+  marketing: "border-orange-400 text-orange-400",
+  advanced: "border-cyan-400 text-cyan-400",
 };
 
 function titleCase(s: string) {
@@ -74,10 +79,11 @@ export default function RushPage() {
   const [citationStyle, setCitationStyle] = useState("inline");
   const [language, setLanguage] = useState<BookConfig["language"]>("thai");
 
+  const [groups, setGroups] = useState<OptionalGroup[]>(defaultGroupsFor("nonfiction"));
   const [prompts, setPrompts] = useState<GeneratedPrompt[]>([]);
   const [openId, setOpenId] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
-  const [filter, setFilter] = useState<GeneratedPrompt["type"] | "all">("all");
+  const [filter, setFilter] = useState<PromptGroup | "all">("all");
 
   const [projectId, setProjectId] = useState<string | null>(null);
   const [projects, setProjects] = useState<SavedProject[]>([]);
@@ -102,8 +108,12 @@ export default function RushPage() {
   );
 
   const totalWords = chapters * wordsPerChapter;
-  const filtered = filter === "all" ? prompts : prompts.filter((p) => p.type === filter);
-  const types = useMemo(() => Array.from(new Set(prompts.map((p) => p.type))), [prompts]);
+  const filtered = filter === "all" ? prompts : prompts.filter((p) => p.group === filter);
+  const presentGroups = useMemo(() => Array.from(new Set(prompts.map((p) => p.group))), [prompts]);
+
+  function toggleGroup(g: OptionalGroup) {
+    setGroups((prev) => (prev.includes(g) ? prev.filter((x) => x !== g) : [...prev, g]));
+  }
 
   useEffect(() => {
     refreshProjects();
@@ -124,12 +134,13 @@ export default function RushPage() {
     setSubGenre(t.sub_genres[0]);
     setChapters(t.default_chapters);
     setWordsPerChapter(t.default_words);
+    setGroups(defaultGroupsFor(key));
   }
 
   function generate() {
     setError("");
     setNotice("");
-    const pack = generateAllPrompts(config);
+    const pack = generateAllPrompts(config, groups);
     setPrompts(pack);
     setFilter("all");
     setOpenId(pack[0]?.id ?? null);
@@ -207,7 +218,9 @@ export default function RushPage() {
       setCitationStyle(cfg.citationStyle);
       setLanguage(cfg.language);
       setProjectId(project.id);
-      const pack = generateAllPrompts(cfg);
+      const g = defaultGroupsFor(cfg.type);
+      setGroups(g);
+      const pack = generateAllPrompts(cfg, g);
       setPrompts(pack);
       setOpenId(pack[0]?.id ?? null);
       setNotice("โหลด project แล้ว");
@@ -340,6 +353,26 @@ export default function RushPage() {
                 </select>
               </Field>
 
+              <div className="mt-4 mb-1">
+                <h2 className="text-xs font-semibold tracking-widest text-gray-400 uppercase mb-2">Extra Modules</h2>
+                <div className="space-y-1.5">
+                  {MODULE_GROUPS.map((g) => (
+                    <label key={g.key} className="flex items-start gap-2 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={groups.includes(g.key)}
+                        onChange={() => toggleGroup(g.key)}
+                        className="accent-[#c9a84c] mt-0.5"
+                      />
+                      <span className="text-xs">
+                        <span className="text-gray-200">{g.label}</span>
+                        <span className="block text-[0.65rem] text-gray-500 leading-snug">{g.desc}</span>
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
               <div className="grid grid-cols-3 gap-2 my-4">
                 <Stat value={String(chapters)} label="Chapters" />
                 <Stat value={totalWords >= 1000 ? `${Math.round(totalWords / 1000)}K` : String(totalWords)} label="Est. Words" />
@@ -415,12 +448,12 @@ export default function RushPage() {
                 <>
                   <div className="flex flex-wrap gap-1.5 mb-4">
                     <FilterChip active={filter === "all"} onClick={() => setFilter("all")} label={`All (${prompts.length})`} />
-                    {types.map((t) => (
+                    {presentGroups.map((g) => (
                       <FilterChip
-                        key={t}
-                        active={filter === t}
-                        onClick={() => setFilter(t)}
-                        label={`${titleCase(t)} (${prompts.filter((p) => p.type === t).length})`}
+                        key={g}
+                        active={filter === g}
+                        onClick={() => setFilter(g)}
+                        label={`${titleCase(g)} (${prompts.filter((p) => p.group === g).length})`}
                       />
                     ))}
                   </div>
@@ -437,7 +470,7 @@ export default function RushPage() {
                               <span className="text-xs text-gray-500 truncate">{p.name}</span>
                             </button>
                             <div className="flex items-center gap-2 flex-shrink-0">
-                              <span className={`text-[0.6rem] px-1.5 py-0.5 border rounded ${TYPE_COLORS[p.type]}`}>{p.type}</span>
+                              <span className={`text-[0.6rem] px-1.5 py-0.5 border rounded ${GROUP_COLORS[p.group]}`}>{p.group}</span>
                               <button onClick={() => copyPrompt(p)} className="text-gray-400 hover:text-[#c9a84c]" title="Copy">
                                 {copiedId === p.id ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
                               </button>
