@@ -78,6 +78,8 @@ export default function RushPage() {
   const [wordsPerChapter, setWordsPerChapter] = useState(BOOK_TYPES.nonfiction.default_words);
   const [citationStyle, setCitationStyle] = useState("inline");
   const [language, setLanguage] = useState<BookConfig["language"]>("thai");
+  const [outline, setOutline] = useState("");
+  const [promptLanguage, setPromptLanguage] = useState<"en" | "th">("en");
 
   const [groups, setGroups] = useState<OptionalGroup[]>(defaultGroupsFor("nonfiction"));
   const [prompts, setPrompts] = useState<GeneratedPrompt[]>([]);
@@ -103,8 +105,10 @@ export default function RushPage() {
       subGenre,
       citationStyle,
       language,
+      outline: outline || undefined,
+      promptLanguage,
     }),
-    [type, title, thesis, reader, voice, chapters, wordsPerChapter, subGenre, citationStyle, language]
+    [type, title, thesis, reader, voice, chapters, wordsPerChapter, subGenre, citationStyle, language, outline, promptLanguage]
   );
 
   const totalWords = chapters * wordsPerChapter;
@@ -217,6 +221,8 @@ export default function RushPage() {
       setWordsPerChapter(cfg.wordsPerChapter);
       setCitationStyle(cfg.citationStyle);
       setLanguage(cfg.language);
+      setOutline(cfg.outline ?? "");
+      setPromptLanguage(cfg.promptLanguage ?? "en");
       setProjectId(project.id);
       const g = defaultGroupsFor(cfg.type);
       setGroups(g);
@@ -351,6 +357,31 @@ export default function RushPage() {
                     </option>
                   ))}
                 </select>
+              </Field>
+
+              <Field label="Outline / Beats (optional)">
+                <textarea
+                  value={outline}
+                  onChange={(e) => setOutline(e.target.value)}
+                  placeholder="วางโครงเรื่องหรือ beat รายบทที่นี่ (ไม่บังคับ) — จะถูกร้อยเข้า prompt แต่ละบท"
+                  className="input min-h-[60px] resize-y"
+                />
+              </Field>
+
+              <Field label="Prompt Language">
+                <div className="flex gap-2">
+                  {(["en", "th"] as const).map((pl) => (
+                    <button
+                      key={pl}
+                      onClick={() => setPromptLanguage(pl)}
+                      className={`flex-1 py-2 rounded-lg border text-xs transition-colors ${
+                        promptLanguage === pl ? "border-[#c9a84c] text-[#c9a84c] bg-[#c9a84c]/10" : "border-white/10 text-gray-400 hover:border-[#c9a84c]/40"
+                      }`}
+                    >
+                      {pl === "en" ? "English scaffolding" : "ไทยทั้งชุด"}
+                    </button>
+                  ))}
+                </div>
               </Field>
 
               <div className="mt-4 mb-1">

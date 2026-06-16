@@ -45,6 +45,10 @@ export interface BookConfig {
   subGenre: string;
   citationStyle: string;
   language: Language;
+  /** Optional outline / beat notes threaded into chapter prompts. */
+  outline?: string;
+  /** Language of the prompt scaffolding itself (not the book output). */
+  promptLanguage?: "en" | "th";
 }
 
 export interface ChapterPlan {
@@ -835,7 +839,7 @@ Your target reader: ${config.reader}.
 ═══ THESIS / PREMISE ═══
 ${config.thesis}
 
-═══ QUALITY RULES (MANDATORY) ═══
+═══ QUALITY STANDARDS (aim for these; use judgment over rigid ratios) ═══
 ${getQualityStandards(config.type)}
 
 `;
@@ -942,12 +946,28 @@ Start: problem unaware → End: practitioner who can apply the framework
   }
 
   p += `
+═══ CONTINUITY PROTOCOL (automatic story bible — keep this whole session in one chat) ═══
+You maintain a living STATE block so the book stays consistent without me re-pasting notes.
+1. The FIRST time you write, create a STATE block capturing: characters (name + key traits/relationships), setting/world rules, established facts, timeline, unresolved threads, and (fiction) tension level.
+2. At the START of every chapter, silently read the latest STATE and stay consistent with it — never contradict or re-introduce what's already established.
+3. At the END of every chapter, append an updated STATE block, fenced exactly like this:
+
+<<<STATE>>>
+CHARACTERS: ...
+WORLD/FACTS: ...
+TIMELINE: ...
+OPEN THREADS: ...
+TENSION: ...  (fiction only)
+<<<END STATE>>>
+
+Keep STATE compact (≤ 250 words), newest facts first, plain facts only. Carry it forward chapter to chapter. If I paste a STATE block into a later prompt, treat it as the source of truth.
+
 ═══ OUTPUT FORMAT ═══
 - Write the chapter content directly (no meta-commentary, no preamble like "Here is the chapter")
 - Begin with the chapter title as a Markdown heading (## Chapter N: Title)
-- Maintain consistent voice throughout
-- Meet the word count target (±20%)
+- Maintain consistent voice throughout; calibrate length to the target (±20%) without padding
 - End with a hook or transition appropriate to the chapter type
+- After the chapter, output the updated <<<STATE>>> block (per the Continuity Protocol)
 `;
   return p;
 }
@@ -1135,16 +1155,27 @@ export function generateChapterPrompt(
   const nextChapter = chapterIndex < architecture.chapters.length - 1 ? architecture.chapters[chapterIndex + 1] : null;
 
   let p = `═══ CHAPTER ${chapter.number} WRITING PROMPT ═══\n\n`;
+  p += `BOOK: "${config.title}" — ${config.subGenre.replace(/_/g, " ")}\n`;
+  p += `PREMISE: ${config.thesis}\n`;
   p += `CHAPTER: ${chapter.number} of ${config.chapters}\n`;
   p += `TYPE: ${chapter.type ?? chapter.sceneType ?? "section"}\n`;
   p += `PURPOSE: ${chapter.purpose}\n`;
-  p += `WORD TARGET: ${chapter.wordTarget} words (±20%)\n\n`;
+  p += `WORD TARGET: ~${chapter.wordTarget} words (±20%; let the content set the exact length)\n\n`;
 
+  // Continuity: prefer an explicit pasted STATE, else rely on the session's running STATE block.
   if (storyBible && storyBible.trim()) {
-    p += `═══ STORY BIBLE / CONTINUITY STATE (carry-forward) ═══\n`;
+    p += `═══ STORY BIBLE / CONTINUITY STATE (source of truth) ═══\n`;
     p += `${storyBible.trim()}\n`;
-    p += `→ Stay strictly consistent with every name, fact, place, rule, and unresolved thread above.\n`;
-    p += `→ Do not contradict or re-introduce things already established.\n\n`;
+    p += `→ Stay consistent with every name, fact, place, rule, and open thread above; don't contradict or re-introduce them.\n\n`;
+  } else if (chapter.number > 1) {
+    p += `═══ CONTINUITY ═══\n`;
+    p += `→ Read the latest <<<STATE>>> block from earlier in this chat and stay consistent with it.\n`;
+    p += `→ If no STATE exists yet, reconstruct it from the chapters written so far.\n\n`;
+  }
+
+  if (config.outline && config.outline.trim()) {
+    p += `═══ PLANNED BEATS (follow the part relevant to Chapter ${chapter.number}) ═══\n`;
+    p += `${config.outline.trim()}\n\n`;
   }
 
   if (prevChapter) {
@@ -1192,7 +1223,7 @@ export function generateChapterPrompt(
   }
 
   p += `\n═══ QUALITY CHECKLIST (verify before finalizing) ═══\n` + getQualityChecklist(config.type);
-  p += `\n\nNow write Chapter ${chapter.number} in full. Output only the chapter prose (Markdown), no commentary.`;
+  p += `\n\nNow write Chapter ${chapter.number} in full. Output the chapter prose (Markdown), then the updated <<<STATE>>> block. No other commentary.`;
   return p;
 }
 
@@ -1273,7 +1304,11 @@ export function generateOverviewPrompt(config: BookConfig, architecture: Archite
   p += architecture.chapters
     .map((c) => `Ch.${c.number} [${c.type ?? c.sceneType ?? "section"}] — ${c.purpose}`)
     .join("\n");
-  p += `\n\nConfirm you understand the plan, then wait for the first chapter prompt. Do not write any chapter yet.`;
+  if (config.outline && config.outline.trim()) {
+    p += `\n\n═══ AUTHOR'S OUTLINE / BEATS ═══\n${config.outline.trim()}`;
+  }
+  p += `\n\n═══ INITIALIZE CONTINUITY ═══\nCreate the initial <<<STATE>>> block (characters, world/facts, timeline, open threads${isFictionType(config.type) ? ", tension" : ""}) from this plan, and maintain it across every chapter per the Continuity Protocol in the system prompt.`;
+  p += `\n\nConfirm you understand the plan and output the initial STATE block, then wait for the first chapter prompt. Do not write any chapter yet.`;
   return p;
 }
 
@@ -1424,6 +1459,14 @@ For EACH major character, produce:
 - A 2-line sample of dialogue that only they could speak
 
 Keep it as a reusable reference to paste into every chapter prompt for "${config.title}".
+
+EXAMPLE (format to follow):
+  Name: Mali — wary detective, ex-monk
+  Register: terse, formal; signature: "เอาตามตรง", "พอ"
+  Sentence shape: short, clipped; never rambles
+  Tics: ends statements with a question; NEVER swears
+  Filter: sees everything as evidence; trust is earned
+  Sample: "เอาตามตรง คุณโกหก. คำถามคือ — ทำไม?"
 
 ═══ CHARACTER NOTES ═══
 [INSERT CHARACTER LIST / NOTES HERE]`;
@@ -1617,6 +1660,10 @@ Then: vary sentence length, prefer concrete specifics over abstractions, cut fil
 
 Output: (1) the de-slopped rewrite, (2) a short list of the specific tells you found and fixed.
 
+EXAMPLE
+  Before: "In today's fast-paced world, it's not just about working hard — it's about working smart. Let's delve into this crucial tapestry of productivity."
+  After:  "Most advice tells you to work harder. The people who actually get more done do the opposite: they cut the list."
+
 ═══ DRAFT ═══
 [INSERT DRAFT HERE]`;
 }
@@ -1702,13 +1749,14 @@ function moduleBlurb(config: BookConfig): string {
 }
 
 function moduleKdpMeta(config: BookConfig): string {
-  return `Generate Amazon KDP METADATA for "${config.title}" (${BOOK_TYPES[config.type].label}, ${config.subGenre.replace(/_/g, " ")}, audience: ${config.reader}).
+  return `Generate Amazon KDP METADATA candidates for "${config.title}" (${BOOK_TYPES[config.type].label}, ${config.subGenre.replace(/_/g, " ")}, audience: ${config.reader}).
 
-NOTE: KDP rules change — treat counts as guidance and tell the user to verify live in KDP.
+⚠ IMPORTANT: You cannot see live Amazon data. Produce well-reasoned CANDIDATES + a verification method — do not claim search volumes. KDP limits change; tell the user to confirm in KDP and validate demand in a keyword tool (e.g. Publisher Rocket) or Amazon's own search-autocomplete.
 
-1. SEVEN KEYWORDS / SEARCH-TERM PHRASES: multi-word, reader-intent phrases (themes, tropes, audience, use-case). Do NOT repeat words already in the title or category. One per line with a one-line rationale.
-2. CATEGORIES: 3 specific, valid BISAC/category paths (most specific nodes that still have real traffic) — ranked, with why each fits.
-3. A 2-line A+ / comparison hook the author can reuse on the product page.
+1. SEVEN KEYWORD / SEARCH-TERM PHRASES: multi-word, reader-intent phrases (themes, tropes, audience, use-case, comparable-author style). Do NOT repeat words already in the title or chosen category. One per line + a one-line rationale.
+2. CATEGORIES: 3 specific, valid category paths (deepest relevant nodes), ranked, with why each fits.
+3. VERIFICATION CHECKLIST: for each keyword — how to validate it (type it into Amazon search; check autocomplete suggestions; confirm books rank for it; gauge competition). Mark any guess as "VERIFY".
+4. A 2-line A+ / comparison hook for the product page.
 
 Be concrete; avoid generic single words.`;
 }
@@ -1792,6 +1840,53 @@ const MODULE_CATALOG: ModuleDef[] = [
   { id: "BRAINSTORM", group: "advanced", name: "Brainstorm (Verbalized Sampling)", description: "Diverse option spread to beat repetitive output.", usage: "Use for titles, twists, names, hooks.", build: moduleBrainstorm },
 ];
 
+// ── Thai prompt-language layer ─────────────────────────────────
+// When promptLanguage === "th", every prompt gets a Thai operating header and
+// its English section markers are localized, so the scaffolding reads in Thai.
+
+const TH_HEADER_MAP: [RegExp, string][] = [
+  [/IDENTITY & ROLE/g, "บทบาท & ตัวตน"],
+  [/BOOK SPECIFICATIONS/g, "ข้อมูลจำเพาะหนังสือ"],
+  [/THESIS \/ PREMISE/g, "แก่น / เรื่องย่อ"],
+  [/QUALITY STANDARDS[^═]*/g, "มาตรฐานคุณภาพ (ยึดเป็นแนวทาง ใช้วิจารณญาณ)"],
+  [/CONTINUITY PROTOCOL[^═]*/g, "ระบบรักษาความต่อเนื่องอัตโนมัติ (story bible ในแชทเดียว) "],
+  [/OUTPUT FORMAT/g, "รูปแบบผลลัพธ์"],
+  [/FICTION RULES/g, "กฎการเขียนนิยาย"],
+  [/NON-FICTION RULES/g, "กฎการเขียนสารคดี"],
+  [/CHILDREN'S BOOK RULES/g, "กฎหนังสือเด็ก"],
+  [/COOKBOOK RULES/g, "กฎตำราอาหาร"],
+  [/MEMOIR RULES/g, "กฎบันทึกความทรงจำ"],
+  [/POETRY RULES/g, "กฎบทกวี"],
+  [/ACT STRUCTURE/g, "โครงสร้างองก์"],
+  [/CHARACTER ARC/g, "เส้นทางตัวละคร"],
+  [/READER JOURNEY/g, "การเดินทางของผู้อ่าน"],
+  [/THESIS/g, "แก่นเรื่อง"],
+  [/CHAPTER (\d+) WRITING PROMPT/g, "พรอมป์ตเขียนบทที่ $1"],
+  [/PREVIOUS CHAPTER/g, "บริบทบทก่อนหน้า"],
+  [/SCENE INSTRUCTIONS/g, "คำสั่งฉาก"],
+  [/STORY BIBLE \/ CONTINUITY STATE[^═]*/g, "บันทึกความต่อเนื่อง (แหล่งความจริง) "],
+  [/CONTINUITY/g, "ความต่อเนื่อง"],
+  [/PLANNED BEATS[^═]*/g, "โครงที่วางไว้ (ทำตามส่วนของบทนี้) "],
+  [/QUALITY CHECKLIST[^═]*/g, "เช็คลิสต์คุณภาพ (ตรวจก่อนจบ) "],
+  [/TRANSITION TO CHAPTER (\d+)/g, "เชื่อมไปบทที่ $1"],
+  [/MUST INCLUDE/g, "ต้องมี"],
+  [/STRUCTURE/g, "โครงสร้าง"],
+];
+
+function localizeTh(text: string): string {
+  let out = text;
+  for (const [re, th] of TH_HEADER_MAP) out = out.replace(re, th);
+  return out;
+}
+
+function thaiDirective(): string {
+  return `[คำสั่งหลัก — อ่านก่อน]
+โครงสร้างและหัวข้อด้านล่างคือ "กรอบควบคุม" สำหรับโมเดล โปรดทำตามอย่างเคร่งครัด
+ผลิตเนื้อหาหนังสือ การวิเคราะห์ และคำตอบทั้งหมดเป็น "ภาษาไทย" ทั้งหมด
+หากมีช่อง [INSERT ...] / [ใส่ ...] ให้ผู้ใช้กรอกข้อมูลจริงก่อนใช้งาน
+──────────────────────────────────────────\n\n`;
+}
+
 /** Build the complete prompt pack. Core writing prompts are always included;
  *  optional module `groups` append their modules. Pure / client-safe. */
 export function generateAllPrompts(config: BookConfig, groups: Exclude<PromptGroup, "core">[] = []): GeneratedPrompt[] {
@@ -1817,6 +1912,11 @@ export function generateAllPrompts(config: BookConfig, groups: Exclude<PromptGro
     if (m.group !== "core" && wanted.has(m.group)) {
       prompts.push({ id: m.id, group: m.group, name: m.name, description: m.description, usage: m.usage, prompt: m.build(config) });
     }
+  }
+
+  if (config.promptLanguage === "th") {
+    const dir = thaiDirective();
+    return prompts.map((p) => ({ ...p, prompt: dir + localizeTh(p.prompt) }));
   }
 
   return prompts;
