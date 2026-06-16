@@ -15,6 +15,8 @@ import {
   Save,
   FileJson,
   FileText,
+  HelpCircle,
+  X,
 } from "lucide-react";
 import {
   BOOK_TYPES,
@@ -93,6 +95,9 @@ export default function RushPage() {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [saving, setSaving] = useState(false);
+  const [showGuide, setShowGuide] = useState(false);
+
+  const allGroups = MODULE_GROUPS.map((m) => m.key);
 
   const config: BookConfig = useMemo(
     () => ({
@@ -263,9 +268,15 @@ export default function RushPage() {
             <Crown className="w-7 h-7 text-[#c9a84c]" />
             <span className="text-lg font-semibold gold-gradient">NaraSuite</span>
           </Link>
-          <div className="flex items-center gap-2 text-sm text-gray-300">
-            <BookOpen className="w-4 h-4 text-[#c9a84c]" />
-            Rush Engine
+          <div className="flex items-center gap-3 text-sm text-gray-300">
+            <button onClick={() => setShowGuide(true)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#c9a84c]/30 text-[#c9a84c] hover:border-[#c9a84c] transition-colors text-xs">
+              <HelpCircle className="w-3.5 h-3.5" />
+              วิธีใช้
+            </button>
+            <span className="flex items-center gap-2">
+              <BookOpen className="w-4 h-4 text-[#c9a84c]" />
+              Rush Engine
+            </span>
           </div>
         </div>
       </nav>
@@ -388,7 +399,20 @@ export default function RushPage() {
               </Field>
 
               <div className="mt-4 mb-1">
-                <h2 className="text-xs font-semibold tracking-widest text-gray-400 uppercase mb-2">Extra Modules</h2>
+                <div className="flex items-center justify-between mb-2">
+                  <h2 className="text-xs font-semibold tracking-widest text-gray-400 uppercase">Extra Modules</h2>
+                  <div className="flex gap-1">
+                    <button onClick={() => setGroups(defaultGroupsFor(type))} className="text-[0.6rem] px-1.5 py-0.5 rounded border border-white/10 text-gray-400 hover:border-[#c9a84c]/40 hover:text-[#c9a84c]" title="กลุ่มที่แนะนำตามประเภทหนังสือ">
+                      แนะนำ
+                    </button>
+                    <button onClick={() => setGroups(allGroups)} className="text-[0.6rem] px-1.5 py-0.5 rounded border border-white/10 text-gray-400 hover:border-[#c9a84c]/40 hover:text-[#c9a84c]">
+                      ทั้งหมด
+                    </button>
+                    <button onClick={() => setGroups([])} className="text-[0.6rem] px-1.5 py-0.5 rounded border border-white/10 text-gray-400 hover:border-[#c9a84c]/40 hover:text-[#c9a84c]" title="เฉพาะ prompt หลัก">
+                      ล้าง
+                    </button>
+                  </div>
+                </div>
                 <div className="space-y-1.5">
                   {MODULE_GROUPS.map((g) => (
                     <label key={g.key} className="flex items-start gap-2 cursor-pointer select-none">
@@ -501,6 +525,9 @@ export default function RushPage() {
                   <p className="text-xs mt-2 text-gray-600">
                     จะได้ชุด prompt ครบเซ็ต: Master, Overview, รายบท, Analysis, Revision, Front/Back Matter, Feedback
                   </p>
+                  <button onClick={() => setShowGuide(true)} className="mt-4 text-xs text-[#c9a84c] hover:underline">
+                    ดูเวิร์กโฟลว์แนะนำ →
+                  </button>
                 </div>
               ) : (
                 <>
@@ -554,6 +581,8 @@ export default function RushPage() {
         </div>
       </div>
 
+      {showGuide && <GuideModal onClose={() => setShowGuide(false)} />}
+
       <style jsx>{`
         :global(.input) {
           width: 100%;
@@ -602,6 +631,65 @@ function Stat({ value, label }: { value: string; label: string }) {
     <div className="p-2 bg-white/5 rounded-lg text-center">
       <div className="text-lg font-bold text-[#c9a84c]">{value}</div>
       <div className="text-[0.6rem] text-gray-500 mt-0.5">{label}</div>
+    </div>
+  );
+}
+
+function GuideModal({ onClose }: { onClose: () => void }) {
+  const steps = [
+    "ตั้งค่าหนังสือทางซ้าย (ประเภท / ชื่อ / แก่นเรื่อง / ผู้อ่าน / จำนวนบท) เปิด Extra Modules ที่ต้องการ แล้วกด Generate Prompts",
+    "วางแผน: คัดลอก STRUCTURE ไปรันใน LLM เพื่อวางโครงเรื่องรายบท แล้ววางผลกลับในช่อง Outline",
+    "ตั้ง MASTER เป็น system prompt ของ LLM (ใช้ตลอดทั้งเล่ม)",
+    "ส่ง OVERVIEW หนึ่งครั้ง ให้โมเดลเข้าใจแผน + สร้างบล็อก STATE เริ่มต้น",
+    "เขียนทีละบทด้วย CH_1, CH_2, … โมเดลจะออกบล็อก <<<STATE>>> ท้ายแต่ละบท",
+    "คัดลอก <<<STATE>>> ล่าสุดมาวางในช่อง Story Bible / STATE แล้วกด Generate ใหม่ → ฉีดเข้าทุกบทอัตโนมัติ (continuity)",
+    "ขัดเกลาด้วย ANALYSIS → REVISION, เก็บงานด้วย Front/Back Matter",
+    "ตอนจะตีพิมพ์ ใช้กลุ่ม Marketing (Title, Blurb, KDP Metadata, Submission Pack)",
+  ];
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70" onClick={onClose}>
+      <div className="glass-card rounded-2xl max-w-2xl w-full max-h-[85vh] overflow-y-auto p-6 border border-[#c9a84c]/30" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-bold gold-gradient">Rush Engine — วิธีใช้</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-white">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <p className="text-sm text-gray-300 mb-5">
+          แพลตฟอร์มสร้าง <span className="text-[#c9a84c]">ชุด prompt</span> สำหรับแต่งหนังสือทุกประเภท คัดลอกไปใช้กับ LLM ตัวไหนก็ได้ (ChatGPT / Claude / Gemini) —
+          ไม่ต้องมี API key ไม่มีค่า token
+        </p>
+
+        <h3 className="text-xs font-semibold tracking-widest text-gray-400 uppercase mb-2">เวิร์กโฟลว์แนะนำ</h3>
+        <ol className="space-y-2 mb-5">
+          {steps.map((s, i) => (
+            <li key={i} className="flex gap-3 text-sm text-gray-200">
+              <span className="flex-shrink-0 w-5 h-5 rounded-full bg-[#c9a84c]/15 text-[#c9a84c] text-xs flex items-center justify-center font-semibold">{i + 1}</span>
+              <span className="leading-relaxed">{s}</span>
+            </li>
+          ))}
+        </ol>
+
+        <h3 className="text-xs font-semibold tracking-widest text-gray-400 uppercase mb-2">กลุ่ม Module เสริม</h3>
+        <div className="space-y-1.5 mb-5">
+          {MODULE_GROUPS.map((g) => (
+            <div key={g.key} className="text-sm">
+              <span className="text-[#c9a84c]">{g.label}</span>
+              <span className="text-gray-500"> — {g.desc}</span>
+            </div>
+          ))}
+        </div>
+
+        <h3 className="text-xs font-semibold tracking-widest text-gray-400 uppercase mb-2">เคล็ดลับ</h3>
+        <ul className="space-y-1.5 text-sm text-gray-300 list-disc list-inside marker:text-[#c9a84c]">
+          <li><span className="text-gray-200">ภาษา prompt:</span> สลับ “ไทยทั้งชุด” ได้ที่ Prompt Language</li>
+          <li><span className="text-gray-200">Continuity:</span> Story Bible / STATE ฉีดเข้าทุกบท — แก้ที่เดียวใช้ทั้งเล่ม</li>
+          <li><span className="text-gray-200">เซฟงาน:</span> ปุ่ม Save เก็บ project ไว้ในบัญชี (ต้องล็อกอิน)</li>
+          <li><span className="text-gray-200">ส่งออก:</span> Copy ราย prompt / Copy all / Download .md หรือ .json</li>
+          <li><span className="text-gray-200">Preset:</span> แนะนำ / ทั้งหมด / ล้าง เลือกกลุ่ม module ได้เร็ว</li>
+        </ul>
+      </div>
     </div>
   );
 }
