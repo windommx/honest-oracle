@@ -1,63 +1,66 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   Crown,
-  Loader2,
   AlertCircle,
   Download,
-  Square,
   BookOpen,
-  Play,
   Sparkles,
   Trash2,
-  RotateCw,
+  Copy,
+  Check,
+  ChevronDown,
+  Save,
+  FileJson,
+  FileText,
 } from "lucide-react";
 import {
   BOOK_TYPES,
-  buildArchitecture,
-  type Architecture,
+  generateAllPrompts,
   type BookConfig,
   type BookTypeKey,
+  type GeneratedPrompt,
 } from "@/lib/rush-engine/engine";
 
-type Status = "waiting" | "writing" | "analyzing" | "revising" | "done" | "error";
-type ChapterState = {
-  number: number;
-  purpose: string;
-  status: Status;
-  content: string;
-};
-type SavedBook = {
+type SavedProject = {
   id: string;
   title: string;
   type: string;
   subGenre: string;
   updatedAt: string;
-  _count: { chapters: number };
-};
-type AnalysisResult = {
-  overall_pass: boolean;
-  issues: string[];
-  revision_mode: string;
-  specific_fixes: string[];
 };
 
 const VOICES = ["conversational", "academic", "inspirational", "practical", "storytelling", "witty"];
 const CITATIONS = ["APA", "MLA", "Chicago", "inline", "none"];
 
+const TYPE_COLORS: Record<GeneratedPrompt["type"], string> = {
+  system: "border-[#c9a84c] text-[#c9a84c]",
+  setup: "border-blue-400 text-blue-400",
+  chapter: "border-green-400 text-green-400",
+  analysis: "border-purple-400 text-purple-400",
+  revision: "border-orange-400 text-orange-400",
+  assembly: "border-cyan-400 text-cyan-400",
+  feedback: "border-pink-400 text-pink-400",
+};
+
 function titleCase(s: string) {
   return s.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-function carryForwardSummary(content: string): string {
-  const trimmed = content.trim();
-  if (trimmed.length <= 900) return trimmed;
-  return "…" + trimmed.slice(-900);
+async function copyText(text: string) {
+  try {
+    await navigator.clipboard.writeText(text);
+  } catch {
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand("copy");
+    document.body.removeChild(ta);
+  }
 }
-
-class StopError extends Error {}
 
 export default function RushPage() {
   const [type, setType] = useState<BookTypeKey>("nonfiction");
@@ -70,19 +73,17 @@ export default function RushPage() {
   const [wordsPerChapter, setWordsPerChapter] = useState(BOOK_TYPES.nonfiction.default_words);
   const [citationStyle, setCitationStyle] = useState("inline");
   const [language, setLanguage] = useState<BookConfig["language"]>("thai");
-  const [qualityPass, setQualityPass] = useState(true);
 
-  const [running, setRunning] = useState(false);
-  const [chapterStates, setChapterStates] = useState<ChapterState[]>([]);
-  const [activeIdx, setActiveIdx] = useState<number | null>(null);
+  const [prompts, setPrompts] = useState<GeneratedPrompt[]>([]);
+  const [openId, setOpenId] = useState<string | null>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [filter, setFilter] = useState<GeneratedPrompt["type"] | "all">("all");
+
+  const [projectId, setProjectId] = useState<string | null>(null);
+  const [projects, setProjects] = useState<SavedProject[]>([]);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
-  const [bookId, setBookId] = useState<string | null>(null);
-  const [books, setBooks] = useState<SavedBook[]>([]);
-
-  const stopRef = useRef(false);
-  const abortRef = useRef<AbortController | null>(null);
-  const bibleRef = useRef("");
+  const [saving, setSaving] = useState(false);
 
   const config: BookConfig = useMemo(
     () => ({
@@ -101,23 +102,19 @@ export default function RushPage() {
   );
 
   const totalWords = chapters * wordsPerChapter;
-  const doneCount = chapterStates.filter((c) => c.status === "done").length;
-  const hasOutput = chapterStates.some((c) => c.content.trim());
-  const incomplete = chapterStates.length > 0 && doneCount < chapterStates.length;
+  const filtered = filter === "all" ? prompts : prompts.filter((p) => p.type === filter);
+  const types = useMemo(() => Array.from(new Set(prompts.map((p) => p.type))), [prompts]);
 
   useEffect(() => {
-    refreshBooks();
+    refreshProjects();
   }, []);
 
-  async function refreshBooks() {
+  async function refreshProjects() {
     try {
-      const res = await fetch("/api/rush/books");
-      if (res.ok) {
-        const data = await res.json();
-        setBooks(data.books ?? []);
-      }
+      const res = await fetch("/api/rush/projects");
+      if (res.ok) setProjects((await res.json()).projects ?? []);
     } catch {
-      /* ignore */
+      /* not logged in — saving simply unavailable */
     }
   }
 
@@ -129,225 +126,76 @@ export default function RushPage() {
     setWordsPerChapter(t.default_words);
   }
 
-  function setChapterStatus(i: number, status: Status) {
-    setChapterStates((prev) => prev.map((c, j) => (j === i ? { ...c, status } : c)));
-  }
-  function appendChapterContent(i: number, delta: string) {
-    setChapterStates((prev) => prev.map((c, j) => (j === i ? { ...c, content: c.content + delta } : c)));
-  }
-  function resetChapterContent(i: number) {
-    setChapterStates((prev) => prev.map((c, j) => (j === i ? { ...c, content: "" } : c)));
-  }
-
-  // ── API calls ──────────────────────────────────────────────
-
-  async function streamWrite(
-    idx: number,
-    extra: Record<string, unknown>,
-    signal: AbortSignal,
-    onDelta: (t: string) => void
-  ): Promise<string> {
-    const res = await fetch("/api/rush/write", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ config, chapterIndex: idx, ...extra }),
-      signal,
-    });
-    if (!res.ok || !res.body) {
-      const data = await res.json().catch(() => ({ error: "Request failed" }));
-      throw new Error(data.error || `Server error (${res.status})`);
-    }
-    const reader = res.body.getReader();
-    const decoder = new TextDecoder();
-    let full = "";
-    while (true) {
-      const { value, done } = await reader.read();
-      if (done) break;
-      const chunk = decoder.decode(value, { stream: true });
-      if (chunk.includes("[[RUSH_ERROR]]")) {
-        throw new Error(chunk.split("[[RUSH_ERROR]]")[1]?.trim() || "Generation failed");
-      }
-      full += chunk;
-      onDelta(chunk);
-    }
-    return full;
-  }
-
-  async function analyze(draft: string, signal: AbortSignal): Promise<AnalysisResult | null> {
-    try {
-      const res = await fetch("/api/rush/analyze", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ config, draft }),
-        signal,
-      });
-      if (!res.ok) return null;
-      const data = await res.json();
-      return data.result as AnalysisResult;
-    } catch (e) {
-      if (e instanceof DOMException && e.name === "AbortError") throw e;
-      return null; // analysis is best-effort; don't fail the chapter
-    }
-  }
-
-  async function digest(chapterNumber: number, content: string, signal: AbortSignal): Promise<string> {
-    try {
-      const res = await fetch("/api/rush/digest", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ config, storyBible: bibleRef.current, chapterNumber, chapterContent: content }),
-        signal,
-      });
-      if (!res.ok) return bibleRef.current;
-      const data = await res.json();
-      return (data.bible as string) || bibleRef.current;
-    } catch (e) {
-      if (e instanceof DOMException && e.name === "AbortError") throw e;
-      return bibleRef.current;
-    }
-  }
-
-  async function saveChapter(id: string, number: number, content: string) {
-    try {
-      await fetch(`/api/rush/books/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ chapter: { number, status: "done", content }, storyBible: bibleRef.current }),
-      });
-    } catch {
-      /* best-effort */
-    }
-  }
-
-  // ── Orchestration ──────────────────────────────────────────
-
-  async function generate(resume: boolean) {
-    if (running) return;
+  function generate() {
     setError("");
     setNotice("");
-    setRunning(true);
-    stopRef.current = false;
+    const pack = generateAllPrompts(config);
+    setPrompts(pack);
+    setFilter("all");
+    setOpenId(pack[0]?.id ?? null);
+  }
 
-    const arch: Architecture = buildArchitecture(config);
+  async function copyPrompt(p: GeneratedPrompt) {
+    await copyText(p.prompt);
+    setCopiedId(p.id);
+    setTimeout(() => setCopiedId((c) => (c === p.id ? null : c)), 1500);
+  }
 
-    let id = bookId;
-    if (!resume) {
-      bibleRef.current = "";
-      setChapterStates(
-        arch.chapters.map((c) => ({ number: c.number, purpose: c.purpose, status: "waiting", content: "" }))
-      );
-      try {
-        const res = await fetch("/api/rush/books", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ config }),
-        });
-        if (res.ok) {
-          id = (await res.json()).id as string;
-          setBookId(id);
-        } else if (res.status === 401) {
-          setError("กรุณาเข้าสู่ระบบก่อนใช้งาน");
-          setRunning(false);
-          return;
-        }
-      } catch {
-        setNotice("บันทึกอัตโนมัติไม่พร้อมใช้งาน — จะเขียนต่อโดยไม่บันทึก");
-      }
-    }
+  async function copyAll() {
+    if (!prompts.length) return;
+    const text = prompts.map((p) => `# ${p.id}: ${p.name}\n# Usage: ${p.usage}\n\n${p.prompt}`).join("\n\n\n");
+    await copyText(text);
+    setNotice("คัดลอกทุก prompt แล้ว");
+  }
 
-    // Resume from the first chapter that isn't done.
-    const states = resume
-      ? chapterStates
-      : arch.chapters.map((c) => ({ number: c.number, purpose: c.purpose, status: "waiting" as Status, content: "" }));
-    const startIndex = Math.max(0, states.findIndex((c) => c.status !== "done"));
-    let previousSummary: string | undefined =
-      startIndex > 0 ? carryForwardSummary(states[startIndex - 1].content) : undefined;
+  function downloadMd() {
+    const header = `# ${config.title} — Prompt Pack\n\n_${BOOK_TYPES[config.type].label} · ${titleCase(config.subGenre)} · ${config.chapters} chapters × ~${config.wordsPerChapter} words · ${config.language}_\n\n`;
+    const body = prompts
+      .map((p) => `## ${p.id}: ${p.name}\n\n**Usage:** ${p.usage}\n\n\`\`\`\n${p.prompt}\n\`\`\``)
+      .join("\n\n---\n\n");
+    downloadBlob(`${slug(config.title)}-prompts.md`, header + body, "text/markdown");
+  }
 
-    let currentIdx = startIndex;
+  function downloadJson() {
+    const payload = { config, generatedAt: new Date().toISOString(), prompts };
+    downloadBlob(`${slug(config.title)}-prompts.json`, JSON.stringify(payload, null, 2), "application/json");
+  }
+
+  async function saveProject() {
+    setError("");
+    setNotice("");
+    setSaving(true);
     try {
-      for (let i = startIndex; i < arch.chapters.length; i++) {
-        if (stopRef.current) break;
-        if (states[i] && states[i].status === "done") continue;
-
-        currentIdx = i;
-        setActiveIdx(i);
-        const controller = new AbortController();
-        abortRef.current = controller;
-
-        // ── DRAFT ──
-        resetChapterContent(i);
-        setChapterStatus(i, "writing");
-        let content = await streamWrite(
-          i,
-          { previousSummary, storyBible: bibleRef.current },
-          controller.signal,
-          (d) => appendChapterContent(i, d)
-        );
-
-        // ── QUALITY GATE (analyze → revise once) ──
-        if (qualityPass && !stopRef.current) {
-          setChapterStatus(i, "analyzing");
-          const result = await analyze(content, controller.signal);
-          if (result && !result.overall_pass) {
-            setChapterStatus(i, "revising");
-            resetChapterContent(i);
-            const feedback =
-              `ISSUES:\n- ${result.issues.join("\n- ")}\n\nSPECIFIC FIXES:\n- ${result.specific_fixes.join("\n- ")}`;
-            content = await streamWrite(
-              i,
-              {
-                mode: "revise",
-                draft: content,
-                feedback,
-                revisionMode: result.revision_mode,
-                storyBible: bibleRef.current,
-              },
-              controller.signal,
-              (d) => appendChapterContent(i, d)
-            );
-          }
-        }
-
-        setChapterStatus(i, "done");
-        setChapterStates((prev) => prev.map((c, j) => (j === i ? { ...c, content } : c)));
-        previousSummary = carryForwardSummary(content);
-
-        // ── CONTINUITY: update story bible for the next chapter ──
-        if (!stopRef.current) {
-          bibleRef.current = await digest(arch.chapters[i].number, content, controller.signal);
-        }
-        if (id) await saveChapter(id, arch.chapters[i].number, content);
+      const method = projectId ? "PATCH" : "POST";
+      const url = projectId ? `/api/rush/projects/${projectId}` : "/api/rush/projects";
+      const res = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ config }),
+      });
+      if (res.status === 401) {
+        setError("กรุณาเข้าสู่ระบบก่อนบันทึก project");
+        return;
       }
+      if (!res.ok) throw new Error("บันทึกไม่สำเร็จ");
+      if (!projectId) setProjectId((await res.json()).id as string);
+      setNotice("บันทึก project แล้ว");
+      refreshProjects();
     } catch (e) {
-      if (e instanceof StopError || (e instanceof DOMException && e.name === "AbortError")) {
-        setNotice("หยุดการเขียนแล้ว — กด Continue เพื่อเขียนต่อจากบทที่ค้าง");
-        setChapterStatus(currentIdx, "waiting");
-      } else {
-        setError(e instanceof Error ? e.message : "Generation failed");
-        setChapterStatus(currentIdx, "error");
-      }
+      setError(e instanceof Error ? e.message : "บันทึกไม่สำเร็จ");
     } finally {
-      abortRef.current = null;
-      setRunning(false);
-      setActiveIdx(null);
-      refreshBooks();
+      setSaving(false);
     }
   }
 
-  function stop() {
-    stopRef.current = true;
-    abortRef.current?.abort();
-  }
-
-  async function loadBook(id: string) {
-    if (running) return;
+  async function loadProject(id: string) {
     setError("");
     setNotice("");
     try {
-      const res = await fetch(`/api/rush/books/${id}`);
-      if (!res.ok) throw new Error("โหลดหนังสือไม่สำเร็จ");
-      const { book } = await res.json();
-      const cfg = book.config as BookConfig;
+      const res = await fetch(`/api/rush/projects/${id}`);
+      if (!res.ok) throw new Error("โหลดไม่สำเร็จ");
+      const { project } = await res.json();
+      const cfg = project.config as BookConfig;
       setType(cfg.type);
       setSubGenre(cfg.subGenre);
       setTitle(cfg.title === "Untitled" ? "" : cfg.title);
@@ -358,63 +206,31 @@ export default function RushPage() {
       setWordsPerChapter(cfg.wordsPerChapter);
       setCitationStyle(cfg.citationStyle);
       setLanguage(cfg.language);
-      bibleRef.current = book.storyBible ?? "";
-      setBookId(book.id);
-
-      const arch = buildArchitecture(cfg);
-      const byNumber = new Map<number, { status: string; content: string }>();
-      for (const ch of book.chapters) byNumber.set(ch.number, ch);
-      setChapterStates(
-        arch.chapters.map((c) => {
-          const saved = byNumber.get(c.number);
-          return {
-            number: c.number,
-            purpose: c.purpose,
-            status: (saved?.status as Status) ?? "waiting",
-            content: saved?.content ?? "",
-          };
-        })
-      );
-      setNotice("โหลดหนังสือแล้ว — กด Continue เพื่อเขียนต่อ");
+      setProjectId(project.id);
+      const pack = generateAllPrompts(cfg);
+      setPrompts(pack);
+      setOpenId(pack[0]?.id ?? null);
+      setNotice("โหลด project แล้ว");
     } catch (e) {
       setError(e instanceof Error ? e.message : "โหลดไม่สำเร็จ");
     }
   }
 
-  async function deleteBook(id: string) {
+  async function deleteProject(id: string) {
     try {
-      await fetch(`/api/rush/books/${id}`, { method: "DELETE" });
-      if (bookId === id) {
-        setBookId(null);
-        setChapterStates([]);
-      }
-      refreshBooks();
+      await fetch(`/api/rush/projects/${id}`, { method: "DELETE" });
+      if (projectId === id) setProjectId(null);
+      refreshProjects();
     } catch {
       /* ignore */
     }
   }
 
-  function newBook() {
-    setBookId(null);
-    setChapterStates([]);
-    bibleRef.current = "";
+  function newProject() {
+    setProjectId(null);
+    setPrompts([]);
     setNotice("");
     setError("");
-  }
-
-  function downloadBook() {
-    const header = `# ${config.title}\n\n_${BOOK_TYPES[config.type].label} · ${titleCase(config.subGenre)} · ${config.chapters} chapters_\n\n`;
-    const body = chapterStates
-      .filter((c) => c.content.trim())
-      .map((c) => c.content.trim())
-      .join("\n\n---\n\n");
-    const blob = new Blob([header + body], { type: "text/markdown;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${(config.title || "book").replace(/[^\w\- ]+/g, "").trim() || "book"}.md`;
-    a.click();
-    URL.revokeObjectURL(url);
   }
 
   return (
@@ -434,13 +250,11 @@ export default function RushPage() {
 
       <div className="pt-24 pb-16 px-4">
         <div className="max-w-7xl mx-auto">
-          <div className="mb-6 flex items-end justify-between flex-wrap gap-3">
-            <div>
-              <h1 className="text-3xl font-bold gold-gradient">Rush Engine — Universal Book Generator</h1>
-              <p className="text-gray-400 mt-2 text-sm">
-                เขียนหนังสือทั้งเล่มจริงด้วย Claude ทีละบท · มี quality pass, story-bible continuity และบันทึก/เขียนต่อได้
-              </p>
-            </div>
+          <div className="mb-6">
+            <h1 className="text-3xl font-bold gold-gradient">Rush Engine — Book Prompt Generator</h1>
+            <p className="text-gray-400 mt-2 text-sm">
+              สร้างชุด prompt ครบเซ็ตสำหรับแต่งหนังสือทุกประเภท — master prompt, prompt รายบท, analysis, revision, front/back matter — คัดลอกไปใช้กับ LLM ตัวไหนก็ได้
+            </p>
           </div>
 
           <div className="grid lg:grid-cols-[380px_1fr] gap-6">
@@ -455,8 +269,7 @@ export default function RushPage() {
                     <button
                       key={key}
                       onClick={() => selectType(key)}
-                      disabled={running}
-                      className={`p-3 rounded-xl border text-center transition-colors disabled:opacity-50 ${
+                      className={`p-3 rounded-xl border text-center transition-colors ${
                         active ? "border-[#c9a84c] bg-[#c9a84c]/10" : "border-white/10 bg-white/5 hover:border-[#c9a84c]/40"
                       }`}
                     >
@@ -468,7 +281,7 @@ export default function RushPage() {
               </div>
 
               <Field label="Sub-Genre">
-                <select value={subGenre} onChange={(e) => setSubGenre(e.target.value)} disabled={running} className="input">
+                <select value={subGenre} onChange={(e) => setSubGenre(e.target.value)} className="input">
                   {BOOK_TYPES[type].sub_genres.map((g) => (
                     <option key={g} value={g}>
                       {titleCase(g)}
@@ -478,20 +291,20 @@ export default function RushPage() {
               </Field>
 
               <Field label="Title / Working Title">
-                <input value={title} onChange={(e) => setTitle(e.target.value)} disabled={running} placeholder="e.g. The Deep Work Method" className="input" />
+                <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. The Deep Work Method" className="input" />
               </Field>
 
               <Field label="Thesis / Core Idea">
-                <textarea value={thesis} onChange={(e) => setThesis(e.target.value)} disabled={running} placeholder="Main argument or premise..." className="input min-h-[64px] resize-y" />
+                <textarea value={thesis} onChange={(e) => setThesis(e.target.value)} placeholder="Main argument or premise..." className="input min-h-[64px] resize-y" />
               </Field>
 
               <Field label="Target Reader">
-                <input value={reader} onChange={(e) => setReader(e.target.value)} disabled={running} placeholder="e.g. Thai professionals, 25-40" className="input" />
+                <input value={reader} onChange={(e) => setReader(e.target.value)} placeholder="e.g. Thai professionals, 25-40" className="input" />
               </Field>
 
               <div className="grid grid-cols-2 gap-3">
                 <Field label="Author Voice">
-                  <select value={voice} onChange={(e) => setVoice(e.target.value)} disabled={running} className="input">
+                  <select value={voice} onChange={(e) => setVoice(e.target.value)} className="input">
                     {VOICES.map((v) => (
                       <option key={v} value={v}>
                         {titleCase(v)}
@@ -500,7 +313,7 @@ export default function RushPage() {
                   </select>
                 </Field>
                 <Field label="Language">
-                  <select value={language} onChange={(e) => setLanguage(e.target.value as BookConfig["language"])} disabled={running} className="input">
+                  <select value={language} onChange={(e) => setLanguage(e.target.value as BookConfig["language"])} className="input">
                     <option value="thai">Thai (ภาษาไทย)</option>
                     <option value="english">English</option>
                     <option value="bilingual">Bilingual (TH/EN)</option>
@@ -510,15 +323,15 @@ export default function RushPage() {
 
               <div className="grid grid-cols-2 gap-3">
                 <Field label="Chapters">
-                  <input type="number" min={1} max={100} value={chapters} onChange={(e) => setChapters(Math.max(1, Math.min(100, parseInt(e.target.value) || 1)))} disabled={running} className="input" />
+                  <input type="number" min={1} max={100} value={chapters} onChange={(e) => setChapters(Math.max(1, Math.min(100, parseInt(e.target.value) || 1)))} className="input" />
                 </Field>
                 <Field label="Words / Chapter">
-                  <input type="number" min={100} max={15000} value={wordsPerChapter} onChange={(e) => setWordsPerChapter(Math.max(100, parseInt(e.target.value) || 100))} disabled={running} className="input" />
+                  <input type="number" min={100} max={15000} value={wordsPerChapter} onChange={(e) => setWordsPerChapter(Math.max(100, parseInt(e.target.value) || 100))} className="input" />
                 </Field>
               </div>
 
               <Field label="Citation Style">
-                <select value={citationStyle} onChange={(e) => setCitationStyle(e.target.value)} disabled={running} className="input">
+                <select value={citationStyle} onChange={(e) => setCitationStyle(e.target.value)} className="input">
                   {CITATIONS.map((c) => (
                     <option key={c} value={c}>
                       {c}
@@ -527,51 +340,32 @@ export default function RushPage() {
                 </select>
               </Field>
 
-              <label className="flex items-center gap-2 mt-3 mb-1 cursor-pointer select-none">
-                <input type="checkbox" checked={qualityPass} onChange={(e) => setQualityPass(e.target.checked)} disabled={running} className="accent-[#c9a84c]" />
-                <span className="text-xs text-gray-300 flex items-center gap-1">
-                  <Sparkles className="w-3.5 h-3.5 text-[#c9a84c]" />
-                  Quality pass (analyze → auto-revise)
-                </span>
-              </label>
-
               <div className="grid grid-cols-3 gap-2 my-4">
                 <Stat value={String(chapters)} label="Chapters" />
                 <Stat value={totalWords >= 1000 ? `${Math.round(totalWords / 1000)}K` : String(totalWords)} label="Est. Words" />
-                <Stat value={`${doneCount}/${chapterStates.length || chapters}`} label="Written" />
+                <Stat value={String(prompts.length)} label="Prompts" />
               </div>
 
-              {!running ? (
-                <div className="space-y-2">
-                  {incomplete && bookId ? (
-                    <button onClick={() => generate(true)} className="w-full py-3 bg-[#c9a84c] text-black font-semibold rounded-xl hover:bg-[#d4b96a] transition-colors flex items-center justify-center gap-2">
-                      <RotateCw className="w-4 h-4" />
-                      Continue ({doneCount}/{chapterStates.length})
-                    </button>
-                  ) : (
-                    <button onClick={() => generate(false)} className="w-full py-3 bg-[#c9a84c] text-black font-semibold rounded-xl hover:bg-[#d4b96a] transition-colors flex items-center justify-center gap-2">
-                      <Play className="w-4 h-4" />
-                      Generate Book
-                    </button>
-                  )}
-                  {chapterStates.length > 0 && (
-                    <button onClick={newBook} className="w-full py-2 text-xs text-gray-400 hover:text-[#c9a84c] transition-colors">
-                      + New book
-                    </button>
-                  )}
-                </div>
-              ) : (
-                <button onClick={stop} className="w-full py-3 border border-red-500 text-red-400 font-semibold rounded-xl hover:bg-red-500 hover:text-black transition-colors flex items-center justify-center gap-2">
-                  <Square className="w-4 h-4" />
-                  Stop
-                </button>
-              )}
+              <button onClick={generate} className="w-full py-3 bg-[#c9a84c] text-black font-semibold rounded-xl hover:bg-[#d4b96a] transition-colors flex items-center justify-center gap-2">
+                <Sparkles className="w-4 h-4" />
+                Generate Prompts
+              </button>
 
-              {hasOutput && (
-                <button onClick={downloadBook} className="w-full mt-2 py-2.5 border border-[#c9a84c]/30 text-[#c9a84c] rounded-xl hover:border-[#c9a84c] transition-colors flex items-center justify-center gap-2 text-sm">
-                  <Download className="w-4 h-4" />
-                  Download .md
-                </button>
+              {prompts.length > 0 && (
+                <div className="grid grid-cols-2 gap-2 mt-2">
+                  <button onClick={downloadMd} className="py-2.5 border border-[#c9a84c]/30 text-[#c9a84c] rounded-xl hover:border-[#c9a84c] transition-colors flex items-center justify-center gap-1.5 text-xs">
+                    <FileText className="w-4 h-4" /> .md
+                  </button>
+                  <button onClick={downloadJson} className="py-2.5 border border-[#c9a84c]/30 text-[#c9a84c] rounded-xl hover:border-[#c9a84c] transition-colors flex items-center justify-center gap-1.5 text-xs">
+                    <FileJson className="w-4 h-4" /> .json
+                  </button>
+                  <button onClick={copyAll} className="py-2.5 border border-white/10 text-gray-300 rounded-xl hover:border-[#c9a84c]/40 transition-colors flex items-center justify-center gap-1.5 text-xs">
+                    <Copy className="w-4 h-4" /> Copy all
+                  </button>
+                  <button onClick={saveProject} disabled={saving} className="py-2.5 border border-white/10 text-gray-300 rounded-xl hover:border-[#c9a84c]/40 transition-colors flex items-center justify-center gap-1.5 text-xs disabled:opacity-50">
+                    <Save className="w-4 h-4" /> {projectId ? "Update" : "Save"}
+                  </button>
+                </div>
               )}
 
               {notice && <div className="mt-4 p-3 bg-[#c9a84c]/10 border border-[#c9a84c]/30 rounded-xl text-[#d4b96a] text-xs">{notice}</div>}
@@ -582,17 +376,22 @@ export default function RushPage() {
                 </div>
               )}
 
-              {books.length > 0 && (
+              {projects.length > 0 && (
                 <div className="mt-6">
-                  <h3 className="text-xs font-semibold tracking-widest text-gray-400 uppercase mb-2">Saved Books</h3>
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="text-xs font-semibold tracking-widest text-gray-400 uppercase">Saved Projects</h3>
+                    {projectId && (
+                      <button onClick={newProject} className="text-[0.65rem] text-gray-500 hover:text-[#c9a84c]">+ New</button>
+                    )}
+                  </div>
                   <div className="space-y-1.5">
-                    {books.map((b) => (
-                      <div key={b.id} className={`flex items-center justify-between gap-2 p-2 rounded-lg border text-xs ${bookId === b.id ? "border-[#c9a84c]/50 bg-[#c9a84c]/5" : "border-white/5 bg-white/5"}`}>
-                        <button onClick={() => loadBook(b.id)} disabled={running} className="flex-1 text-left truncate disabled:opacity-50" title={b.title}>
-                          <span className="text-gray-200">{b.title}</span>
-                          <span className="text-gray-500 ml-1">· {b._count.chapters} ch</span>
+                    {projects.map((p) => (
+                      <div key={p.id} className={`flex items-center justify-between gap-2 p-2 rounded-lg border text-xs ${projectId === p.id ? "border-[#c9a84c]/50 bg-[#c9a84c]/5" : "border-white/5 bg-white/5"}`}>
+                        <button onClick={() => loadProject(p.id)} className="flex-1 text-left truncate" title={p.title}>
+                          <span className="text-gray-200">{p.title}</span>
+                          <span className="text-gray-500 ml-1">· {titleCase(p.type)}</span>
                         </button>
-                        <button onClick={() => deleteBook(b.id)} disabled={running} className="text-gray-600 hover:text-red-400 disabled:opacity-50" title="Delete">
+                        <button onClick={() => deleteProject(p.id)} className="text-gray-600 hover:text-red-400" title="Delete">
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
                       </div>
@@ -603,34 +402,62 @@ export default function RushPage() {
             </aside>
 
             {/* OUTPUT */}
-            <main className="space-y-4">
-              {chapterStates.length === 0 && (
+            <main>
+              {prompts.length === 0 ? (
                 <div className="glass-card rounded-2xl p-10 text-center text-gray-500">
-                  <BookOpen className="w-10 h-10 mx-auto mb-3 text-[#c9a84c]/40" />
-                  <p>ตั้งค่าหนังสือทางซ้าย แล้วกด Generate Book เพื่อเริ่มเขียน</p>
-                  <p className="text-xs mt-2 text-gray-600">แต่ละบทเขียนจริงด้วย Claude (claude-opus-4-8) และสตรีมแบบเรียลไทม์</p>
+                  <Sparkles className="w-10 h-10 mx-auto mb-3 text-[#c9a84c]/40" />
+                  <p>ตั้งค่าหนังสือทางซ้าย แล้วกด Generate Prompts</p>
+                  <p className="text-xs mt-2 text-gray-600">
+                    จะได้ชุด prompt ครบเซ็ต: Master, Overview, รายบท, Analysis, Revision, Front/Back Matter, Feedback
+                  </p>
                 </div>
-              )}
-
-              {chapterStates.map((c, i) => (
-                <div key={c.number} className={`glass-card rounded-2xl overflow-hidden border ${activeIdx === i ? "border-[#c9a84c]/50" : "border-white/5"}`}>
-                  <div className="flex items-center justify-between px-5 py-3 border-b border-white/5">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <span className="text-sm font-semibold text-[#c9a84c] whitespace-nowrap">Ch. {c.number}</span>
-                      <span className="text-xs text-gray-500 truncate">{c.purpose}</span>
-                    </div>
-                    <StatusBadge status={c.status} />
+              ) : (
+                <>
+                  <div className="flex flex-wrap gap-1.5 mb-4">
+                    <FilterChip active={filter === "all"} onClick={() => setFilter("all")} label={`All (${prompts.length})`} />
+                    {types.map((t) => (
+                      <FilterChip
+                        key={t}
+                        active={filter === t}
+                        onClick={() => setFilter(t)}
+                        label={`${titleCase(t)} (${prompts.filter((p) => p.type === t).length})`}
+                      />
+                    ))}
                   </div>
-                  {c.content && (
-                    <div className="p-5">
-                      <pre className="whitespace-pre-wrap font-sans text-sm leading-7 text-gray-200">
-                        {c.content}
-                        {(c.status === "writing" || c.status === "revising") && <span className="animate-pulse text-[#c9a84c]">▋</span>}
-                      </pre>
-                    </div>
-                  )}
-                </div>
-              ))}
+
+                  <div className="space-y-3">
+                    {filtered.map((p) => {
+                      const open = openId === p.id;
+                      return (
+                        <div key={p.id} className="glass-card rounded-2xl overflow-hidden border border-white/5">
+                          <div className="flex items-center justify-between gap-3 px-5 py-3">
+                            <button onClick={() => setOpenId(open ? null : p.id)} className="flex items-center gap-3 min-w-0 flex-1 text-left">
+                              <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${open ? "rotate-180" : ""}`} />
+                              <span className="text-sm font-semibold text-gray-100 whitespace-nowrap">{p.id}</span>
+                              <span className="text-xs text-gray-500 truncate">{p.name}</span>
+                            </button>
+                            <div className="flex items-center gap-2 flex-shrink-0">
+                              <span className={`text-[0.6rem] px-1.5 py-0.5 border rounded ${TYPE_COLORS[p.type]}`}>{p.type}</span>
+                              <button onClick={() => copyPrompt(p)} className="text-gray-400 hover:text-[#c9a84c]" title="Copy">
+                                {copiedId === p.id ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
+                              </button>
+                            </div>
+                          </div>
+                          {open && (
+                            <div className="px-5 pb-5">
+                              <p className="text-[0.7rem] text-gray-500 mb-1">{p.description}</p>
+                              <p className="text-[0.65rem] text-gray-600 italic mb-3">Usage: {p.usage}</p>
+                              <pre className="bg-[#08080e] border border-white/5 rounded-lg p-4 text-xs leading-6 text-gray-300 whitespace-pre-wrap max-h-[480px] overflow-y-auto">
+                                {p.prompt}
+                              </pre>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
             </main>
           </div>
         </div>
@@ -656,6 +483,20 @@ export default function RushPage() {
   );
 }
 
+function slug(s: string) {
+  return (s || "book").replace(/[^\w\- ]+/g, "").trim().replace(/\s+/g, "-").toLowerCase() || "book";
+}
+
+function downloadBlob(filename: string, content: string, mime: string) {
+  const blob = new Blob([content], { type: `${mime};charset=utf-8` });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="mb-3">
@@ -674,20 +515,15 @@ function Stat({ value, label }: { value: string; label: string }) {
   );
 }
 
-function StatusBadge({ status }: { status: Status }) {
-  const map: Record<Status, { text: string; cls: string; spin?: boolean }> = {
-    waiting: { text: "Waiting", cls: "text-gray-600" },
-    writing: { text: "Writing", cls: "text-[#c9a84c]", spin: true },
-    analyzing: { text: "Analyzing", cls: "text-blue-400", spin: true },
-    revising: { text: "Revising", cls: "text-purple-400", spin: true },
-    done: { text: "✓ Done", cls: "text-green-400" },
-    error: { text: "✗ Error", cls: "text-red-400" },
-  };
-  const s = map[status];
+function FilterChip({ active, onClick, label }: { active: boolean; onClick: () => void; label: string }) {
   return (
-    <span className={`text-xs flex items-center gap-1 whitespace-nowrap ${s.cls}`}>
-      {s.spin && <Loader2 className="w-3 h-3 animate-spin" />}
-      {s.text}
-    </span>
+    <button
+      onClick={onClick}
+      className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${
+        active ? "border-[#c9a84c] text-[#c9a84c] bg-[#c9a84c]/10" : "border-white/10 text-gray-400 hover:border-[#c9a84c]/40"
+      }`}
+    >
+      {label}
+    </button>
   );
 }

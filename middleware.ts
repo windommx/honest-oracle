@@ -8,7 +8,6 @@ const protectedPrefixes = [
   "/oracle/history",
   "/oracle/api-keys",
   "/oracle/admin",
-  "/rush",
 ];
 
 export async function middleware(req: NextRequest) {

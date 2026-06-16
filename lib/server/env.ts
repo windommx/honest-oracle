@@ -7,14 +7,10 @@ const schema = z.object({
 
   FREE_ORACLE_DAILY_LIMIT: z.coerce.number().int().min(0).optional(),
   FREE_API_DAILY_LIMIT: z.coerce.number().int().min(0).optional(),
-  FREE_BOOK_CHAPTERS_DAILY_LIMIT: z.coerce.number().int().min(0).optional(),
 
   STRIPE_SECRET_KEY: z.string().min(1).optional(),
   STRIPE_WEBHOOK_SECRET: z.string().min(1).optional(),
   STRIPE_PRICE_ID_PRO: z.string().min(1).optional(),
-
-  // Rush Engine — book generation via Claude
-  ANTHROPIC_API_KEY: z.string().min(1).optional(),
 });
 
 let cached: z.infer<typeof schema> | null = null;

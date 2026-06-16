@@ -1197,7 +1197,9 @@ export function generateChapterPrompt(
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  ANALYSIS + REVISION + BIBLE (quality loop & continuity)
+//  COPYABLE PROMPT PACK
+//  The platform's product: a complete set of prompts the author
+//  pastes into any LLM to write the whole book, end to end.
 // ═══════════════════════════════════════════════════════════════
 
 export function getAnalysisMetrics(type: BookTypeKey): string {
@@ -1209,7 +1211,7 @@ export function getAnalysisMetrics(type: BookTypeKey): string {
 5. TENSION: Conflict present and escalating appropriately?
 6. HOOK: Does the chapter end with a compelling hook?
 7. PACING: Variation between fast and slow moments?
-8. CHARACTER CONSISTENCY: Behaviour consistent with the story bible?
+8. CHARACTER CONSISTENCY: Characters behaving consistently?
 9. CLICHÉ: Any clichés or overused phrasing?
 10. WORD COUNT: Within ±20% of target?`;
   }
@@ -1235,27 +1237,14 @@ export function getAnalysisMetrics(type: BookTypeKey): string {
 5. PEDAGOGY: Objectives, examples, exercises, takeaways present?
 6. TONE: Consistent with the author voice?
 7. WORD COUNT: Within ±20% of target?
-8. CONTRADICTIONS: Any conflict with the story bible / earlier chapters?
+8. CONTRADICTIONS: Any contradiction with earlier chapters?
 9. ENGAGEMENT: Examples, variety, actionable content?
 10. CITATIONS: Sources attributed in the chosen style?`;
 }
 
-/** Instructions for the analysis pass. Pair with a json_schema output_config. */
-export function generateAnalysisInstructions(config: BookConfig): string {
-  const type = BOOK_TYPES[config.type];
-  return `You are a rigorous ${type.label.toLowerCase()} editor performing a quality gate on a single chapter draft.
-
-Target: ${config.wordsPerChapter} words (±20%), ${config.language} language, "${config.voice}" voice.
-
-Evaluate the draft against these metrics:
-${getAnalysisMetrics(config.type)}
-
-Decide PASS or FAIL. Fail only if there are concrete, fixable problems worth a revision pass (not nitpicks). Report each issue plainly, choose the most useful revision_mode, and give specific, actionable fixes the writer can apply directly.`;
-}
-
 export function getRevisionRules(): string {
   return `═══ REVISION RULES ═══
-1. Preserve the author's voice, intent, and continuity with the story bible.
+1. Preserve the author's voice and intent.
 2. Only change what the analysis flagged — do not rewrite passing material.
 3. Keep the chapter within ±20% of the target word count.
 4. Apply the specified revision mode:
@@ -1265,43 +1254,196 @@ export function getRevisionRules(): string {
    - restructure: reorder sections for better flow
    - deepen: add sensory detail, emotion, character depth
    - rewrite: major revision while keeping core content
-5. Output the COMPLETE revised chapter as Markdown — not a diff, not commentary.`;
+5. Output the COMPLETE revised chapter — not a diff, not commentary.`;
 }
 
-export function generateRevisionPrompt(
-  config: BookConfig,
-  draft: string,
-  feedback: string,
-  revisionMode: string,
-  storyBible?: string
-): string {
-  let p = `You are a master ${BOOK_TYPES[config.type].label.toLowerCase()} editor revising a chapter draft based on editorial feedback.\n\n`;
+export function generateOverviewPrompt(config: BookConfig, architecture: Architecture): string {
+  const type = BOOK_TYPES[config.type];
+  let p = `═══ BOOK PLAN — "${config.title}" ═══\n\n`;
+  p += `Send this once at the start of the writing session, after the Master System Prompt, to establish the full plan before Chapter 1.\n\n`;
+  p += `TYPE: ${type.label} · SUB-GENRE: ${config.subGenre.replace(/_/g, " ")}\n`;
+  p += `THESIS/PREMISE: ${config.thesis}\n`;
+  p += `TARGET READER: ${config.reader}\n`;
+  p += `STRUCTURE: ${config.chapters} chapters × ~${config.wordsPerChapter} words\n\n`;
+  p += `═══ PARTS ═══\n`;
+  p += architecture.parts
+    .map((pp) => `• ${pp.name} — Chapters ${pp.chapters[0]}-${pp.chapters[1]}${pp.purpose ? ` — ${pp.purpose}` : ""}`)
+    .join("\n");
+  p += `\n\n═══ CHAPTER MAP ═══\n`;
+  p += architecture.chapters
+    .map((c) => `Ch.${c.number} [${c.type ?? c.sceneType ?? "section"}] — ${c.purpose}`)
+    .join("\n");
+  p += `\n\nConfirm you understand the plan, then wait for the first chapter prompt. Do not write any chapter yet.`;
+  return p;
+}
+
+export function generateAnalysisPrompt(config: BookConfig): string {
+  const type = BOOK_TYPES[config.type];
+  let p = `You are a rigorous ${type.label.toLowerCase()} editor analyzing a single chapter draft.\n\n`;
+  p += `Target: ${config.wordsPerChapter} words (±20%), ${config.language} language, "${config.voice}" voice.\n\n`;
+  p += `═══ METRICS TO EVALUATE ═══\n${getAnalysisMetrics(config.type)}\n\n`;
+  p += `═══ OUTPUT FORMAT (JSON) ═══\n{\n  "scores": { /* each metric: 0-1 */ },\n  "overall_pass": true/false,\n  "strengths": [ /* list */ ],\n  "issues": [ /* list with severity */ ],\n  "revision_mode": "polish" | "strengthen_evidence" | "clarify" | "restructure" | "deepen" | "rewrite",\n  "specific_fixes": [ /* actionable instructions */ ]\n}\n\n`;
+  p += `═══ DRAFT TO ANALYZE ═══\n[INSERT CHAPTER DRAFT HERE]`;
+  return p;
+}
+
+export function generateRevisionPrompt(config: BookConfig): string {
+  let p = `You are a master ${BOOK_TYPES[config.type].label.toLowerCase()} editor revising a chapter draft based on analysis feedback.\n\n`;
   p += getRevisionRules() + "\n\n";
-  p += `═══ REVISION MODE: ${revisionMode} ═══\n\n`;
-  if (storyBible && storyBible.trim()) {
-    p += `═══ STORY BIBLE / CONTINUITY ═══\n${storyBible.trim()}\n\n`;
-  }
-  p += `═══ EDITORIAL FEEDBACK ═══\n${feedback}\n\n`;
-  p += `═══ ORIGINAL DRAFT ═══\n${draft}\n\n`;
-  p += `Now output the complete revised chapter (Markdown only, no commentary).`;
+  p += `═══ REVISION MODE: [SPECIFIED BY ANALYSIS] ═══\n\n`;
+  p += `═══ SPECIFIC FIXES: [LISTED BY ANALYSIS] ═══\n\n`;
+  p += `═══ ORIGINAL DRAFT ═══\n[INSERT DRAFT HERE]\n\n`;
+  p += `═══ ANALYSIS FEEDBACK ═══\n[INSERT ANALYSIS REPORT HERE]\n\n`;
+  p += `Output the complete revised chapter (no commentary).`;
   return p;
 }
 
-/** Prompt for updating the running story bible after a chapter. Use a cheap model. */
-export function generateBibleUpdatePrompt(
-  config: BookConfig,
-  priorBible: string,
-  chapterNumber: number,
-  chapterContent: string
-): string {
-  const isFiction = config.type === "novel" || config.type === "memoir" || config.type === "kids";
-  const trackList = isFiction
-    ? "CHARACTERS (name + key traits/relationships), SETTINGS/PLACES, WORLD RULES & KEY FACTS, TIMELINE, UNRESOLVED THREADS / OPEN QUESTIONS, FORESHADOWING PLANTED"
-    : "KEY CLAIMS PROVEN SO FAR, FRAMEWORK/CONCEPTS INTRODUCED, EVIDENCE & SOURCES USED, TERMS DEFINED, RUNNING EXAMPLES, OPEN QUESTIONS / PROMISES TO THE READER";
-  let p = `You maintain a compact "story bible" — the running continuity state for a book in progress.\n\n`;
-  p += `Merge the PRIOR BIBLE with what CHAPTER ${chapterNumber} just established. Track: ${trackList}.\n`;
-  p += `Output a tight, scannable bible (≤ 400 words) using short bulleted sections. Keep only what future chapters must stay consistent with. Drop nothing important; do not include prose — facts only. Output the bible text only.\n\n`;
-  p += `═══ PRIOR BIBLE ═══\n${priorBible.trim() || "(empty — this is the first chapter)"}\n\n`;
-  p += `═══ CHAPTER ${chapterNumber} CONTENT ═══\n${chapterContent}\n`;
+export function generateFrontMatterPrompt(config: BookConfig): string {
+  let p = `Generate the front matter for "${config.title}":\n\n═══ INCLUDE ═══\n`;
+  p += `1. TITLE PAGE: Title, subtitle (if any), author name\n`;
+  p += `2. COPYRIGHT PAGE: © year, publisher, ISBN placeholder, rights statement\n`;
+  p += `3. DEDICATION: A brief, heartfelt dedication\n`;
+  p += `4. EPIGRAPH: A relevant quote that sets the tone (optional)\n`;
+  p += `5. TABLE OF CONTENTS: All chapters with titles\n`;
+  if (config.type === "nonfiction" || config.type === "howto" || config.type === "textbook") {
+    p += `6. PREFACE: Why you wrote this book, your credentials, who it's for\n7. ACKNOWLEDGMENTS: Thank contributors, reviewers, supporters\n`;
+  } else if (config.type === "novel") {
+    p += `6. MAP (description): If applicable, describe world map\n`;
+  }
+  p += `\n═══ STYLE: ${config.voice} voice, matching the book's tone ═══\n═══ LANGUAGE: ${config.language} ═══`;
   return p;
+}
+
+export function generateBackMatterPrompt(config: BookConfig): string {
+  let p = `Generate the back matter for "${config.title}":\n\n═══ INCLUDE ═══\n`;
+  switch (config.type) {
+    case "nonfiction":
+    case "howto":
+    case "textbook":
+      p += `1. APPENDICES: Additional resources, templates, worksheets\n2. GLOSSARY: All technical terms with definitions\n3. BIBLIOGRAPHY/REFERENCES: All sources cited (${config.citationStyle} format)\n4. INDEX: Alphabetical topic index\n5. ABOUT THE AUTHOR: Brief professional bio\n6. ALSO BY: List of other works (placeholder)\n`;
+      break;
+    case "cookbook":
+      p += `1. MEASUREMENT CONVERSION CHART\n2. GLOSSARY OF COOKING TERMS\n3. SEASONAL INGREDIENT GUIDE\n4. EQUIPMENT GUIDE\n5. INDEX: By ingredient, by cuisine, by difficulty\n6. ABOUT THE AUTHOR\n`;
+      break;
+    case "novel":
+      p += `1. AUTHOR'S NOTE: Historical context, research, inspiration\n2. ACKNOWLEDGMENTS\n3. ABOUT THE AUTHOR\n4. BOOK CLUB QUESTIONS: 10 discussion questions\n5. PREVIEW: First chapter of next book (optional)\n`;
+      break;
+    case "kids":
+      p += `1. ACTIVITY PAGES: Related activities\n2. PARENT/TEACHER GUIDE: Discussion questions\n3. ABOUT THE AUTHOR/ILLUSTRATOR\n`;
+      break;
+    case "memoir":
+      p += `1. WHERE ARE THEY NOW: Updates on key people\n2. AUTHOR'S NOTE: What was changed for privacy\n3. PHOTOGRAPHS (described): Key images referenced in text\n4. ACKNOWLEDGMENTS\n5. ABOUT THE AUTHOR\n`;
+      break;
+    case "poetry":
+      p += `1. NOTES: Context for specific poems\n2. ACKNOWLEDGMENTS: Previously published poems\n3. ABOUT THE AUTHOR\n`;
+      break;
+  }
+  return p;
+}
+
+export function generateFeedbackChainPrompt(config: BookConfig): string {
+  let p = `You are analyzing a completed chapter to generate feedback for the NEXT chapter.\n\n`;
+  p += `═══ ANALYZE AND PROVIDE ═══\n\n`;
+  p += `1. STATE CARRY-FORWARD: What facts, characters, concepts, terms, and ending state were established?\n`;
+  p += `2. ISSUES TO ADDRESS: Unresolved questions, unsupported claims, tone inconsistencies, missing elements?\n`;
+  p += `3. INSTRUCTIONS FOR NEXT CHAPTER: What to build on, what to avoid repeating, what tone to maintain, specific improvements.\n`;
+  p += `4. QUALITY SCORES: Overall quality (0-1); ready for next chapter (yes/no); if no, what must be fixed first?\n`;
+  if (config.type === "novel" || config.type === "memoir" || config.type === "kids") {
+    p += `\n5. FICTION-SPECIFIC: Character states at chapter end; tension level and direction; unresolved plot threads; foreshadowing planted.`;
+  } else {
+    p += `\n5. NON-FICTION-SPECIFIC: Thesis proof progress; evidence used; reader-journey milestone check; counter-arguments addressed.`;
+  }
+  p += `\n\n═══ CHAPTER DRAFT TO ANALYZE ═══\n[INSERT COMPLETED CHAPTER HERE]`;
+  return p;
+}
+
+export interface GeneratedPrompt {
+  id: string;
+  type: "system" | "setup" | "chapter" | "analysis" | "revision" | "assembly" | "feedback";
+  name: string;
+  description: string;
+  usage: string;
+  prompt: string;
+}
+
+/** Build the complete, ordered prompt pack for a book config. Pure / client-safe. */
+export function generateAllPrompts(config: BookConfig): GeneratedPrompt[] {
+  const architecture = buildArchitecture(config);
+  const prompts: GeneratedPrompt[] = [];
+
+  prompts.push({
+    id: "MASTER",
+    type: "system",
+    name: "Master System Prompt",
+    description: "Use this as the system prompt for ALL writing sessions.",
+    usage: "Set as the system prompt before any chapter writing.",
+    prompt: generateMasterSystemPrompt(config, architecture),
+  });
+
+  prompts.push({
+    id: "OVERVIEW",
+    type: "setup",
+    name: "Book Overview / Plan",
+    description: "Establishes the complete book plan.",
+    usage: "Send once before writing Chapter 1.",
+    prompt: generateOverviewPrompt(config, architecture),
+  });
+
+  architecture.chapters.forEach((ch, idx) => {
+    prompts.push({
+      id: `CH_${ch.number}`,
+      type: "chapter",
+      name: `Chapter ${ch.number}`,
+      description: ch.purpose,
+      usage: `Send to write Chapter ${ch.number} (${ch.type ?? ch.sceneType ?? "section"}).`,
+      prompt: generateChapterPrompt(config, architecture, idx),
+    });
+  });
+
+  prompts.push({
+    id: "ANALYSIS",
+    type: "analysis",
+    name: "Quality Analysis Prompt",
+    description: "Analyze each chapter draft for quality.",
+    usage: "Send after each chapter draft with the draft text.",
+    prompt: generateAnalysisPrompt(config),
+  });
+
+  prompts.push({
+    id: "REVISION",
+    type: "revision",
+    name: "Revision Prompt",
+    description: "Revise a chapter based on analysis feedback.",
+    usage: "Send with the draft + analysis report to revise.",
+    prompt: generateRevisionPrompt(config),
+  });
+
+  prompts.push({
+    id: "FRONT_MATTER",
+    type: "assembly",
+    name: "Front Matter",
+    description: "Title page, dedication, table of contents, preface.",
+    usage: "Generate after all chapters are written.",
+    prompt: generateFrontMatterPrompt(config),
+  });
+
+  prompts.push({
+    id: "BACK_MATTER",
+    type: "assembly",
+    name: "Back Matter",
+    description: "Appendices, bibliography, index, about the author.",
+    usage: "Generate after the front matter.",
+    prompt: generateBackMatterPrompt(config),
+  });
+
+  prompts.push({
+    id: "FEEDBACK",
+    type: "feedback",
+    name: "Inter-Chapter Feedback",
+    description: "Analyze a finished chapter and brief the next one.",
+    usage: "Send after each chapter to generate feedback for the next.",
+    prompt: generateFeedbackChainPrompt(config),
+  });
+
+  return prompts;
 }

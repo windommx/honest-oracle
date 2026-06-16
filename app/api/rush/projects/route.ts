@@ -11,21 +11,14 @@ export async function GET() {
   const user = await requireUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const books = await prisma.rushBook.findMany({
+  const projects = await prisma.rushProject.findMany({
     where: { userId: user.id },
     orderBy: { updatedAt: "desc" },
-    take: 50,
-    select: {
-      id: true,
-      title: true,
-      type: true,
-      subGenre: true,
-      updatedAt: true,
-      _count: { select: { chapters: true } },
-    },
+    take: 100,
+    select: { id: true, title: true, type: true, subGenre: true, updatedAt: true },
   });
 
-  return NextResponse.json({ books });
+  return NextResponse.json({ projects });
 }
 
 export async function POST(request: NextRequest) {
@@ -44,7 +37,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Invalid config" }, { status: 400 });
   }
 
-  const book = await prisma.rushBook.create({
+  const project = await prisma.rushProject.create({
     data: {
       userId: user.id,
       title: config.title || "Untitled",
@@ -55,5 +48,5 @@ export async function POST(request: NextRequest) {
     select: { id: true },
   });
 
-  return NextResponse.json({ id: book.id });
+  return NextResponse.json({ id: project.id });
 }
