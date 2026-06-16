@@ -3,6 +3,18 @@
 // ║  Pure / isomorphic: usable from both the React UI and API routes.  ║
 // ╚══════════════════════════════════════════════════════════════════╝
 
+import {
+  TH_MODULES,
+  thAnalysis,
+  thBackMatter,
+  thChapter,
+  thFeedback,
+  thFrontMatter,
+  thMaster,
+  thOverview,
+  thRevision,
+} from "./th";
+
 export type BookTypeKey =
   | "novel"
   | "nonfiction"
@@ -1842,83 +1854,42 @@ const MODULE_CATALOG: ModuleDef[] = [
   { id: "BRAINSTORM", group: "advanced", name: "Brainstorm (Verbalized Sampling)", description: "Diverse option spread to beat repetitive output.", usage: "Use for titles, twists, names, hooks.", build: moduleBrainstorm },
 ];
 
-// ── Thai prompt-language layer ─────────────────────────────────
-// When promptLanguage === "th", every prompt gets a Thai operating header and
-// its English section markers are localized, so the scaffolding reads in Thai.
-
-const TH_HEADER_MAP: [RegExp, string][] = [
-  [/IDENTITY & ROLE/g, "บทบาท & ตัวตน"],
-  [/BOOK SPECIFICATIONS/g, "ข้อมูลจำเพาะหนังสือ"],
-  [/THESIS \/ PREMISE/g, "แก่น / เรื่องย่อ"],
-  [/QUALITY STANDARDS[^═]*/g, "มาตรฐานคุณภาพ (ยึดเป็นแนวทาง ใช้วิจารณญาณ)"],
-  [/CONTINUITY PROTOCOL[^═]*/g, "ระบบรักษาความต่อเนื่องอัตโนมัติ (story bible ในแชทเดียว) "],
-  [/OUTPUT FORMAT/g, "รูปแบบผลลัพธ์"],
-  [/FICTION RULES/g, "กฎการเขียนนิยาย"],
-  [/NON-FICTION RULES/g, "กฎการเขียนสารคดี"],
-  [/CHILDREN'S BOOK RULES/g, "กฎหนังสือเด็ก"],
-  [/COOKBOOK RULES/g, "กฎตำราอาหาร"],
-  [/MEMOIR RULES/g, "กฎบันทึกความทรงจำ"],
-  [/POETRY RULES/g, "กฎบทกวี"],
-  [/ACT STRUCTURE/g, "โครงสร้างองก์"],
-  [/CHARACTER ARC/g, "เส้นทางตัวละคร"],
-  [/READER JOURNEY/g, "การเดินทางของผู้อ่าน"],
-  [/THESIS/g, "แก่นเรื่อง"],
-  [/CHAPTER (\d+) WRITING PROMPT/g, "พรอมป์ตเขียนบทที่ $1"],
-  [/PREVIOUS CHAPTER/g, "บริบทบทก่อนหน้า"],
-  [/SCENE INSTRUCTIONS/g, "คำสั่งฉาก"],
-  [/STORY BIBLE \/ CONTINUITY STATE[^═]*/g, "บันทึกความต่อเนื่อง (แหล่งความจริง) "],
-  [/CONTINUITY/g, "ความต่อเนื่อง"],
-  [/PLANNED BEATS[^═]*/g, "โครงที่วางไว้ (ทำตามส่วนของบทนี้) "],
-  [/QUALITY CHECKLIST[^═]*/g, "เช็คลิสต์คุณภาพ (ตรวจก่อนจบ) "],
-  [/TRANSITION TO CHAPTER (\d+)/g, "เชื่อมไปบทที่ $1"],
-  [/MUST INCLUDE/g, "ต้องมี"],
-  [/STRUCTURE/g, "โครงสร้าง"],
-];
-
-function localizeTh(text: string): string {
-  let out = text;
-  for (const [re, th] of TH_HEADER_MAP) out = out.replace(re, th);
-  return out;
-}
-
-function thaiDirective(): string {
-  return `[คำสั่งหลัก — อ่านก่อน]
-โครงสร้างและหัวข้อด้านล่างคือ "กรอบควบคุม" สำหรับโมเดล โปรดทำตามอย่างเคร่งครัด
-ผลิตเนื้อหาหนังสือ การวิเคราะห์ และคำตอบทั้งหมดเป็น "ภาษาไทย" ทั้งหมด
-หากมีช่อง [INSERT ...] / [ใส่ ...] ให้ผู้ใช้กรอกข้อมูลจริงก่อนใช้งาน
-──────────────────────────────────────────\n\n`;
-}
-
 /** Build the complete prompt pack. Core writing prompts are always included;
- *  optional module `groups` append their modules. Pure / client-safe. */
+ *  optional module `groups` append their modules. When promptLanguage === "th",
+ *  native Thai builders are used (no regex post-processing). Pure / client-safe. */
 export function generateAllPrompts(config: BookConfig, groups: Exclude<PromptGroup, "core">[] = []): GeneratedPrompt[] {
+  const th = config.promptLanguage === "th";
   const architecture = buildArchitecture(config);
   const prompts: GeneratedPrompt[] = [];
   const core = (id: string, name: string, description: string, usage: string, prompt: string): GeneratedPrompt => ({
     id, group: "core", name, description, usage, prompt,
   });
 
-  prompts.push(core("MASTER", "Master System Prompt", "Use this as the system prompt for ALL writing sessions.", "Set as the system prompt before any chapter writing.", generateMasterSystemPrompt(config, architecture)));
-  prompts.push(core("OVERVIEW", "Book Overview / Plan", "Establishes the complete book plan.", "Send once before writing Chapter 1.", generateOverviewPrompt(config, architecture)));
+  prompts.push(core("MASTER", "Master System Prompt", "Use this as the system prompt for ALL writing sessions.", "Set as the system prompt before any chapter writing.",
+    th ? thMaster(config, architecture) : generateMasterSystemPrompt(config, architecture)));
+  prompts.push(core("OVERVIEW", "Book Overview / Plan", "Establishes the complete book plan.", "Send once before writing Chapter 1.",
+    th ? thOverview(config, architecture) : generateOverviewPrompt(config, architecture)));
   architecture.chapters.forEach((ch, idx) => {
-    prompts.push(core(`CH_${ch.number}`, `Chapter ${ch.number}`, ch.purpose, `Send to write Chapter ${ch.number} (${ch.type ?? ch.sceneType ?? "section"}).`, generateChapterPrompt(config, architecture, idx, { storyBible: config.storyBible })));
+    prompts.push(core(`CH_${ch.number}`, `Chapter ${ch.number}`, ch.purpose, `Send to write Chapter ${ch.number} (${ch.type ?? ch.sceneType ?? "section"}).`,
+      th ? thChapter(config, architecture, idx, config.storyBible) : generateChapterPrompt(config, architecture, idx, { storyBible: config.storyBible })));
   });
-  prompts.push(core("ANALYSIS", "Quality Analysis Prompt", "Analyze each chapter draft for quality.", "Send after each chapter draft with the draft text.", generateAnalysisPrompt(config)));
-  prompts.push(core("REVISION", "Revision Prompt", "Revise a chapter based on analysis feedback.", "Send with the draft + analysis report to revise.", generateRevisionPrompt(config)));
-  prompts.push(core("FRONT_MATTER", "Front Matter", "Title page, dedication, table of contents, preface.", "Generate after all chapters are written.", generateFrontMatterPrompt(config)));
-  prompts.push(core("BACK_MATTER", "Back Matter", "Appendices, bibliography, index, about the author.", "Generate after the front matter.", generateBackMatterPrompt(config)));
-  prompts.push(core("FEEDBACK", "Inter-Chapter Feedback", "Analyze a finished chapter and brief the next one.", "Send after each chapter to generate feedback for the next.", generateFeedbackChainPrompt(config)));
+  prompts.push(core("ANALYSIS", "Quality Analysis Prompt", "Analyze each chapter draft for quality.", "Send after each chapter draft with the draft text.",
+    th ? thAnalysis(config) : generateAnalysisPrompt(config)));
+  prompts.push(core("REVISION", "Revision Prompt", "Revise a chapter based on analysis feedback.", "Send with the draft + analysis report to revise.",
+    th ? thRevision(config) : generateRevisionPrompt(config)));
+  prompts.push(core("FRONT_MATTER", "Front Matter", "Title page, dedication, table of contents, preface.", "Generate after all chapters are written.",
+    th ? thFrontMatter(config) : generateFrontMatterPrompt(config)));
+  prompts.push(core("BACK_MATTER", "Back Matter", "Appendices, bibliography, index, about the author.", "Generate after the front matter.",
+    th ? thBackMatter(config) : generateBackMatterPrompt(config)));
+  prompts.push(core("FEEDBACK", "Inter-Chapter Feedback", "Analyze a finished chapter and brief the next one.", "Send after each chapter to generate feedback for the next.",
+    th ? thFeedback(config) : generateFeedbackChainPrompt(config)));
 
   const wanted = new Set(groups);
   for (const m of MODULE_CATALOG) {
     if (m.group !== "core" && wanted.has(m.group)) {
-      prompts.push({ id: m.id, group: m.group, name: m.name, description: m.description, usage: m.usage, prompt: m.build(config) });
+      const body = th && TH_MODULES[m.id] ? TH_MODULES[m.id](config) : m.build(config);
+      prompts.push({ id: m.id, group: m.group, name: m.name, description: m.description, usage: m.usage, prompt: body });
     }
-  }
-
-  if (config.promptLanguage === "th") {
-    const dir = thaiDirective();
-    return prompts.map((p) => ({ ...p, prompt: dir + localizeTh(p.prompt) }));
   }
 
   return prompts;

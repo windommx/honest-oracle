@@ -194,19 +194,33 @@ describe("generateAllPrompts — module groups", () => {
 // ── Thai mode ──────────────────────────────────────────────────
 
 describe("Thai prompt mode", () => {
-  it("prepends a Thai directive to every prompt and localizes headers", () => {
-    const pack = generateAllPrompts(cfg({ language: "thai", promptLanguage: "th" }), ["craft"]);
-    expect(pack.length).toBeGreaterThan(0);
-    for (const p of pack) {
-      expect(p.prompt.startsWith("[คำสั่งหลัก")).toBe(true);
-    }
+  const THAI = /[฀-๿]/;
+
+  it("produces native Thai core prompts (no English scaffolding, no regex artifacts)", () => {
+    const pack = generateAllPrompts(cfg({ language: "thai", promptLanguage: "th" }), ["craft", "marketing"]);
     const master = pack.find((p) => p.id === "MASTER")!;
-    expect(master.prompt).toContain("รูปแบบผลลัพธ์"); // localized "OUTPUT FORMAT"
+    expect(master.prompt.startsWith("คุณคือนักเขียน")).toBe(true);
+    expect(master.prompt).toContain("รูปแบบผลลัพธ์"); // OUTPUT FORMAT in Thai
+    expect(master.prompt).toContain("<<<STATE>>>"); // continuity protocol preserved
+    expect(master.prompt).not.toContain("OUTPUT FORMAT");
+
+    const ch = pack.find((p) => p.id === "CH_3")!;
+    expect(ch.prompt).toContain("พรอมป์ตเขียนบทที่ 3");
+    expect(ch.prompt).toContain("เป้าหมายความยาว");
+  });
+
+  it("translates module bodies to Thai too (ไทยทั้งชุด)", () => {
+    const pack = generateAllPrompts(cfg({ promptLanguage: "th" }), ["craft", "marketing", "advanced"]);
+    for (const id of ["STRUCTURE", "VOICE_SHEET", "KDP_META", "BRAINSTORM"]) {
+      const m = pack.find((p) => p.id === id)!;
+      expect(THAI.test(m.prompt)).toBe(true);
+    }
   });
 
   it("leaves English scaffolding intact when promptLanguage is en", () => {
     const master = generateAllPrompts(cfg({ promptLanguage: "en" })).find((p) => p.id === "MASTER")!;
-    expect(master.prompt.startsWith("[คำสั่งหลัก")).toBe(false);
+    expect(master.prompt).toContain("OUTPUT FORMAT");
+    expect(master.prompt.startsWith("คุณคือนักเขียน")).toBe(false);
   });
 });
 
