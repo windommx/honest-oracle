@@ -17,8 +17,10 @@ import {
   FileText,
   HelpCircle,
   Share2,
+  Languages,
   X,
 } from "lucide-react";
+import { analyzeThai } from "@/lib/rush-engine/thai-analyzer";
 import {
   BOOK_TYPES,
   MODULE_GROUPS,
@@ -102,6 +104,7 @@ export default function RushPage() {
   const [notice, setNotice] = useState("");
   const [saving, setSaving] = useState(false);
   const [showGuide, setShowGuide] = useState(false);
+  const [showAnalyzer, setShowAnalyzer] = useState(false);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 
   const allGroups = MODULE_GROUPS.map((m) => m.key);
@@ -350,7 +353,11 @@ export default function RushPage() {
             <Crown className="w-7 h-7 text-[#c9a84c]" />
             <span className="text-lg font-semibold gold-gradient">NaraSuite</span>
           </Link>
-          <div className="flex items-center gap-3 text-sm text-gray-300">
+          <div className="flex items-center gap-2 text-sm text-gray-300">
+            <button onClick={() => setShowAnalyzer(true)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#c9a84c]/30 text-[#c9a84c] hover:border-[#c9a84c] transition-colors text-xs">
+              <Languages className="w-3.5 h-3.5" />
+              วิเคราะห์ไทย
+            </button>
             <button onClick={() => setShowGuide(true)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#c9a84c]/30 text-[#c9a84c] hover:border-[#c9a84c] transition-colors text-xs">
               <HelpCircle className="w-3.5 h-3.5" />
               วิธีใช้
@@ -705,6 +712,7 @@ export default function RushPage() {
       </div>
 
       {showGuide && <GuideModal onClose={() => setShowGuide(false)} />}
+      {showAnalyzer && <ThaiAnalyzerModal onClose={() => setShowAnalyzer(false)} />}
 
       <style jsx>{`
         :global(.input) {
@@ -754,6 +762,89 @@ function Stat({ value, label }: { value: string; label: string }) {
     <div className="p-2 bg-white/5 rounded-lg text-center">
       <div className="text-lg font-bold text-[#c9a84c]">{value}</div>
       <div className="text-[0.6rem] text-gray-500 mt-0.5">{label}</div>
+    </div>
+  );
+}
+
+function ThaiAnalyzerModal({ onClose }: { onClose: () => void }) {
+  const [text, setText] = useState("");
+  const a = useMemo(() => (text.trim() ? analyzeThai(text) : null), [text]);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70" onClick={onClose}>
+      <div role="dialog" aria-modal="true" aria-label="Thai Analyzer" className="glass-card rounded-2xl max-w-2xl w-full max-h-[85vh] overflow-y-auto p-6 border border-[#c9a84c]/30" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-2">
+          <h2 className="text-lg font-bold gold-gradient">วิเคราะห์ภาษาไทย</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-white" aria-label="Close">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+        <p className="text-xs text-gray-500 mb-3">
+          เครื่องมือฝั่งเบราว์เซอร์ (ไม่เรียก AI) — นับคำด้วยตัวตัดคำไทย หาคำซ้ำ/echoes และสแกนคำคลิเชแบบ AI
+        </p>
+        <textarea
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          placeholder="วางข้อความภาษาไทยที่นี่…"
+          className="input min-h-[140px] resize-y"
+        />
+        {a && (
+          <div className="mt-4 space-y-4 text-sm">
+            <div className="grid grid-cols-3 gap-2">
+              <Stat value={String(a.wordCount)} label="คำ" />
+              <Stat value={String(a.uniqueWords)} label="คำไม่ซ้ำ" />
+              <Stat value={String(a.charCount)} label="อักษร" />
+            </div>
+
+            <div>
+              <h3 className="text-xs font-semibold tracking-widest text-gray-400 uppercase mb-2">AI-tell / คำคลิเช</h3>
+              {a.aiTells.length === 0 ? (
+                <p className="text-xs text-green-400">✓ ไม่พบคำคลิเชแบบ AI</p>
+              ) : (
+                <div className="flex flex-wrap gap-1.5">
+                  {a.aiTells.map((t) => (
+                    <span key={t.phrase} className="text-xs px-2 py-0.5 rounded border border-red-500/40 text-red-400">
+                      {t.phrase} ×{t.count}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div>
+              <h3 className="text-xs font-semibold tracking-widest text-gray-400 uppercase mb-2">คำซ้ำบ่อย (echoes ≥3)</h3>
+              {a.echoes.length === 0 ? (
+                <p className="text-xs text-gray-500">— ไม่มีคำเนื้อหาที่ซ้ำเกิน 3 ครั้ง</p>
+              ) : (
+                <div className="flex flex-wrap gap-1.5">
+                  {a.echoes.slice(0, 20).map((e) => (
+                    <span key={e.word} className="text-xs px-2 py-0.5 rounded border border-orange-400/40 text-orange-300">
+                      {e.word} ×{e.count}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div>
+              <h3 className="text-xs font-semibold tracking-widest text-gray-400 uppercase mb-2">คำที่ใช้บ่อยสุด</h3>
+              <div className="flex flex-wrap gap-1.5">
+                {a.topWords.map((w) => (
+                  <span key={w.word} className="text-xs px-2 py-0.5 rounded border border-white/10 text-gray-300">
+                    {w.word} ×{w.count}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
