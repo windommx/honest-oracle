@@ -37,6 +37,15 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Invalid config" }, { status: 400 });
   }
 
+  // Cap projects per user to prevent runaway DB growth.
+  const count = await prisma.rushProject.count({ where: { userId: user.id } });
+  if (count >= 50) {
+    return NextResponse.json(
+      { error: "Project limit reached (50). Delete an old project to save a new one." },
+      { status: 403 }
+    );
+  }
+
   const project = await prisma.rushProject.create({
     data: {
       userId: user.id,
@@ -44,6 +53,7 @@ export async function POST(request: NextRequest) {
       type: config.type,
       subGenre: config.subGenre || "",
       config: config as unknown as object,
+      versions: { create: { config: config as unknown as object } },
     },
     select: { id: true },
   });

@@ -16,6 +16,7 @@ import {
   FileJson,
   FileText,
   HelpCircle,
+  Share2,
   X,
 } from "lucide-react";
 import {
@@ -95,6 +96,8 @@ export default function RushPage() {
 
   const [projectId, setProjectId] = useState<string | null>(null);
   const [projects, setProjects] = useState<SavedProject[]>([]);
+  const [shareInfo, setShareInfo] = useState<{ token: string | null; visibility: string }>({ token: null, visibility: "private" });
+  const [versions, setVersions] = useState<{ id: string; createdAt: string; config: BookConfig }[]>([]);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [saving, setSaving] = useState(false);
@@ -226,9 +229,22 @@ export default function RushPage() {
         return;
       }
       if (!res.ok) throw new Error("บันทึกไม่สำเร็จ");
-      if (!projectId) setProjectId((await res.json()).id as string);
+      let id = projectId;
+      if (!id) {
+        id = (await res.json()).id as string;
+        setProjectId(id);
+      }
       setNotice("บันทึก project แล้ว");
       refreshProjects();
+      // Refresh version history for the saved project.
+      if (id) {
+        const pr = await fetch(`/api/rush/projects/${id}`);
+        if (pr.ok) {
+          const { project } = await pr.json();
+          setVersions(project.versions ?? []);
+          setShareInfo({ token: project.shareToken ?? null, visibility: project.visibility ?? "private" });
+        }
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "บันทึกไม่สำเร็จ");
     } finally {
@@ -244,20 +260,10 @@ export default function RushPage() {
       if (!res.ok) throw new Error("โหลดไม่สำเร็จ");
       const { project } = await res.json();
       const cfg = project.config as BookConfig;
-      setType(cfg.type);
-      setSubGenre(cfg.subGenre);
-      setTitle(cfg.title === "Untitled" ? "" : cfg.title);
-      setThesis(cfg.thesis === "No thesis specified" ? "" : cfg.thesis);
-      setReader(cfg.reader === "General audience" ? "" : cfg.reader);
-      setVoice(cfg.voice);
-      setChapters(cfg.chapters);
-      setWordsPerChapter(cfg.wordsPerChapter);
-      setCitationStyle(cfg.citationStyle);
-      setLanguage(cfg.language);
-      setOutline(cfg.outline ?? "");
-      setStoryBible(cfg.storyBible ?? "");
-      setPromptLanguage(cfg.promptLanguage ?? "en");
+      applyConfig(cfg);
       setProjectId(project.id);
+      setShareInfo({ token: project.shareToken ?? null, visibility: project.visibility ?? "private" });
+      setVersions(project.versions ?? []);
       const g = defaultGroupsFor(cfg.type);
       setGroups(g);
       const pack = generateAllPrompts(cfg, g);
@@ -267,6 +273,54 @@ export default function RushPage() {
     } catch (e) {
       setError(e instanceof Error ? e.message : "โหลดไม่สำเร็จ");
     }
+  }
+
+  function applyConfig(cfg: BookConfig) {
+    setType(cfg.type);
+    setSubGenre(cfg.subGenre);
+    setTitle(cfg.title === "Untitled" ? "" : cfg.title);
+    setThesis(cfg.thesis === "No thesis specified" ? "" : cfg.thesis);
+    setReader(cfg.reader === "General audience" ? "" : cfg.reader);
+    setVoice(cfg.voice);
+    setChapters(cfg.chapters);
+    setWordsPerChapter(cfg.wordsPerChapter);
+    setCitationStyle(cfg.citationStyle);
+    setLanguage(cfg.language);
+    setOutline(cfg.outline ?? "");
+    setStoryBible(cfg.storyBible ?? "");
+    setPromptLanguage(cfg.promptLanguage ?? "en");
+  }
+
+  async function toggleShare() {
+    if (!projectId) return;
+    const next = shareInfo.visibility === "public" ? "private" : "public";
+    try {
+      const res = await fetch(`/api/rush/projects/${projectId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ visibility: next }),
+      });
+      if (!res.ok) throw new Error("เปลี่ยนการแชร์ไม่สำเร็จ");
+      const data = await res.json();
+      setShareInfo({ token: data.shareToken ?? shareInfo.token, visibility: next });
+      if (next === "public" && data.shareToken) {
+        const url = `${window.location.origin}/rush/share/${data.shareToken}`;
+        await copyText(url);
+        setNotice("เปิดแชร์แล้ว — คัดลอกลิงก์ให้อัตโนมัติ");
+      } else {
+        setNotice("ปิดแชร์แล้ว");
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "ผิดพลาด");
+    }
+  }
+
+  function restoreVersion(cfg: BookConfig) {
+    applyConfig(cfg);
+    const g = defaultGroupsFor(cfg.type);
+    setGroups(g);
+    setPrompts(generateAllPrompts(cfg, g));
+    setNotice("กู้คืนเวอร์ชันแล้ว — กด Save เพื่อบันทึกเป็นเวอร์ชันล่าสุด");
   }
 
   async function deleteProject(id: string) {
@@ -282,6 +336,8 @@ export default function RushPage() {
   function newProject() {
     setProjectId(null);
     setPrompts([]);
+    setShareInfo({ token: null, visibility: "private" });
+    setVersions([]);
     setNotice("");
     setError("");
   }
@@ -482,6 +538,39 @@ export default function RushPage() {
                   <button onClick={saveProject} disabled={saving} className="py-2.5 border border-white/10 text-gray-300 rounded-xl hover:border-[#c9a84c]/40 transition-colors flex items-center justify-center gap-1.5 text-xs disabled:opacity-50">
                     <Save className="w-4 h-4" /> {projectId ? "Update" : "Save"}
                   </button>
+                </div>
+              )}
+
+              {projectId && (
+                <div className="mt-2 space-y-2">
+                  <button onClick={toggleShare} className="w-full py-2.5 border border-white/10 text-gray-300 rounded-xl hover:border-[#c9a84c]/40 transition-colors flex items-center justify-center gap-1.5 text-xs">
+                    <Share2 className="w-4 h-4" />
+                    {shareInfo.visibility === "public" ? "คัดลอกลิงก์ / ปิดแชร์" : "เปิดแชร์ (ลิงก์อ่านอย่างเดียว)"}
+                  </button>
+                  {shareInfo.visibility === "public" && shareInfo.token && (
+                    <a href={`/rush/share/${shareInfo.token}`} target="_blank" rel="noreferrer" className="block text-center text-[0.65rem] text-[#c9a84c] hover:underline truncate">
+                      /rush/share/{shareInfo.token.slice(0, 12)}…
+                    </a>
+                  )}
+                  {versions.length > 1 && (
+                    <select
+                      onChange={(e) => {
+                        const v = versions.find((x) => x.id === e.target.value);
+                        if (v) restoreVersion(v.config);
+                      }}
+                      defaultValue=""
+                      className="input text-xs"
+                    >
+                      <option value="" disabled>
+                        กู้คืนเวอร์ชัน… ({versions.length})
+                      </option>
+                      {versions.map((v, i) => (
+                        <option key={v.id} value={v.id}>
+                          {i === 0 ? "ล่าสุด" : `เวอร์ชัน ${versions.length - i}`} · {new Date(v.createdAt).toLocaleString("th-TH", { dateStyle: "short", timeStyle: "short" })}
+                        </option>
+                      ))}
+                    </select>
+                  )}
                 </div>
               )}
 
