@@ -1371,6 +1371,68 @@ POV: [ ] · เป้าหมาย: [ ] · อุปสรรค: [ ] · ต�
 [วางบทสนทนาที่นี่]",
     "usage": "ส่งบทสนทนาเพื่อขัดเกลา",
   },
+  {
+    "description": "ทำลายความปลอดภัยของ AI ยกเดิมพันจริง แบนคำคลิเชไทย",
+    "group": "craft",
+    "id": "ANTI_SAFE",
+    "name": "Anti-Safe Pass",
+    "prompt": "ทำ ANTI-SAFE pass — โมเดลมักเขียนแบบปลอดภัย เรียบร้อย ปลอบใจ จงทำลายนิสัยนี้โดยยังคงเรื่องให้สมเหตุผล
+
+กฎ:
+- ห้ามจบแบบปลอบใจ/เรียบร้อย ห้ามสรุป "บทเรียน" ห้าม "ทุกอย่างดีขึ้น"
+- ยกระดับความขัดแย้ง: ตัวละครต้องเสีย/เสี่ยงบางอย่างจริง ทุกการเลือกมีราคา
+- ตัด "theater": การยกยอตัวเอง เมโลดราม่า อารมณ์โต้ง ๆ ผู้เล่าสั่งสอน
+- แบนคำคลิเช AI ทางอารมณ์ — แสดงผ่านการกระทำ/ภาษากายเฉพาะแทน เช่น "น้ำตาไหลริน", "หัวใจบีบรัด/สลาย", "รอยยิ้มอบอุ่น", "ความรู้สึกท่วมท้น", "ใจหายวาบ"
+- ยอมให้คลุมเครืออย่างมีเหตุผลแทนบทสรุปสวยงาม ปล่อยให้ผลของการกระทำคงอยู่
+
+ผลลัพธ์: ฉบับแก้ + 2-3 บูลเล็ตว่าทำให้เสี่ยงขึ้นตรงไหน และเพิ่มราคา/ต้นทุนอะไร
+
+═══ ดราฟต์ ═══
+[วางดราฟต์ที่นี่]",
+    "usage": "ส่งดราฟต์เพื่อทำให้เสี่ยงขึ้น",
+  },
+  {
+    "description": "ตรวจ 5 สัมผัสรายฉาก (≥3) + เติมรายละเอียดรูปธรรม",
+    "group": "craft",
+    "id": "SENSORY",
+    "name": "Sensory Audit",
+    "prompt": "ตรวจการลงรายละเอียดประสาทสัมผัสของดราฟต์ (เป้าหมาย ≥ 3 สัมผัสต่อฉาก)
+
+แต่ละฉาก:
+1. ระบุว่ามีสัมผัสใดบ้าง: ภาพ / เสียง / กลิ่น / รส / สัมผัส
+2. ทำเครื่องหมายฉากที่ใช้น้อยกว่า 3
+3. เสนอ 2-3 รายละเอียดสัมผัสที่รูปธรรม เฉพาะ ไม่คลิเช เพื่อเติมจุดที่บาง (กลิ่นและสัมผัสมักขาด)
+
+เลี่ยงสัมผัสกลาง ๆ — รายละเอียดต้องทำหน้าที่คู่ (อารมณ์/ตัวละคร/แก่นเรื่อง)
+
+ผลลัพธ์: ตารางสัมผัสรายฉาก + รายการที่ควรเติม
+
+═══ ดราฟต์ ═══
+[วางดราฟต์ที่นี่]",
+    "usage": "ส่งดราฟต์เพื่อลงประสาทสัมผัส",
+  },
+  {
+    "description": "เส้นความตึงรายฉาก + แก้จุดราบ",
+    "group": "craft",
+    "id": "CONFLICT_MAP",
+    "name": "Conflict / Tension Map",
+    "prompt": "ทำแผนผังความตึงเครียดของดราฟต์ ไม่ให้เรื่องราบ
+
+แต่ละฉาก:
+- ชนิดความขัดแย้ง: ภายนอก / ภายใน / ระหว่างบุคคล (หรือ "ไม่มี" — ทำเครื่องหมาย)
+- ระดับความตึง 0-1 และทิศทาง (ขึ้น/ลง/ราบ)
+- เดิมพันรูปธรรม (อะไรที่เสียได้ตรงนี้)
+
+จากนั้น:
+- วาดเส้นความตึง ทำเครื่องหมายช่วงราบ/ซ้ำ และฉากที่ไม่มีความขัดแย้งจริง
+- แนะนำจุดที่ควรยกเดิมพัน เพิ่มการพลิก หรือแปรจังหวะ (ช่วงเงียบที่ตั้งใจได้ แต่ราบโดยบังเอิญไม่ได้)
+
+ผลลัพธ์: ตารางความตึงรายฉาก + รายการแก้
+
+═══ ดราฟต์ ═══
+[วางดราฟต์ที่นี่]",
+    "usage": "ส่งดราฟต์เพื่อทำแผนผังความตึง",
+  },
 ]
 `;
 
@@ -2875,6 +2937,69 @@ EXAMPLE
 ═══ DIALOGUE DRAFT ═══
 [INSERT DIALOGUE HERE]",
     "usage": "Send a dialogue passage to revise.",
+  },
+  {
+    "description": "Break safe/tidy AI defaults; raise real stakes; ban Thai AI-tell clichés.",
+    "group": "craft",
+    "id": "ANTI_SAFE",
+    "name": "Anti-Safe Pass",
+    "prompt": "Apply the ANTI-SAFE pass. LLMs default to emotionally safe, tidy, reassuring prose — break that while keeping the story coherent.
+
+Rules:
+- NO comforting/tidy ending, no "lesson learned" summary, no "everything got better".
+- Raise the conflict: the character must lose or risk something real; every choice costs.
+- Cut "theater": self-congratulation, melodrama, on-the-nose emotion, narrator moralizing.
+- Ban AI-tell emotion clichés — show through specific action/body instead. Thai examples to remove:
+  "น้ำตาไหลริน", "หัวใจบีบรัด/สลาย", "รอยยิ้มอบอุ่น", "ความรู้สึกท่วมท้น", "ใจหายวาบ".
+- Prefer earned ambiguity over neat resolution where it serves the story; let consequences stand.
+
+Output: the revised passage, then 2-3 bullets on what you made riskier and the cost you added.
+
+═══ DRAFT ═══
+[INSERT DRAFT HERE]",
+    "usage": "Send a draft to make it riskier.",
+  },
+  {
+    "description": "Per-scene 5-sense check (≥3) + targeted concrete additions.",
+    "group": "craft",
+    "id": "SENSORY",
+    "name": "Sensory Audit",
+    "prompt": "Audit a draft for SENSORY grounding (target ≥ 3 senses per scene).
+
+For each scene/beat:
+1. List which of the five senses appear: sight / sound / smell / taste / touch.
+2. Flag any scene using fewer than 3.
+3. Suggest 2-3 concrete, specific, non-cliché sensory details to add where it's thin (smell and touch are usually the gaps).
+
+Avoid generic sensory filler; details must do double duty (mood/character/theme).
+
+Output: a per-scene sense table + the targeted additions.
+
+═══ DRAFT ═══
+[INSERT DRAFT HERE]",
+    "usage": "Send a draft to ground it in the senses.",
+  },
+  {
+    "description": "Per-scene tension curve + flat-spot fixes.",
+    "group": "craft",
+    "id": "CONFLICT_MAP",
+    "name": "Conflict / Tension Map",
+    "prompt": "Map the TENSION across a draft so it never goes flat.
+
+For each scene/beat:
+- Conflict type: external / internal / interpersonal (or "none" — flag it).
+- Tension rating 0-1, and direction (rising / falling / flat).
+- The concrete stake (what can be lost here).
+
+Then:
+- Plot the tension curve and flag flat or repetitive stretches and any scene with no real conflict.
+- Recommend where to raise stakes, add reversal, or vary rhythm (a deliberate quiet beat is fine; an accidental flat one isn't).
+
+Output: the per-scene tension table + a short list of fixes.
+
+═══ DRAFT ═══
+[INSERT DRAFT HERE]",
+    "usage": "Send a draft to map and raise tension.",
   },
   {
     "description": "10 title (and subtitle) options, keyword-aware for nonfiction.",

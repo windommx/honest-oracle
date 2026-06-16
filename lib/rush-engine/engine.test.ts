@@ -155,12 +155,12 @@ describe("generateAllPrompts — core", () => {
 
 describe("generateAllPrompts — module groups", () => {
   const counts: Record<Exclude<PromptGroup, "core">, number> = {
-    craft: 6,
+    craft: 9,
     nonfiction: 5,
     prose: 4,
     thai: 1,
     marketing: 4,
-    advanced: 2,
+    advanced: 3,
   };
 
   it("appends exactly the modules for each requested group", () => {
@@ -172,10 +172,10 @@ describe("generateAllPrompts — module groups", () => {
     }
   });
 
-  it("includes all 22 optional modules when every group is on", () => {
+  it("includes all 26 optional modules when every group is on", () => {
     const all = MODULE_GROUPS.map((m) => m.key);
     const pack = generateAllPrompts(cfg(), all);
-    expect(pack.filter((p) => p.group !== "core").length).toBe(22);
+    expect(pack.filter((p) => p.group !== "core").length).toBe(26);
   });
 
   it("hardens the KDP module with a verification checklist (no live-data claim)", () => {

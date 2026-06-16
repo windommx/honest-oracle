@@ -401,6 +401,77 @@ Use for: titles, plot twists, character names, chapter angles, metaphors, hooks.
 [INSERT what to brainstorm + constraints]`;
 }
 
+// Inspired by Novel Studio's Constraint DNA (anti-safe, sensory minimum, tension, quality gate).
+
+function moduleAntiSafe(): string {
+  return `Apply the ANTI-SAFE pass. LLMs default to emotionally safe, tidy, reassuring prose — break that while keeping the story coherent.
+
+Rules:
+- NO comforting/tidy ending, no "lesson learned" summary, no "everything got better".
+- Raise the conflict: the character must lose or risk something real; every choice costs.
+- Cut "theater": self-congratulation, melodrama, on-the-nose emotion, narrator moralizing.
+- Ban AI-tell emotion clichés — show through specific action/body instead. Thai examples to remove:
+  "น้ำตาไหลริน", "หัวใจบีบรัด/สลาย", "รอยยิ้มอบอุ่น", "ความรู้สึกท่วมท้น", "ใจหายวาบ".
+- Prefer earned ambiguity over neat resolution where it serves the story; let consequences stand.
+
+Output: the revised passage, then 2-3 bullets on what you made riskier and the cost you added.
+
+═══ DRAFT ═══
+[INSERT DRAFT HERE]`;
+}
+
+function moduleSensoryAudit(): string {
+  return `Audit a draft for SENSORY grounding (target ≥ 3 senses per scene).
+
+For each scene/beat:
+1. List which of the five senses appear: sight / sound / smell / taste / touch.
+2. Flag any scene using fewer than 3.
+3. Suggest 2-3 concrete, specific, non-cliché sensory details to add where it's thin (smell and touch are usually the gaps).
+
+Avoid generic sensory filler; details must do double duty (mood/character/theme).
+
+Output: a per-scene sense table + the targeted additions.
+
+═══ DRAFT ═══
+[INSERT DRAFT HERE]`;
+}
+
+function moduleConflictMap(): string {
+  return `Map the TENSION across a draft so it never goes flat.
+
+For each scene/beat:
+- Conflict type: external / internal / interpersonal (or "none" — flag it).
+- Tension rating 0-1, and direction (rising / falling / flat).
+- The concrete stake (what can be lost here).
+
+Then:
+- Plot the tension curve and flag flat or repetitive stretches and any scene with no real conflict.
+- Recommend where to raise stakes, add reversal, or vary rhythm (a deliberate quiet beat is fine; an accidental flat one isn't).
+
+Output: the per-scene tension table + a short list of fixes.
+
+═══ DRAFT ═══
+[INSERT DRAFT HERE]`;
+}
+
+function moduleQualityGate(config: BookConfig): string {
+  const thai = config.language === "thai" || config.language === "bilingual";
+  return `Run a pre-publish QUALITY GATE on a finished chapter/draft. Judge each gate PASS or FAIL with a specific reason grounded in the text — never pass a gate without evidence.
+
+Gates:
+1. CONTINUITY — does it contradict any established fact / the story bible / the latest STATE?
+2. SENSORY — at least 3 senses present in each scene?
+3. ANTI-SAFE — no tidy/comforting resolution; the conflict carries real cost; no AI-tell emotion clichés?
+4. VOICE — consistent with the book's voice and (fiction) each character's distinct voice?
+5. ${config.type === "novel" || config.type === "memoir" ? "HOOK — does the chapter end with forward momentum?" : "EVIDENCE — claims supported; no unsupported assertions?"}
+${thai ? "6. THAI — register consistent, no unnecessary English, transliteration consistent?\n" : ""}
+Output JSON:
+{ "gates": [ { "name": "...", "pass": true/false, "reason": "..." } ], "overall_pass": true/false, "must_fix": [ "..." ] }
+
+═══ DRAFT ═══
+[INSERT CHAPTER DRAFT HERE]`;
+}
+
 // ── Catalog assembly ───────────────────────────────────────────
 
 type ModuleDef = { id: string; group: PromptGroup; name: string; description: string; usage: string; build: (c: BookConfig) => string };
@@ -413,6 +484,9 @@ export const MODULE_CATALOG: ModuleDef[] = [
   { id: "WORLD_CODEX", group: "craft", name: "Worldbuilding Codex", description: "Story bible + per-chapter continuity check.", usage: "Build once; check each new chapter against it.", build: moduleWorldCodex },
   { id: "SCENE", group: "craft", name: "Scene Builder", description: "Scene/Sequel + MRU structure for a single dramatic unit.", usage: "Use when a chapter needs a tightly built scene.", build: moduleSceneBuilder },
   { id: "DIALOGUE", group: "craft", name: "Dialogue Polish", description: "Action beats, subtext, trimmed tags.", usage: "Send a dialogue passage to revise.", build: moduleDialoguePolish },
+  { id: "ANTI_SAFE", group: "craft", name: "Anti-Safe Pass", description: "Break safe/tidy AI defaults; raise real stakes; ban Thai AI-tell clichés.", usage: "Send a draft to make it riskier.", build: moduleAntiSafe },
+  { id: "SENSORY", group: "craft", name: "Sensory Audit", description: "Per-scene 5-sense check (≥3) + targeted concrete additions.", usage: "Send a draft to ground it in the senses.", build: moduleSensoryAudit },
+  { id: "CONFLICT_MAP", group: "craft", name: "Conflict / Tension Map", description: "Per-scene tension curve + flat-spot fixes.", usage: "Send a draft to map and raise tension.", build: moduleConflictMap },
   // nonfiction
   { id: "FACT_CHECK", group: "nonfiction", name: "Citation / Fact-Check", description: "Verify every claim; forbid invented citations.", usage: "Send each nonfiction chapter draft.", build: moduleFactCheck },
   { id: "ARG_MAP", group: "nonfiction", name: "Argument Map + Steelman", description: "Toulmin map + honest counterargument & rebuttal.", usage: "Run on the core argument of a chapter.", build: moduleArgumentMap },
@@ -434,4 +508,5 @@ export const MODULE_CATALOG: ModuleDef[] = [
   // advanced
   { id: "RECAP", group: "advanced", name: "Rolling Recap", description: "Chain-of-density carry-forward summary for continuity.", usage: "Update after each chapter; prepend to the next.", build: moduleRollingRecap },
   { id: "BRAINSTORM", group: "advanced", name: "Brainstorm (Verbalized Sampling)", description: "Diverse option spread to beat repetitive output.", usage: "Use for titles, twists, names, hooks.", build: moduleBrainstorm },
+  { id: "QUALITY_GATE", group: "advanced", name: "Quality Gate", description: "Pass/fail pre-publish gate: continuity, sensory, anti-safe, voice, (Thai).", usage: "Run on a finished chapter before moving on.", build: moduleQualityGate },
 ];
