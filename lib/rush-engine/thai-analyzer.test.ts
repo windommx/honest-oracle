@@ -23,6 +23,13 @@ describe("analyzeThai", () => {
     expect(a.echoes.some((e) => e.word === "ฝน" || e.word === "ตก")).toBe(true);
   });
 
+  it("computes sentence-length stats", () => {
+    const a = analyzeThai("เขาเดินเข้ามา\nเธอหันมามอง แล้วยิ้มน้อย ๆ");
+    expect(a.sentences.count).toBeGreaterThanOrEqual(2);
+    expect(a.sentences.avgWords).toBeGreaterThan(0);
+    expect(a.sentences.longest).toBeGreaterThanOrEqual(a.sentences.avgWords);
+  });
+
   it("detects near-repeats (same content word within a short span)", () => {
     const a = analyzeThai("แมวดำกระโดดข้ามรั้ว แล้วแมวขาวก็เดินตามมา");
     expect(a.nearRepeats.some((r) => r.word === "แมว")).toBe(true);
