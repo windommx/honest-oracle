@@ -23,6 +23,11 @@ describe("analyzeThai", () => {
     expect(a.echoes.some((e) => e.word === "ฝน" || e.word === "ตก")).toBe(true);
   });
 
+  it("detects near-repeats (same content word within a short span)", () => {
+    const a = analyzeThai("แมวดำกระโดดข้ามรั้ว แล้วแมวขาวก็เดินตามมา");
+    expect(a.nearRepeats.some((r) => r.word === "แมว")).toBe(true);
+  });
+
   it("detects AI-tell emotion clichés", () => {
     const a = analyzeThai("เธอยืนนิ่ง น้ำตาไหลริน หัวใจสลายเป็นเสี่ยง");
     const phrases = a.aiTells.map((t) => t.phrase);
