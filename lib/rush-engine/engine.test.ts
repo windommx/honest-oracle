@@ -137,11 +137,14 @@ describe("generateAllPrompts — core", () => {
     expect(ch5.prompt).toContain("<<<STATE>>>");
   });
 
-  it("injects an outline and a story bible when provided", () => {
-    const pack = generateAllPrompts(cfg({ outline: "Ch1: the body in the mist", storyBible: "CHARACTERS: Mali (detective)" }));
+  it("injects per-chapter outline beats and the story bible", () => {
+    const pack = generateAllPrompts(cfg({ outline: "1. the body in the mist\n3. the twist", storyBible: "CHARACTERS: Mali (detective)" }));
+    const ch1 = pack.find((p) => p.id === "CH_1")!;
     const ch3 = pack.find((p) => p.id === "CH_3")!;
-    expect(ch3.prompt).toContain("PLANNED BEATS");
-    expect(ch3.prompt).toContain("Mali (detective)");
+    expect(ch1.prompt).toContain("PLANNED BEAT — Chapter 1");
+    expect(ch1.prompt).toContain("the body in the mist");
+    expect(ch3.prompt).toContain("the twist"); // chapter 3's own beat, not chapter 1's
+    expect(ch3.prompt).toContain("Mali (detective)"); // story bible — injected in every chapter
     expect(ch3.prompt).toContain("source of truth");
   });
 

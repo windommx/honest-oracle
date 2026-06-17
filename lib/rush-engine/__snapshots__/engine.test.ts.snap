@@ -1254,7 +1254,9 @@ Act 3: Resolution: บท 5-6 — Climax, resolution, denouement
 1. ระบุโครงที่เลือกและเหตุผล
 2. แมป beat เข้ากับเลขบท (1-6) พร้อมวัตถุประสงค์ 1-2 ประโยค
 3. ระบุบทที่เป็นเหตุการณ์จุดประกาย จุดกึ่งกลาง และจุดสุดยอด
-4. แต่ละบท: "คำสัญญา" หนึ่งบรรทัด + hook ท้ายบท",
+4. แต่ละบท: "คำสัญญา" หนึ่งบรรทัด + hook ท้ายบท
+
+รูปแบบ: เขียนหนึ่งบรรทัดต่อบทเป็น "N. <beat>" (เช่น "1. ...", "2. ...") เพื่อวางลงช่อง Outline แล้วระบบจะ map เข้าแต่ละบทอัตโนมัติ",
     "usage": "รันก่อนเขียนเพื่อวางแผนทั้งเล่ม",
   },
   {
@@ -2816,7 +2818,8 @@ Chapters: 6 · ~3000 words each · english
 2. Map every beat to a chapter number (1-6) with a 1-2 sentence purpose.
 3. Mark the inciting incident, midpoint, and climax chapters.
 4. For each chapter: a one-line "promise" (what the reader gets) and a hook for the chapter end.
-",
+
+FORMAT: output one line per chapter as "N. <beat>" (e.g. "1. ...", "2. ...") so it can be pasted into the Outline field and auto-mapped to each chapter prompt.",
     "usage": "Run before writing, to plan the whole book.",
   },
   {

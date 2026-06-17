@@ -36,7 +36,8 @@ function moduleStructureOutline(config: BookConfig): string {
   p += `1. State the chosen structure and why it fits this premise.\n`;
   p += `2. Map every beat to a chapter number (1-${config.chapters}) with a 1-2 sentence purpose.\n`;
   p += `3. Mark the inciting incident, midpoint, and climax chapters.\n`;
-  p += `4. For each chapter: a one-line "promise" (what the reader gets) and a hook for the chapter end.\n`;
+  p += `4. For each chapter: a one-line "promise" (what the reader gets) and a hook for the chapter end.\n\n`;
+  p += `FORMAT: output one line per chapter as "N. <beat>" (e.g. "1. ...", "2. ...") so it can be pasted into the Outline field and auto-mapped to each chapter prompt.`;
   return p;
 }
 

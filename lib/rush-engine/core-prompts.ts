@@ -1,6 +1,7 @@
 import { BOOK_TYPES, isFictionType } from "./book-types";
 import type { Architecture, BookConfig, ChapterPlan, ContinuityState } from "./types";
 import { getAnalysisMetrics, getQualityChecklist, getQualityStandards, getRevisionRules } from "./standards";
+import { parseOutline } from "./outline";
 
 export function generateMasterSystemPrompt(config: BookConfig, architecture: Architecture): string {
   const type = BOOK_TYPES[config.type];
@@ -335,8 +336,15 @@ export function generateChapterPrompt(
     p += `→ If no STATE exists yet, reconstruct it from the chapters written so far.\n\n`;
   }
 
-  if (config.outline && config.outline.trim()) {
-    p += `═══ PLANNED BEATS (follow the part relevant to Chapter ${chapter.number}) ═══\n`;
+  const parsedOutline = config.outline ? parseOutline(config.outline) : null;
+  const chapterBeat = parsedOutline?.get(chapter.number);
+  if (chapterBeat) {
+    p += `═══ PLANNED BEAT — Chapter ${chapter.number} (from your outline) ═══\n`;
+    p += `${chapterBeat}\n`;
+    p += `→ Write THIS specific beat. The TYPE/PURPOSE above is only the structural role.\n\n`;
+  } else if (config.outline && config.outline.trim() && (parsedOutline?.size ?? 0) === 0) {
+    // Unstructured outline → include it wholesale.
+    p += `═══ PLANNED OUTLINE (follow the part relevant to Chapter ${chapter.number}) ═══\n`;
     p += `${config.outline.trim()}\n\n`;
   }
 
