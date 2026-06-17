@@ -24,6 +24,7 @@ model User {
   apiKeys   ApiKey[]
   usage     UsageDay[]
   subscription Subscription?
+  rushProjects RushProject[]
 }
 
 model Analysis {
@@ -153,4 +154,32 @@ model UsageDay {
   user       User     @relation(fields: [userId], references: [id])
 
   @@unique([userId, day])
+}
+
+// A saved Rush Engine project: the book configuration. Prompts are derived
+// deterministically from the config, so only the config is persisted.
+model RushProject {
+  id          String   @id @default(cuid())
+  userId      String
+  title       String
+  type        String
+  subGenre    String
+  config      Json
+  visibility  String   @default("private")
+  shareToken  String?  @unique
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user        User                  @relation(fields: [userId], references: [id])
+  versions    RushProjectVersion[]
+}
+
+// Immutable config snapshot taken on each save — version history / restore.
+model RushProjectVersion {
+  id         String   @id @default(cuid())
+  projectId  String
+  config     Json
+  createdAt  DateTime @default(now())
+
+  project    RushProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
 }

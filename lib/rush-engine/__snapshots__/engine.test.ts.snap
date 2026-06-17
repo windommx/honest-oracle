@@ -1,0 +1,3069 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`snapshots > how-to pack with nonfiction modules 1`] = `
+[
+  {
+    "description": "Use this as the system prompt for ALL writing sessions.",
+    "group": "core",
+    "id": "MASTER",
+    "name": "Master System Prompt",
+    "prompt": "You are a master how-to / guide author writing "The Test Book".
+
+═══ IDENTITY & ROLE ═══
+You are writing a complete how-to / guide book in English.
+Your voice is: storytelling.
+Your target reader: QA engineers.
+
+═══ BOOK SPECIFICATIONS ═══
+- Title: The Test Book
+- Type: How-To / Guide
+- Sub-genre: diy
+- Total chapters: 6
+- Target words per chapter: 3000
+- Total estimated words: 18000
+- Language: English
+- Citation style: none
+
+═══ THESIS / PREMISE ═══
+A premise worth testing
+
+═══ QUALITY STANDARDS (aim for these; use judgment over rigid ratios) ═══
+- Steps: complete, sequential, no gaps
+- Clarity: any reader can follow from step 1
+- Safety: all warnings clearly marked
+- Materials: complete list before steps begin
+- Troubleshooting: common mistakes addressed
+- Visual descriptions for key steps
+
+═══ NON-FICTION RULES ═══
+1. Every claim must be supported by evidence (citation, statistic, example, or case study)
+2. Evidence hierarchy: meta-analysis > RCT > cohort > case study > expert quote > anecdote
+3. Define all jargon on first use
+4. Logic connections must be explicit between paragraphs (therefore, however, for example...)
+5. Counter-arguments: steelman (present fairly), then rebut with evidence
+6. Pedagogy: learning objectives → content → exercises → summary → key takeaways
+7. Examples and analogies for every abstract concept
+8. Average sentence length ≤ 25 words
+9. Each chapter must advance thesis proof
+10. Actionable takeaways reader can implement immediately
+
+═══ THESIS ═══
+Main thesis: A premise worth testing
+
+═══ READER JOURNEY ═══
+Start: problem unaware → End: practitioner who can apply the framework
+
+═══ CONTINUITY PROTOCOL (automatic story bible — keep this whole session in one chat) ═══
+You maintain a living STATE block so the book stays consistent without me re-pasting notes.
+1. The FIRST time you write, create a STATE block capturing: characters (name + key traits/relationships), setting/world rules, established facts, timeline, unresolved threads, and (fiction) tension level.
+2. At the START of every chapter, silently read the latest STATE and stay consistent with it — never contradict or re-introduce what's already established.
+3. At the END of every chapter, append an updated STATE block, fenced exactly like this:
+
+<<<STATE>>>
+CHARACTERS: ...
+WORLD/FACTS: ...
+TIMELINE: ...
+OPEN THREADS: ...
+TENSION: ...  (fiction only)
+<<<END STATE>>>
+
+Keep STATE compact (≤ 250 words), newest facts first, plain facts only. Carry it forward chapter to chapter. If I paste a STATE block into a later prompt, treat it as the source of truth.
+
+═══ OUTPUT FORMAT ═══
+- Write the chapter content directly (no meta-commentary, no preamble like "Here is the chapter")
+- Begin with the chapter title as a Markdown heading (## Chapter N: Title)
+- Maintain consistent voice throughout; calibrate length to the target (±20%) without padding
+- End with a hook or transition appropriate to the chapter type
+- After the chapter, output the updated <<<STATE>>> block (per the Continuity Protocol)
+",
+    "usage": "Set as the system prompt before any chapter writing.",
+  },
+  {
+    "description": "Establishes the complete book plan.",
+    "group": "core",
+    "id": "OVERVIEW",
+    "name": "Book Overview / Plan",
+    "prompt": "═══ BOOK PLAN — "The Test Book" ═══
+
+Send this once at the start of the writing session, after the Master System Prompt, to establish the full plan before Chapter 1.
+
+TYPE: How-To / Guide · SUB-GENRE: diy
+THESIS/PREMISE: A premise worth testing
+TARGET READER: QA engineers
+STRUCTURE: 6 chapters × ~3000 words
+
+═══ PARTS ═══
+• Getting Started — Chapters 1-2
+• Core Skills — Chapters 3-4
+• Advanced Techniques — Chapters 5-6
+• Putting It All Together — Chapters 7-6
+
+═══ CHAPTER MAP ═══
+Ch.1 [introduction] — Teach skill level: beginner
+Ch.2 [skill_step] — Teach skill level: intermediate
+Ch.3 [skill_step] — Teach skill level: intermediate
+Ch.4 [skill_step] — Teach skill level: advanced
+Ch.5 [skill_step] — Teach skill level: advanced
+Ch.6 [conclusion] — Teach skill level: mastery
+
+═══ INITIALIZE CONTINUITY ═══
+Create the initial <<<STATE>>> block (characters, world/facts, timeline, open threads) from this plan, and maintain it across every chapter per the Continuity Protocol in the system prompt.
+
+Confirm you understand the plan and output the initial STATE block, then wait for the first chapter prompt. Do not write any chapter yet.",
+    "usage": "Send once before writing Chapter 1.",
+  },
+  {
+    "description": "Teach skill level: beginner",
+    "group": "core",
+    "id": "CH_1",
+    "name": "Chapter 1",
+    "prompt": "═══ CHAPTER 1 WRITING PROMPT ═══
+
+BOOK: "The Test Book" — diy
+PREMISE: A premise worth testing
+CHAPTER: 1 of 6
+TYPE: introduction
+PURPOSE: Teach skill level: beginner
+WORD TARGET: ~3000 words (±20%; let the content set the exact length)
+
+═══ SKILL LEVEL: BEGINNER ═══
+
+STRUCTURE:
+1. INTRODUCTION: What you'll learn and why it matters
+2. MATERIALS/PREREQUISITES: Everything needed before starting
+3. STEP-BY-STEP INSTRUCTIONS:
+   - Each step: clear action + expected result
+   - Number every step
+   - One action per step
+   - Include photos/diagrams description
+4. COMMON MISTAKES: What goes wrong and how to fix it
+5. PRO TIPS: Insider knowledge from experts
+6. PRACTICE EXERCISE: Hands-on activity to reinforce skill
+7. TROUBLESHOOTING: FAQ and solutions
+8. WHAT'S NEXT: Preview of next skill/chapter
+
+MUST INCLUDE:
+  ✓ materials_list
+  ✓ step_by_step
+  ✓ troubleshooting
+  ✓ tips
+
+═══ TRANSITION TO CHAPTER 2 ═══
+Next chapter: skill_step — Teach skill level: intermediate
+→ End this chapter in a way that naturally leads to the next.
+
+═══ QUALITY CHECKLIST (verify before finalizing) ═══
+  □ All steps complete and sequential
+  □ Materials list complete
+  □ Safety notes where needed
+  □ Common mistakes addressed
+  □ Visual descriptions included
+  □ Word count within target
+
+Now write Chapter 1 in full. Output the chapter prose (Markdown), then the updated <<<STATE>>> block. No other commentary.",
+    "usage": "Send to write Chapter 1 (introduction).",
+  },
+  {
+    "description": "Teach skill level: intermediate",
+    "group": "core",
+    "id": "CH_2",
+    "name": "Chapter 2",
+    "prompt": "═══ CHAPTER 2 WRITING PROMPT ═══
+
+BOOK: "The Test Book" — diy
+PREMISE: A premise worth testing
+CHAPTER: 2 of 6
+TYPE: skill_step
+PURPOSE: Teach skill level: intermediate
+WORD TARGET: ~3000 words (±20%; let the content set the exact length)
+
+═══ CONTINUITY ═══
+→ Read the latest <<<STATE>>> block from earlier in this chat and stay consistent with it.
+→ If no STATE exists yet, reconstruct it from the chapters written so far.
+
+═══ PREVIOUS CHAPTER (Ch.1) CONTEXT ═══
+Type: introduction
+Purpose: Teach skill level: beginner
+→ Build on what was established. Don't repeat information.
+→ Maintain continuity of tone, character state, and timeline.
+
+═══ SKILL LEVEL: INTERMEDIATE ═══
+
+STRUCTURE:
+1. INTRODUCTION: What you'll learn and why it matters
+2. MATERIALS/PREREQUISITES: Everything needed before starting
+3. STEP-BY-STEP INSTRUCTIONS:
+   - Each step: clear action + expected result
+   - Number every step
+   - One action per step
+   - Include photos/diagrams description
+4. COMMON MISTAKES: What goes wrong and how to fix it
+5. PRO TIPS: Insider knowledge from experts
+6. PRACTICE EXERCISE: Hands-on activity to reinforce skill
+7. TROUBLESHOOTING: FAQ and solutions
+8. WHAT'S NEXT: Preview of next skill/chapter
+
+⚠ SAFETY: This chapter involves techniques that require safety awareness. Include safety warnings at appropriate points.
+
+MUST INCLUDE:
+  ✓ materials_list
+  ✓ step_by_step
+  ✓ troubleshooting
+  ✓ tips
+
+═══ TRANSITION TO CHAPTER 3 ═══
+Next chapter: skill_step — Teach skill level: intermediate
+→ End this chapter in a way that naturally leads to the next.
+
+═══ QUALITY CHECKLIST (verify before finalizing) ═══
+  □ All steps complete and sequential
+  □ Materials list complete
+  □ Safety notes where needed
+  □ Common mistakes addressed
+  □ Visual descriptions included
+  □ Word count within target
+
+Now write Chapter 2 in full. Output the chapter prose (Markdown), then the updated <<<STATE>>> block. No other commentary.",
+    "usage": "Send to write Chapter 2 (skill_step).",
+  },
+  {
+    "description": "Teach skill level: intermediate",
+    "group": "core",
+    "id": "CH_3",
+    "name": "Chapter 3",
+    "prompt": "═══ CHAPTER 3 WRITING PROMPT ═══
+
+BOOK: "The Test Book" — diy
+PREMISE: A premise worth testing
+CHAPTER: 3 of 6
+TYPE: skill_step
+PURPOSE: Teach skill level: intermediate
+WORD TARGET: ~3000 words (±20%; let the content set the exact length)
+
+═══ CONTINUITY ═══
+→ Read the latest <<<STATE>>> block from earlier in this chat and stay consistent with it.
+→ If no STATE exists yet, reconstruct it from the chapters written so far.
+
+═══ PREVIOUS CHAPTER (Ch.2) CONTEXT ═══
+Type: skill_step
+Purpose: Teach skill level: intermediate
+→ Build on what was established. Don't repeat information.
+→ Maintain continuity of tone, character state, and timeline.
+
+═══ SKILL LEVEL: INTERMEDIATE ═══
+
+STRUCTURE:
+1. INTRODUCTION: What you'll learn and why it matters
+2. MATERIALS/PREREQUISITES: Everything needed before starting
+3. STEP-BY-STEP INSTRUCTIONS:
+   - Each step: clear action + expected result
+   - Number every step
+   - One action per step
+   - Include photos/diagrams description
+4. COMMON MISTAKES: What goes wrong and how to fix it
+5. PRO TIPS: Insider knowledge from experts
+6. PRACTICE EXERCISE: Hands-on activity to reinforce skill
+7. TROUBLESHOOTING: FAQ and solutions
+8. WHAT'S NEXT: Preview of next skill/chapter
+
+⚠ SAFETY: This chapter involves techniques that require safety awareness. Include safety warnings at appropriate points.
+
+MUST INCLUDE:
+  ✓ materials_list
+  ✓ step_by_step
+  ✓ troubleshooting
+  ✓ tips
+
+═══ TRANSITION TO CHAPTER 4 ═══
+Next chapter: skill_step — Teach skill level: advanced
+→ End this chapter in a way that naturally leads to the next.
+
+═══ QUALITY CHECKLIST (verify before finalizing) ═══
+  □ All steps complete and sequential
+  □ Materials list complete
+  □ Safety notes where needed
+  □ Common mistakes addressed
+  □ Visual descriptions included
+  □ Word count within target
+
+Now write Chapter 3 in full. Output the chapter prose (Markdown), then the updated <<<STATE>>> block. No other commentary.",
+    "usage": "Send to write Chapter 3 (skill_step).",
+  },
+  {
+    "description": "Teach skill level: advanced",
+    "group": "core",
+    "id": "CH_4",
+    "name": "Chapter 4",
+    "prompt": "═══ CHAPTER 4 WRITING PROMPT ═══
+
+BOOK: "The Test Book" — diy
+PREMISE: A premise worth testing
+CHAPTER: 4 of 6
+TYPE: skill_step
+PURPOSE: Teach skill level: advanced
+WORD TARGET: ~3000 words (±20%; let the content set the exact length)
+
+═══ CONTINUITY ═══
+→ Read the latest <<<STATE>>> block from earlier in this chat and stay consistent with it.
+→ If no STATE exists yet, reconstruct it from the chapters written so far.
+
+═══ PREVIOUS CHAPTER (Ch.3) CONTEXT ═══
+Type: skill_step
+Purpose: Teach skill level: intermediate
+→ Build on what was established. Don't repeat information.
+→ Maintain continuity of tone, character state, and timeline.
+
+═══ SKILL LEVEL: ADVANCED ═══
+
+STRUCTURE:
+1. INTRODUCTION: What you'll learn and why it matters
+2. MATERIALS/PREREQUISITES: Everything needed before starting
+3. STEP-BY-STEP INSTRUCTIONS:
+   - Each step: clear action + expected result
+   - Number every step
+   - One action per step
+   - Include photos/diagrams description
+4. COMMON MISTAKES: What goes wrong and how to fix it
+5. PRO TIPS: Insider knowledge from experts
+6. PRACTICE EXERCISE: Hands-on activity to reinforce skill
+7. TROUBLESHOOTING: FAQ and solutions
+8. WHAT'S NEXT: Preview of next skill/chapter
+
+⚠ SAFETY: This chapter involves techniques that require safety awareness. Include safety warnings at appropriate points.
+
+MUST INCLUDE:
+  ✓ materials_list
+  ✓ step_by_step
+  ✓ troubleshooting
+  ✓ tips
+
+═══ TRANSITION TO CHAPTER 5 ═══
+Next chapter: skill_step — Teach skill level: advanced
+→ End this chapter in a way that naturally leads to the next.
+
+═══ QUALITY CHECKLIST (verify before finalizing) ═══
+  □ All steps complete and sequential
+  □ Materials list complete
+  □ Safety notes where needed
+  □ Common mistakes addressed
+  □ Visual descriptions included
+  □ Word count within target
+
+Now write Chapter 4 in full. Output the chapter prose (Markdown), then the updated <<<STATE>>> block. No other commentary.",
+    "usage": "Send to write Chapter 4 (skill_step).",
+  },
+  {
+    "description": "Teach skill level: advanced",
+    "group": "core",
+    "id": "CH_5",
+    "name": "Chapter 5",
+    "prompt": "═══ CHAPTER 5 WRITING PROMPT ═══
+
+BOOK: "The Test Book" — diy
+PREMISE: A premise worth testing
+CHAPTER: 5 of 6
+TYPE: skill_step
+PURPOSE: Teach skill level: advanced
+WORD TARGET: ~3000 words (±20%; let the content set the exact length)
+
+═══ CONTINUITY ═══
+→ Read the latest <<<STATE>>> block from earlier in this chat and stay consistent with it.
+→ If no STATE exists yet, reconstruct it from the chapters written so far.
+
+═══ PREVIOUS CHAPTER (Ch.4) CONTEXT ═══
+Type: skill_step
+Purpose: Teach skill level: advanced
+→ Build on what was established. Don't repeat information.
+→ Maintain continuity of tone, character state, and timeline.
+
+═══ SKILL LEVEL: ADVANCED ═══
+
+STRUCTURE:
+1. INTRODUCTION: What you'll learn and why it matters
+2. MATERIALS/PREREQUISITES: Everything needed before starting
+3. STEP-BY-STEP INSTRUCTIONS:
+   - Each step: clear action + expected result
+   - Number every step
+   - One action per step
+   - Include photos/diagrams description
+4. COMMON MISTAKES: What goes wrong and how to fix it
+5. PRO TIPS: Insider knowledge from experts
+6. PRACTICE EXERCISE: Hands-on activity to reinforce skill
+7. TROUBLESHOOTING: FAQ and solutions
+8. WHAT'S NEXT: Preview of next skill/chapter
+
+⚠ SAFETY: This chapter involves techniques that require safety awareness. Include safety warnings at appropriate points.
+
+MUST INCLUDE:
+  ✓ materials_list
+  ✓ step_by_step
+  ✓ troubleshooting
+  ✓ tips
+
+═══ TRANSITION TO CHAPTER 6 ═══
+Next chapter: conclusion — Teach skill level: mastery
+→ End this chapter in a way that naturally leads to the next.
+
+═══ QUALITY CHECKLIST (verify before finalizing) ═══
+  □ All steps complete and sequential
+  □ Materials list complete
+  □ Safety notes where needed
+  □ Common mistakes addressed
+  □ Visual descriptions included
+  □ Word count within target
+
+Now write Chapter 5 in full. Output the chapter prose (Markdown), then the updated <<<STATE>>> block. No other commentary.",
+    "usage": "Send to write Chapter 5 (skill_step).",
+  },
+  {
+    "description": "Teach skill level: mastery",
+    "group": "core",
+    "id": "CH_6",
+    "name": "Chapter 6",
+    "prompt": "═══ CHAPTER 6 WRITING PROMPT ═══
+
+BOOK: "The Test Book" — diy
+PREMISE: A premise worth testing
+CHAPTER: 6 of 6
+TYPE: conclusion
+PURPOSE: Teach skill level: mastery
+WORD TARGET: ~3000 words (±20%; let the content set the exact length)
+
+═══ CONTINUITY ═══
+→ Read the latest <<<STATE>>> block from earlier in this chat and stay consistent with it.
+→ If no STATE exists yet, reconstruct it from the chapters written so far.
+
+═══ PREVIOUS CHAPTER (Ch.5) CONTEXT ═══
+Type: skill_step
+Purpose: Teach skill level: advanced
+→ Build on what was established. Don't repeat information.
+→ Maintain continuity of tone, character state, and timeline.
+
+═══ SKILL LEVEL: MASTERY ═══
+
+STRUCTURE:
+1. INTRODUCTION: What you'll learn and why it matters
+2. MATERIALS/PREREQUISITES: Everything needed before starting
+3. STEP-BY-STEP INSTRUCTIONS:
+   - Each step: clear action + expected result
+   - Number every step
+   - One action per step
+   - Include photos/diagrams description
+4. COMMON MISTAKES: What goes wrong and how to fix it
+5. PRO TIPS: Insider knowledge from experts
+6. PRACTICE EXERCISE: Hands-on activity to reinforce skill
+7. TROUBLESHOOTING: FAQ and solutions
+8. WHAT'S NEXT: Preview of next skill/chapter
+
+⚠ SAFETY: This chapter involves techniques that require safety awareness. Include safety warnings at appropriate points.
+
+MUST INCLUDE:
+  ✓ materials_list
+  ✓ step_by_step
+  ✓ troubleshooting
+  ✓ tips
+
+═══ QUALITY CHECKLIST (verify before finalizing) ═══
+  □ All steps complete and sequential
+  □ Materials list complete
+  □ Safety notes where needed
+  □ Common mistakes addressed
+  □ Visual descriptions included
+  □ Word count within target
+
+Now write Chapter 6 in full. Output the chapter prose (Markdown), then the updated <<<STATE>>> block. No other commentary.",
+    "usage": "Send to write Chapter 6 (conclusion).",
+  },
+  {
+    "description": "Analyze each chapter draft for quality.",
+    "group": "core",
+    "id": "ANALYSIS",
+    "name": "Quality Analysis Prompt",
+    "prompt": "You are a rigorous how-to / guide editor analyzing a single chapter draft.
+
+Target: 3000 words (±20%), english language, "storytelling" voice.
+
+═══ METRICS TO EVALUATE ═══
+1. ARGUMENT STRENGTH: Are claims supported by evidence? (0-1)
+2. EVIDENCE QUALITY: Strength per the evidence hierarchy?
+3. CLARITY: Sentence length, jargon defined, readability? (0-1)
+4. LOGIC FLOW: Explicit connections between paragraphs?
+5. PEDAGOGY: Objectives, examples, exercises, takeaways present?
+6. TONE: Consistent with the author voice?
+7. WORD COUNT: Within ±20% of target?
+8. CONTRADICTIONS: Any contradiction with earlier chapters?
+9. ENGAGEMENT: Examples, variety, actionable content?
+10. CITATIONS: Sources attributed in the chosen style?
+
+═══ OUTPUT FORMAT (JSON) ═══
+{
+  "scores": { /* each metric: 0-1 */ },
+  "overall_pass": true/false,
+  "strengths": [ /* list */ ],
+  "issues": [ /* list with severity */ ],
+  "revision_mode": "polish" | "strengthen_evidence" | "clarify" | "restructure" | "deepen" | "rewrite",
+  "specific_fixes": [ /* actionable instructions */ ]
+}
+
+═══ DRAFT TO ANALYZE ═══
+[INSERT CHAPTER DRAFT HERE]",
+    "usage": "Send after each chapter draft with the draft text.",
+  },
+  {
+    "description": "Revise a chapter based on analysis feedback.",
+    "group": "core",
+    "id": "REVISION",
+    "name": "Revision Prompt",
+    "prompt": "You are a master how-to / guide editor revising a chapter draft based on analysis feedback.
+
+═══ REVISION RULES ═══
+1. Preserve the author's voice and intent.
+2. Only change what the analysis flagged — do not rewrite passing material.
+3. Keep the chapter within ±20% of the target word count.
+4. Apply the specified revision mode:
+   - polish: fix surface issues (grammar, word choice, flow)
+   - strengthen_evidence: add sources, data, examples
+   - clarify: simplify sentences, define terms, add logic connections
+   - restructure: reorder sections for better flow
+   - deepen: add sensory detail, emotion, character depth
+   - rewrite: major revision while keeping core content
+5. Output the COMPLETE revised chapter — not a diff, not commentary.
+
+═══ REVISION MODE: [SPECIFIED BY ANALYSIS] ═══
+
+═══ SPECIFIC FIXES: [LISTED BY ANALYSIS] ═══
+
+═══ ORIGINAL DRAFT ═══
+[INSERT DRAFT HERE]
+
+═══ ANALYSIS FEEDBACK ═══
+[INSERT ANALYSIS REPORT HERE]
+
+Output the complete revised chapter (no commentary).",
+    "usage": "Send with the draft + analysis report to revise.",
+  },
+  {
+    "description": "Title page, dedication, table of contents, preface.",
+    "group": "core",
+    "id": "FRONT_MATTER",
+    "name": "Front Matter",
+    "prompt": "Generate the front matter for "The Test Book":
+
+═══ INCLUDE ═══
+1. TITLE PAGE: Title, subtitle (if any), author name
+2. COPYRIGHT PAGE: © year, publisher, ISBN placeholder, rights statement
+3. DEDICATION: A brief, heartfelt dedication
+4. EPIGRAPH: A relevant quote that sets the tone (optional)
+5. TABLE OF CONTENTS: All chapters with titles
+6. PREFACE: Why you wrote this book, your credentials, who it's for
+7. ACKNOWLEDGMENTS: Thank contributors, reviewers, supporters
+
+═══ STYLE: storytelling voice, matching the book's tone ═══
+═══ LANGUAGE: english ═══",
+    "usage": "Generate after all chapters are written.",
+  },
+  {
+    "description": "Appendices, bibliography, index, about the author.",
+    "group": "core",
+    "id": "BACK_MATTER",
+    "name": "Back Matter",
+    "prompt": "Generate the back matter for "The Test Book":
+
+═══ INCLUDE ═══
+1. APPENDICES: Additional resources, templates, worksheets
+2. GLOSSARY: All technical terms with definitions
+3. BIBLIOGRAPHY/REFERENCES: All sources cited (none format)
+4. INDEX: Alphabetical topic index
+5. ABOUT THE AUTHOR: Brief professional bio
+6. ALSO BY: List of other works (placeholder)
+",
+    "usage": "Generate after the front matter.",
+  },
+  {
+    "description": "Analyze a finished chapter and brief the next one.",
+    "group": "core",
+    "id": "FEEDBACK",
+    "name": "Inter-Chapter Feedback",
+    "prompt": "You are analyzing a completed chapter to generate feedback for the NEXT chapter.
+
+═══ ANALYZE AND PROVIDE ═══
+
+1. STATE CARRY-FORWARD: What facts, characters, concepts, terms, and ending state were established?
+2. ISSUES TO ADDRESS: Unresolved questions, unsupported claims, tone inconsistencies, missing elements?
+3. INSTRUCTIONS FOR NEXT CHAPTER: What to build on, what to avoid repeating, what tone to maintain, specific improvements.
+4. QUALITY SCORES: Overall quality (0-1); ready for next chapter (yes/no); if no, what must be fixed first?
+
+5. NON-FICTION-SPECIFIC: Thesis proof progress; evidence used; reader-journey milestone check; counter-arguments addressed.
+
+═══ CHAPTER DRAFT TO ANALYZE ═══
+[INSERT COMPLETED CHAPTER HERE]",
+    "usage": "Send after each chapter to generate feedback for the next.",
+  },
+  {
+    "description": "Verify every claim; forbid invented citations.",
+    "group": "nonfiction",
+    "id": "FACT_CHECK",
+    "name": "Citation / Fact-Check",
+    "prompt": "Run a CITATION & FACT-CHECK pass on a nonfiction chapter draft. AI drafts routinely invent sources — your job is to make every claim verifiable, never to fabricate.
+
+For the draft below:
+1. Extract every factual claim, statistic, quote, and named study.
+2. For each, output a row: CLAIM | TYPE (stat/quote/study/fact) | STATUS (verifiable / needs source / likely-wrong) | what source would confirm it (DOI / URL / book+page).
+3. If you cannot identify a real, specific source, mark it "UNVERIFIED — do not publish without a real citation." Do NOT invent a citation.
+4. List claims to soften, qualify, or cut.
+5. Output citations in none format with placeholders [VERIFY] where the real reference must be inserted.
+
+═══ DRAFT ═══
+[INSERT CHAPTER DRAFT HERE]",
+    "usage": "Send each nonfiction chapter draft.",
+  },
+  {
+    "description": "Toulmin map + honest counterargument & rebuttal.",
+    "group": "nonfiction",
+    "id": "ARG_MAP",
+    "name": "Argument Map + Steelman",
+    "prompt": "Build a TOULMIN ARGUMENT MAP for the core argument of this chapter, then steelman the opposition.
+
+For each major CLAIM, lay out:
+- CLAIM (the assertion)
+- GROUNDS (the evidence/data)
+- WARRANT (the reasoning linking grounds to claim — state the hidden assumption)
+- BACKING (support for the warrant)
+- QUALIFIER (how strong: "usually", "in most cases" — flag unqualified absolutes)
+- REBUTTAL (conditions under which the claim fails)
+
+Then add a STEELMAN-THEN-REBUT section:
+- State the strongest honest version of the opposing view (no strawmen)
+- Concede what is true in it
+- Rebut with evidence and reasoning
+
+Flag any claim missing grounds or warrant.
+
+═══ THESIS / DRAFT ═══
+Thesis: A premise worth testing
+[INSERT CHAPTER OR ARGUMENT HERE]",
+    "usage": "Run on the core argument of a chapter.",
+  },
+  {
+    "description": "Grade support on the evidence hierarchy + gap report.",
+    "group": "nonfiction",
+    "id": "EVIDENCE",
+    "name": "Evidence Audit",
+    "prompt": "Audit the EVIDENCE quality of a nonfiction draft against the evidence hierarchy.
+
+Hierarchy (strongest → weakest): systematic review / meta-analysis > randomized controlled trial > cohort/longitudinal > case study > expert opinion > anecdote.
+
+Output:
+1. EVIDENCE TABLE: each claim | the support it currently rests on | its grade on the hierarchy.
+2. GAP REPORT: claims propped up only by anecdote/expert-opinion that need stronger support.
+3. For each gap, suggest what kind of source would raise the grade.
+(If the topic is history/memoir/philosophy where this hierarchy doesn't apply, say so and switch to source-credibility criteria: primary vs. secondary, bias, corroboration.)
+
+═══ DRAFT ═══
+[INSERT CHAPTER DRAFT HERE]",
+    "usage": "Send a draft to audit its evidence.",
+  },
+  {
+    "description": "Bloom objectives + worked example + retrieval + spaced callbacks.",
+    "group": "nonfiction",
+    "id": "PEDAGOGY",
+    "name": "Pedagogy Pack",
+    "prompt": "Generate the PEDAGOGY layer for a chapter of "The Test Book" (textbook / how-to / instructional nonfiction).
+
+Produce:
+1. LEARNING OBJECTIVES: 3-5 measurable objectives using Bloom's verbs (remember → understand → apply → analyze → evaluate → create), escalating across the book.
+2. WORKED EXAMPLE: one fully worked example demonstrating the chapter's key skill, step by step.
+3. RETRIEVAL PRACTICE: 4-6 end-of-chapter questions that force recall (not re-reading).
+4. SPACED CALLBACK: 1-2 questions that connect to a concept from an earlier chapter.
+5. KEY TAKEAWAYS: 3 one-line summaries.
+
+═══ CHAPTER TOPIC ═══
+[INSERT CHAPTER TOPIC / CONTENT HERE]",
+    "usage": "Run per chapter for textbook/how-to.",
+  },
+  {
+    "description": "SPAR case (Situation-Problem-Action-Result-Lesson).",
+    "group": "nonfiction",
+    "id": "CASE_STUDY",
+    "name": "Case-Study Builder",
+    "prompt": "Build a CASE STUDY that makes an abstract concept concrete and credible. Use the SPAR structure.
+
+- SITUATION: the context and who's involved
+- PROBLEM: the specific challenge or tension
+- ACTION: what was done (concrete, sequential)
+- RESULT: the outcome, with numbers/specifics where possible
+- LESSON: the explicit tie-back to the chapter's principle
+
+Use a real, attributed example if one is provided; otherwise build a clearly-labeled composite/illustrative case (never present a fabricated case as real).
+
+═══ CONCEPT + EXAMPLE ═══
+Concept: [ ]
+Example/source (or "composite"): [ ]",
+    "usage": "Use to make a concept concrete.",
+  },
+]
+`;
+
+exports[`snapshots > native Thai novel pack with craft 1`] = `
+[
+  {
+    "description": "system prompt หลักสำหรับทุกเซสชัน",
+    "group": "core",
+    "id": "MASTER",
+    "name": "Master System Prompt",
+    "prompt": "คุณคือนักเขียนNovel / Fictionมืออาชีพ กำลังเขียนหนังสือเรื่อง "The Test Book"
+
+═══ บทบาท & ตัวตน ═══
+เขียนหนังสือ Novel / Fiction ให้สมบูรณ์ทั้งเล่ม เป็น "ภาษาไทย" ทั้งหมด
+โทนเสียง: storytelling
+กลุ่มผู้อ่านเป้าหมาย: QA engineers
+
+═══ ข้อมูลจำเพาะหนังสือ ═══
+- ชื่อเรื่อง: The Test Book
+- ประเภท: Novel / Fiction
+- แนวย่อย: thriller
+- จำนวนบท: 6
+- คำต่อบท (เป้าหมาย): 3000
+- รูปแบบอ้างอิง: none
+
+═══ แก่นเรื่อง / เรื่องย่อ ═══
+A premise worth testing
+
+═══ มาตรฐานคุณภาพ (ยึดเป็นแนวทาง ใช้วิจารณญาณมากกว่ายึดตัวเลขตายตัว) ═══
+- โชว์มากกว่าเล่า (แสดงผ่านการกระทำ/ประสาทสัมผัส)
+- มีรายละเอียดประสาทสัมผัสอย่างน้อย 2 อย่างต่อฉาก
+- จบทุกบทด้วย hook (คำถาม/การเปิดเผย/พลิกผัน)
+- เสียงตัวละครต่างกันชัด แยกออกได้จากบทพูด
+- ความตึงเครียดต้องไต่ระดับขึ้นทั้งเล่ม
+- ทุกฉากมี: ความขัดแย้ง + จุดพลิก + ผลลัพธ์
+
+═══ หลักการเขียน (นิยาย/เรื่องเล่า) ═══
+1. โชว์ ไม่ใช่เล่า — แสดงผ่านการกระทำ ประสาทสัมผัส และบทพูด
+2. ทุกฉากต้องมี: ความขัดแย้ง + รายละเอียดประสาทสัมผัส (≥2) + จุดพลิก
+3. บทพูดต้องขับเคลื่อนเรื่องหรือเผยตัวละคร ไม่ใช่คำเติม
+4. จบบทด้วย hook (คำถาม การเปิดเผย พลิกผัน หรือค้างคา)
+5. แต่ละตัวละครมีวิธีพูดเฉพาะตัว แยกออกได้จากน้ำเสียง
+6. ความตึงเครียดไต่ระดับขึ้นทั้งเล่ม
+7. เลี่ยงสำนวนเฝือ ภาษาฟุ่มเฟือย และคำขยายที่มากเกิน
+8. แสดงอารมณ์ผ่านภาษากายและการกระทำ ไม่บอกตรง ๆ
+
+═══ โครงสร้างองก์ ═══
+Act 1: Setup: บท 1-1 — Introduce world, characters, stakes
+Act 2A: Rising Action: บท 2-3 — Escalate conflict, deepen relationships
+Act 2B: Complications: บท 4-4 — Raise stakes, dark moment
+Act 3: Resolution: บท 5-6 — Climax, resolution, denouement
+
+═══ ระบบรักษาความต่อเนื่องอัตโนมัติ (story bible ในแชทเดียว) ═══
+คุณดูแลบล็อก STATE เพื่อให้หนังสือสอดคล้องกันโดยไม่ต้องให้ผู้ใช้วางโน้ตซ้ำ
+1. ครั้งแรกที่เขียน ให้สร้างบล็อก STATE ที่บันทึก: ตัวละคร (ชื่อ + ลักษณะ/ความสัมพันธ์), ฉาก/กฎของโลก, ข้อเท็จจริงที่ตั้งไว้, เส้นเวลา, ปมที่ยังค้าง และ (นิยาย) ระดับความตึงเครียด
+2. ก่อนเขียนทุกบท ให้อ่าน STATE ล่าสุดและคงความสอดคล้อง ห้ามขัดแย้งหรือแนะนำสิ่งที่ตั้งไว้แล้วซ้ำ
+3. ท้ายทุกบท ให้แนบบล็อก STATE ที่อัปเดต ครอบด้วยเครื่องหมายนี้เป๊ะ ๆ:
+
+<<<STATE>>>
+ตัวละคร: ...
+โลก/ข้อเท็จจริง: ...
+เส้นเวลา: ...
+ปมที่ค้าง: ...
+ความตึงเครียด: ...  (เฉพาะนิยาย)
+<<<END STATE>>>
+
+เขียน STATE ให้กระชับ (≤ 250 คำ) ข้อเท็จจริงใหม่ขึ้นก่อน เป็นข้อเท็จจริงล้วน ส่งต่อจากบทสู่บท ถ้าผู้ใช้วางบล็อก STATE มาในพรอมป์ตถัดไป ให้ถือเป็นแหล่งความจริง
+
+═══ รูปแบบผลลัพธ์ ═══
+- เขียนเนื้อหาบทโดยตรง (ไม่มีคำเกริ่น เช่น "นี่คือบท...")
+- ขึ้นต้นด้วยชื่อบทเป็นหัวข้อ Markdown (## บทที่ N: ชื่อบท)
+- น้ำเสียงสม่ำเสมอ ปรับความยาวให้ใกล้เป้าหมาย (±20%) โดยไม่ยืดเยื้อ
+- จบบทด้วย hook หรือบทเชื่อมที่เหมาะกับประเภทบท
+- หลังจบบท ให้ output บล็อก <<<STATE>>> ที่อัปเดต (ตามระบบความต่อเนื่อง)
+- ผลิตเนื้อหาทั้งหมดเป็นภาษาไทย
+",
+    "usage": "ตั้งเป็น system prompt ก่อนเขียนทุกบท",
+  },
+  {
+    "description": "วางแผนทั้งเล่ม",
+    "group": "core",
+    "id": "OVERVIEW",
+    "name": "Book Overview / Plan",
+    "prompt": "═══ แผนหนังสือ — "The Test Book" ═══
+
+ส่งพรอมป์ตนี้ครั้งเดียวหลัง Master System Prompt เพื่อวางแผนทั้งเล่มก่อนเขียนบทที่ 1
+
+ประเภท: Novel / Fiction · แนวย่อย: thriller
+แก่นเรื่อง: A premise worth testing
+ผู้อ่าน: QA engineers
+โครงสร้าง: 6 บท × ~3000 คำ
+
+═══ ส่วน (Parts) ═══
+• Act 1: Setup — บท 1-1 — Introduce world, characters, stakes
+• Act 2A: Rising Action — บท 2-3 — Escalate conflict, deepen relationships
+• Act 2B: Complications — บท 4-4 — Raise stakes, dark moment
+• Act 3: Resolution — บท 5-6 — Climax, resolution, denouement
+
+═══ แผนผังบท ═══
+บท 1 [เปิดเรื่อง] — HOOK: พาผู้อ่านเข้าสู่ฉากที่น่าติดตามทันที
+บท 2 [จุดพลิก] — จุดไม่หวนกลับ: ตัวเอกตัดสินใจลงมือ
+บท 3 [จุดกึ่งกลาง] — จุดกึ่งกลาง: การเปิดเผยหรือการพลิกผัน
+บท 4 [ปมซับซ้อน] — ปมซับซ้อน: เดิมพันสูงสุด ช่วงมืดใกล้เข้ามา
+บท 5 [ช่วงมืด] — ค่ำคืนมืดมิด: ตัวเอกตกต่ำที่สุด
+บท 6 [บทสรุป] — บทสรุป: ภาวะปกติใหม่ และถ้อยแถลงแก่นเรื่อง
+
+═══ เริ่มต้นความต่อเนื่อง ═══
+สร้างบล็อก <<<STATE>>> เริ่มต้น (ตัวละคร, โลก/ข้อเท็จจริง, เส้นเวลา, ปมที่ค้าง, ความตึงเครียด) จากแผนนี้ และดูแลต่อเนื่องทุกบทตามระบบความต่อเนื่อง
+
+ยืนยันว่าเข้าใจแผน แล้ว output บล็อก STATE เริ่มต้น จากนั้นรอพรอมป์ตบทแรก อย่าเพิ่งเขียนบทใด",
+    "usage": "ส่งครั้งเดียวก่อนเขียนบทที่ 1",
+  },
+  {
+    "description": "HOOK: พาผู้อ่านเข้าสู่ฉากที่น่าติดตามทันที",
+    "group": "core",
+    "id": "CH_1",
+    "name": "Chapter 1",
+    "prompt": "═══ พรอมป์ตเขียนบทที่ 1 ═══
+
+หนังสือ: "The Test Book" — thriller
+แก่นเรื่อง: A premise worth testing
+บทที่: 1 จาก 6
+ประเภท: เปิดเรื่อง
+วัตถุประสงค์: HOOK: พาผู้อ่านเข้าสู่ฉากที่น่าติดตามทันที
+เป้าหมายความยาว: ~3000 คำ (±20% ให้เนื้อหากำหนดความยาวจริง)
+
+═══ คำสั่งฉาก ═══
+ประเภทฉาก: opening
+องก์: 1
+ระดับความตึงเครียด: 50%
+
+═══ โครงสร้าง ═══
+1. เปิดกลางเหตุการณ์ที่น่าสนใจ (in medias res)
+2. ปักความต้องการของตัวละคร + รายละเอียดโลกผ่านการกระทำ
+3. จบด้วยคำถาม/สถานการณ์ที่บีบให้อ่านต่อ
+
+═══ เชื่อมไปบทที่ 2 ═══
+บทถัดไป: จุดพลิก — จุดไม่หวนกลับ: ตัวเอกตัดสินใจลงมือ
+→ จบบทนี้ในแบบที่นำไปสู่บทถัดไปอย่างเป็นธรรมชาติ
+
+═══ เช็คลิสต์คุณภาพ (ตรวจก่อนจบ) ═══
+  □ โชว์มากกว่าเล่า
+  □ ประสาทสัมผัส ≥ 2 ต่อฉาก
+  □ บทพูดขับเคลื่อนเรื่องหรือเผยตัวละคร
+  □ จบบทด้วย hook
+  □ เสียงตัวละครต่างกันชัด
+  □ ไม่มีคำซ้ำซาก/สำนวนเฝือ
+  □ ความยาวใกล้เป้าหมาย (±20%)
+
+เขียนบทที่ 1 ให้สมบูรณ์เป็นภาษาไทย จากนั้น output บล็อก <<<STATE>>> ที่อัปเดต ไม่ต้องมีคำอธิบายอื่น",
+    "usage": "ส่งเพื่อเขียนบทที่ 1 (เปิดเรื่อง)",
+  },
+  {
+    "description": "จุดไม่หวนกลับ: ตัวเอกตัดสินใจลงมือ",
+    "group": "core",
+    "id": "CH_2",
+    "name": "Chapter 2",
+    "prompt": "═══ พรอมป์ตเขียนบทที่ 2 ═══
+
+หนังสือ: "The Test Book" — thriller
+แก่นเรื่อง: A premise worth testing
+บทที่: 2 จาก 6
+ประเภท: จุดพลิก
+วัตถุประสงค์: จุดไม่หวนกลับ: ตัวเอกตัดสินใจลงมือ
+เป้าหมายความยาว: ~3000 คำ (±20% ให้เนื้อหากำหนดความยาวจริง)
+
+═══ ความต่อเนื่อง ═══
+→ อ่านบล็อก <<<STATE>>> ล่าสุดจากก่อนหน้าในแชทนี้แล้วคงความสอดคล้อง
+→ ถ้ายังไม่มี STATE ให้สร้างขึ้นจากบทที่เขียนไปแล้ว
+
+═══ บริบทบทก่อนหน้า (บท 1) ═══
+ประเภท: เปิดเรื่อง
+วัตถุประสงค์: HOOK: พาผู้อ่านเข้าสู่ฉากที่น่าติดตามทันที
+→ ต่อยอดสิ่งที่ตั้งไว้ อย่าเล่าซ้ำ คงโทน สถานะตัวละคร และเส้นเวลา
+
+═══ คำสั่งฉาก ═══
+ประเภทฉาก: turning_point
+องก์: 2
+ระดับความตึงเครียด: 67%
+
+═══ โครงสร้าง ═══
+1. ตัวเอกเผชิญจุดตัดสินใจ
+2. เลือกที่จะลงมือ (ย้อนกลับไม่ได้)
+3. สัมผัสผลของโลก/ความขัดแย้งใหม่
+4. hook: เขาเข้าไปพัวพันกับอะไร?
+
+═══ เชื่อมไปบทที่ 3 ═══
+บทถัดไป: จุดกึ่งกลาง — จุดกึ่งกลาง: การเปิดเผยหรือการพลิกผัน
+→ จบบทนี้ในแบบที่นำไปสู่บทถัดไปอย่างเป็นธรรมชาติ
+
+═══ เช็คลิสต์คุณภาพ (ตรวจก่อนจบ) ═══
+  □ โชว์มากกว่าเล่า
+  □ ประสาทสัมผัส ≥ 2 ต่อฉาก
+  □ บทพูดขับเคลื่อนเรื่องหรือเผยตัวละคร
+  □ จบบทด้วย hook
+  □ เสียงตัวละครต่างกันชัด
+  □ ไม่มีคำซ้ำซาก/สำนวนเฝือ
+  □ ความยาวใกล้เป้าหมาย (±20%)
+
+เขียนบทที่ 2 ให้สมบูรณ์เป็นภาษาไทย จากนั้น output บล็อก <<<STATE>>> ที่อัปเดต ไม่ต้องมีคำอธิบายอื่น",
+    "usage": "ส่งเพื่อเขียนบทที่ 2 (จุดพลิก)",
+  },
+  {
+    "description": "จุดกึ่งกลาง: การเปิดเผยหรือการพลิกผัน",
+    "group": "core",
+    "id": "CH_3",
+    "name": "Chapter 3",
+    "prompt": "═══ พรอมป์ตเขียนบทที่ 3 ═══
+
+หนังสือ: "The Test Book" — thriller
+แก่นเรื่อง: A premise worth testing
+บทที่: 3 จาก 6
+ประเภท: จุดกึ่งกลาง
+วัตถุประสงค์: จุดกึ่งกลาง: การเปิดเผยหรือการพลิกผัน
+เป้าหมายความยาว: ~3000 คำ (±20% ให้เนื้อหากำหนดความยาวจริง)
+
+═══ ความต่อเนื่อง ═══
+→ อ่านบล็อก <<<STATE>>> ล่าสุดจากก่อนหน้าในแชทนี้แล้วคงความสอดคล้อง
+→ ถ้ายังไม่มี STATE ให้สร้างขึ้นจากบทที่เขียนไปแล้ว
+
+═══ บริบทบทก่อนหน้า (บท 2) ═══
+ประเภท: จุดพลิก
+วัตถุประสงค์: จุดไม่หวนกลับ: ตัวเอกตัดสินใจลงมือ
+→ ต่อยอดสิ่งที่ตั้งไว้ อย่าเล่าซ้ำ คงโทน สถานะตัวละคร และเส้นเวลา
+
+═══ คำสั่งฉาก ═══
+ประเภทฉาก: midpoint
+องก์: 2
+ระดับความตึงเครียด: 80%
+
+═══ โครงสร้าง ═══
+1. การเปิดเผยครั้งใหญ่ (เปลี่ยนทุกอย่าง)
+2. ความเข้าใจของตัวเอกพลิก
+3. เดิมพันกลายเป็นเรื่องส่วนตัว
+4. hook: ไปต่อสู่อันตรายเท่านั้น
+
+⚠ บทตึงเครียดสูง — รักษาจังหวะ:
+- ประโยค/ย่อหน้าสั้นลง
+- ตัดฉากเร็วขึ้น
+- บรรยายเท่าที่จำเป็น
+- ความคิดในใจเฉพาะจุดสำคัญ
+
+═══ เชื่อมไปบทที่ 4 ═══
+บทถัดไป: ปมซับซ้อน — ปมซับซ้อน: เดิมพันสูงสุด ช่วงมืดใกล้เข้ามา
+→ จบบทนี้ในแบบที่นำไปสู่บทถัดไปอย่างเป็นธรรมชาติ
+
+═══ เช็คลิสต์คุณภาพ (ตรวจก่อนจบ) ═══
+  □ โชว์มากกว่าเล่า
+  □ ประสาทสัมผัส ≥ 2 ต่อฉาก
+  □ บทพูดขับเคลื่อนเรื่องหรือเผยตัวละคร
+  □ จบบทด้วย hook
+  □ เสียงตัวละครต่างกันชัด
+  □ ไม่มีคำซ้ำซาก/สำนวนเฝือ
+  □ ความยาวใกล้เป้าหมาย (±20%)
+
+เขียนบทที่ 3 ให้สมบูรณ์เป็นภาษาไทย จากนั้น output บล็อก <<<STATE>>> ที่อัปเดต ไม่ต้องมีคำอธิบายอื่น",
+    "usage": "ส่งเพื่อเขียนบทที่ 3 (จุดกึ่งกลาง)",
+  },
+  {
+    "description": "ปมซับซ้อน: เดิมพันสูงสุด ช่วงมืดใกล้เข้ามา",
+    "group": "core",
+    "id": "CH_4",
+    "name": "Chapter 4",
+    "prompt": "═══ พรอมป์ตเขียนบทที่ 4 ═══
+
+หนังสือ: "The Test Book" — thriller
+แก่นเรื่อง: A premise worth testing
+บทที่: 4 จาก 6
+ประเภท: ปมซับซ้อน
+วัตถุประสงค์: ปมซับซ้อน: เดิมพันสูงสุด ช่วงมืดใกล้เข้ามา
+เป้าหมายความยาว: ~3000 คำ (±20% ให้เนื้อหากำหนดความยาวจริง)
+
+═══ ความต่อเนื่อง ═══
+→ อ่านบล็อก <<<STATE>>> ล่าสุดจากก่อนหน้าในแชทนี้แล้วคงความสอดคล้อง
+→ ถ้ายังไม่มี STATE ให้สร้างขึ้นจากบทที่เขียนไปแล้ว
+
+═══ บริบทบทก่อนหน้า (บท 3) ═══
+ประเภท: จุดกึ่งกลาง
+วัตถุประสงค์: จุดกึ่งกลาง: การเปิดเผยหรือการพลิกผัน
+→ ต่อยอดสิ่งที่ตั้งไว้ อย่าเล่าซ้ำ คงโทน สถานะตัวละคร และเส้นเวลา
+
+═══ คำสั่งฉาก ═══
+ประเภทฉาก: complication
+องก์: 2
+ระดับความตึงเครียด: 80%
+
+═══ โครงสร้าง ═══
+1. ทุกแผนล้มเหลว พันธมิตรตึงเครียด
+2. ช่วงมืดใกล้เข้ามา ตัวเอกถูกบีบถึงขีดสุด
+3. ความขัดแย้งภายใน: ข้อบกพร่อง vs การเติบโต
+4. hook: กำลังจะเลวร้ายลงอีก
+
+⚠ บทตึงเครียดสูง — รักษาจังหวะ:
+- ประโยค/ย่อหน้าสั้นลง
+- ตัดฉากเร็วขึ้น
+- บรรยายเท่าที่จำเป็น
+- ความคิดในใจเฉพาะจุดสำคัญ
+
+═══ เชื่อมไปบทที่ 5 ═══
+บทถัดไป: ช่วงมืด — ค่ำคืนมืดมิด: ตัวเอกตกต่ำที่สุด
+→ จบบทนี้ในแบบที่นำไปสู่บทถัดไปอย่างเป็นธรรมชาติ
+
+═══ เช็คลิสต์คุณภาพ (ตรวจก่อนจบ) ═══
+  □ โชว์มากกว่าเล่า
+  □ ประสาทสัมผัส ≥ 2 ต่อฉาก
+  □ บทพูดขับเคลื่อนเรื่องหรือเผยตัวละคร
+  □ จบบทด้วย hook
+  □ เสียงตัวละครต่างกันชัด
+  □ ไม่มีคำซ้ำซาก/สำนวนเฝือ
+  □ ความยาวใกล้เป้าหมาย (±20%)
+
+เขียนบทที่ 4 ให้สมบูรณ์เป็นภาษาไทย จากนั้น output บล็อก <<<STATE>>> ที่อัปเดต ไม่ต้องมีคำอธิบายอื่น",
+    "usage": "ส่งเพื่อเขียนบทที่ 4 (ปมซับซ้อน)",
+  },
+  {
+    "description": "ค่ำคืนมืดมิด: ตัวเอกตกต่ำที่สุด",
+    "group": "core",
+    "id": "CH_5",
+    "name": "Chapter 5",
+    "prompt": "═══ พรอมป์ตเขียนบทที่ 5 ═══
+
+หนังสือ: "The Test Book" — thriller
+แก่นเรื่อง: A premise worth testing
+บทที่: 5 จาก 6
+ประเภท: ช่วงมืด
+วัตถุประสงค์: ค่ำคืนมืดมิด: ตัวเอกตกต่ำที่สุด
+เป้าหมายความยาว: ~3000 คำ (±20% ให้เนื้อหากำหนดความยาวจริง)
+
+═══ ความต่อเนื่อง ═══
+→ อ่านบล็อก <<<STATE>>> ล่าสุดจากก่อนหน้าในแชทนี้แล้วคงความสอดคล้อง
+→ ถ้ายังไม่มี STATE ให้สร้างขึ้นจากบทที่เขียนไปแล้ว
+
+═══ บริบทบทก่อนหน้า (บท 4) ═══
+ประเภท: ปมซับซ้อน
+วัตถุประสงค์: ปมซับซ้อน: เดิมพันสูงสุด ช่วงมืดใกล้เข้ามา
+→ ต่อยอดสิ่งที่ตั้งไว้ อย่าเล่าซ้ำ คงโทน สถานะตัวละคร และเส้นเวลา
+
+═══ คำสั่งฉาก ═══
+ประเภทฉาก: dark_moment
+องก์: 3
+ระดับความตึงเครียด: 91%
+
+═══ โครงสร้าง ═══
+1. จุดต่ำสุด เสียทุกอย่าง (หรือดูเหมือนเสีย)
+2. เผชิญปีศาจในใจ/ข้อบกพร่องลึกสุด
+3. เมล็ดพันธุ์ทางออกที่ปลูกไว้ก่อนหน้าออกดอก
+4. hook: ทางเลือก — ยอมแพ้หรือหาทางอื่น
+
+⚠ บทตึงเครียดสูง — รักษาจังหวะ:
+- ประโยค/ย่อหน้าสั้นลง
+- ตัดฉากเร็วขึ้น
+- บรรยายเท่าที่จำเป็น
+- ความคิดในใจเฉพาะจุดสำคัญ
+
+═══ เชื่อมไปบทที่ 6 ═══
+บทถัดไป: บทสรุป — บทสรุป: ภาวะปกติใหม่ และถ้อยแถลงแก่นเรื่อง
+→ จบบทนี้ในแบบที่นำไปสู่บทถัดไปอย่างเป็นธรรมชาติ
+
+═══ เช็คลิสต์คุณภาพ (ตรวจก่อนจบ) ═══
+  □ โชว์มากกว่าเล่า
+  □ ประสาทสัมผัส ≥ 2 ต่อฉาก
+  □ บทพูดขับเคลื่อนเรื่องหรือเผยตัวละคร
+  □ จบบทด้วย hook
+  □ เสียงตัวละครต่างกันชัด
+  □ ไม่มีคำซ้ำซาก/สำนวนเฝือ
+  □ ความยาวใกล้เป้าหมาย (±20%)
+
+เขียนบทที่ 5 ให้สมบูรณ์เป็นภาษาไทย จากนั้น output บล็อก <<<STATE>>> ที่อัปเดต ไม่ต้องมีคำอธิบายอื่น",
+    "usage": "ส่งเพื่อเขียนบทที่ 5 (ช่วงมืด)",
+  },
+  {
+    "description": "บทสรุป: ภาวะปกติใหม่ และถ้อยแถลงแก่นเรื่อง",
+    "group": "core",
+    "id": "CH_6",
+    "name": "Chapter 6",
+    "prompt": "═══ พรอมป์ตเขียนบทที่ 6 ═══
+
+หนังสือ: "The Test Book" — thriller
+แก่นเรื่อง: A premise worth testing
+บทที่: 6 จาก 6
+ประเภท: บทสรุป
+วัตถุประสงค์: บทสรุป: ภาวะปกติใหม่ และถ้อยแถลงแก่นเรื่อง
+เป้าหมายความยาว: ~3000 คำ (±20% ให้เนื้อหากำหนดความยาวจริง)
+
+═══ ความต่อเนื่อง ═══
+→ อ่านบล็อก <<<STATE>>> ล่าสุดจากก่อนหน้าในแชทนี้แล้วคงความสอดคล้อง
+→ ถ้ายังไม่มี STATE ให้สร้างขึ้นจากบทที่เขียนไปแล้ว
+
+═══ บริบทบทก่อนหน้า (บท 5) ═══
+ประเภท: ช่วงมืด
+วัตถุประสงค์: ค่ำคืนมืดมิด: ตัวเอกตกต่ำที่สุด
+→ ต่อยอดสิ่งที่ตั้งไว้ อย่าเล่าซ้ำ คงโทน สถานะตัวละคร และเส้นเวลา
+
+═══ คำสั่งฉาก ═══
+ประเภทฉาก: resolution
+องก์: 3
+ระดับความตึงเครียด: 80%
+
+═══ โครงสร้าง ═══
+1. โลกหลังความขัดแย้ง (ภาวะปกติใหม่)
+2. แสดง (ไม่ใช่บอก) ว่าตัวเอกเปลี่ยนไปอย่างไร
+3. ถ้อยแถลงแก่นเรื่องผ่านการกระทำ
+4. ภาพสุดท้ายที่กังวาน
+
+⚠ บทตึงเครียดสูง — รักษาจังหวะ:
+- ประโยค/ย่อหน้าสั้นลง
+- ตัดฉากเร็วขึ้น
+- บรรยายเท่าที่จำเป็น
+- ความคิดในใจเฉพาะจุดสำคัญ
+
+═══ เช็คลิสต์คุณภาพ (ตรวจก่อนจบ) ═══
+  □ โชว์มากกว่าเล่า
+  □ ประสาทสัมผัส ≥ 2 ต่อฉาก
+  □ บทพูดขับเคลื่อนเรื่องหรือเผยตัวละคร
+  □ จบบทด้วย hook
+  □ เสียงตัวละครต่างกันชัด
+  □ ไม่มีคำซ้ำซาก/สำนวนเฝือ
+  □ ความยาวใกล้เป้าหมาย (±20%)
+
+เขียนบทที่ 6 ให้สมบูรณ์เป็นภาษาไทย จากนั้น output บล็อก <<<STATE>>> ที่อัปเดต ไม่ต้องมีคำอธิบายอื่น",
+    "usage": "ส่งเพื่อเขียนบทที่ 6 (บทสรุป)",
+  },
+  {
+    "description": "วิเคราะห์คุณภาพดราฟต์แต่ละบท",
+    "group": "core",
+    "id": "ANALYSIS",
+    "name": "Quality Analysis Prompt",
+    "prompt": "คุณคือบรรณาธิการNovel / Fictionที่เข้มงวด กำลังประเมินดราฟต์บทหนึ่ง
+
+เป้าหมาย: 3000 คำ (±20%), ภาษาไทย, โทน "storytelling"
+
+═══ เกณฑ์ประเมิน ═══
+1. โชว์ vs เล่า: แสดงผ่านการกระทำ/ประสาทสัมผัสมากพอไหม
+2. ประสาทสัมผัส: ≥2 อย่างต่อฉากไหม
+3. ความสม่ำเสมอของเสียงเล่า
+4. คุณภาพบทพูด: แต่ละบรรทัดขับเคลื่อนเรื่องหรือเผยตัวละครไหม
+5. ความตึงเครียด: มีและไต่ระดับเหมาะสมไหม
+6. hook ท้ายบท
+7. จังหวะ: สลับเร็ว-ช้าไหม
+8. ความสม่ำเสมอของตัวละคร
+9. สำนวนเฝือ/คำซ้ำซาก
+10. ความยาวอยู่ในเป้าหมายไหม
+
+═══ รูปแบบผลลัพธ์ (JSON) ═══
+{
+  "scores": { /* แต่ละเกณฑ์: 0-1 */ },
+  "overall_pass": true/false,
+  "strengths": [ ],
+  "issues": [ ],
+  "revision_mode": "polish" | "strengthen_evidence" | "clarify" | "restructure" | "deepen" | "rewrite",
+  "specific_fixes": [ ]
+}
+
+═══ ดราฟต์ที่จะประเมิน ═══
+[วางดราฟต์บทที่นี่]",
+    "usage": "ส่งพร้อมดราฟต์หลังเขียนแต่ละบท",
+  },
+  {
+    "description": "แก้บทตามผลวิเคราะห์",
+    "group": "core",
+    "id": "REVISION",
+    "name": "Revision Prompt",
+    "prompt": "คุณคือบรรณาธิการNovel / Fictionมืออาชีพ กำลังแก้ดราฟต์ตามผลวิเคราะห์
+
+═══ กฎการแก้ ═══
+1. รักษาเสียงและเจตนาของผู้เขียน
+2. แก้เฉพาะจุดที่ผลวิเคราะห์ชี้ อย่าเขียนใหม่ส่วนที่ผ่านแล้ว
+3. คงความยาวในกรอบ ±20%
+4. ใช้โหมดแก้ที่กำหนด: polish / strengthen_evidence / clarify / restructure / deepen / rewrite
+5. output บทที่แก้แล้วฉบับสมบูรณ์ (ไม่ใช่ diff ไม่มีคำอธิบาย) เป็นภาษาไทย
+
+═══ โหมดแก้: [ระบุโดยผลวิเคราะห์] ═══
+═══ จุดที่ต้องแก้: [ระบุโดยผลวิเคราะห์] ═══
+
+═══ ดราฟต์เดิม ═══
+[วางดราฟต์ที่นี่]
+
+═══ ผลวิเคราะห์ ═══
+[วางผลวิเคราะห์ที่นี่]",
+    "usage": "ส่งพร้อมดราฟต์ + ผลวิเคราะห์",
+  },
+  {
+    "description": "หน้าปกใน คำอุทิศ สารบัญ คำนำ",
+    "group": "core",
+    "id": "FRONT_MATTER",
+    "name": "Front Matter",
+    "prompt": "สร้างส่วนหน้าเล่ม (front matter) สำหรับ "The Test Book":
+
+═══ ใส่ ═══
+1. หน้าปกใน: ชื่อเรื่อง ชื่อรอง (ถ้ามี) ชื่อผู้เขียน
+2. หน้าลิขสิทธิ์: © ปี สำนักพิมพ์ ISBN (ที่ว่าง) ข้อความสงวนสิทธิ์
+3. คำอุทิศ
+4. คำคม (ถ้ามี)
+5. สารบัญ
+
+โทน: storytelling · ภาษาไทย",
+    "usage": "สร้างหลังเขียนครบทุกบท",
+  },
+  {
+    "description": "ภาคผนวก บรรณานุกรม ดัชนี",
+    "group": "core",
+    "id": "BACK_MATTER",
+    "name": "Back Matter",
+    "prompt": "สร้างส่วนท้ายเล่ม (back matter) สำหรับ "The Test Book":
+
+═══ ใส่ ═══
+1. บันทึกผู้เขียน: บริบท การค้นคว้า แรงบันดาลใจ
+2. กิตติกรรมประกาศ
+3. เกี่ยวกับผู้เขียน
+4. คำถามชวนสนทนา 10 ข้อ
+",
+    "usage": "สร้างหลังส่วนหน้าเล่ม",
+  },
+  {
+    "description": "วิเคราะห์บทที่จบเพื่อสรุปให้บทถัดไป",
+    "group": "core",
+    "id": "FEEDBACK",
+    "name": "Inter-Chapter Feedback",
+    "prompt": "วิเคราะห์บทที่เขียนเสร็จเพื่อสร้างคำแนะนำสำหรับบทถัดไป
+
+═══ วิเคราะห์และให้ ═══
+1. สถานะที่ส่งต่อ: ข้อเท็จจริง ตัวละคร แนวคิด ศัพท์ และสถานะตอนจบที่ตั้งไว้
+2. ปัญหาที่ต้องจัดการ: คำถามค้าง ข้ออ้างไร้หลักฐาน น้ำเสียงไม่สม่ำเสมอ องค์ประกอบที่ขาด
+3. คำสั่งสำหรับบทถัดไป: ต่อยอดอะไร เลี่ยงเล่าซ้ำอะไร คงโทนแบบไหน ปรับปรุงอะไร
+4. คะแนนคุณภาพ: ภาพรวม (0-1); พร้อมไปบทถัดไปไหม; ถ้าไม่ ต้องแก้อะไรก่อน
+
+5. เฉพาะนิยาย: สถานะตัวละครตอนจบบท; ระดับ/ทิศทางความตึงเครียด; ปมที่ค้าง; การปูเรื่อง (foreshadowing)
+
+═══ ดราฟต์บทที่จะวิเคราะห์ ═══
+[วางบทที่เขียนเสร็จที่นี่]",
+    "usage": "ส่งหลังจบแต่ละบท",
+  },
+  {
+    "description": "โครงเรื่องรายบท (Save the Cat / Hero's Journey / Kishōtenketsu ฯลฯ)",
+    "group": "craft",
+    "id": "STRUCTURE",
+    "name": "Structure Outline",
+    "prompt": "คุณคือสถาปนิกเรื่อง จัดทำ "โครงเรื่องรายบท" สำหรับ "The Test Book" ก่อนลงมือเขียน
+
+แก่นเรื่อง: A premise worth testing
+แนว: thriller · 6 บท × ~3000 คำ
+
+═══ เลือกโครงสร้าง (เลือกที่เหมาะสุด หรือให้ผู้ใช้ระบุ) ═══
+• Save the Cat! — 15 beat
+• Hero's Journey — 12 ขั้น
+• Story Circle — 8 ขั้น (You/Need/Go/Search/Find/Take/Return/Change)
+• Kishōtenketsu — 4 องก์ ไม่จำเป็นต้องมีความขัดแย้ง เน้นการพลิกมุมมอง (เหมาะวรรณกรรม/เด็ก)
+• Seven-Point — สร้างย้อนจากตอนจบ
+
+═══ ผลลัพธ์ ═══
+1. ระบุโครงที่เลือกและเหตุผล
+2. แมป beat เข้ากับเลขบท (1-6) พร้อมวัตถุประสงค์ 1-2 ประโยค
+3. ระบุบทที่เป็นเหตุการณ์จุดประกาย จุดกึ่งกลาง และจุดสุดยอด
+4. แต่ละบท: "คำสัญญา" หนึ่งบรรทัด + hook ท้ายบท",
+    "usage": "รันก่อนเขียนเพื่อวางแผนทั้งเล่ม",
+  },
+  {
+    "description": "เสียงเฉพาะตัวของแต่ละตัวละคร",
+    "group": "craft",
+    "id": "VOICE_SHEET",
+    "name": "Character Voice Sheet",
+    "prompt": "สร้าง "ชีตเสียงตัวละคร" ให้แต่ละตัวพูดต่างกันชัด (โมเดลมักทำให้ทุกคนพูดเหมือนกัน)
+
+แต่ละตัวละครสำคัญ ให้ระบุ:
+- ชื่อ + บทบาทหนึ่งบรรทัด
+- ระดับคำ (ทางการ/สแลง/เทคนิค) + คำ/วลีประจำตัว 5-8 คำ
+- รูปประโยค (สั้นห้วน vs ยาวพลิ้ว) และจังหวะ
+- คำติดปาก คำเติม และสิ่งที่ "ไม่เคยพูด"
+- ตัวกรองอารมณ์: ภูมิหลัง/ยุค/การศึกษา มีผลต่อการเลือกคำอย่างไร
+- ตัวอย่างบทพูด 2 บรรทัดที่มีแต่ตัวนี้พูดได้
+
+ตัวอย่างรูปแบบ:
+  ชื่อ: มะลิ — นักสืบขี้ระแวง อดีตพระ
+  ระดับคำ: ห้วน ทางการ; ประจำตัว: "เอาตามตรง", "พอ"
+  รูปประโยค: สั้น ห้วน ไม่พูดเยิ่นเย้อ
+  คำติดปาก: ลงท้ายด้วยคำถาม; ไม่เคยพูดคำหยาบ
+  ตัวอย่าง: "เอาตามตรง คุณโกหก คำถามคือ — ทำไม?"
+
+═══ ข้อมูลตัวละคร ═══
+[ใส่รายชื่อ/โน้ตตัวละครที่นี่]",
+    "usage": "กรอกตัวละคร แล้ววางผลในพรอมป์ตบท",
+  },
+  {
+    "description": "เส้นทางตัวละคร (ความเชื่อผิด vs ความจริง)",
+    "group": "craft",
+    "id": "CHAR_ARC",
+    "name": "Character Arc Sheet",
+    "prompt": "ออกแบบ "เส้นทางตัวละคร" สำหรับ "The Test Book" ด้วยโมเดล ความเชื่อผิด vs ความจริง (K.M. Weiland)
+
+แต่ละตัวที่มี arc ให้ระบุ:
+- ชนิด arc: บวก (ความเชื่อผิด→ความจริง), ลบ (หลงผิด/ตกต่ำ/เสื่อม), หรือคงที่ (ยึดความจริง เปลี่ยนโลก)
+- ความเชื่อผิดตอนเริ่ม + บาดแผลเบื้องหลัง
+- ความจริงที่ต้องการ (หรือปฏิเสธ สำหรับ arc ลบ)
+- สิ่งที่อยากได้ (ภายนอก) vs สิ่งที่ต้องการ (ภายใน)
+- beat ของ arc ผูกกับโครงเรื่อง: จุดที่ความเชื่อถูกท้าทาย ช่วงตัดสินใจ หลักฐานการเปลี่ยน
+- พฤติกรรมที่ 0% / 25% / 50% / 75% / 100% ของเล่ม
+
+═══ ข้อมูลตัวละคร + โครงเรื่อง ═══
+[ใส่ที่นี่]",
+    "usage": "รันหลังโครงเรื่อง ก่อนเขียน",
+  },
+  {
+    "description": "story bible + ตรวจความต่อเนื่องรายบท",
+    "group": "craft",
+    "id": "WORLD_CODEX",
+    "name": "Worldbuilding Codex",
+    "prompt": "สร้าง "คลังโลก" (story bible) สำหรับ "The Test Book" — แหล่งความจริงเดียวที่ทำให้เรื่องสอดคล้องกัน
+
+จัดเป็นหมวด (ใส่เฉพาะที่เกี่ยว):
+- ฉาก: สถานที่ ภูมิศาสตร์ ยุคสมัย บรรยากาศ
+- กฎ: โลกทำงานอย่างไร และ "ขีดจำกัด" (อะไรเป็นไปไม่ได้)
+- กลุ่ม/ฝ่าย: ชื่อ เป้าหมาย ความสัมพันธ์
+- วัตถุ/ตำนานสำคัญ
+- เส้นเวลาเหตุการณ์ใหญ่
+- หลักการตั้งชื่อ (ให้ชื่อสม่ำเสมอ)
+
+แล้วเพิ่มคำสั่งตรวจความต่อเนื่อง: "หลังแต่ละบท ให้ลิสต์ข้อเท็จจริงใหม่ที่บทนั้นเพิ่ม และทำเครื่องหมายสิ่งที่ขัดกับคลังนี้ จากนั้นอัปเดตคลัง"
+
+═══ แก่นเรื่อง/โน้ตโลก ═══
+แก่นเรื่อง: A premise worth testing
+[ใส่โน้ตโลกที่มีอยู่]",
+    "usage": "สร้างครั้งเดียว แล้วตรวจทุกบทใหม่",
+  },
+  {
+    "description": "โครงฉากแบบ Scene/Sequel",
+    "group": "craft",
+    "id": "SCENE",
+    "name": "Scene Builder",
+    "prompt": "สร้างฉากเดียวด้วยโมเดล Scene/Sequel (Swain/Bickham) ใช้เมื่อบทต้องการหน่วยดราม่าที่แน่น
+
+SCENE (การกระทำ):
+1. เป้าหมาย — ตัวละคร POV ต้องการอะไรในฉากนี้
+2. ความขัดแย้ง — อะไรขวาง (ยกระดับขึ้น)
+3. หายนะ — จบแย่กว่าตอนเริ่ม ("ได้ แต่..." / "ไม่ และ...")
+
+SEQUEL (ปฏิกิริยา) — ตามหลังฉาก (ไม่บังคับ):
+1. ปฏิกิริยา — การตอบสนองทางอารมณ์
+2. ภาวะกลืนไม่เข้าคายไม่ออก — ทางเลือกแย่ ๆ ที่เหลือ
+3. การตัดสินใจ — กลายเป็นเป้าหมายของฉากถัดไป
+
+กฎ: เหตุก่อนผล ประสาทสัมผัส ≥2 ไม่ใช้กริยากรอง (เห็น/รู้สึก/ได้ยิน) จบด้วยจุดพลิก
+
+═══ บรีฟฉาก ═══
+POV: [ ] · เป้าหมาย: [ ] · อุปสรรค: [ ] · ตำแหน่งในบท: [ ]",
+    "usage": "ใช้เมื่อบทต้องการฉากที่แน่น",
+  },
+  {
+    "description": "action beat, subtext, ตัด tag เกิน",
+    "group": "craft",
+    "id": "DIALOGUE",
+    "name": "Dialogue Polish",
+    "prompt": "ขัดเกลาบทสนทนาให้คมขึ้น คงความหมาย
+
+ใช้:
+- action beat แทน dialogue tag ส่วนใหญ่ ("เธอวางถ้วยลง" ไม่ใช่ "เธอพูดอย่างโกรธ")
+- subtext: ตัวละครไม่ค่อยพูดตรงสิ่งที่คิด สร้างช่องว่างระหว่างคำกับการกระทำ
+- ตัดคำทักทาย คำเติม และการอธิบายตรง ๆ
+- แต่ละบรรทัดต้องขับเคลื่อนเรื่องหรือเผยตัวละคร
+- คงเสียงเฉพาะตัวของแต่ละคน
+
+ผลลัพธ์: บทสนทนาที่แก้แล้ว + โน้ต 2-3 ข้อว่าแก้อะไรทำไม
+
+ตัวอย่าง
+  ก่อน: "ฉันโกรธเธอมาก" เธอพูดอย่างโมโห "ทำกับฉันได้ยังไง"
+  หลัง: เธอวางกุญแจลงบนโต๊ะทีละดอก "สามปี เธอรู้มาตลอดสามปี"
+
+═══ ดราฟต์บทสนทนา ═══
+[วางบทสนทนาที่นี่]",
+    "usage": "ส่งบทสนทนาเพื่อขัดเกลา",
+  },
+  {
+    "description": "ทำลายความปลอดภัยของ AI ยกเดิมพันจริง แบนคำคลิเชไทย",
+    "group": "craft",
+    "id": "ANTI_SAFE",
+    "name": "Anti-Safe Pass",
+    "prompt": "ทำ ANTI-SAFE pass — โมเดลมักเขียนแบบปลอดภัย เรียบร้อย ปลอบใจ จงทำลายนิสัยนี้โดยยังคงเรื่องให้สมเหตุผล
+
+กฎ:
+- ห้ามจบแบบปลอบใจ/เรียบร้อย ห้ามสรุป "บทเรียน" ห้าม "ทุกอย่างดีขึ้น"
+- ยกระดับความขัดแย้ง: ตัวละครต้องเสีย/เสี่ยงบางอย่างจริง ทุกการเลือกมีราคา
+- ตัด "theater": การยกยอตัวเอง เมโลดราม่า อารมณ์โต้ง ๆ ผู้เล่าสั่งสอน
+- แบนคำคลิเช AI ทางอารมณ์ — แสดงผ่านการกระทำ/ภาษากายเฉพาะแทน เช่น "น้ำตาไหลริน", "หัวใจบีบรัด/สลาย", "รอยยิ้มอบอุ่น", "ความรู้สึกท่วมท้น", "ใจหายวาบ"
+- ยอมให้คลุมเครืออย่างมีเหตุผลแทนบทสรุปสวยงาม ปล่อยให้ผลของการกระทำคงอยู่
+
+ผลลัพธ์: ฉบับแก้ + 2-3 บูลเล็ตว่าทำให้เสี่ยงขึ้นตรงไหน และเพิ่มราคา/ต้นทุนอะไร
+
+═══ ดราฟต์ ═══
+[วางดราฟต์ที่นี่]",
+    "usage": "ส่งดราฟต์เพื่อทำให้เสี่ยงขึ้น",
+  },
+  {
+    "description": "ตรวจ 5 สัมผัสรายฉาก (≥3) + เติมรายละเอียดรูปธรรม",
+    "group": "craft",
+    "id": "SENSORY",
+    "name": "Sensory Audit",
+    "prompt": "ตรวจการลงรายละเอียดประสาทสัมผัสของดราฟต์ (เป้าหมาย ≥ 3 สัมผัสต่อฉาก)
+
+แต่ละฉาก:
+1. ระบุว่ามีสัมผัสใดบ้าง: ภาพ / เสียง / กลิ่น / รส / สัมผัส
+2. ทำเครื่องหมายฉากที่ใช้น้อยกว่า 3
+3. เสนอ 2-3 รายละเอียดสัมผัสที่รูปธรรม เฉพาะ ไม่คลิเช เพื่อเติมจุดที่บาง (กลิ่นและสัมผัสมักขาด)
+
+เลี่ยงสัมผัสกลาง ๆ — รายละเอียดต้องทำหน้าที่คู่ (อารมณ์/ตัวละคร/แก่นเรื่อง)
+
+ผลลัพธ์: ตารางสัมผัสรายฉาก + รายการที่ควรเติม
+
+═══ ดราฟต์ ═══
+[วางดราฟต์ที่นี่]",
+    "usage": "ส่งดราฟต์เพื่อลงประสาทสัมผัส",
+  },
+  {
+    "description": "เส้นความตึงรายฉาก + แก้จุดราบ",
+    "group": "craft",
+    "id": "CONFLICT_MAP",
+    "name": "Conflict / Tension Map",
+    "prompt": "ทำแผนผังความตึงเครียดของดราฟต์ ไม่ให้เรื่องราบ
+
+แต่ละฉาก:
+- ชนิดความขัดแย้ง: ภายนอก / ภายใน / ระหว่างบุคคล (หรือ "ไม่มี" — ทำเครื่องหมาย)
+- ระดับความตึง 0-1 และทิศทาง (ขึ้น/ลง/ราบ)
+- เดิมพันรูปธรรม (อะไรที่เสียได้ตรงนี้)
+
+จากนั้น:
+- วาดเส้นความตึง ทำเครื่องหมายช่วงราบ/ซ้ำ และฉากที่ไม่มีความขัดแย้งจริง
+- แนะนำจุดที่ควรยกเดิมพัน เพิ่มการพลิก หรือแปรจังหวะ (ช่วงเงียบที่ตั้งใจได้ แต่ราบโดยบังเอิญไม่ได้)
+
+ผลลัพธ์: ตารางความตึงรายฉาก + รายการแก้
+
+═══ ดราฟต์ ═══
+[วางดราฟต์ที่นี่]",
+    "usage": "ส่งดราฟต์เพื่อทำแผนผังความตึง",
+  },
+]
+`;
+
+exports[`snapshots > nonfiction pack with nonfiction + prose 1`] = `
+[
+  {
+    "description": "Use this as the system prompt for ALL writing sessions.",
+    "group": "core",
+    "id": "MASTER",
+    "name": "Master System Prompt",
+    "prompt": "You are a master non-fiction author writing "The Test Book".
+
+═══ IDENTITY & ROLE ═══
+You are writing a complete non-fiction book in ภาษาไทย.
+Your voice is: storytelling.
+Your target reader: QA engineers.
+
+═══ BOOK SPECIFICATIONS ═══
+- Title: The Test Book
+- Type: Non-Fiction
+- Sub-genre: self help
+- Total chapters: 6
+- Target words per chapter: 3000
+- Total estimated words: 18000
+- Language: ภาษาไทย
+- Citation style: none
+
+═══ THESIS / PREMISE ═══
+A premise worth testing
+
+═══ QUALITY STANDARDS (aim for these; use judgment over rigid ratios) ═══
+- Argument strength: ≥ 70% claims supported
+- Evidence: ≥ 2 citations per claim
+- Clarity score: ≥ 60%
+- Logic flow: no gaps between paragraphs
+- Pedagogy: objectives + takeaways + exercises
+- Counter-arguments: steelmanned then rebutted
+- THESIS MUST BE FULLY PROVEN by book end
+- All jargon defined on first use
+
+═══ NON-FICTION RULES ═══
+1. Every claim must be supported by evidence (citation, statistic, example, or case study)
+2. Evidence hierarchy: meta-analysis > RCT > cohort > case study > expert quote > anecdote
+3. Define all jargon on first use
+4. Logic connections must be explicit between paragraphs (therefore, however, for example...)
+5. Counter-arguments: steelman (present fairly), then rebut with evidence
+6. Pedagogy: learning objectives → content → exercises → summary → key takeaways
+7. Examples and analogies for every abstract concept
+8. Average sentence length ≤ 25 words
+9. Each chapter must advance thesis proof
+10. Actionable takeaways reader can implement immediately
+
+═══ THESIS ═══
+Main thesis: A premise worth testing
+
+═══ READER JOURNEY ═══
+Start: problem unaware → End: practitioner who can apply the framework
+
+═══ CONTINUITY PROTOCOL (automatic story bible — keep this whole session in one chat) ═══
+You maintain a living STATE block so the book stays consistent without me re-pasting notes.
+1. The FIRST time you write, create a STATE block capturing: characters (name + key traits/relationships), setting/world rules, established facts, timeline, unresolved threads, and (fiction) tension level.
+2. At the START of every chapter, silently read the latest STATE and stay consistent with it — never contradict or re-introduce what's already established.
+3. At the END of every chapter, append an updated STATE block, fenced exactly like this:
+
+<<<STATE>>>
+CHARACTERS: ...
+WORLD/FACTS: ...
+TIMELINE: ...
+OPEN THREADS: ...
+TENSION: ...  (fiction only)
+<<<END STATE>>>
+
+Keep STATE compact (≤ 250 words), newest facts first, plain facts only. Carry it forward chapter to chapter. If I paste a STATE block into a later prompt, treat it as the source of truth.
+
+═══ OUTPUT FORMAT ═══
+- Write the chapter content directly (no meta-commentary, no preamble like "Here is the chapter")
+- Begin with the chapter title as a Markdown heading (## Chapter N: Title)
+- Maintain consistent voice throughout; calibrate length to the target (±20%) without padding
+- End with a hook or transition appropriate to the chapter type
+- After the chapter, output the updated <<<STATE>>> block (per the Continuity Protocol)
+",
+    "usage": "Set as the system prompt before any chapter writing.",
+  },
+  {
+    "description": "Establishes the complete book plan.",
+    "group": "core",
+    "id": "OVERVIEW",
+    "name": "Book Overview / Plan",
+    "prompt": "═══ BOOK PLAN — "The Test Book" ═══
+
+Send this once at the start of the writing session, after the Master System Prompt, to establish the full plan before Chapter 1.
+
+TYPE: Non-Fiction · SUB-GENRE: self help
+THESIS/PREMISE: A premise worth testing
+TARGET READER: QA engineers
+STRUCTURE: 6 chapters × ~3000 words
+
+═══ PARTS ═══
+• Foundation — Chapters 1-2
+• Deepening — Chapters 3-4
+• Transformation — Chapters 5-6
+
+═══ CHAPTER MAP ═══
+Ch.1 [introduction] — HOOK: Capture attention, establish the problem
+Ch.2 [story] — ILLUSTRATE: Make the problem real through narrative
+Ch.3 [evidence] — PROVE: Present research and data supporting a claim
+Ch.4 [theory] — EXPLAIN: Introduce a framework component with mechanism
+Ch.5 [practice] — APPLY: Give reader hands-on exercise
+Ch.6 [case_study] — CLOSE: Restate thesis, call to action, final story
+
+═══ INITIALIZE CONTINUITY ═══
+Create the initial <<<STATE>>> block (characters, world/facts, timeline, open threads) from this plan, and maintain it across every chapter per the Continuity Protocol in the system prompt.
+
+Confirm you understand the plan and output the initial STATE block, then wait for the first chapter prompt. Do not write any chapter yet.",
+    "usage": "Send once before writing Chapter 1.",
+  },
+  {
+    "description": "HOOK: Capture attention, establish the problem",
+    "group": "core",
+    "id": "CH_1",
+    "name": "Chapter 1",
+    "prompt": "═══ CHAPTER 1 WRITING PROMPT ═══
+
+BOOK: "The Test Book" — self help
+PREMISE: A premise worth testing
+CHAPTER: 1 of 6
+TYPE: introduction
+PURPOSE: HOOK: Capture attention, establish the problem
+WORD TARGET: ~3000 words (±20%; let the content set the exact length)
+
+═══ CHAPTER TYPE: INTRODUCTION ═══
+
+STRUCTURE:
+1. HOOK: Provocative question, surprising statistic, or compelling story
+2. PROBLEM: Define the problem this book solves
+3. PROMISE: What the reader will gain
+4. ROADMAP: Overview of the book's structure
+5. HOOK: End with first compelling evidence or story
+
+MUST INCLUDE:
+  ✓ clear_purpose
+  ✓ logical_flow
+  ✓ engagement
+  ✓ hook
+  ✓ problem_statement
+  ✓ roadmap
+
+═══ TRANSITION TO CHAPTER 2 ═══
+Next chapter: story — ILLUSTRATE: Make the problem real through narrative
+→ End this chapter in a way that naturally leads to the next.
+
+═══ QUALITY CHECKLIST (verify before finalizing) ═══
+  □ All claims supported by evidence
+  □ ≥ 2 citations in chapter
+  □ Jargon defined on first use
+  □ Logic flow between paragraphs
+  □ Pedagogy elements present
+  □ Tone consistent with author voice
+  □ Word count within target (±20%)
+
+Now write Chapter 1 in full. Output the chapter prose (Markdown), then the updated <<<STATE>>> block. No other commentary.",
+    "usage": "Send to write Chapter 1 (introduction).",
+  },
+  {
+    "description": "ILLUSTRATE: Make the problem real through narrative",
+    "group": "core",
+    "id": "CH_2",
+    "name": "Chapter 2",
+    "prompt": "═══ CHAPTER 2 WRITING PROMPT ═══
+
+BOOK: "The Test Book" — self help
+PREMISE: A premise worth testing
+CHAPTER: 2 of 6
+TYPE: story
+PURPOSE: ILLUSTRATE: Make the problem real through narrative
+WORD TARGET: ~3000 words (±20%; let the content set the exact length)
+
+═══ CONTINUITY ═══
+→ Read the latest <<<STATE>>> block from earlier in this chat and stay consistent with it.
+→ If no STATE exists yet, reconstruct it from the chapters written so far.
+
+═══ PREVIOUS CHAPTER (Ch.1) CONTEXT ═══
+Type: introduction
+Purpose: HOOK: Capture attention, establish the problem
+→ Build on what was established. Don't repeat information.
+→ Maintain continuity of tone, character state, and timeline.
+
+═══ CHAPTER TYPE: STORY ═══
+
+STRUCTURE:
+1. SCENE: Drop into specific moment with sensory details
+2. NARRATIVE: Tell the story with tension and emotion
+3. INSIGHT: Extract the lesson from the story
+4. REFLECTION: Connect to reader's experience
+5. BRIDGE: Transition to the framework/evidence
+
+MUST INCLUDE:
+  ✓ clear_purpose
+  ✓ logical_flow
+  ✓ engagement
+  ✓ sensory_detail
+  ✓ narrative_arc
+  ✓ insight
+
+═══ TRANSITION TO CHAPTER 3 ═══
+Next chapter: evidence — PROVE: Present research and data supporting a claim
+→ End this chapter in a way that naturally leads to the next.
+
+═══ QUALITY CHECKLIST (verify before finalizing) ═══
+  □ All claims supported by evidence
+  □ ≥ 2 citations in chapter
+  □ Jargon defined on first use
+  □ Logic flow between paragraphs
+  □ Pedagogy elements present
+  □ Tone consistent with author voice
+  □ Word count within target (±20%)
+
+Now write Chapter 2 in full. Output the chapter prose (Markdown), then the updated <<<STATE>>> block. No other commentary.",
+    "usage": "Send to write Chapter 2 (story).",
+  },
+  {
+    "description": "PROVE: Present research and data supporting a claim",
+    "group": "core",
+    "id": "CH_3",
+    "name": "Chapter 3",
+    "prompt": "═══ CHAPTER 3 WRITING PROMPT ═══
+
+BOOK: "The Test Book" — self help
+PREMISE: A premise worth testing
+CHAPTER: 3 of 6
+TYPE: evidence
+PURPOSE: PROVE: Present research and data supporting a claim
+WORD TARGET: ~3000 words (±20%; let the content set the exact length)
+
+═══ CONTINUITY ═══
+→ Read the latest <<<STATE>>> block from earlier in this chat and stay consistent with it.
+→ If no STATE exists yet, reconstruct it from the chapters written so far.
+
+═══ PREVIOUS CHAPTER (Ch.2) CONTEXT ═══
+Type: story
+Purpose: ILLUSTRATE: Make the problem real through narrative
+→ Build on what was established. Don't repeat information.
+→ Maintain continuity of tone, character state, and timeline.
+
+═══ CHAPTER TYPE: EVIDENCE ═══
+
+STRUCTURE:
+1. CLAIM: State the claim clearly
+2. EVIDENCE: Present research, data, case studies
+3. ANALYSIS: Explain what the evidence means
+4. LIMITATION: Acknowledge what the evidence doesn't prove
+5. CONNECTION: Link to thesis and next section
+
+MUST INCLUDE:
+  ✓ clear_purpose
+  ✓ logical_flow
+  ✓ engagement
+  ✓ claim
+  ✓ citations
+  ✓ analysis
+
+═══ TRANSITION TO CHAPTER 4 ═══
+Next chapter: theory — EXPLAIN: Introduce a framework component with mechanism
+→ End this chapter in a way that naturally leads to the next.
+
+═══ QUALITY CHECKLIST (verify before finalizing) ═══
+  □ All claims supported by evidence
+  □ ≥ 2 citations in chapter
+  □ Jargon defined on first use
+  □ Logic flow between paragraphs
+  □ Pedagogy elements present
+  □ Tone consistent with author voice
+  □ Word count within target (±20%)
+
+Now write Chapter 3 in full. Output the chapter prose (Markdown), then the updated <<<STATE>>> block. No other commentary.",
+    "usage": "Send to write Chapter 3 (evidence).",
+  },
+  {
+    "description": "EXPLAIN: Introduce a framework component with mechanism",
+    "group": "core",
+    "id": "CH_4",
+    "name": "Chapter 4",
+    "prompt": "═══ CHAPTER 4 WRITING PROMPT ═══
+
+BOOK: "The Test Book" — self help
+PREMISE: A premise worth testing
+CHAPTER: 4 of 6
+TYPE: theory
+PURPOSE: EXPLAIN: Introduce a framework component with mechanism
+WORD TARGET: ~3000 words (±20%; let the content set the exact length)
+
+═══ CONTINUITY ═══
+→ Read the latest <<<STATE>>> block from earlier in this chat and stay consistent with it.
+→ If no STATE exists yet, reconstruct it from the chapters written so far.
+
+═══ PREVIOUS CHAPTER (Ch.3) CONTEXT ═══
+Type: evidence
+Purpose: PROVE: Present research and data supporting a claim
+→ Build on what was established. Don't repeat information.
+→ Maintain continuity of tone, character state, and timeline.
+
+═══ CHAPTER TYPE: THEORY ═══
+
+STRUCTURE:
+1. CONCEPT: Introduce the framework component clearly
+2. MECHANISM: Explain how/why it works
+3. ANALOGY: Provide relatable analogy
+4. EXAMPLE: Concrete real-world example
+5. APPLICATION: How reader can use this concept
+
+MUST INCLUDE:
+  ✓ clear_purpose
+  ✓ logical_flow
+  ✓ engagement
+  ✓ concept
+  ✓ mechanism
+  ✓ example
+  ✓ analogy
+
+═══ TRANSITION TO CHAPTER 5 ═══
+Next chapter: practice — APPLY: Give reader hands-on exercise
+→ End this chapter in a way that naturally leads to the next.
+
+═══ QUALITY CHECKLIST (verify before finalizing) ═══
+  □ All claims supported by evidence
+  □ ≥ 2 citations in chapter
+  □ Jargon defined on first use
+  □ Logic flow between paragraphs
+  □ Pedagogy elements present
+  □ Tone consistent with author voice
+  □ Word count within target (±20%)
+
+Now write Chapter 4 in full. Output the chapter prose (Markdown), then the updated <<<STATE>>> block. No other commentary.",
+    "usage": "Send to write Chapter 4 (theory).",
+  },
+  {
+    "description": "APPLY: Give reader hands-on exercise",
+    "group": "core",
+    "id": "CH_5",
+    "name": "Chapter 5",
+    "prompt": "═══ CHAPTER 5 WRITING PROMPT ═══
+
+BOOK: "The Test Book" — self help
+PREMISE: A premise worth testing
+CHAPTER: 5 of 6
+TYPE: practice
+PURPOSE: APPLY: Give reader hands-on exercise
+WORD TARGET: ~3000 words (±20%; let the content set the exact length)
+
+═══ CONTINUITY ═══
+→ Read the latest <<<STATE>>> block from earlier in this chat and stay consistent with it.
+→ If no STATE exists yet, reconstruct it from the chapters written so far.
+
+═══ PREVIOUS CHAPTER (Ch.4) CONTEXT ═══
+Type: theory
+Purpose: EXPLAIN: Introduce a framework component with mechanism
+→ Build on what was established. Don't repeat information.
+→ Maintain continuity of tone, character state, and timeline.
+
+═══ CHAPTER TYPE: PRACTICE ═══
+
+STRUCTURE:
+1. OBJECTIVE: What the reader will achieve
+2. MATERIALS: What's needed
+3. STEPS: Step-by-step instructions
+4. COMMON MISTAKES: What to avoid
+5. EXPECTED RESULT: What success looks like
+
+MUST INCLUDE:
+  ✓ clear_purpose
+  ✓ logical_flow
+  ✓ engagement
+  ✓ objective
+  ✓ steps
+  ✓ exercise
+
+═══ TRANSITION TO CHAPTER 6 ═══
+Next chapter: case_study — CLOSE: Restate thesis, call to action, final story
+→ End this chapter in a way that naturally leads to the next.
+
+═══ QUALITY CHECKLIST (verify before finalizing) ═══
+  □ All claims supported by evidence
+  □ ≥ 2 citations in chapter
+  □ Jargon defined on first use
+  □ Logic flow between paragraphs
+  □ Pedagogy elements present
+  □ Tone consistent with author voice
+  □ Word count within target (±20%)
+
+Now write Chapter 5 in full. Output the chapter prose (Markdown), then the updated <<<STATE>>> block. No other commentary.",
+    "usage": "Send to write Chapter 5 (practice).",
+  },
+  {
+    "description": "CLOSE: Restate thesis, call to action, final story",
+    "group": "core",
+    "id": "CH_6",
+    "name": "Chapter 6",
+    "prompt": "═══ CHAPTER 6 WRITING PROMPT ═══
+
+BOOK: "The Test Book" — self help
+PREMISE: A premise worth testing
+CHAPTER: 6 of 6
+TYPE: case_study
+PURPOSE: CLOSE: Restate thesis, call to action, final story
+WORD TARGET: ~3000 words (±20%; let the content set the exact length)
+
+═══ CONTINUITY ═══
+→ Read the latest <<<STATE>>> block from earlier in this chat and stay consistent with it.
+→ If no STATE exists yet, reconstruct it from the chapters written so far.
+
+═══ PREVIOUS CHAPTER (Ch.5) CONTEXT ═══
+Type: practice
+Purpose: APPLY: Give reader hands-on exercise
+→ Build on what was established. Don't repeat information.
+→ Maintain continuity of tone, character state, and timeline.
+
+═══ CHAPTER TYPE: CASE_STUDY ═══
+
+STRUCTURE:
+1. SETUP: Context and background
+2. SITUATION: The challenge/problem
+3. NARRATIVE: What happened (with specific details)
+4. OUTCOME: Results (with data if possible)
+5. ANALYSIS: Framework principles demonstrated
+6. LESSONS: What the reader can extract
+
+MUST INCLUDE:
+  ✓ clear_purpose
+  ✓ logical_flow
+  ✓ engagement
+  ✓ context
+  ✓ narrative
+  ✓ outcome
+  ✓ lessons
+
+═══ QUALITY CHECKLIST (verify before finalizing) ═══
+  □ All claims supported by evidence
+  □ ≥ 2 citations in chapter
+  □ Jargon defined on first use
+  □ Logic flow between paragraphs
+  □ Pedagogy elements present
+  □ Tone consistent with author voice
+  □ Word count within target (±20%)
+
+Now write Chapter 6 in full. Output the chapter prose (Markdown), then the updated <<<STATE>>> block. No other commentary.",
+    "usage": "Send to write Chapter 6 (case_study).",
+  },
+  {
+    "description": "Analyze each chapter draft for quality.",
+    "group": "core",
+    "id": "ANALYSIS",
+    "name": "Quality Analysis Prompt",
+    "prompt": "You are a rigorous non-fiction editor analyzing a single chapter draft.
+
+Target: 3000 words (±20%), thai language, "storytelling" voice.
+
+═══ METRICS TO EVALUATE ═══
+1. ARGUMENT STRENGTH: Are claims supported by evidence? (0-1)
+2. EVIDENCE QUALITY: Strength per the evidence hierarchy?
+3. CLARITY: Sentence length, jargon defined, readability? (0-1)
+4. LOGIC FLOW: Explicit connections between paragraphs?
+5. PEDAGOGY: Objectives, examples, exercises, takeaways present?
+6. TONE: Consistent with the author voice?
+7. WORD COUNT: Within ±20% of target?
+8. CONTRADICTIONS: Any contradiction with earlier chapters?
+9. ENGAGEMENT: Examples, variety, actionable content?
+10. CITATIONS: Sources attributed in the chosen style?
+
+═══ OUTPUT FORMAT (JSON) ═══
+{
+  "scores": { /* each metric: 0-1 */ },
+  "overall_pass": true/false,
+  "strengths": [ /* list */ ],
+  "issues": [ /* list with severity */ ],
+  "revision_mode": "polish" | "strengthen_evidence" | "clarify" | "restructure" | "deepen" | "rewrite",
+  "specific_fixes": [ /* actionable instructions */ ]
+}
+
+═══ DRAFT TO ANALYZE ═══
+[INSERT CHAPTER DRAFT HERE]",
+    "usage": "Send after each chapter draft with the draft text.",
+  },
+  {
+    "description": "Revise a chapter based on analysis feedback.",
+    "group": "core",
+    "id": "REVISION",
+    "name": "Revision Prompt",
+    "prompt": "You are a master non-fiction editor revising a chapter draft based on analysis feedback.
+
+═══ REVISION RULES ═══
+1. Preserve the author's voice and intent.
+2. Only change what the analysis flagged — do not rewrite passing material.
+3. Keep the chapter within ±20% of the target word count.
+4. Apply the specified revision mode:
+   - polish: fix surface issues (grammar, word choice, flow)
+   - strengthen_evidence: add sources, data, examples
+   - clarify: simplify sentences, define terms, add logic connections
+   - restructure: reorder sections for better flow
+   - deepen: add sensory detail, emotion, character depth
+   - rewrite: major revision while keeping core content
+5. Output the COMPLETE revised chapter — not a diff, not commentary.
+
+═══ REVISION MODE: [SPECIFIED BY ANALYSIS] ═══
+
+═══ SPECIFIC FIXES: [LISTED BY ANALYSIS] ═══
+
+═══ ORIGINAL DRAFT ═══
+[INSERT DRAFT HERE]
+
+═══ ANALYSIS FEEDBACK ═══
+[INSERT ANALYSIS REPORT HERE]
+
+Output the complete revised chapter (no commentary).",
+    "usage": "Send with the draft + analysis report to revise.",
+  },
+  {
+    "description": "Title page, dedication, table of contents, preface.",
+    "group": "core",
+    "id": "FRONT_MATTER",
+    "name": "Front Matter",
+    "prompt": "Generate the front matter for "The Test Book":
+
+═══ INCLUDE ═══
+1. TITLE PAGE: Title, subtitle (if any), author name
+2. COPYRIGHT PAGE: © year, publisher, ISBN placeholder, rights statement
+3. DEDICATION: A brief, heartfelt dedication
+4. EPIGRAPH: A relevant quote that sets the tone (optional)
+5. TABLE OF CONTENTS: All chapters with titles
+6. PREFACE: Why you wrote this book, your credentials, who it's for
+7. ACKNOWLEDGMENTS: Thank contributors, reviewers, supporters
+
+═══ STYLE: storytelling voice, matching the book's tone ═══
+═══ LANGUAGE: thai ═══",
+    "usage": "Generate after all chapters are written.",
+  },
+  {
+    "description": "Appendices, bibliography, index, about the author.",
+    "group": "core",
+    "id": "BACK_MATTER",
+    "name": "Back Matter",
+    "prompt": "Generate the back matter for "The Test Book":
+
+═══ INCLUDE ═══
+1. APPENDICES: Additional resources, templates, worksheets
+2. GLOSSARY: All technical terms with definitions
+3. BIBLIOGRAPHY/REFERENCES: All sources cited (none format)
+4. INDEX: Alphabetical topic index
+5. ABOUT THE AUTHOR: Brief professional bio
+6. ALSO BY: List of other works (placeholder)
+",
+    "usage": "Generate after the front matter.",
+  },
+  {
+    "description": "Analyze a finished chapter and brief the next one.",
+    "group": "core",
+    "id": "FEEDBACK",
+    "name": "Inter-Chapter Feedback",
+    "prompt": "You are analyzing a completed chapter to generate feedback for the NEXT chapter.
+
+═══ ANALYZE AND PROVIDE ═══
+
+1. STATE CARRY-FORWARD: What facts, characters, concepts, terms, and ending state were established?
+2. ISSUES TO ADDRESS: Unresolved questions, unsupported claims, tone inconsistencies, missing elements?
+3. INSTRUCTIONS FOR NEXT CHAPTER: What to build on, what to avoid repeating, what tone to maintain, specific improvements.
+4. QUALITY SCORES: Overall quality (0-1); ready for next chapter (yes/no); if no, what must be fixed first?
+
+5. NON-FICTION-SPECIFIC: Thesis proof progress; evidence used; reader-journey milestone check; counter-arguments addressed.
+
+═══ CHAPTER DRAFT TO ANALYZE ═══
+[INSERT COMPLETED CHAPTER HERE]",
+    "usage": "Send after each chapter to generate feedback for the next.",
+  },
+  {
+    "description": "Verify every claim; forbid invented citations.",
+    "group": "nonfiction",
+    "id": "FACT_CHECK",
+    "name": "Citation / Fact-Check",
+    "prompt": "Run a CITATION & FACT-CHECK pass on a nonfiction chapter draft. AI drafts routinely invent sources — your job is to make every claim verifiable, never to fabricate.
+
+For the draft below:
+1. Extract every factual claim, statistic, quote, and named study.
+2. For each, output a row: CLAIM | TYPE (stat/quote/study/fact) | STATUS (verifiable / needs source / likely-wrong) | what source would confirm it (DOI / URL / book+page).
+3. If you cannot identify a real, specific source, mark it "UNVERIFIED — do not publish without a real citation." Do NOT invent a citation.
+4. List claims to soften, qualify, or cut.
+5. Output citations in none format with placeholders [VERIFY] where the real reference must be inserted.
+
+═══ DRAFT ═══
+[INSERT CHAPTER DRAFT HERE]",
+    "usage": "Send each nonfiction chapter draft.",
+  },
+  {
+    "description": "Toulmin map + honest counterargument & rebuttal.",
+    "group": "nonfiction",
+    "id": "ARG_MAP",
+    "name": "Argument Map + Steelman",
+    "prompt": "Build a TOULMIN ARGUMENT MAP for the core argument of this chapter, then steelman the opposition.
+
+For each major CLAIM, lay out:
+- CLAIM (the assertion)
+- GROUNDS (the evidence/data)
+- WARRANT (the reasoning linking grounds to claim — state the hidden assumption)
+- BACKING (support for the warrant)
+- QUALIFIER (how strong: "usually", "in most cases" — flag unqualified absolutes)
+- REBUTTAL (conditions under which the claim fails)
+
+Then add a STEELMAN-THEN-REBUT section:
+- State the strongest honest version of the opposing view (no strawmen)
+- Concede what is true in it
+- Rebut with evidence and reasoning
+
+Flag any claim missing grounds or warrant.
+
+═══ THESIS / DRAFT ═══
+Thesis: A premise worth testing
+[INSERT CHAPTER OR ARGUMENT HERE]",
+    "usage": "Run on the core argument of a chapter.",
+  },
+  {
+    "description": "Grade support on the evidence hierarchy + gap report.",
+    "group": "nonfiction",
+    "id": "EVIDENCE",
+    "name": "Evidence Audit",
+    "prompt": "Audit the EVIDENCE quality of a nonfiction draft against the evidence hierarchy.
+
+Hierarchy (strongest → weakest): systematic review / meta-analysis > randomized controlled trial > cohort/longitudinal > case study > expert opinion > anecdote.
+
+Output:
+1. EVIDENCE TABLE: each claim | the support it currently rests on | its grade on the hierarchy.
+2. GAP REPORT: claims propped up only by anecdote/expert-opinion that need stronger support.
+3. For each gap, suggest what kind of source would raise the grade.
+(If the topic is history/memoir/philosophy where this hierarchy doesn't apply, say so and switch to source-credibility criteria: primary vs. secondary, bias, corroboration.)
+
+═══ DRAFT ═══
+[INSERT CHAPTER DRAFT HERE]",
+    "usage": "Send a draft to audit its evidence.",
+  },
+  {
+    "description": "Bloom objectives + worked example + retrieval + spaced callbacks.",
+    "group": "nonfiction",
+    "id": "PEDAGOGY",
+    "name": "Pedagogy Pack",
+    "prompt": "Generate the PEDAGOGY layer for a chapter of "The Test Book" (textbook / how-to / instructional nonfiction).
+
+Produce:
+1. LEARNING OBJECTIVES: 3-5 measurable objectives using Bloom's verbs (remember → understand → apply → analyze → evaluate → create), escalating across the book.
+2. WORKED EXAMPLE: one fully worked example demonstrating the chapter's key skill, step by step.
+3. RETRIEVAL PRACTICE: 4-6 end-of-chapter questions that force recall (not re-reading).
+4. SPACED CALLBACK: 1-2 questions that connect to a concept from an earlier chapter.
+5. KEY TAKEAWAYS: 3 one-line summaries.
+
+═══ CHAPTER TOPIC ═══
+[INSERT CHAPTER TOPIC / CONTENT HERE]",
+    "usage": "Run per chapter for textbook/how-to.",
+  },
+  {
+    "description": "SPAR case (Situation-Problem-Action-Result-Lesson).",
+    "group": "nonfiction",
+    "id": "CASE_STUDY",
+    "name": "Case-Study Builder",
+    "prompt": "Build a CASE STUDY that makes an abstract concept concrete and credible. Use the SPAR structure.
+
+- SITUATION: the context and who's involved
+- PROBLEM: the specific challenge or tension
+- ACTION: what was done (concrete, sequential)
+- RESULT: the outcome, with numbers/specifics where possible
+- LESSON: the explicit tie-back to the chapter's principle
+
+Use a real, attributed example if one is provided; otherwise build a clearly-labeled composite/illustrative case (never present a fabricated case as real).
+
+═══ CONCEPT + EXAMPLE ═══
+Concept: [ ]
+Example/source (or "composite"): [ ]",
+    "usage": "Use to make a concept concrete.",
+  },
+  {
+    "description": "Extract a reusable style sheet from sample writing.",
+    "group": "prose",
+    "id": "VOICE_FP",
+    "name": "Author Voice Fingerprint",
+    "prompt": "Extract an AUTHOR VOICE FINGERPRINT from sample writing, then produce a reusable style sheet to apply to every chapter.
+
+From the samples, capture:
+- Average sentence and paragraph length; variation pattern
+- Diction & register (plain/literary/technical; warm/detached)
+- Syntax habits (fragments? semicolons? parallelism?)
+- Punctuation tics and formatting habits
+- Metaphor/imagery density and favorite devices
+- POV and tense
+- 3 "do" and 3 "don't" rules that capture the voice
+
+Output a compact STYLE SHEET (the fingerprint). Note: re-apply this sheet in every generation — models drift to a generic voice without it.
+
+═══ VOICE SAMPLES (3-5 passages) ═══
+[INSERT SAMPLE PASSAGES HERE]",
+    "usage": "Run once with samples; reuse every chapter.",
+  },
+  {
+    "description": "Strip generic LLM tells; vary rhythm; concretize.",
+    "group": "prose",
+    "id": "ANTI_SLOP",
+    "name": "Anti-AI-Slop Rewrite",
+    "prompt": "Rewrite a draft to remove "AI slop" — generic, low-information LLM prose — while preserving meaning and the author's intent.
+
+Remove / break these tells:
+- Overused words: delve, tapestry, testament, realm, navigate, foster, underscore, crucial, vibrant, meticulous
+- Hollow formulas: "It's not just X, it's Y", "In a world where…", "more than ever", "It's worth noting", rule-of-three everywhere
+- Em-dash overuse and uniform sentence length
+- Corporate hedging and empty transitions ("Furthermore," "Moreover,")
+- Listicle voice and summary sentences that restate the obvious
+
+Then: vary sentence length, prefer concrete specifics over abstractions, cut filler.
+
+Output: (1) the de-slopped rewrite, (2) a short list of the specific tells you found and fixed.
+
+EXAMPLE
+  Before: "In today's fast-paced world, it's not just about working hard — it's about working smart. Let's delve into this crucial tapestry of productivity."
+  After:  "Most advice tells you to work harder. The people who actually get more done do the opposite: they cut the list."
+
+═══ DRAFT ═══
+[INSERT DRAFT HERE]",
+    "usage": "Send any draft to de-slop.",
+  },
+  {
+    "description": "Flesch-Kincaid report + level-controlled rewrite.",
+    "group": "prose",
+    "id": "READABILITY",
+    "name": "Readability Control",
+    "prompt": "Produce a READABILITY report and a level-controlled rewrite for the target reader: QA engineers.
+
+1. Estimate Flesch Reading Ease and Flesch-Kincaid Grade Level for the draft (state your reasoning; approximate is fine).
+2. Identify the hardest sentences (too long, too many clauses, rare words).
+3. Set a target grade level appropriate to the audience and rewrite to hit it: cap sentence length, swap difficult words for plainer ones (utilize→use), split run-ons — without dumbing down the ideas.
+4. Re-state the estimated scores after the rewrite.
+
+═══ DRAFT + TARGET LEVEL ═══
+Target reading level: [e.g. grade 8 / general adult / academic]
+[INSERT DRAFT HERE]",
+    "usage": "Send a draft + target level.",
+  },
+  {
+    "description": "Filter words, adverbs, passive, clichés, repetition.",
+    "group": "prose",
+    "id": "LINE_EDIT",
+    "name": "Line Edit",
+    "prompt": "Perform a LINE EDIT — sentence-level craft, not content changes. Return the edited text plus a brief rationale list.
+
+Fix:
+- Filter/whimper words: just, really, very, that, kind of, sort of, actually, simply
+- Weak "-ly" adverbs (replace with stronger verbs)
+- Distancing verbs in deep POV: saw, heard, felt, noticed, realized
+- Passive voice where active is clearer
+- Clichés (replace with fresh phrasing)
+- Repetition: flag words/phrases repeated too close together (and, across the whole book if provided, overused crutch words)
+
+Preserve voice and meaning. Output: edited text, then a short bullet list of representative changes.
+
+═══ DRAFT ═══
+[INSERT DRAFT HERE]",
+    "usage": "Send a draft for a sentence-level edit.",
+  },
+]
+`;
+
+exports[`snapshots > novel pack with craft + marketing 1`] = `
+[
+  {
+    "description": "Use this as the system prompt for ALL writing sessions.",
+    "group": "core",
+    "id": "MASTER",
+    "name": "Master System Prompt",
+    "prompt": "You are a master novel / fiction author writing "The Test Book".
+
+═══ IDENTITY & ROLE ═══
+You are writing a complete novel / fiction book in English.
+Your voice is: storytelling.
+Your target reader: QA engineers.
+
+═══ BOOK SPECIFICATIONS ═══
+- Title: The Test Book
+- Type: Novel / Fiction
+- Sub-genre: thriller
+- Total chapters: 6
+- Target words per chapter: 3000
+- Total estimated words: 18000
+- Language: English
+- Citation style: none
+
+═══ THESIS / PREMISE ═══
+A premise worth testing
+
+═══ QUALITY STANDARDS (aim for these; use judgment over rigid ratios) ═══
+- Show/tell: ≥ 70% show
+- Sensory: ≥ 2 senses per scene
+- Chapter hooks: required at every chapter end
+- Character consistency: tracked via codex
+- Voice consistency: tracked across chapters
+- Pacing: vary between fast/slow scenes
+- TENSION MUST ESCALATE across acts
+- Every scene: conflict + turning point + outcome
+
+═══ FICTION RULES ═══
+1. SHOW, DON'T TELL — at least 70% of prose should be showing
+2. Every scene needs: conflict + sensory details (≥2 senses) + turning point
+3. Dialogue must: advance plot OR reveal character — never filler
+4. Chapter endings: must create a hook (question, revelation, reversal, cliffhanger)
+5. Character voices: each character must be distinguishable by speech pattern alone
+6. Tension: must escalate across the book — each chapter raises stakes
+7. No clichés, no purple prose, no adverb-heavy sentences
+8. Body language and micro-expressions instead of stating emotions
+9. Setting details serve mood/theme — never generic description
+10. Internal monologue: sparse but powerful — show through action, not thought
+
+═══ ACT STRUCTURE ═══
+Act 1: Setup: Chapters 1-1 — Introduce world, characters, stakes
+Act 2A: Rising Action: Chapters 2-3 — Escalate conflict, deepen relationships
+Act 2B: Complications: Chapters 4-4 — Raise stakes, dark moment
+Act 3: Resolution: Chapters 5-6 — Climax, resolution, denouement
+
+═══ CHARACTER ARC ═══
+Protagonist transforms from: flawed → transformed
+
+═══ CONTINUITY PROTOCOL (automatic story bible — keep this whole session in one chat) ═══
+You maintain a living STATE block so the book stays consistent without me re-pasting notes.
+1. The FIRST time you write, create a STATE block capturing: characters (name + key traits/relationships), setting/world rules, established facts, timeline, unresolved threads, and (fiction) tension level.
+2. At the START of every chapter, silently read the latest STATE and stay consistent with it — never contradict or re-introduce what's already established.
+3. At the END of every chapter, append an updated STATE block, fenced exactly like this:
+
+<<<STATE>>>
+CHARACTERS: ...
+WORLD/FACTS: ...
+TIMELINE: ...
+OPEN THREADS: ...
+TENSION: ...  (fiction only)
+<<<END STATE>>>
+
+Keep STATE compact (≤ 250 words), newest facts first, plain facts only. Carry it forward chapter to chapter. If I paste a STATE block into a later prompt, treat it as the source of truth.
+
+═══ OUTPUT FORMAT ═══
+- Write the chapter content directly (no meta-commentary, no preamble like "Here is the chapter")
+- Begin with the chapter title as a Markdown heading (## Chapter N: Title)
+- Maintain consistent voice throughout; calibrate length to the target (±20%) without padding
+- End with a hook or transition appropriate to the chapter type
+- After the chapter, output the updated <<<STATE>>> block (per the Continuity Protocol)
+",
+    "usage": "Set as the system prompt before any chapter writing.",
+  },
+  {
+    "description": "Establishes the complete book plan.",
+    "group": "core",
+    "id": "OVERVIEW",
+    "name": "Book Overview / Plan",
+    "prompt": "═══ BOOK PLAN — "The Test Book" ═══
+
+Send this once at the start of the writing session, after the Master System Prompt, to establish the full plan before Chapter 1.
+
+TYPE: Novel / Fiction · SUB-GENRE: thriller
+THESIS/PREMISE: A premise worth testing
+TARGET READER: QA engineers
+STRUCTURE: 6 chapters × ~3000 words
+
+═══ PARTS ═══
+• Act 1: Setup — Chapters 1-1 — Introduce world, characters, stakes
+• Act 2A: Rising Action — Chapters 2-3 — Escalate conflict, deepen relationships
+• Act 2B: Complications — Chapters 4-4 — Raise stakes, dark moment
+• Act 3: Resolution — Chapters 5-6 — Climax, resolution, denouement
+
+═══ CHAPTER MAP ═══
+Ch.1 [opening] — HOOK: Drop reader into compelling scene
+Ch.2 [turning_point] — POINT OF NO RETURN: Protagonist commits
+Ch.3 [midpoint] — MIDPOINT: Revelation or reversal
+Ch.4 [complication] — COMPLICATE: Stakes highest, dark moment approaches
+Ch.5 [dark_moment] — DARK NIGHT: Protagonist at lowest
+Ch.6 [resolution] — RESOLUTION: New normal, thematic statement
+
+═══ INITIALIZE CONTINUITY ═══
+Create the initial <<<STATE>>> block (characters, world/facts, timeline, open threads, tension) from this plan, and maintain it across every chapter per the Continuity Protocol in the system prompt.
+
+Confirm you understand the plan and output the initial STATE block, then wait for the first chapter prompt. Do not write any chapter yet.",
+    "usage": "Send once before writing Chapter 1.",
+  },
+  {
+    "description": "HOOK: Drop reader into compelling scene",
+    "group": "core",
+    "id": "CH_1",
+    "name": "Chapter 1",
+    "prompt": "═══ CHAPTER 1 WRITING PROMPT ═══
+
+BOOK: "The Test Book" — thriller
+PREMISE: A premise worth testing
+CHAPTER: 1 of 6
+TYPE: opening
+PURPOSE: HOOK: Drop reader into compelling scene
+WORD TARGET: ~3000 words (±20%; let the content set the exact length)
+
+═══ SCENE INSTRUCTIONS ═══
+Scene type: opening
+Act: 1
+Tension level: 50%
+
+MUST INCLUDE:
+  ✓ compelling first line
+  ✓ character desire
+  ✓ world grounding
+  ✓ hook
+
+═══ STRUCTURE ═══
+1. COLD OPEN: Drop reader into a compelling moment (in medias res)
+2. ESTABLISH: Character desire + world details through action
+3. HOOK: End with question or situation that demands reading on
+
+═══ TRANSITION TO CHAPTER 2 ═══
+Next chapter: turning_point — POINT OF NO RETURN: Protagonist commits
+→ End this chapter in a way that naturally leads to the next.
+
+═══ QUALITY CHECKLIST (verify before finalizing) ═══
+  □ Show/tell ratio ≥ 70% show
+  □ ≥ 2 senses in every scene
+  □ Dialogue advances plot or reveals character
+  □ Chapter ends with hook
+  □ Character voices distinct
+  □ No clichés
+  □ Word count within target (±20%)
+  □ Tension appropriate for act position
+
+Now write Chapter 1 in full. Output the chapter prose (Markdown), then the updated <<<STATE>>> block. No other commentary.",
+    "usage": "Send to write Chapter 1 (opening).",
+  },
+  {
+    "description": "POINT OF NO RETURN: Protagonist commits",
+    "group": "core",
+    "id": "CH_2",
+    "name": "Chapter 2",
+    "prompt": "═══ CHAPTER 2 WRITING PROMPT ═══
+
+BOOK: "The Test Book" — thriller
+PREMISE: A premise worth testing
+CHAPTER: 2 of 6
+TYPE: turning_point
+PURPOSE: POINT OF NO RETURN: Protagonist commits
+WORD TARGET: ~3000 words (±20%; let the content set the exact length)
+
+═══ CONTINUITY ═══
+→ Read the latest <<<STATE>>> block from earlier in this chat and stay consistent with it.
+→ If no STATE exists yet, reconstruct it from the chapters written so far.
+
+═══ PREVIOUS CHAPTER (Ch.1) CONTEXT ═══
+Type: opening
+Purpose: HOOK: Drop reader into compelling scene
+→ Build on what was established. Don't repeat information.
+→ Maintain continuity of tone, character state, and timeline.
+
+═══ SCENE INSTRUCTIONS ═══
+Scene type: turning_point
+Act: 2
+Tension level: 67%
+
+MUST INCLUDE:
+  ✓ decision point
+  ✓ commitment
+  ✓ no return
+  ✓ new world
+
+═══ STRUCTURE ═══
+1. THRESHOLD: Protagonist faces decision point
+2. COMMITMENT: Chooses to act (can't go back)
+3. CONSEQUENCES: First taste of the new world/conflict
+4. HOOK: What have they gotten into?
+
+═══ TRANSITION TO CHAPTER 3 ═══
+Next chapter: midpoint — MIDPOINT: Revelation or reversal
+→ End this chapter in a way that naturally leads to the next.
+
+═══ QUALITY CHECKLIST (verify before finalizing) ═══
+  □ Show/tell ratio ≥ 70% show
+  □ ≥ 2 senses in every scene
+  □ Dialogue advances plot or reveals character
+  □ Chapter ends with hook
+  □ Character voices distinct
+  □ No clichés
+  □ Word count within target (±20%)
+  □ Tension appropriate for act position
+
+Now write Chapter 2 in full. Output the chapter prose (Markdown), then the updated <<<STATE>>> block. No other commentary.",
+    "usage": "Send to write Chapter 2 (turning_point).",
+  },
+  {
+    "description": "MIDPOINT: Revelation or reversal",
+    "group": "core",
+    "id": "CH_3",
+    "name": "Chapter 3",
+    "prompt": "═══ CHAPTER 3 WRITING PROMPT ═══
+
+BOOK: "The Test Book" — thriller
+PREMISE: A premise worth testing
+CHAPTER: 3 of 6
+TYPE: midpoint
+PURPOSE: MIDPOINT: Revelation or reversal
+WORD TARGET: ~3000 words (±20%; let the content set the exact length)
+
+═══ CONTINUITY ═══
+→ Read the latest <<<STATE>>> block from earlier in this chat and stay consistent with it.
+→ If no STATE exists yet, reconstruct it from the chapters written so far.
+
+═══ PREVIOUS CHAPTER (Ch.2) CONTEXT ═══
+Type: turning_point
+Purpose: POINT OF NO RETURN: Protagonist commits
+→ Build on what was established. Don't repeat information.
+→ Maintain continuity of tone, character state, and timeline.
+
+═══ SCENE INSTRUCTIONS ═══
+Scene type: midpoint
+Act: 2
+Tension level: 80%
+
+MUST INCLUDE:
+  ✓ revelation
+  ✓ reversal
+  ✓ stakes personal
+  ✓ momentum shift
+
+═══ STRUCTURE ═══
+1. REVELATION: Major truth revealed (changes everything)
+2. REVERSAL: Protagonist's understanding flips
+3. RAISED STAKES: Now it's personal
+4. HOOK: No going back — only forward into danger
+
+⚠ HIGH TENSION CHAPTER — maintain pace:
+- Shorter sentences and paragraphs
+- Faster scene cuts
+- Minimal description (only what's essential)
+- Internal monologue at key moments only
+
+═══ TRANSITION TO CHAPTER 4 ═══
+Next chapter: complication — COMPLICATE: Stakes highest, dark moment approaches
+→ End this chapter in a way that naturally leads to the next.
+
+═══ QUALITY CHECKLIST (verify before finalizing) ═══
+  □ Show/tell ratio ≥ 70% show
+  □ ≥ 2 senses in every scene
+  □ Dialogue advances plot or reveals character
+  □ Chapter ends with hook
+  □ Character voices distinct
+  □ No clichés
+  □ Word count within target (±20%)
+  □ Tension appropriate for act position
+
+Now write Chapter 3 in full. Output the chapter prose (Markdown), then the updated <<<STATE>>> block. No other commentary.",
+    "usage": "Send to write Chapter 3 (midpoint).",
+  },
+  {
+    "description": "COMPLICATE: Stakes highest, dark moment approaches",
+    "group": "core",
+    "id": "CH_4",
+    "name": "Chapter 4",
+    "prompt": "═══ CHAPTER 4 WRITING PROMPT ═══
+
+BOOK: "The Test Book" — thriller
+PREMISE: A premise worth testing
+CHAPTER: 4 of 6
+TYPE: complication
+PURPOSE: COMPLICATE: Stakes highest, dark moment approaches
+WORD TARGET: ~3000 words (±20%; let the content set the exact length)
+
+═══ CONTINUITY ═══
+→ Read the latest <<<STATE>>> block from earlier in this chat and stay consistent with it.
+→ If no STATE exists yet, reconstruct it from the chapters written so far.
+
+═══ PREVIOUS CHAPTER (Ch.3) CONTEXT ═══
+Type: midpoint
+Purpose: MIDPOINT: Revelation or reversal
+→ Build on what was established. Don't repeat information.
+→ Maintain continuity of tone, character state, and timeline.
+
+═══ SCENE INSTRUCTIONS ═══
+Scene type: complication
+Act: 2
+Tension level: 80%
+
+MUST INCLUDE:
+  ✓ plan failure
+  ✓ ally strain
+  ✓ internal conflict
+  ✓ dark approach
+
+═══ STRUCTURE ═══
+1. ESCALATION: Every plan fails, every ally strained
+2. DARK MOMENT APPROACHES: Protagonist pushed to limit
+3. INTERNAL CONFLICT: Flaw vs growth
+4. HOOK: Things are about to get much worse
+
+⚠ HIGH TENSION CHAPTER — maintain pace:
+- Shorter sentences and paragraphs
+- Faster scene cuts
+- Minimal description (only what's essential)
+- Internal monologue at key moments only
+
+═══ TRANSITION TO CHAPTER 5 ═══
+Next chapter: dark_moment — DARK NIGHT: Protagonist at lowest
+→ End this chapter in a way that naturally leads to the next.
+
+═══ QUALITY CHECKLIST (verify before finalizing) ═══
+  □ Show/tell ratio ≥ 70% show
+  □ ≥ 2 senses in every scene
+  □ Dialogue advances plot or reveals character
+  □ Chapter ends with hook
+  □ Character voices distinct
+  □ No clichés
+  □ Word count within target (±20%)
+  □ Tension appropriate for act position
+
+Now write Chapter 4 in full. Output the chapter prose (Markdown), then the updated <<<STATE>>> block. No other commentary.",
+    "usage": "Send to write Chapter 4 (complication).",
+  },
+  {
+    "description": "DARK NIGHT: Protagonist at lowest",
+    "group": "core",
+    "id": "CH_5",
+    "name": "Chapter 5",
+    "prompt": "═══ CHAPTER 5 WRITING PROMPT ═══
+
+BOOK: "The Test Book" — thriller
+PREMISE: A premise worth testing
+CHAPTER: 5 of 6
+TYPE: dark_moment
+PURPOSE: DARK NIGHT: Protagonist at lowest
+WORD TARGET: ~3000 words (±20%; let the content set the exact length)
+
+═══ CONTINUITY ═══
+→ Read the latest <<<STATE>>> block from earlier in this chat and stay consistent with it.
+→ If no STATE exists yet, reconstruct it from the chapters written so far.
+
+═══ PREVIOUS CHAPTER (Ch.4) CONTEXT ═══
+Type: complication
+Purpose: COMPLICATE: Stakes highest, dark moment approaches
+→ Build on what was established. Don't repeat information.
+→ Maintain continuity of tone, character state, and timeline.
+
+═══ SCENE INSTRUCTIONS ═══
+Scene type: dark_moment
+Act: 3
+Tension level: 91%
+
+MUST INCLUDE:
+  ✓ lowest point
+  ✓ inner demon
+  ✓ seed of resolution
+  ✓ choice
+
+═══ STRUCTURE ═══
+1. LOWEST POINT: Everything lost (or seems lost)
+2. INNER DEMON: Protagonist faces their deepest flaw
+3. SEED OF RESOLUTION: Small detail planted earlier pays off
+4. HOOK: A choice — give up or find another way
+
+⚠ HIGH TENSION CHAPTER — maintain pace:
+- Shorter sentences and paragraphs
+- Faster scene cuts
+- Minimal description (only what's essential)
+- Internal monologue at key moments only
+
+═══ TRANSITION TO CHAPTER 6 ═══
+Next chapter: resolution — RESOLUTION: New normal, thematic statement
+→ End this chapter in a way that naturally leads to the next.
+
+═══ QUALITY CHECKLIST (verify before finalizing) ═══
+  □ Show/tell ratio ≥ 70% show
+  □ ≥ 2 senses in every scene
+  □ Dialogue advances plot or reveals character
+  □ Chapter ends with hook
+  □ Character voices distinct
+  □ No clichés
+  □ Word count within target (±20%)
+  □ Tension appropriate for act position
+
+Now write Chapter 5 in full. Output the chapter prose (Markdown), then the updated <<<STATE>>> block. No other commentary.",
+    "usage": "Send to write Chapter 5 (dark_moment).",
+  },
+  {
+    "description": "RESOLUTION: New normal, thematic statement",
+    "group": "core",
+    "id": "CH_6",
+    "name": "Chapter 6",
+    "prompt": "═══ CHAPTER 6 WRITING PROMPT ═══
+
+BOOK: "The Test Book" — thriller
+PREMISE: A premise worth testing
+CHAPTER: 6 of 6
+TYPE: resolution
+PURPOSE: RESOLUTION: New normal, thematic statement
+WORD TARGET: ~3000 words (±20%; let the content set the exact length)
+
+═══ CONTINUITY ═══
+→ Read the latest <<<STATE>>> block from earlier in this chat and stay consistent with it.
+→ If no STATE exists yet, reconstruct it from the chapters written so far.
+
+═══ PREVIOUS CHAPTER (Ch.5) CONTEXT ═══
+Type: dark_moment
+Purpose: DARK NIGHT: Protagonist at lowest
+→ Build on what was established. Don't repeat information.
+→ Maintain continuity of tone, character state, and timeline.
+
+═══ SCENE INSTRUCTIONS ═══
+Scene type: resolution
+Act: 3
+Tension level: 80%
+
+MUST INCLUDE:
+  ✓ new normal
+  ✓ transformation shown
+  ✓ theme embodied
+  ✓ final image
+
+═══ STRUCTURE ═══
+1. NEW NORMAL: World after the conflict
+2. CHARACTER TRANSFORMATION: Show (don't tell) how protagonist changed
+3. THEMATIC STATEMENT: The book's message, embodied in action
+4. FINAL IMAGE: Last line that resonates
+
+⚠ HIGH TENSION CHAPTER — maintain pace:
+- Shorter sentences and paragraphs
+- Faster scene cuts
+- Minimal description (only what's essential)
+- Internal monologue at key moments only
+
+═══ QUALITY CHECKLIST (verify before finalizing) ═══
+  □ Show/tell ratio ≥ 70% show
+  □ ≥ 2 senses in every scene
+  □ Dialogue advances plot or reveals character
+  □ Chapter ends with hook
+  □ Character voices distinct
+  □ No clichés
+  □ Word count within target (±20%)
+  □ Tension appropriate for act position
+
+Now write Chapter 6 in full. Output the chapter prose (Markdown), then the updated <<<STATE>>> block. No other commentary.",
+    "usage": "Send to write Chapter 6 (resolution).",
+  },
+  {
+    "description": "Analyze each chapter draft for quality.",
+    "group": "core",
+    "id": "ANALYSIS",
+    "name": "Quality Analysis Prompt",
+    "prompt": "You are a rigorous novel / fiction editor analyzing a single chapter draft.
+
+Target: 3000 words (±20%), english language, "storytelling" voice.
+
+═══ METRICS TO EVALUATE ═══
+1. SHOW vs TELL: Is ≥70% showing (action/sensory/dialogue) vs telling?
+2. SENSORY DETAIL: ≥2 distinct senses present?
+3. VOICE CONSISTENCY: Narration voice consistent?
+4. DIALOGUE QUALITY: Does each line advance plot or reveal character?
+5. TENSION: Conflict present and escalating appropriately?
+6. HOOK: Does the chapter end with a compelling hook?
+7. PACING: Variation between fast and slow moments?
+8. CHARACTER CONSISTENCY: Characters behaving consistently?
+9. CLICHÉ: Any clichés or overused phrasing?
+10. WORD COUNT: Within ±20% of target?
+
+═══ OUTPUT FORMAT (JSON) ═══
+{
+  "scores": { /* each metric: 0-1 */ },
+  "overall_pass": true/false,
+  "strengths": [ /* list */ ],
+  "issues": [ /* list with severity */ ],
+  "revision_mode": "polish" | "strengthen_evidence" | "clarify" | "restructure" | "deepen" | "rewrite",
+  "specific_fixes": [ /* actionable instructions */ ]
+}
+
+═══ DRAFT TO ANALYZE ═══
+[INSERT CHAPTER DRAFT HERE]",
+    "usage": "Send after each chapter draft with the draft text.",
+  },
+  {
+    "description": "Revise a chapter based on analysis feedback.",
+    "group": "core",
+    "id": "REVISION",
+    "name": "Revision Prompt",
+    "prompt": "You are a master novel / fiction editor revising a chapter draft based on analysis feedback.
+
+═══ REVISION RULES ═══
+1. Preserve the author's voice and intent.
+2. Only change what the analysis flagged — do not rewrite passing material.
+3. Keep the chapter within ±20% of the target word count.
+4. Apply the specified revision mode:
+   - polish: fix surface issues (grammar, word choice, flow)
+   - strengthen_evidence: add sources, data, examples
+   - clarify: simplify sentences, define terms, add logic connections
+   - restructure: reorder sections for better flow
+   - deepen: add sensory detail, emotion, character depth
+   - rewrite: major revision while keeping core content
+5. Output the COMPLETE revised chapter — not a diff, not commentary.
+
+═══ REVISION MODE: [SPECIFIED BY ANALYSIS] ═══
+
+═══ SPECIFIC FIXES: [LISTED BY ANALYSIS] ═══
+
+═══ ORIGINAL DRAFT ═══
+[INSERT DRAFT HERE]
+
+═══ ANALYSIS FEEDBACK ═══
+[INSERT ANALYSIS REPORT HERE]
+
+Output the complete revised chapter (no commentary).",
+    "usage": "Send with the draft + analysis report to revise.",
+  },
+  {
+    "description": "Title page, dedication, table of contents, preface.",
+    "group": "core",
+    "id": "FRONT_MATTER",
+    "name": "Front Matter",
+    "prompt": "Generate the front matter for "The Test Book":
+
+═══ INCLUDE ═══
+1. TITLE PAGE: Title, subtitle (if any), author name
+2. COPYRIGHT PAGE: © year, publisher, ISBN placeholder, rights statement
+3. DEDICATION: A brief, heartfelt dedication
+4. EPIGRAPH: A relevant quote that sets the tone (optional)
+5. TABLE OF CONTENTS: All chapters with titles
+6. MAP (description): If applicable, describe world map
+
+═══ STYLE: storytelling voice, matching the book's tone ═══
+═══ LANGUAGE: english ═══",
+    "usage": "Generate after all chapters are written.",
+  },
+  {
+    "description": "Appendices, bibliography, index, about the author.",
+    "group": "core",
+    "id": "BACK_MATTER",
+    "name": "Back Matter",
+    "prompt": "Generate the back matter for "The Test Book":
+
+═══ INCLUDE ═══
+1. AUTHOR'S NOTE: Historical context, research, inspiration
+2. ACKNOWLEDGMENTS
+3. ABOUT THE AUTHOR
+4. BOOK CLUB QUESTIONS: 10 discussion questions
+5. PREVIEW: First chapter of next book (optional)
+",
+    "usage": "Generate after the front matter.",
+  },
+  {
+    "description": "Analyze a finished chapter and brief the next one.",
+    "group": "core",
+    "id": "FEEDBACK",
+    "name": "Inter-Chapter Feedback",
+    "prompt": "You are analyzing a completed chapter to generate feedback for the NEXT chapter.
+
+═══ ANALYZE AND PROVIDE ═══
+
+1. STATE CARRY-FORWARD: What facts, characters, concepts, terms, and ending state were established?
+2. ISSUES TO ADDRESS: Unresolved questions, unsupported claims, tone inconsistencies, missing elements?
+3. INSTRUCTIONS FOR NEXT CHAPTER: What to build on, what to avoid repeating, what tone to maintain, specific improvements.
+4. QUALITY SCORES: Overall quality (0-1); ready for next chapter (yes/no); if no, what must be fixed first?
+
+5. FICTION-SPECIFIC: Character states at chapter end; tension level and direction; unresolved plot threads; foreshadowing planted.
+
+═══ CHAPTER DRAFT TO ANALYZE ═══
+[INSERT COMPLETED CHAPTER HERE]",
+    "usage": "Send after each chapter to generate feedback for the next.",
+  },
+  {
+    "description": "Beat-by-beat outline (Save the Cat / Hero's Journey / Story Circle / Kishōtenketsu / Seven-Point).",
+    "group": "craft",
+    "id": "STRUCTURE",
+    "name": "Structure Outline",
+    "prompt": "You are a story architect. Produce a complete chapter-by-chapter OUTLINE for "The Test Book" before any prose is written.
+
+Premise: A premise worth testing
+Genre: thriller
+Chapters: 6 · ~3000 words each · english
+
+═══ CHOOSE A STRUCTURE (pick the best fit, or let the user specify) ═══
+• Save the Cat! — 15 beats (Opening Image → Catalyst → Midpoint → All Is Lost → Finale)
+• Hero's Journey — 12 stages (Call → Mentor → Ordeal → Return with Elixir)
+• Story Circle — 8 steps (You / Need / Go / Search / Find / Take / Return / Change)
+• Kishōtenketsu — 4 acts, conflict-optional, built on a recontextualizing twist (great for literary, slice-of-life, kids)
+• Seven-Point — built backward from the ending (Hook, Plot Turns, Pinch Points, Midpoint, Resolution)
+
+═══ OUTPUT ═══
+1. State the chosen structure and why it fits this premise.
+2. Map every beat to a chapter number (1-6) with a 1-2 sentence purpose.
+3. Mark the inciting incident, midpoint, and climax chapters.
+4. For each chapter: a one-line "promise" (what the reader gets) and a hook for the chapter end.
+",
+    "usage": "Run before writing, to plan the whole book.",
+  },
+  {
+    "description": "Distinct voice per character; inject into every chapter prompt.",
+    "group": "craft",
+    "id": "VOICE_SHEET",
+    "name": "Character Voice Sheet",
+    "prompt": "Create a CHARACTER VOICE SHEET so every character sounds distinct (LLMs tend to make everyone sound the same).
+
+For EACH major character, produce:
+- Name & one-line role
+- Vocabulary register (formal/slang/technical) and 5-8 signature words or phrases
+- Sentence shape (short & clipped vs. long & winding) and typical rhythm
+- Verbal tics, filler words, and what they NEVER say
+- Emotional filter: how their background/era/education colors word choice
+- A 2-line sample of dialogue that only they could speak
+
+Keep it as a reusable reference to paste into every chapter prompt for "The Test Book".
+
+EXAMPLE (format to follow):
+  Name: Mali — wary detective, ex-monk
+  Register: terse, formal; signature: "เอาตามตรง", "พอ"
+  Sentence shape: short, clipped; never rambles
+  Tics: ends statements with a question; NEVER swears
+  Filter: sees everything as evidence; trust is earned
+  Sample: "เอาตามตรง คุณโกหก. คำถามคือ — ทำไม?"
+
+═══ CHARACTER NOTES ═══
+[INSERT CHARACTER LIST / NOTES HERE]",
+    "usage": "Fill in characters; paste output into chapter prompts.",
+  },
+  {
+    "description": "Lie-vs-Truth arcs (positive/negative/flat) keyed to plot beats.",
+    "group": "craft",
+    "id": "CHAR_ARC",
+    "name": "Character Arc Sheet",
+    "prompt": "Design CHARACTER ARCS for "The Test Book" using the Lie-vs-Truth model (K.M. Weiland).
+
+For EACH arc character, output:
+- Arc type: Positive (Lie → Truth), Negative (Disillusionment / Fall / Corruption), or Flat (holds a Truth, changes the world)
+- The LIE the character believes at the start + the WOUND behind it
+- The TRUTH they need (or, for negative arcs, reject)
+- The WANT (external goal) vs. the NEED (internal)
+- Arc beats keyed to the plot: where the lie is challenged, the moment of choice, the proof of change
+- How the arc shows in behavior at 0%, 25%, 50%, 75%, 100% of the book
+
+═══ CHARACTER + PLOT NOTES ═══
+[INSERT CHARACTER & PLOT NOTES HERE]",
+    "usage": "Run after the outline, before drafting.",
+  },
+  {
+    "description": "Story bible + per-chapter continuity check.",
+    "group": "craft",
+    "id": "WORLD_CODEX",
+    "name": "Worldbuilding Codex",
+    "prompt": "Build a WORLDBUILDING CODEX (story bible) for "The Test Book" — the single source of truth that keeps the book internally consistent.
+
+Organize into clear sections (include only what's relevant):
+- SETTING: places, geography, time period, atmosphere
+- RULES: how the world works (magic/tech/social rules) and their LIMITS (what is impossible)
+- FACTIONS / GROUPS: names, goals, relationships
+- KEY OBJECTS / LORE: items, history, mythology
+- TIMELINE: the sequence of major events
+- NAMING CONVENTIONS: so names stay consistent
+
+Then add a CONTINUITY-CHECK instruction:
+"After each chapter, list any new facts it introduced and flag anything that contradicts the codex above. Update the codex with confirmed new facts."
+
+═══ PREMISE / WORLD NOTES ═══
+Premise: A premise worth testing
+[INSERT ANY EXISTING WORLD NOTES HERE]",
+    "usage": "Build once; check each new chapter against it.",
+  },
+  {
+    "description": "Scene/Sequel + MRU structure for a single dramatic unit.",
+    "group": "craft",
+    "id": "SCENE",
+    "name": "Scene Builder",
+    "prompt": "Construct a single SCENE using the Scene/Sequel model (Swain/Bickham). Use this whenever a chapter needs a tightly-built dramatic unit.
+
+SCENE (action):
+1. GOAL — what the POV character wants in this scene
+2. CONFLICT — what stands in the way (escalate it)
+3. DISASTER — the scene ends worse than it began (a "yes, but" / "no, and")
+
+SEQUEL (reaction) — optional, follows a scene:
+1. REACTION — emotional response
+2. DILEMMA — the bad options now facing the character
+3. DECISION — the choice that becomes the next scene's goal
+
+Rules: cause before effect (motivation → reaction), ≥2 senses, no filtering verbs (saw/felt/heard), end on a turn.
+
+═══ SCENE BRIEF ═══
+POV: [ ] · Goal: [ ] · Opposition: [ ] · Where this sits in the chapter: [ ]",
+    "usage": "Use when a chapter needs a tightly built scene.",
+  },
+  {
+    "description": "Action beats, subtext, trimmed tags.",
+    "group": "craft",
+    "id": "DIALOGUE",
+    "name": "Dialogue Polish",
+    "prompt": "Revise a passage of DIALOGUE for craft. Keep meaning; sharpen delivery.
+
+Apply:
+- ACTION BEATS instead of most dialogue tags ("She set down the cup." not "she said angrily")
+- SUBTEXT: characters rarely say exactly what they mean — create a gap between words and action/desire
+- Trim greetings, filler, and on-the-nose exposition
+- Use "said/asked" for the few tags you keep; cut adverbs
+- Each line should advance plot OR reveal character — delete the rest
+- Preserve each speaker's distinct voice
+
+Output: the revised dialogue, then a 2-3 bullet note on what you changed and why.
+
+EXAMPLE
+  Before: "I'm really angry at you," she said angrily. "How could you do this to me?"
+  After:  She set the keys on the table, one at a time. "Three years. You knew for three years."
+
+═══ DIALOGUE DRAFT ═══
+[INSERT DIALOGUE HERE]",
+    "usage": "Send a dialogue passage to revise.",
+  },
+  {
+    "description": "Break safe/tidy AI defaults; raise real stakes; ban Thai AI-tell clichés.",
+    "group": "craft",
+    "id": "ANTI_SAFE",
+    "name": "Anti-Safe Pass",
+    "prompt": "Apply the ANTI-SAFE pass. LLMs default to emotionally safe, tidy, reassuring prose — break that while keeping the story coherent.
+
+Rules:
+- NO comforting/tidy ending, no "lesson learned" summary, no "everything got better".
+- Raise the conflict: the character must lose or risk something real; every choice costs.
+- Cut "theater": self-congratulation, melodrama, on-the-nose emotion, narrator moralizing.
+- Ban AI-tell emotion clichés — show through specific action/body instead. Thai examples to remove:
+  "น้ำตาไหลริน", "หัวใจบีบรัด/สลาย", "รอยยิ้มอบอุ่น", "ความรู้สึกท่วมท้น", "ใจหายวาบ".
+- Prefer earned ambiguity over neat resolution where it serves the story; let consequences stand.
+
+Output: the revised passage, then 2-3 bullets on what you made riskier and the cost you added.
+
+═══ DRAFT ═══
+[INSERT DRAFT HERE]",
+    "usage": "Send a draft to make it riskier.",
+  },
+  {
+    "description": "Per-scene 5-sense check (≥3) + targeted concrete additions.",
+    "group": "craft",
+    "id": "SENSORY",
+    "name": "Sensory Audit",
+    "prompt": "Audit a draft for SENSORY grounding (target ≥ 3 senses per scene).
+
+For each scene/beat:
+1. List which of the five senses appear: sight / sound / smell / taste / touch.
+2. Flag any scene using fewer than 3.
+3. Suggest 2-3 concrete, specific, non-cliché sensory details to add where it's thin (smell and touch are usually the gaps).
+
+Avoid generic sensory filler; details must do double duty (mood/character/theme).
+
+Output: a per-scene sense table + the targeted additions.
+
+═══ DRAFT ═══
+[INSERT DRAFT HERE]",
+    "usage": "Send a draft to ground it in the senses.",
+  },
+  {
+    "description": "Per-scene tension curve + flat-spot fixes.",
+    "group": "craft",
+    "id": "CONFLICT_MAP",
+    "name": "Conflict / Tension Map",
+    "prompt": "Map the TENSION across a draft so it never goes flat.
+
+For each scene/beat:
+- Conflict type: external / internal / interpersonal (or "none" — flag it).
+- Tension rating 0-1, and direction (rising / falling / flat).
+- The concrete stake (what can be lost here).
+
+Then:
+- Plot the tension curve and flag flat or repetitive stretches and any scene with no real conflict.
+- Recommend where to raise stakes, add reversal, or vary rhythm (a deliberate quiet beat is fine; an accidental flat one isn't).
+
+Output: the per-scene tension table + a short list of fixes.
+
+═══ DRAFT ═══
+[INSERT DRAFT HERE]",
+    "usage": "Send a draft to map and raise tension.",
+  },
+  {
+    "description": "10 title (and subtitle) options, keyword-aware for nonfiction.",
+    "group": "marketing",
+    "id": "TITLE",
+    "name": "Title + Subtitle",
+    "prompt": "Generate book TITLE + SUBTITLE options for "The Test Book".
+
+Type: Novel / Fiction · Audience: QA engineers
+Premise: A premise worth testing
+
+Produce 10 evocative title options (1-5 words) that fit the genre and tone. For each, one line on the mood it sets. Optionally a short series-style subtitle.",
+    "usage": "Run anytime; iterate on positioning.",
+  },
+  {
+    "description": "Back-cover copy + Amazon-safe HTML.",
+    "group": "marketing",
+    "id": "BLURB",
+    "name": "Blurb / Description",
+    "prompt": "Write back-cover / Amazon DESCRIPTION copy for "The Test Book".
+
+Audience: QA engineers
+Premise: A premise worth testing
+
+Structure: HOOK (character + conflict + stakes in one line) → brief setup → escalation → CLIFFHANGER question. 120-180 words, present tense, no spoilers.
+Also give 3 one-line "hooks" usable as ad copy.
+
+Then output an Amazon-safe HTML version using only <b>, <i>, <h4>, <br>, <ul><li> (no other tags).",
+    "usage": "Run for the sales description.",
+  },
+  {
+    "description": "7 keywords + 3 categories + A+ hook.",
+    "group": "marketing",
+    "id": "KDP_META",
+    "name": "KDP Metadata",
+    "prompt": "Generate Amazon KDP METADATA candidates for "The Test Book" (Novel / Fiction, thriller, audience: QA engineers).
+
+⚠ IMPORTANT: You cannot see live Amazon data. Produce well-reasoned CANDIDATES + a verification method — do not claim search volumes. KDP limits change; tell the user to confirm in KDP and validate demand in a keyword tool (e.g. Publisher Rocket) or Amazon's own search-autocomplete.
+
+1. SEVEN KEYWORD / SEARCH-TERM PHRASES: multi-word, reader-intent phrases (themes, tropes, audience, use-case, comparable-author style). Do NOT repeat words already in the title or chosen category. One per line + a one-line rationale.
+2. CATEGORIES: 3 specific, valid category paths (deepest relevant nodes), ranked, with why each fits.
+3. VERIFICATION CHECKLIST: for each keyword — how to validate it (type it into Amazon search; check autocomplete suggestions; confirm books rank for it; gauge competition). Mark any guess as "VERIFY".
+4. A 2-line A+ / comparison hook for the product page.
+
+Be concrete; avoid generic single words.",
+    "usage": "Run before publishing on KDP.",
+  },
+  {
+    "description": "Query letter + 1-page synopsis + comps + author bio.",
+    "group": "marketing",
+    "id": "SUBMISSION",
+    "name": "Agent Submission Pack",
+    "prompt": "Produce a traditional-publishing SUBMISSION PACK for "The Test Book".
+
+Inputs to use: premise = A premise worth testing; type = Novel / Fiction; audience = QA engineers; approx 18000 words.
+
+Output four parts:
+1. QUERY LETTER (~250 words): hook paragraph (protagonist/concept + conflict + stakes), then metadata line (title, word count, genre, 2 comp titles), then a 2-line author bio slot.
+2. ONE-PAGE SYNOPSIS: present tense, the FULL arc including the ending (no teasing), key turning points named.
+3. FIVE COMP TITLES: published within ~3 years, same readership (avoid mega-bestsellers), each with one line on the shared element. Mark any you're unsure are recent — the user should verify.
+4. AUTHOR BIO: three versions — 50, 100, and 150 words.
+
+[INSERT any author credentials / comp ideas here]",
+    "usage": "Run for traditional submission.",
+  },
+]
+`;
