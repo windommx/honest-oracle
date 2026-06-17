@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   BOOK_TYPES,
+  MODULE_CATALOG,
   MODULE_GROUPS,
   buildArchitecture,
   buildGlobalContext,
@@ -11,6 +12,7 @@ import {
   type BookTypeKey,
   type PromptGroup,
 } from "./engine";
+import { TH_META, TH_MODULES } from "./th";
 
 function cfg(overrides: Partial<BookConfig> = {}): BookConfig {
   return {
@@ -268,5 +270,47 @@ describe("snapshots", () => {
   it("how-to pack with nonfiction modules", () => {
     const c = cfg({ type: "howto", subGenre: "diy", chapters: 6 });
     expect(generateAllPrompts(c, ["nonfiction"])).toMatchSnapshot();
+  });
+});
+
+// ── Catalog integrity guards (prevent drift / duplicates) ──────
+
+describe("catalog integrity", () => {
+  it("has no duplicate module ids", () => {
+    const ids = MODULE_CATALOG.map((m) => m.id);
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  it("every module has a Thai builder (TH_MODULES) — no silent English fallback", () => {
+    const missing = MODULE_CATALOG.filter((m) => !TH_MODULES[m.id]).map((m) => m.id);
+    expect(missing).toEqual([]);
+  });
+
+  it("every module has Thai card metadata (TH_META)", () => {
+    const missing = MODULE_CATALOG.filter((m) => !TH_META[m.id]).map((m) => m.id);
+    expect(missing).toEqual([]);
+  });
+
+  it("every catalog group is declared in MODULE_GROUPS and vice versa", () => {
+    const declared = new Set(MODULE_GROUPS.map((g) => g.key));
+    const used = new Set(MODULE_CATALOG.map((m) => m.group));
+    expect(Array.from(used).filter((g) => !declared.has(g as never))).toEqual([]);
+    expect(Array.from(declared).filter((g) => !used.has(g))).toEqual([]);
+  });
+
+  it("every module has non-empty name/description/usage and a builder", () => {
+    for (const m of MODULE_CATALOG) {
+      expect(m.name).toBeTruthy();
+      expect(m.description).toBeTruthy();
+      expect(m.usage).toBeTruthy();
+      expect(typeof m.build).toBe("function");
+    }
+  });
+
+  it("Thai builders all produce Thai text", () => {
+    const c: BookConfig = cfg({ language: "thai", promptLanguage: "th" });
+    for (const m of MODULE_CATALOG) {
+      expect(/[฀-๿]/.test(TH_MODULES[m.id](c))).toBe(true);
+    }
   });
 });
