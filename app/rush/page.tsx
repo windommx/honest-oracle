@@ -348,7 +348,8 @@ export default function RushPage() {
           <div className="mb-6">
             <h1 className="text-3xl font-bold gold-gradient">Rush Engine — Book Prompt Generator</h1>
             <p className="text-gray-400 mt-2 text-sm">
-              สร้างชุด prompt ครบเซ็ตสำหรับแต่งหนังสือทุกประเภท — master prompt, prompt รายบท, analysis, revision, front/back matter — คัดลอกไปใช้กับ LLM ตัวไหนก็ได้
+              สร้างชุด prompt ครบเซ็ตสำหรับแต่งหนังสือทุกประเภท — คัดลอกไปใช้กับ LLM ตัวไหนก็ได้ (ChatGPT / Claude / Gemini)
+              <span className="block text-[0.7rem] text-gray-600 mt-1">แพลตฟอร์มสร้าง “prompt” — ไม่ใช่ตัวเขียน AI · ไม่ต้องมี API key · ไม่มีค่า token</span>
             </p>
           </div>
 
@@ -491,6 +492,11 @@ export default function RushPage() {
                     </label>
                   ))}
                 </div>
+                {groups.includes("agents") && (
+                  <p className="mt-2 text-[0.62rem] text-emerald-300/80 leading-snug">
+                    ℹ️ Agent Pack สร้าง “system prompt” สำหรับ multi-agent ที่คุณรันเอง (เช่น Claude Projects) — ไม่ได้รันในแอปนี้
+                  </p>
+                )}
               </div>
 
               <div className="grid grid-cols-3 gap-2 my-4">
