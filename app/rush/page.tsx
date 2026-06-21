@@ -18,6 +18,7 @@ import {
   HelpCircle,
   Share2,
   Languages,
+  LayoutGrid,
 } from "lucide-react";
 import { titleCase, copyText, slug, downloadBlob } from "./_utils";
 import { GROUP_COLORS, Field, Stat, FilterChip, GuideModal, ThaiAnalyzerModal } from "./_components";
@@ -113,6 +114,9 @@ export default function RushPage() {
 
   useEffect(() => {
     refreshProjects();
+    const pid = new URLSearchParams(window.location.search).get("project");
+    if (pid) loadProject(pid);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Reset the visible window when the result set or filter changes.
@@ -327,6 +331,10 @@ export default function RushPage() {
             <span className="text-lg font-semibold gold-gradient">NaraSuite</span>
           </Link>
           <div className="flex items-center gap-2 text-sm text-gray-300">
+            <Link href="/rush/dashboard" className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#c9a84c]/30 text-[#c9a84c] hover:border-[#c9a84c] transition-colors text-xs">
+              <LayoutGrid className="w-3.5 h-3.5" />
+              แดชบอร์ด
+            </Link>
             <button onClick={() => setShowAnalyzer(true)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#c9a84c]/30 text-[#c9a84c] hover:border-[#c9a84c] transition-colors text-xs">
               <Languages className="w-3.5 h-3.5" />
               วิเคราะห์ไทย
