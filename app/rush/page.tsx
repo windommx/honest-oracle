@@ -440,7 +440,7 @@ export default function RushPage() {
                 <textarea
                   value={outline}
                   onChange={(e) => setOutline(e.target.value)}
-                  placeholder="วางโครงเรื่องหรือ beat รายบทที่นี่ (ไม่บังคับ) — จะถูกร้อยเข้า prompt แต่ละบท"
+                  placeholder={'วาง outline ที่นี่ (ไม่บังคับ) — ใส่เป็น "1. ..." "2. ..." หรือ "บท 1: ..." แล้ว beat แต่ละบทจะ map เข้า prompt บทนั้นอัตโนมัติ'}
                   className="input min-h-[60px] resize-y"
                 />
               </Field>

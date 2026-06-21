@@ -4,6 +4,7 @@
 // ╚══════════════════════════════════════════════════════════════════╝
 
 import { BOOK_TYPES } from "./book-types";
+import { parseOutline } from "./outline";
 import type { Architecture, BookConfig, BookTypeKey, ChapterPlan } from "./types";
 
 const isFiction = (t: BookTypeKey) => t === "novel" || t === "memoir" || t === "kids" || t === "poetry";
@@ -271,7 +272,11 @@ export function thChapter(config: BookConfig, architecture: Architecture, chapte
     p += `═══ ความต่อเนื่อง ═══\n→ อ่านบล็อก <<<STATE>>> ล่าสุดจากก่อนหน้าในแชทนี้แล้วคงความสอดคล้อง\n→ ถ้ายังไม่มี STATE ให้สร้างขึ้นจากบทที่เขียนไปแล้ว\n\n`;
   }
 
-  if (config.outline && config.outline.trim()) {
+  const parsedOutline = config.outline ? parseOutline(config.outline) : null;
+  const chapterBeat = parsedOutline?.get(chapter.number);
+  if (chapterBeat) {
+    p += `═══ beat ของบทที่ ${chapter.number} (จากโครงของคุณ) ═══\n${chapterBeat}\n→ เขียน beat นี้โดยเฉพาะ ส่วนประเภท/วัตถุประสงค์ด้านบนเป็นแค่บทบาทเชิงโครงสร้าง\n\n`;
+  } else if (config.outline && config.outline.trim() && (parsedOutline?.size ?? 0) === 0) {
     p += `═══ โครงที่วางไว้ (ทำตามส่วนของบทที่ ${chapter.number}) ═══\n${config.outline.trim()}\n\n`;
   }
 
@@ -379,7 +384,7 @@ export function thBackMatter(config: BookConfig): string {
 
 export const TH_MODULES: Record<string, (c: BookConfig) => string> = {
   STRUCTURE: (c) =>
-    `คุณคือสถาปนิกเรื่อง จัดทำ "โครงเรื่องรายบท" สำหรับ "${c.title}" ก่อนลงมือเขียน\n\nแก่นเรื่อง: ${c.thesis}\nแนว: ${c.subGenre.replace(/_/g, " ")} · ${c.chapters} บท × ~${c.wordsPerChapter} คำ\n\n═══ เลือกโครงสร้าง (เลือกที่เหมาะสุด หรือให้ผู้ใช้ระบุ) ═══\n• Save the Cat! — 15 beat\n• Hero's Journey — 12 ขั้น\n• Story Circle — 8 ขั้น (You/Need/Go/Search/Find/Take/Return/Change)\n• Kishōtenketsu — 4 องก์ ไม่จำเป็นต้องมีความขัดแย้ง เน้นการพลิกมุมมอง (เหมาะวรรณกรรม/เด็ก)\n• Seven-Point — สร้างย้อนจากตอนจบ\n\n═══ ผลลัพธ์ ═══\n1. ระบุโครงที่เลือกและเหตุผล\n2. แมป beat เข้ากับเลขบท (1-${c.chapters}) พร้อมวัตถุประสงค์ 1-2 ประโยค\n3. ระบุบทที่เป็นเหตุการณ์จุดประกาย จุดกึ่งกลาง และจุดสุดยอด\n4. แต่ละบท: "คำสัญญา" หนึ่งบรรทัด + hook ท้ายบท`,
+    `คุณคือสถาปนิกเรื่อง จัดทำ "โครงเรื่องรายบท" สำหรับ "${c.title}" ก่อนลงมือเขียน\n\nแก่นเรื่อง: ${c.thesis}\nแนว: ${c.subGenre.replace(/_/g, " ")} · ${c.chapters} บท × ~${c.wordsPerChapter} คำ\n\n═══ เลือกโครงสร้าง (เลือกที่เหมาะสุด หรือให้ผู้ใช้ระบุ) ═══\n• Save the Cat! — 15 beat\n• Hero's Journey — 12 ขั้น\n• Story Circle — 8 ขั้น (You/Need/Go/Search/Find/Take/Return/Change)\n• Kishōtenketsu — 4 องก์ ไม่จำเป็นต้องมีความขัดแย้ง เน้นการพลิกมุมมอง (เหมาะวรรณกรรม/เด็ก)\n• Seven-Point — สร้างย้อนจากตอนจบ\n\n═══ ผลลัพธ์ ═══\n1. ระบุโครงที่เลือกและเหตุผล\n2. แมป beat เข้ากับเลขบท (1-${c.chapters}) พร้อมวัตถุประสงค์ 1-2 ประโยค\n3. ระบุบทที่เป็นเหตุการณ์จุดประกาย จุดกึ่งกลาง และจุดสุดยอด\n4. แต่ละบท: "คำสัญญา" หนึ่งบรรทัด + hook ท้ายบท\n\nรูปแบบ: เขียนหนึ่งบรรทัดต่อบทเป็น "N. <beat>" (เช่น "1. ...", "2. ...") เพื่อวางลงช่อง Outline แล้วระบบจะ map เข้าแต่ละบทอัตโนมัติ`,
   VOICE_SHEET: (c) =>
     `สร้าง "ชีตเสียงตัวละคร" ให้แต่ละตัวพูดต่างกันชัด (โมเดลมักทำให้ทุกคนพูดเหมือนกัน)\n\nแต่ละตัวละครสำคัญ ให้ระบุ:\n- ชื่อ + บทบาทหนึ่งบรรทัด\n- ระดับคำ (ทางการ/สแลง/เทคนิค) + คำ/วลีประจำตัว 5-8 คำ\n- รูปประโยค (สั้นห้วน vs ยาวพลิ้ว) และจังหวะ\n- คำติดปาก คำเติม และสิ่งที่ "ไม่เคยพูด"\n- ตัวกรองอารมณ์: ภูมิหลัง/ยุค/การศึกษา มีผลต่อการเลือกคำอย่างไร\n- ตัวอย่างบทพูด 2 บรรทัดที่มีแต่ตัวนี้พูดได้\n\nตัวอย่างรูปแบบ:\n  ชื่อ: มะลิ — นักสืบขี้ระแวง อดีตพระ\n  ระดับคำ: ห้วน ทางการ; ประจำตัว: "เอาตามตรง", "พอ"\n  รูปประโยค: สั้น ห้วน ไม่พูดเยิ่นเย้อ\n  คำติดปาก: ลงท้ายด้วยคำถาม; ไม่เคยพูดคำหยาบ\n  ตัวอย่าง: "เอาตามตรง คุณโกหก คำถามคือ — ทำไม?"\n\n═══ ข้อมูลตัวละคร ═══\n[ใส่รายชื่อ/โน้ตตัวละครที่นี่]`,
   CHAR_ARC: (c) =>

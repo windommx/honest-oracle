@@ -41,6 +41,8 @@ export interface ThaiAnalysis {
   wordCount: number;
   charCount: number;
   uniqueWords: number;
+  /** Sentence-length stats (Thai has no full stop; split on punctuation + newlines). */
+  sentences: { count: number; avgWords: number; longest: number };
   topWords: { word: string; count: number }[];
   echoes: { word: string; count: number }[];
   /** Content words repeated within a short span (≤40 tokens) — local repetition. */
@@ -120,10 +122,22 @@ export function analyzeThai(text: string): ThaiAnalysis {
     count: text.split(phrase).length - 1,
   })).filter((t) => t.count > 0);
 
+  // Sentence stats: split on terminal punctuation and newlines (Thai rarely uses ".").
+  const sentenceLens = text
+    .split(/[.!?…ฯ\n]+/)
+    .map((s) => tokenizeThai(s).length)
+    .filter((n) => n > 0);
+  const sentences = {
+    count: sentenceLens.length,
+    avgWords: sentenceLens.length ? Math.round(words.length / sentenceLens.length) : 0,
+    longest: sentenceLens.length ? Math.max(...sentenceLens) : 0,
+  };
+
   return {
     wordCount: words.length,
     charCount: text.replace(/\s/g, "").length,
     uniqueWords: freq.size,
+    sentences,
     topWords,
     echoes,
     nearRepeats,

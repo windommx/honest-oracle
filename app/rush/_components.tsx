@@ -69,6 +69,11 @@ export function ThaiAnalyzerModal({ onClose }: { onClose: () => void }) {
               <Stat value={String(a.uniqueWords)} label="คำไม่ซ้ำ" />
               <Stat value={String(a.charCount)} label="อักษร" />
             </div>
+            <div className="grid grid-cols-3 gap-2">
+              <Stat value={String(a.sentences.count)} label="ประโยค" />
+              <Stat value={String(a.sentences.avgWords)} label="คำ/ประโยค (เฉลี่ย)" />
+              <Stat value={String(a.sentences.longest)} label="ประโยคยาวสุด (คำ)" />
+            </div>
 
             <div>
               <h3 className="text-xs font-semibold tracking-widest text-gray-400 uppercase mb-2">AI-tell / คำคลิเช</h3>
