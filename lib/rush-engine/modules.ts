@@ -9,6 +9,7 @@ export const MODULE_GROUPS: { key: Exclude<PromptGroup, "core">; label: string; 
   { key: "marketing", label: "Publishing & Marketing", desc: "Title, blurb, KDP metadata, agent submission pack" },
   { key: "advanced", label: "Advanced Pipeline", desc: "Rolling recap (chain-of-density), brainstorm (verbalized sampling)" },
   { key: "agents", label: "Agent Pack", desc: "Multi-agent system prompts: orchestrator + research/bible/architect/writer/critic" },
+  { key: "nis", label: "Narrative Intelligence", desc: "Grounded audits: plot-hole/continuity, character consistency, pacing, foreshadow/payoff, dialogue fatigue" },
 ];
 
 /** Default module groups suggested for a given book type. */
@@ -574,6 +575,91 @@ Given a draft (≥2 scenes), produce four reports. Output JSON only:
 Only report findings you can point to in the text — no fabricated issues, no fake scores.`;
 }
 
+// ── NIS — Narrative Intelligence System (audit prompts, grounded) ──
+// Every finding MUST cite evidence quotes; scores decompose from findings.
+
+const NIS_RULES = `GROUNDING RULES (mandatory):
+- Report a finding ONLY if you can quote the exact text that proves it (cite chapter + a short quote).
+- Never invent issues; if the manuscript is clean on a check, say so.
+- The 0-100 score is a SUMMARY of the findings, not a vibe: state how you derived it (e.g. -10 per high-severity, -3 per low). Show the findings; the number is secondary.`;
+
+function moduleNisPlot(): string {
+  return `You are a developmental editor running a PLOT-HOLE & CONTINUITY audit on a manuscript.
+
+Build a mental ledger as you read: timeline/order of events, who knows what and when, object/location permanence. Then flag contradictions.
+
+For each finding output: { type: timeline | causality | knowledge | object-permanence, chapter, contradiction (one line), evidence: ["quote A", "quote B that conflicts"], severity: high|med|low, fix }
+
+${NIS_RULES}
+
+End with: a 0-100 continuity score (with how you derived it) and the top 3 must-fix items.
+
+═══ MANUSCRIPT ═══
+[INSERT MANUSCRIPT / CHAPTERS HERE]`;
+}
+
+function moduleNisCharacter(): string {
+  return `Run a CHARACTER-CONSISTENCY audit. For each major character, hold their established traits, goals, relationships, and speech register.
+
+Flag any action or line that contradicts what was established earlier. Output per finding:
+{ character, chapter, what's inconsistent, evidence: ["established trait/quote", "contradicting quote"], severity, fix }
+Also note any character whose VOICE drifts (starts sounding like the others).
+
+${NIS_RULES}
+
+End with: a 0-100 consistency score per main character + overall, and the riskiest drift to fix first.
+
+═══ MANUSCRIPT (+ character bible if you have one) ═══
+[INSERT MANUSCRIPT HERE]`;
+}
+
+function moduleNisPacing(): string {
+  return `Run a PACING audit to find slow spots (the "saggy middle").
+
+For each chapter/scene, judge pace (fast / medium / slow) and justify from concrete signals: scene length, dialogue-vs-narration balance, density of action/turns, sentence-length monotony, and whether the scene has a goal + turn.
+Plot the tension/pace across the book and flag stretches that sag (low stakes + low movement + uniform rhythm) and any rushed climax.
+
+Output: a per-chapter pace table (with the signal that drove each call) + flagged stretches + concrete cuts/compressions to fix them.
+
+${NIS_RULES}
+
+End with: a 0-100 pacing score and the single chapter most in need of tightening.
+
+═══ MANUSCRIPT ═══
+[INSERT MANUSCRIPT HERE]`;
+}
+
+function moduleNisForeshadow(): string {
+  return `Run a FORESHADOWING & PAYOFF audit (Chekhov's gun).
+
+Identify SETUPS (planted hints, objects, abilities, secrets) and PAYOFFS. Pair them up.
+Flag: (a) setups that never pay off (unfired guns), (b) payoffs with no setup (deus ex machina / unearned reveals).
+
+Output a table: setup (chapter + quote) → payoff (chapter + quote) | UNPAID | UNSEEDED, with a fix for each gap (plant earlier / pay off later / cut).
+
+${NIS_RULES}
+
+End with: a 0-100 setup-payoff score and the most jarring unseeded reveal to fix.
+
+═══ MANUSCRIPT ═══
+[INSERT MANUSCRIPT HERE]`;
+}
+
+function moduleNisDialogue(): string {
+  return `Run a DIALOGUE-FATIGUE audit (pairs with the deterministic Thai Analyzer dialogue stats).
+
+Flag: long "talking-heads" stretches (many lines with no action beat / blocking), on-the-nose exposition dumps, every character sounding the same, and filler exchanges that don't advance plot or reveal character.
+
+Output per finding: { chapter, problem, evidence (quote the stretch), severity, fix (add action beat / cut / give it subtext / differentiate voice) }
+
+${NIS_RULES}
+
+End with: a 0-100 dialogue score and the worst talking-heads scene to break up.
+
+═══ DIALOGUE / CHAPTER ═══
+[INSERT TEXT HERE]`;
+}
+
 // ── Catalog assembly ───────────────────────────────────────────
 
 type ModuleDef = { id: string; group: PromptGroup; name: string; description: string; usage: string; build: (c: BookConfig) => string };
@@ -618,4 +704,10 @@ export const MODULE_CATALOG: ModuleDef[] = [
   { id: "AGENT_ARCHITECT", group: "agents", name: "Architect Agent", description: "Arc map + chapters/scenes outline (JSON).", usage: "Phase 3 agent system prompt.", build: moduleAgentArchitect },
   { id: "AGENT_WRITER", group: "agents", name: "Writer Agent", description: "Writes one scene from spec + bible (JSON).", usage: "Phase 4 agent system prompt.", build: moduleAgentWriter },
   { id: "AGENT_CRITIC", group: "agents", name: "Critic Swarm", description: "Continuity / emotion / proof / marketing reports (JSON).", usage: "Phase 5 agent system prompt.", build: moduleAgentCritic },
+  // nis (grounded narrative-intelligence audits — every finding cites evidence)
+  { id: "NIS_PLOT", group: "nis", name: "Plot-Hole & Continuity Audit", description: "Timeline/causality/knowledge/object-permanence contradictions, each with conflicting quotes.", usage: "Run on a full draft or batch of chapters.", build: moduleNisPlot },
+  { id: "NIS_CHARACTER", group: "nis", name: "Character Consistency Audit", description: "Trait/goal/voice drift per character, with established-vs-contradicting quotes.", usage: "Run on a full draft (+ character bible).", build: moduleNisCharacter },
+  { id: "NIS_PACING", group: "nis", name: "Pacing Audit", description: "Per-chapter pace from concrete signals; finds the saggy middle + rushed climax.", usage: "Run on the assembled manuscript.", build: moduleNisPacing },
+  { id: "NIS_FORESHADOW", group: "nis", name: "Foreshadow & Payoff Audit", description: "Pairs setups to payoffs; flags unfired guns and unseeded reveals.", usage: "Run on a full draft to check planting.", build: moduleNisForeshadow },
+  { id: "NIS_DIALOGUE", group: "nis", name: "Dialogue-Fatigue Audit", description: "Talking-heads runs, on-the-nose exposition, samey voices (pairs with Thai Analyzer).", usage: "Run on dialogue-heavy chapters.", build: moduleNisDialogue },
 ];

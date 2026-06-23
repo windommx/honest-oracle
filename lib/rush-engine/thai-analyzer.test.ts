@@ -30,6 +30,14 @@ describe("analyzeThai", () => {
     expect(a.sentences.longest).toBeGreaterThanOrEqual(a.sentences.avgWords);
   });
 
+  it("computes dialogue signals (ratio + talking-head run)", () => {
+    const text = '"เธอมาทำไม"\n"ฉันมาหาคำตอบ"\n"คำตอบอะไร"\nเขาเงียบไปครู่หนึ่ง';
+    const a = analyzeThai(text);
+    expect(a.dialogue.lines).toBeGreaterThanOrEqual(3);
+    expect(a.dialogue.talkingHeadRun).toBeGreaterThanOrEqual(3);
+    expect(a.dialogue.ratio).toBeGreaterThan(0);
+  });
+
   it("detects near-repeats (same content word within a short span)", () => {
     const a = analyzeThai("แมวดำกระโดดข้ามรั้ว แล้วแมวขาวก็เดินตามมา");
     expect(a.nearRepeats.some((r) => r.word === "แมว")).toBe(true);

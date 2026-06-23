@@ -14,6 +14,7 @@ export const GROUP_COLORS: Record<PromptGroup, string> = {
   marketing: "border-orange-400 text-orange-400",
   advanced: "border-cyan-400 text-cyan-400",
   agents: "border-emerald-400 text-emerald-400",
+  nis: "border-red-400 text-red-400",
 };
 
 export function Field({ label, children }: { label: string; children: React.ReactNode }) {
@@ -74,6 +75,17 @@ export function ThaiAnalyzerModal({ onClose }: { onClose: () => void }) {
               <Stat value={String(a.sentences.avgWords)} label="คำ/ประโยค (เฉลี่ย)" />
               <Stat value={String(a.sentences.longest)} label="ประโยคยาวสุด (คำ)" />
             </div>
+            <div className="grid grid-cols-3 gap-2">
+              <Stat value={`${a.dialogue.ratio}%`} label="สัดส่วนบทพูด" />
+              <Stat value={String(a.dialogue.lines)} label="บรรทัดบทพูด" />
+              <Stat value={String(a.dialogue.talkingHeadRun)} label="พูดต่อเนื่องสุด" />
+            </div>
+            {(a.dialogue.talkingHeadRun >= 6 || a.dialogue.ratio > 70) && (
+              <p className="text-[0.65rem] text-orange-300/80">
+                ⚠️ {a.dialogue.talkingHeadRun >= 6 ? `บทพูดต่อเนื่อง ${a.dialogue.talkingHeadRun} บรรทัดโดยไม่มี action คั่น (talking-heads)` : ""}
+                {a.dialogue.ratio > 70 ? ` · บทพูด ${a.dialogue.ratio}% อาจมากเกินไป` : ""}
+              </p>
+            )}
 
             <div>
               <h3 className="text-xs font-semibold tracking-widest text-gray-400 uppercase mb-2">AI-tell / คำคลิเช</h3>

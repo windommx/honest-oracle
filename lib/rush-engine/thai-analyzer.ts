@@ -43,6 +43,8 @@ export interface ThaiAnalysis {
   uniqueWords: number;
   /** Sentence-length stats (Thai has no full stop; split on punctuation + newlines). */
   sentences: { count: number; avgWords: number; longest: number };
+  /** Dialogue signals — for the NIS Dialogue-Fatigue check (deterministic). */
+  dialogue: { ratio: number; lines: number; talkingHeadRun: number };
   topWords: { word: string; count: number }[];
   echoes: { word: string; count: number }[];
   /** Content words repeated within a short span (≤40 tokens) — local repetition. */
@@ -133,11 +135,36 @@ export function analyzeThai(text: string): ThaiAnalysis {
     longest: sentenceLens.length ? Math.max(...sentenceLens) : 0,
   };
 
+  // Dialogue signals: ratio of quoted words, dialogue-line count, and the longest
+  // "talking-heads" run (consecutive dialogue lines with no narration beat between).
+  const lines = text.split(/\n+/).map((l) => l.trim()).filter(Boolean);
+  const isDialogue = (l: string) => /["“”«»「」‘’]/.test(l) || /^[—–-]\s/.test(l);
+  let run = 0;
+  let maxRun = 0;
+  let dlgLines = 0;
+  for (const l of lines) {
+    if (isDialogue(l)) {
+      dlgLines++;
+      run++;
+      if (run > maxRun) maxRun = run;
+    } else {
+      run = 0;
+    }
+  }
+  const quoted = text.match(/"[^"]*"|“[^”]*”|«[^»]*»|「[^」]*」|‘[^’]*’/g) ?? [];
+  const dialogueWords = quoted.reduce((s, q) => s + tokenizeThai(q).length, 0);
+  const dialogue = {
+    ratio: words.length ? Math.round((dialogueWords / words.length) * 100) : 0,
+    lines: dlgLines,
+    talkingHeadRun: maxRun,
+  };
+
   return {
     wordCount: words.length,
     charCount: text.replace(/\s/g, "").length,
     uniqueWords: freq.size,
     sentences,
+    dialogue,
     topWords,
     echoes,
     nearRepeats,
