@@ -3,6 +3,8 @@
 // ║  No LLM. Uses Intl.Segmenter for real Thai word segmentation.     ║
 // ╚══════════════════════════════════════════════════════════════════╝
 
+import { splitChapters } from "./chapters";
+
 const THAI_STOPWORDS = new Set([
   "ที่", "และ", "เป็น", "ของ", "ใน", "มี", "ไม่", "ได้", "จะ", "ก็", "ให้", "แต่", "กับ", "นี้",
   "นั้น", "เขา", "เธอ", "มัน", "ว่า", "การ", "ความ", "จาก", "ด้วย", "มา", "ไป", "อยู่", "แล้ว",
@@ -255,4 +257,58 @@ export function formatThaiReport(a: ThaiAnalysis): string {
     "",
     "_เครื่องมือฝั่งเบราว์เซอร์ (ไม่เรียก AI) — เป็นการนับและสถิติ ไม่ใช่คะแนนคุณภาพ_",
   ].join("\n");
+}
+
+export interface ThaiMetricDelta {
+  label: string;
+  before: number;
+  after: number;
+  delta: number;
+  good: "lower" | "higher" | "neutral";
+}
+
+/** Compare two Thai analyses metric-by-metric (did the revision measurably improve?). */
+export function thaiDeltas(before: ThaiAnalysis, after: ThaiAnalysis): ThaiMetricDelta[] {
+  const row = (label: string, b: number, af: number, good: ThaiMetricDelta["good"]): ThaiMetricDelta => ({
+    label,
+    before: b,
+    after: af,
+    delta: Math.round((af - b) * 10) / 10,
+    good,
+  });
+  return [
+    row("คำ (words)", before.wordCount, after.wordCount, "neutral"),
+    row("จังหวะ CV%", before.rhythm.cv, after.rhythm.cv, "higher"),
+    row("คำคลิเช AI", before.aiTells.length, after.aiTells.length, "lower"),
+    row("คำบอกอารมณ์", before.telling.count, after.telling.count, "lower"),
+    row("คำซ้ำใกล้กัน", before.nearRepeats.length, after.nearRepeats.length, "lower"),
+    row("คำซ้ำบ่อย (echoes)", before.echoes.length, after.echoes.length, "lower"),
+    row("พูดต่อเนื่องสุด", before.dialogue.talkingHeadRun, after.dialogue.talkingHeadRun, "lower"),
+  ];
+}
+
+export interface ThaiChapterScan {
+  title: string;
+  words: number;
+  cv: number;
+  dialogueRatio: number;
+  telling: number;
+  aiTells: number;
+  echoes: number;
+}
+
+/** Per-chapter deterministic scorecard for a Thai manuscript. */
+export function scanThaiManuscript(text: string): ThaiChapterScan[] {
+  return splitChapters(text).map(({ title, body }) => {
+    const a = analyzeThai(body);
+    return {
+      title,
+      words: a.wordCount,
+      cv: a.rhythm.cv,
+      dialogueRatio: a.dialogue.ratio,
+      telling: a.telling.count,
+      aiTells: a.aiTells.length,
+      echoes: a.echoes.length,
+    };
+  });
 }

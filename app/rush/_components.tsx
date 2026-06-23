@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { X, Copy, Check, Download } from "lucide-react";
 import { MODULE_CATALOG, MODULE_GROUPS, type BookConfig, type PromptGroup } from "@/lib/rush-engine/engine";
 import { TH_MODULES } from "@/lib/rush-engine/th";
-import { analyzeThai, formatThaiReport } from "@/lib/rush-engine/thai-analyzer";
+import { analyzeThai, formatThaiReport, thaiDeltas, scanThaiManuscript } from "@/lib/rush-engine/thai-analyzer";
 import { analyzeProse, formatProseReport, proseDeltas, scanManuscript } from "@/lib/rush-engine/prose-analyzer";
 
 export const GROUP_COLORS: Record<PromptGroup, string> = {
@@ -66,10 +66,86 @@ function ReportActions({ report, filename }: { report: string; filename: string 
   );
 }
 
+type Delta = { label: string; before: number; after: number; delta: number; good: "lower" | "higher" | "neutral" };
+
+function DeltaTable({ title, deltas, note }: { title: string; deltas: Delta[]; note: string }) {
+  return (
+    <div className="mt-4">
+      <h3 className="text-xs font-semibold tracking-widest text-gray-400 uppercase mb-2">{title}</h3>
+      <div className="rounded-lg border border-white/10 overflow-hidden">
+        {deltas.map((d) => {
+          const improved = d.good === "lower" ? d.delta < 0 : d.good === "higher" ? d.delta > 0 : null;
+          const color = d.delta === 0 || improved === null ? "text-gray-400" : improved ? "text-green-400" : "text-red-400";
+          return (
+            <div key={d.label} className="flex items-center justify-between px-3 py-1.5 text-xs border-b border-white/5 last:border-0">
+              <span className="text-gray-300">{d.label}</span>
+              <span className="flex items-center gap-2">
+                <span className="text-gray-500">{d.before} → {d.after}</span>
+                <span className={`w-12 text-right tabular-nums ${color}`}>{d.delta > 0 ? `+${d.delta}` : d.delta}</span>
+              </span>
+            </div>
+          );
+        })}
+      </div>
+      <p className="text-[0.6rem] text-gray-500 mt-1">{note}</p>
+    </div>
+  );
+}
+
+function Heatmap({ title, headers, rows, note }: {
+  title: string;
+  headers: string[];
+  rows: { title: string; cells: { value: number; bad?: boolean }[] }[];
+  note: string;
+}) {
+  return (
+    <div className="mt-3">
+      <h3 className="text-xs font-semibold tracking-widest text-gray-400 uppercase mb-2">{title}</h3>
+      <div className="overflow-x-auto rounded-lg border border-white/10">
+        <table className="w-full text-[0.7rem]">
+          <thead>
+            <tr className="text-gray-500 border-b border-white/10">
+              <th className="text-left px-2 py-1.5 font-medium">Chapter</th>
+              {headers.map((h) => (
+                <th key={h} className="px-2 py-1.5 font-medium">{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r, i) => (
+              <tr key={`${r.title}-${i}`} className="border-b border-white/5 last:border-0">
+                <td className="text-left px-2 py-1 text-gray-300 truncate max-w-[160px]" title={r.title}>{r.title}</td>
+                {r.cells.map((c, j) => (
+                  <td key={j} className={`px-2 py-1 text-center tabular-nums ${c.bad ? "text-red-400 font-semibold" : "text-gray-400"}`}>{c.value}</td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p className="text-[0.6rem] text-gray-500 mt-1">{note}</p>
+    </div>
+  );
+}
+
 export function ThaiAnalyzerModal({ onClose }: { onClose: () => void }) {
   const [text, setText] = useState("");
+  const [revised, setRevised] = useState("");
+  const [showCompare, setShowCompare] = useState(false);
+  const [showScan, setShowScan] = useState(false);
   const [copiedAudit, setCopiedAudit] = useState<string | null>(null);
   const a = useMemo(() => (text.trim() ? analyzeThai(text) : null), [text]);
+  const deltas = useMemo(
+    () => (text.trim() && revised.trim() ? thaiDeltas(analyzeThai(text), analyzeThai(revised)) : null),
+    [text, revised]
+  );
+  const scan = useMemo(() => (text.trim() ? scanThaiManuscript(text) : []), [text]);
+  const worst = useMemo(() => {
+    if (scan.length < 2) return { aiTells: -1, cv: -1 };
+    const argTells = scan.reduce((b, c, i) => (c.aiTells > scan[b].aiTells ? i : b), 0);
+    const argCv = scan.reduce((b, c, i) => (c.cv < scan[b].cv ? i : b), 0);
+    return { aiTells: scan[argTells].aiTells > 0 ? argTells : -1, cv: argCv };
+  }, [scan]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
@@ -116,6 +192,43 @@ export function ThaiAnalyzerModal({ onClose }: { onClose: () => void }) {
           placeholder="วางข้อความภาษาไทยที่นี่…"
           className="input min-h-[140px] resize-y"
         />
+        <button onClick={() => setShowCompare((v) => !v)} className="mt-2 text-[0.7rem] text-[#c9a84c] hover:underline">
+          {showCompare ? "− ซ่อนการเทียบฉบับแก้" : "+ เทียบฉบับแก้ (ก่อน → หลัง)"}
+        </button>
+        {showCompare && (
+          <textarea
+            value={revised}
+            onChange={(e) => setRevised(e.target.value)}
+            placeholder="วางฉบับที่แก้แล้วที่นี่ เพื่อดูว่าอะไรดีขึ้นจริง…"
+            className="input min-h-[120px] resize-y mt-2"
+          />
+        )}
+        {showCompare && deltas && (
+          <DeltaTable title="ก่อน → หลัง" deltas={deltas} note="เขียว = ดีขึ้นจริงบน signal นั้น · เทา = metric กลาง เป็นการนับ ไม่ใช่คำตัดสินคุณภาพ" />
+        )}
+        {scan.length > 1 && (
+          <button onClick={() => setShowScan((v) => !v)} className="mt-2 ml-3 text-[0.7rem] text-[#c9a84c] hover:underline">
+            {showScan ? "− ซ่อนสแกนรายบท" : `+ สแกนรายบท (${scan.length} บท)`}
+          </button>
+        )}
+        {showScan && scan.length > 1 && (
+          <Heatmap
+            title="heatmap รายบท"
+            headers={["คำ", "CV%", "บทพูด%", "บอกอารมณ์", "คลิเช", "echoes"]}
+            rows={scan.map((c, i) => ({
+              title: c.title,
+              cells: [
+                { value: c.words },
+                { value: c.cv, bad: worst.cv === i },
+                { value: c.dialogueRatio },
+                { value: c.telling },
+                { value: c.aiTells, bad: worst.aiTells === i },
+                { value: c.echoes },
+              ],
+            }))}
+            note="แดง = บทที่อ่อนสุดบน signal นั้น (จังหวะแบนสุด/คลิเชมากสุด) เป็นการนับ ไม่ใช่คำตัดสิน"
+          />
+        )}
         {a && (
           <div className="mt-4 space-y-4 text-sm">
             <ReportActions report={formatThaiReport(a)} filename="thai-analysis.md" />
@@ -427,27 +540,7 @@ export function ProseAnalyzerModal({ onClose }: { onClose: () => void }) {
           />
         )}
         {showCompare && deltas && (
-          <div className="mt-4">
-            <h3 className="text-xs font-semibold tracking-widest text-gray-400 uppercase mb-2">Before → After</h3>
-            <div className="rounded-lg border border-white/10 overflow-hidden">
-              {deltas.map((d) => {
-                const improved = d.good === "lower" ? d.delta < 0 : d.good === "higher" ? d.delta > 0 : null;
-                const color = d.delta === 0 || improved === null ? "text-gray-400" : improved ? "text-green-400" : "text-red-400";
-                return (
-                  <div key={d.label} className="flex items-center justify-between px-3 py-1.5 text-xs border-b border-white/5 last:border-0">
-                    <span className="text-gray-300">{d.label}</span>
-                    <span className="flex items-center gap-2">
-                      <span className="text-gray-500">{d.before} → {d.after}</span>
-                      <span className={`w-12 text-right tabular-nums ${color}`}>
-                        {d.delta > 0 ? `+${d.delta}` : d.delta}
-                      </span>
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-            <p className="text-[0.6rem] text-gray-500 mt-1">Green = measurably improved on that signal · gray = neutral metric. Counts, not a quality verdict.</p>
-          </div>
+          <DeltaTable title="Before → After" deltas={deltas} note="Green = measurably improved on that signal · gray = neutral metric. Counts, not a quality verdict." />
         )}
         {scan.length > 1 && (
           <button
@@ -458,38 +551,22 @@ export function ProseAnalyzerModal({ onClose }: { onClose: () => void }) {
           </button>
         )}
         {showScan && scan.length > 1 && (
-          <div className="mt-3">
-            <h3 className="text-xs font-semibold tracking-widest text-gray-400 uppercase mb-2">Per-chapter heatmap</h3>
-            <div className="overflow-x-auto rounded-lg border border-white/10">
-              <table className="w-full text-[0.7rem]">
-                <thead>
-                  <tr className="text-gray-500 border-b border-white/10">
-                    <th className="text-left px-2 py-1.5 font-medium">Chapter</th>
-                    <th className="px-2 py-1.5 font-medium">words</th>
-                    <th className="px-2 py-1.5 font-medium">ease</th>
-                    <th className="px-2 py-1.5 font-medium">slop</th>
-                    <th className="px-2 py-1.5 font-medium">tell</th>
-                    <th className="px-2 py-1.5 font-medium">passv</th>
-                    <th className="px-2 py-1.5 font-medium">CV%</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {scan.map((c, i) => (
-                    <tr key={`${c.title}-${i}`} className="border-b border-white/5 last:border-0">
-                      <td className="text-left px-2 py-1 text-gray-300 truncate max-w-[160px]" title={c.title}>{c.title}</td>
-                      <td className="px-2 py-1 text-center text-gray-400 tabular-nums">{c.words}</td>
-                      <td className={`px-2 py-1 text-center tabular-nums ${worst.ease === i ? "text-red-400 font-semibold" : "text-gray-400"}`}>{c.fleschEase}</td>
-                      <td className={`px-2 py-1 text-center tabular-nums ${worst.slop === i ? "text-red-400 font-semibold" : "text-gray-400"}`}>{c.slop}</td>
-                      <td className="px-2 py-1 text-center text-gray-400 tabular-nums">{c.telling}</td>
-                      <td className="px-2 py-1 text-center text-gray-400 tabular-nums">{c.passive}</td>
-                      <td className={`px-2 py-1 text-center tabular-nums ${worst.cv === i ? "text-red-400 font-semibold" : "text-gray-400"}`}>{c.cv}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <p className="text-[0.6rem] text-gray-500 mt-1">Red = weakest chapter on that signal (lowest ease/rhythm, most slop). Deterministic counts, not a verdict.</p>
-          </div>
+          <Heatmap
+            title="Per-chapter heatmap"
+            headers={["words", "ease", "slop", "tell", "passv", "CV%"]}
+            rows={scan.map((c, i) => ({
+              title: c.title,
+              cells: [
+                { value: c.words },
+                { value: c.fleschEase, bad: worst.ease === i },
+                { value: c.slop, bad: worst.slop === i },
+                { value: c.telling },
+                { value: c.passive },
+                { value: c.cv, bad: worst.cv === i },
+              ],
+            }))}
+            note="Red = weakest chapter on that signal (lowest ease/rhythm, most slop). Deterministic counts, not a verdict."
+          />
         )}
         {a && (
           <div className="mt-4 space-y-4 text-sm">

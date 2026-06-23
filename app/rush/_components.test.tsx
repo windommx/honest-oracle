@@ -48,6 +48,19 @@ describe("ThaiAnalyzerModal", () => {
     expect(arg).toContain("หนึ่ง"); // the analyzed text is inlined
     expect(arg).not.toContain("[วางข้อความที่นี่]"); // placeholder was replaced
   });
+
+  it("shows a before→after delta table when comparing a Thai revision", () => {
+    render(<ThaiAnalyzerModal onClose={() => {}} />);
+    fireEvent.change(screen.getByPlaceholderText(/วางข้อความภาษาไทย/), {
+      target: { value: "เธอรู้สึกเศร้า น้ำตาไหลริน" },
+    });
+    fireEvent.click(screen.getByText(/เทียบฉบับแก้/));
+    fireEvent.change(screen.getByPlaceholderText(/วางฉบับที่แก้แล้ว/), {
+      target: { value: "เธอก้มมองพื้น แล้วเดินจากไป" },
+    });
+    expect(screen.getByText(/ก่อน → หลัง/)).toBeTruthy();
+    expect(screen.getByText(/คำคลิเช AI/)).toBeTruthy();
+  });
 });
 
 describe("ProseAnalyzerModal", () => {

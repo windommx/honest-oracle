@@ -1,5 +1,12 @@
 import { describe, it, expect } from "vitest";
-import { analyzeThai, tokenizeThai, formatThaiReport, THAI_AI_TELLS } from "./thai-analyzer";
+import {
+  analyzeThai,
+  tokenizeThai,
+  formatThaiReport,
+  thaiDeltas,
+  scanThaiManuscript,
+  THAI_AI_TELLS,
+} from "./thai-analyzer";
 
 describe("tokenizeThai", () => {
   it("segments Thai text into multiple words", () => {
@@ -82,6 +89,23 @@ describe("analyzeThai", () => {
     expect(md).toContain("คำคลิเชแบบ AI");
     expect(md).toContain("น้ำตาไหลริน");
     expect(md).toContain("ไม่ใช่คะแนนคุณภาพ");
+  });
+
+  it("diffs two Thai drafts so a revision's improvement is measurable", () => {
+    const before = analyzeThai("เธอรู้สึกเศร้า น้ำตาไหลริน หัวใจสลาย");
+    const after = analyzeThai("เธอก้มมองพื้น แล้วเดินจากไป");
+    const deltas = thaiDeltas(before, after);
+    const tells = deltas.find((d) => d.label === "คำคลิเช AI")!;
+    expect(tells.before).toBeGreaterThan(0);
+    expect(tells.after).toBe(0);
+    expect(tells.good).toBe("lower");
+  });
+
+  it("scores each Thai chapter so the weakest is visible", () => {
+    const scan = scanThaiManuscript("บทที่ 1\nเขาเดินเข้ามา\nบทที่ 2\nเธอรู้สึกเศร้า น้ำตาไหลริน");
+    expect(scan).toHaveLength(2);
+    expect(scan[1].aiTells).toBeGreaterThan(scan[0].aiTells);
+    expect(scan.every((c) => c.words > 0)).toBe(true);
   });
 
   it("exposes a non-empty cliché list", () => {
