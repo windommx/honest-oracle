@@ -19,6 +19,7 @@ import {
   Share2,
   Languages,
   LayoutGrid,
+  Play,
 } from "lucide-react";
 import { titleCase, copyText, slug, downloadBlob } from "./_utils";
 import { GROUP_COLORS, Field, Stat, FilterChip, GuideModal, ThaiAnalyzerModal, ProseAnalyzerModal } from "./_components";
@@ -374,6 +375,10 @@ export default function RushPage() {
             <Link href="/rush/dashboard" className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#c9a84c]/30 text-[#c9a84c] hover:border-[#c9a84c] transition-colors text-xs">
               <LayoutGrid className="w-3.5 h-3.5" />
               แดชบอร์ด
+            </Link>
+            <Link href="/rush/studio" className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#c9a84c]/30 text-[#c9a84c] hover:border-[#c9a84c] transition-colors text-xs">
+              <Play className="w-3.5 h-3.5" />
+              Studio
             </Link>
             <button onClick={() => setShowAnalyzer(true)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#c9a84c]/30 text-[#c9a84c] hover:border-[#c9a84c] transition-colors text-xs">
               <Languages className="w-3.5 h-3.5" />

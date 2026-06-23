@@ -44,7 +44,21 @@ separate track below.
 
 ---
 
-## Rush Studio — the runtime track (future, separate product)
+## Rush Studio — the runtime track (Phase 1 shipped)
+
+**Phase 1 (BYO-key proxy) is live** at `/rush/studio`: run any prompt against
+your OWN provider key (Anthropic / OpenAI). The key is passed through a
+login-gated server proxy per request and is **never stored or logged** — so
+platform token cost stays zero, consistent with the prompt-platform ethos.
+Output can be saved straight into the client manuscript store, then analysed /
+NIS-audited. Pure request builders (`lib/rush-engine/llm-provider.ts`) are
+unit-tested; the proxy lives at `app/api/rush/studio/run`.
+
+Remaining phases (swarm executor, enforcing hooks, plugins) are below.
+
+---
+
+## Rush Studio — the runtime track (future phases)
 
 The "Novel Studio" fusion architecture (5-layer agent system + swarm + runtime)
 is a genuinely different product: a **hosted writing system** that *executes* the
