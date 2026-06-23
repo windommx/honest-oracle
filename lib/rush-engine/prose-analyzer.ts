@@ -1,0 +1,179 @@
+// ╔══════════════════════════════════════════════════════════════════╗
+// ║  PROSE ANALYZER — deterministic, client-side English prose checks  ║
+// ║  No LLM. Word-matches & statistics only — the user sees what was   ║
+// ║  counted. Mirrors the Thai Analyzer for English/bilingual books.   ║
+// ╚══════════════════════════════════════════════════════════════════╝
+
+// AI-slop words & hollow formulas (substring match on lowercased text).
+export const SLOP_TERMS = [
+  // overused single words
+  "delve", "tapestry", "testament", "realm", "navigate", "foster", "underscore",
+  "crucial", "vibrant", "meticulous", "bustling", "whimsical", "nestled", "boasts",
+  "embark", "unleash", "elevate", "seamless", "robust", "leverage", "myriad",
+  // hollow formulas / phrases
+  "it's not just", "in a world where", "more than ever", "it's worth noting",
+  "needless to say", "at the end of the day", "game changer", "a testament to",
+  "in today's", "when it comes to", "the fact that",
+];
+
+// Filter / crutch words that weaken prose (whole-token match).
+const FILTER_WORDS = new Set([
+  "just", "really", "very", "quite", "rather", "somewhat", "actually", "simply",
+  "basically", "literally", "totally", "perhaps", "maybe", "kind", "sort", "almost",
+  "even", "stuff", "things", "very",
+  // deep-POV distancing verbs
+  "saw", "felt", "heard", "noticed", "realized", "watched", "wondered", "knew",
+  "thought", "seemed", "looked",
+]);
+
+// Directly-named emotions (telling rather than showing).
+const EMOTION_WORDS = new Set([
+  "angry", "sad", "happy", "afraid", "scared", "nervous", "excited", "jealous",
+  "embarrassed", "furious", "anxious", "lonely", "proud", "ashamed", "confused",
+  "frustrated", "terrified", "delighted", "miserable", "worried", "joy", "fear",
+  "anger", "sadness", "happiness", "love", "hatred", "grief", "rage",
+]);
+
+// -ly tokens that are NOT manner adverbs (so we don't over-flag).
+const LY_FALSE_FRIENDS = new Set([
+  "only", "family", "reply", "apply", "supply", "ugly", "early", "italy", "july",
+  "holy", "ally", "rely", "fly", "july", "belly", "rally", "jelly", "lily", "ply",
+  "imply", "comply", "multiply", "assembly", "anomaly", "monopoly", "melancholy",
+]);
+
+const STOPWORDS = new Set([
+  "the", "a", "an", "and", "or", "but", "of", "to", "in", "on", "at", "for", "with",
+  "as", "by", "from", "is", "are", "was", "were", "be", "been", "being", "it", "its",
+  "he", "she", "they", "them", "his", "her", "their", "i", "you", "we", "me", "my",
+  "this", "that", "these", "those", "then", "than", "so", "if", "not", "no", "yes",
+  "had", "has", "have", "do", "does", "did", "will", "would", "could", "should",
+  "can", "may", "might", "out", "up", "down", "off", "over", "into", "all", "one",
+  "his", "him", "who", "what", "when", "where", "which", "there", "here", "about",
+]);
+
+export interface ProseAnalysis {
+  wordCount: number;
+  charCount: number;
+  uniqueWords: number;
+  sentences: { count: number; avgWords: number; longest: number };
+  /** Sentence-length variation — low cv / long monotonyRun = flat prose. */
+  rhythm: { stdev: number; cv: number; monotonyRun: number };
+  /** AI-slop words & hollow formulas found. */
+  slop: { phrase: string; count: number }[];
+  /** Filter / crutch words (just, really, felt…). */
+  filterWords: { word: string; count: number }[];
+  /** -ly manner adverbs (density signals weak verbs). */
+  adverbs: { count: number; ratio: number; words: { word: string; count: number }[] };
+  /** Directly-named emotions — telling rather than showing. */
+  telling: { count: number; ratio: number; words: { word: string; count: number }[] };
+  /** Content words repeated unusually often (≥4). */
+  echoes: { word: string; count: number }[];
+}
+
+export function tokenizeProse(text: string): string[] {
+  return (text.toLowerCase().match(/[a-z']+/g) ?? []).map((w) => w.replace(/^'+|'+$/g, "")).filter(Boolean);
+}
+
+function countTop(map: Map<string, number>): { word: string; count: number }[] {
+  return Array.from(map.entries())
+    .sort((a, b) => b[1] - a[1])
+    .map(([word, count]) => ({ word, count }));
+}
+
+export function analyzeProse(text: string): ProseAnalysis {
+  const lower = text.toLowerCase();
+  const words = tokenizeProse(text);
+
+  const freq = new Map<string, number>();
+  words.forEach((w) => freq.set(w, (freq.get(w) ?? 0) + 1));
+
+  // Slop: substring match (covers multi-word formulas).
+  const slop = SLOP_TERMS.map((phrase) => ({ phrase, count: lower.split(phrase).length - 1 }))
+    .filter((s) => s.count > 0)
+    .sort((a, b) => b.count - a.count);
+
+  // Filter words.
+  const filterMap = new Map<string, number>();
+  words.forEach((w) => {
+    if (FILTER_WORDS.has(w)) filterMap.set(w, (filterMap.get(w) ?? 0) + 1);
+  });
+  const filterWords = countTop(filterMap);
+
+  // -ly adverbs (excluding false friends).
+  const advMap = new Map<string, number>();
+  words.forEach((w) => {
+    if (w.length > 3 && w.endsWith("ly") && !LY_FALSE_FRIENDS.has(w)) {
+      advMap.set(w, (advMap.get(w) ?? 0) + 1);
+    }
+  });
+  const advList = countTop(advMap);
+  const advCount = advList.reduce((s, a) => s + a.count, 0);
+  const adverbs = {
+    count: advCount,
+    ratio: words.length ? Math.round((advCount / words.length) * 1000) / 10 : 0,
+    words: advList,
+  };
+
+  // Telling: named emotions (+ "felt").
+  const tellMap = new Map<string, number>();
+  words.forEach((w) => {
+    if (EMOTION_WORDS.has(w)) tellMap.set(w, (tellMap.get(w) ?? 0) + 1);
+  });
+  const tellList = countTop(tellMap);
+  const tellCount = tellList.reduce((s, t) => s + t.count, 0);
+  const telling = {
+    count: tellCount,
+    ratio: words.length ? Math.round((tellCount / words.length) * 1000) / 10 : 0,
+    words: tellList,
+  };
+
+  // Echoes: content words repeated ≥4 times.
+  const echoes = Array.from(freq.entries())
+    .filter(([w, c]) => c >= 4 && w.length >= 3 && !STOPWORDS.has(w))
+    .sort((a, b) => b[1] - a[1])
+    .map(([word, count]) => ({ word, count }));
+
+  // Sentence + rhythm stats.
+  const sentenceLens = text
+    .split(/[.!?…]+|\n+/)
+    .map((s) => tokenizeProse(s).length)
+    .filter((n) => n > 0);
+  const sentences = {
+    count: sentenceLens.length,
+    avgWords: sentenceLens.length ? Math.round(words.length / sentenceLens.length) : 0,
+    longest: sentenceLens.length ? Math.max(...sentenceLens) : 0,
+  };
+  const mean = sentenceLens.length ? sentenceLens.reduce((s, n) => s + n, 0) / sentenceLens.length : 0;
+  const variance = sentenceLens.length
+    ? sentenceLens.reduce((s, n) => s + (n - mean) ** 2, 0) / sentenceLens.length
+    : 0;
+  const stdev = Math.sqrt(variance);
+  let flatRun = 1;
+  let maxFlatRun = sentenceLens.length ? 1 : 0;
+  for (let i = 1; i < sentenceLens.length; i++) {
+    if (Math.abs(sentenceLens[i] - sentenceLens[i - 1]) <= 2) {
+      flatRun++;
+      if (flatRun > maxFlatRun) maxFlatRun = flatRun;
+    } else {
+      flatRun = 1;
+    }
+  }
+  const rhythm = {
+    stdev: Math.round(stdev * 10) / 10,
+    cv: mean ? Math.round((stdev / mean) * 100) : 0,
+    monotonyRun: maxFlatRun,
+  };
+
+  return {
+    wordCount: words.length,
+    charCount: text.replace(/\s/g, "").length,
+    uniqueWords: freq.size,
+    sentences,
+    rhythm,
+    slop,
+    filterWords,
+    adverbs,
+    telling,
+    echoes,
+  };
+}

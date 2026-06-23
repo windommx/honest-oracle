@@ -21,7 +21,7 @@ import {
   LayoutGrid,
 } from "lucide-react";
 import { titleCase, copyText, slug, downloadBlob } from "./_utils";
-import { GROUP_COLORS, Field, Stat, FilterChip, GuideModal, ThaiAnalyzerModal } from "./_components";
+import { GROUP_COLORS, Field, Stat, FilterChip, GuideModal, ThaiAnalyzerModal, ProseAnalyzerModal } from "./_components";
 import {
   BOOK_TYPES,
   MODULE_GROUPS,
@@ -79,6 +79,7 @@ export default function RushPage() {
   const [saving, setSaving] = useState(false);
   const [showGuide, setShowGuide] = useState(false);
   const [showAnalyzer, setShowAnalyzer] = useState(false);
+  const [showProse, setShowProse] = useState(false);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 
   const allGroups = MODULE_GROUPS.map((m) => m.key);
@@ -338,6 +339,10 @@ export default function RushPage() {
             <button onClick={() => setShowAnalyzer(true)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#c9a84c]/30 text-[#c9a84c] hover:border-[#c9a84c] transition-colors text-xs">
               <Languages className="w-3.5 h-3.5" />
               วิเคราะห์ไทย
+            </button>
+            <button onClick={() => setShowProse(true)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#c9a84c]/30 text-[#c9a84c] hover:border-[#c9a84c] transition-colors text-xs">
+              <Languages className="w-3.5 h-3.5" />
+              Prose (EN)
             </button>
             <button onClick={() => setShowGuide(true)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#c9a84c]/30 text-[#c9a84c] hover:border-[#c9a84c] transition-colors text-xs">
               <HelpCircle className="w-3.5 h-3.5" />
@@ -700,6 +705,7 @@ export default function RushPage() {
 
       {showGuide && <GuideModal onClose={() => setShowGuide(false)} />}
       {showAnalyzer && <ThaiAnalyzerModal onClose={() => setShowAnalyzer(false)} />}
+      {showProse && <ProseAnalyzerModal onClose={() => setShowProse(false)} />}
 
       <style jsx>{`
         :global(.input) {

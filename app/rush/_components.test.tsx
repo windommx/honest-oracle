@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, afterEach, vi } from "vitest";
 import { render, screen, fireEvent, cleanup } from "@testing-library/react";
-import { GuideModal, ThaiAnalyzerModal } from "./_components";
+import { GuideModal, ThaiAnalyzerModal, ProseAnalyzerModal } from "./_components";
 
 afterEach(cleanup);
 
@@ -47,5 +47,27 @@ describe("ThaiAnalyzerModal", () => {
     const arg = writeText.mock.calls[0][0] as string;
     expect(arg).toContain("หนึ่ง"); // the analyzed text is inlined
     expect(arg).not.toContain("[วางข้อความที่นี่]"); // placeholder was replaced
+  });
+});
+
+describe("ProseAnalyzerModal", () => {
+  it("flags AI-slop words in English prose", () => {
+    render(<ProseAnalyzerModal onClose={() => {}} />);
+    const textarea = screen.getByPlaceholderText(/Paste English prose/i);
+    fireEvent.change(textarea, { target: { value: "Let's delve into this rich tapestry." } });
+    expect(screen.getAllByText(/delve/).length).toBeGreaterThan(0);
+  });
+
+  it("copies the Anti-AI-Slop audit pre-filled with the analyzed text", () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.assign(navigator, { clipboard: { writeText } });
+    render(<ProseAnalyzerModal onClose={() => {}} />);
+    const textarea = screen.getByPlaceholderText(/Paste English prose/i);
+    fireEvent.change(textarea, { target: { value: "Let's delve into this rich tapestry of ideas." } });
+    fireEvent.click(screen.getByText(/Anti-AI-Slop rewrite/i));
+    expect(writeText).toHaveBeenCalledTimes(1);
+    const arg = writeText.mock.calls[0][0] as string;
+    expect(arg).toContain("delve");
+    expect(arg).not.toContain("[INSERT DRAFT HERE]");
   });
 });

@@ -2,9 +2,10 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { X, Copy, Check } from "lucide-react";
-import { MODULE_GROUPS, type BookConfig, type PromptGroup } from "@/lib/rush-engine/engine";
+import { MODULE_CATALOG, MODULE_GROUPS, type BookConfig, type PromptGroup } from "@/lib/rush-engine/engine";
 import { TH_MODULES } from "@/lib/rush-engine/th";
 import { analyzeThai } from "@/lib/rush-engine/thai-analyzer";
+import { analyzeProse } from "@/lib/rush-engine/prose-analyzer";
 
 export const GROUP_COLORS: Record<PromptGroup, string> = {
   core: "border-[#c9a84c] text-[#c9a84c]",
@@ -301,5 +302,151 @@ export function FilterChip({ active, onClick, label }: { active: boolean; onClic
     >
       {label}
     </button>
+  );
+}
+
+function Chips({ items, tone }: { items: { word?: string; phrase?: string; count: number }[]; tone: string }) {
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {items.slice(0, 24).map((e) => (
+        <span key={e.word ?? e.phrase} className={`text-xs px-2 py-0.5 rounded border ${tone}`}>
+          {e.word ?? e.phrase} ×{e.count}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+export function ProseAnalyzerModal({ onClose }: { onClose: () => void }) {
+  const [text, setText] = useState("");
+  const [copiedAudit, setCopiedAudit] = useState<string | null>(null);
+  const a = useMemo(() => (text.trim() ? analyzeProse(text) : null), [text]);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  // Copy an English audit prompt with the analyzed draft pre-filled (signal → audit).
+  const copyAudit = async (id: string) => {
+    const mod = MODULE_CATALOG.find((m) => m.id === id);
+    if (!mod) return;
+    const prompt = mod.build({} as BookConfig).replace(/\[INSERT (?:DRAFT|MANUSCRIPT)[^\]]*\]/, text.trim());
+    await navigator.clipboard.writeText(prompt);
+    setCopiedAudit(id);
+    setTimeout(() => setCopiedAudit((c) => (c === id ? null : c)), 2000);
+  };
+
+  const AuditButton = ({ id, label }: { id: string; label: string }) => (
+    <button
+      onClick={() => copyAudit(id)}
+      className="mt-2 inline-flex items-center gap-1.5 text-[0.65rem] px-2.5 py-1 rounded border border-red-400/40 text-red-300 hover:bg-red-400/10"
+    >
+      {copiedAudit === id ? <Check className="w-3 h-3 text-green-400" /> : <Copy className="w-3 h-3" />}
+      {copiedAudit === id ? "Copied — paste into any LLM" : label}
+    </button>
+  );
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70" onClick={onClose}>
+      <div role="dialog" aria-modal="true" aria-label="Prose Analyzer" className="glass-card rounded-2xl max-w-2xl w-full max-h-[85vh] overflow-y-auto p-6 border border-[#c9a84c]/30" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-2">
+          <h2 className="text-lg font-bold gold-gradient">Prose Analyzer (English)</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-white" aria-label="Close">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+        <p className="text-xs text-gray-500 mb-3">
+          Browser-side, no AI — counts AI-slop words, filter/crutch words, -ly adverbs, told emotions, and sentence rhythm. You see exactly what was matched.
+        </p>
+        <textarea
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          placeholder="Paste English prose here…"
+          className="input min-h-[140px] resize-y"
+        />
+        {a && (
+          <div className="mt-4 space-y-4 text-sm">
+            <div className="grid grid-cols-3 gap-2">
+              <Stat value={String(a.wordCount)} label="words" />
+              <Stat value={String(a.uniqueWords)} label="unique" />
+              <Stat value={String(a.sentences.count)} label="sentences" />
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              <Stat value={String(a.sentences.avgWords)} label="avg words/sentence" />
+              <Stat value={`${a.rhythm.cv}%`} label="rhythm variation (CV)" />
+              <Stat value={String(a.rhythm.monotonyRun)} label="same-length run" />
+            </div>
+            {a.sentences.count >= 4 && (a.rhythm.cv < 35 || a.rhythm.monotonyRun >= 5) && (
+              <div>
+                <p className="text-[0.65rem] text-cyan-300/80">
+                  ⚠️ Flat rhythm — sentence lengths are very uniform (CV {a.rhythm.cv}%
+                  {a.rhythm.monotonyRun >= 5 ? ` · ${a.rhythm.monotonyRun} same-length in a row` : ""}). Vary short and long.
+                </p>
+                <AuditButton id="NIS_PACING" label="Copy NIS Pacing audit + this text" />
+              </div>
+            )}
+
+            <div>
+              <h3 className="text-xs font-semibold tracking-widest text-gray-400 uppercase mb-2">AI-slop words / formulas</h3>
+              {a.slop.length === 0 ? (
+                <p className="text-xs text-green-400">✓ No AI-slop terms found</p>
+              ) : (
+                <>
+                  <Chips items={a.slop} tone="border-red-500/40 text-red-400" />
+                  <AuditButton id="ANTI_SLOP" label="Copy Anti-AI-Slop rewrite + this text" />
+                </>
+              )}
+            </div>
+
+            <div>
+              <h3 className="text-xs font-semibold tracking-widest text-gray-400 uppercase mb-2">
+                Told emotions ({a.telling.ratio}/100 words)
+              </h3>
+              {a.telling.words.length === 0 ? (
+                <p className="text-xs text-green-400">✓ No directly-named emotions</p>
+              ) : (
+                <>
+                  <Chips items={a.telling.words} tone="border-fuchsia-400/40 text-fuchsia-300" />
+                  {a.telling.ratio >= 1.5 && <AuditButton id="NIS_SHOW" label="Copy NIS Show-vs-Tell audit + this text" />}
+                </>
+              )}
+            </div>
+
+            <div>
+              <h3 className="text-xs font-semibold tracking-widest text-gray-400 uppercase mb-2">
+                Filter / crutch words ({a.filterWords.reduce((s, w) => s + w.count, 0)})
+              </h3>
+              {a.filterWords.length === 0 ? (
+                <p className="text-xs text-gray-500">— none</p>
+              ) : (
+                <Chips items={a.filterWords} tone="border-yellow-400/40 text-yellow-300" />
+              )}
+            </div>
+
+            <div>
+              <h3 className="text-xs font-semibold tracking-widest text-gray-400 uppercase mb-2">
+                -ly adverbs ({a.adverbs.ratio}/100 words)
+              </h3>
+              {a.adverbs.words.length === 0 ? (
+                <p className="text-xs text-gray-500">— none</p>
+              ) : (
+                <Chips items={a.adverbs.words} tone="border-orange-400/40 text-orange-300" />
+              )}
+            </div>
+
+            <div>
+              <h3 className="text-xs font-semibold tracking-widest text-gray-400 uppercase mb-2">Repeated words (echoes ≥4)</h3>
+              {a.echoes.length === 0 ? (
+                <p className="text-xs text-gray-500">— no over-repeated content words</p>
+              ) : (
+                <Chips items={a.echoes} tone="border-orange-400/40 text-orange-300" />
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
