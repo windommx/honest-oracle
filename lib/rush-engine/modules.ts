@@ -479,6 +479,26 @@ Output JSON:
 [INSERT CHAPTER DRAFT HERE]`;
 }
 
+function moduleSeriesBible(config: BookConfig): string {
+  return `Build and maintain a SERIES BIBLE for "${config.title}" — the canon ledger that keeps a multi-book series consistent ACROSS volumes, not just across chapters.
+
+Maintain these sections (cite the book where each fact was established):
+- SERIES ARC — the overarching question/throughline, and where each book sits on it.
+- CHARACTER LEDGER — per character: current age/status, what changed in each book, abilities/resources (watch for unexplained POWER CREEP), key relationships, secrets, and their end-state at the close of each book.
+- WORLD CANON — rules and their LIMITS, locations, factions, tech/magic — each tagged with the book it was established in.
+- TIMELINE — absolute chronology across books; flag any date/age contradiction between volumes.
+- REVEAL TRACKER — what the READER knows vs what each CHARACTER knows, per book (so you can manage dramatic irony and avoid re-revealing).
+- OPEN THREADS — unresolved questions and planted foreshadowing, each tagged with the book it was planted in and the book it's promised to pay off in.
+- CONTINUITY RULES — canonical name spellings and established facts that must not change.
+
+Then run a SERIES CONTINUITY CHECK for the book in progress: list any new fact that contradicts the canon (cite the conflicting entries), any open thread that should pay off in this book, and any setup this book must plant for later volumes.
+
+Output the UPDATED bible, then the continuity check. Never invent canon — if a fact isn't in the source material, mark it [TBD] rather than guessing.
+
+═══ SERIES MATERIAL (prior synopses / existing bible / book in progress) ═══
+[INSERT SERIES MATERIAL HERE]`;
+}
+
 // ── AGENT PACK (multi-agent system prompts, à la Novel Studio swarm) ──
 // Paste each into a separate agent/context (e.g. Claude Projects, sub-agents).
 
@@ -743,6 +763,7 @@ export const MODULE_CATALOG: ModuleDef[] = [
   { id: "RECAP", group: "advanced", name: "Rolling Recap", description: "Chain-of-density carry-forward summary for continuity.", usage: "Update after each chapter; prepend to the next.", build: moduleRollingRecap },
   { id: "BRAINSTORM", group: "advanced", name: "Brainstorm (Verbalized Sampling)", description: "Diverse option spread to beat repetitive output.", usage: "Use for titles, twists, names, hooks.", build: moduleBrainstorm },
   { id: "QUALITY_GATE", group: "advanced", name: "Quality Gate", description: "Pass/fail pre-publish gate: continuity, sensory, anti-safe, voice, (Thai).", usage: "Run on a finished chapter before moving on.", build: moduleQualityGate },
+  { id: "SERIES_BIBLE", group: "advanced", name: "Series Bible", description: "Cross-book canon ledger: character/world/timeline/reveal/threads + per-book continuity check.", usage: "Maintain across a multi-book series; rerun per new book.", build: moduleSeriesBible },
   // agents (multi-agent swarm system prompts)
   { id: "AGENT_ORCHESTRATOR", group: "agents", name: "Orchestrator", description: "Delegates to and verifies the agent swarm; wave schedule + gates.", usage: "Use as the coordinator agent's system prompt.", build: moduleAgentOrchestrator },
   { id: "AGENT_RESEARCH", group: "agents", name: "Research Agent", description: "Niche, USP, comps, keywords (JSON).", usage: "Phase 1 agent system prompt.", build: moduleAgentResearch },

@@ -165,7 +165,7 @@ describe("generateAllPrompts — module groups", () => {
     prose: 4,
     thai: 1,
     marketing: 4,
-    advanced: 3,
+    advanced: 4,
     agents: 6,
     nis: 8,
   };
@@ -179,10 +179,10 @@ describe("generateAllPrompts — module groups", () => {
     }
   });
 
-  it("includes all 40 optional modules when every group is on", () => {
+  it("includes all 41 optional modules when every group is on", () => {
     const all = MODULE_GROUPS.map((m) => m.key);
     const pack = generateAllPrompts(cfg(), all);
-    expect(pack.filter((p) => p.group !== "core").length).toBe(40);
+    expect(pack.filter((p) => p.group !== "core").length).toBe(41);
   });
 
   it("hardens the KDP module with a verification checklist (no live-data claim)", () => {
