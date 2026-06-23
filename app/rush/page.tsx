@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
   Crown,
@@ -115,11 +115,27 @@ export default function RushPage() {
     setGroups((prev) => (prev.includes(g) ? prev.filter((x) => x !== g) : [...prev, g]));
   }
 
+  const hydratedRef = useRef(false);
+
   useEffect(() => {
     refreshProjects();
     const params = new URLSearchParams(window.location.search);
     const pid = params.get("project");
     if (pid) loadProject(pid);
+    else {
+      // Restore the last working draft (client-side) so a non-logged-in setup
+      // — including the Story Bible / STATE — survives a reload.
+      try {
+        const raw = window.localStorage.getItem("rush.generator.draft");
+        if (raw) {
+          const d = JSON.parse(raw) as { config?: BookConfig; groups?: OptionalGroup[] };
+          if (d.config) applyConfig(d.config);
+          if (Array.isArray(d.groups)) setGroups(d.groups);
+        }
+      } catch {
+        /* ignore */
+      }
+    }
     const mid = params.get("analyze");
     if (mid) {
       const m = getManuscript(mid);
@@ -129,8 +145,19 @@ export default function RushPage() {
         else setShowProse(true);
       }
     }
+    hydratedRef.current = true;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Autosave the working draft to localStorage (after the initial restore).
+  useEffect(() => {
+    if (!hydratedRef.current) return;
+    try {
+      window.localStorage.setItem("rush.generator.draft", JSON.stringify({ config, groups }));
+    } catch {
+      /* quota / unavailable — ignore */
+    }
+  }, [config, groups]);
 
   // Reset the visible window when the result set or filter changes.
   useEffect(() => {
