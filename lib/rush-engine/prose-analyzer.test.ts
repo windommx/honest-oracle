@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { analyzeProse, tokenizeProse, countSyllables, SLOP_TERMS } from "./prose-analyzer";
+import { analyzeProse, tokenizeProse, countSyllables, formatProseReport, SLOP_TERMS } from "./prose-analyzer";
 
 describe("tokenizeProse", () => {
   it("splits English into lowercased word tokens", () => {
@@ -83,5 +83,14 @@ describe("analyzeProse", () => {
 
   it("exposes a non-empty slop term list", () => {
     expect(SLOP_TERMS.length).toBeGreaterThan(10);
+  });
+
+  it("renders a Markdown report with the key sections and the matched terms", () => {
+    const md = formatProseReport(analyzeProse("Let's delve into the tapestry. She was angry."));
+    expect(md).toContain("# Prose Analysis Report");
+    expect(md).toContain("AI-slop");
+    expect(md).toContain("delve");
+    expect(md).toContain("Told emotions");
+    expect(md).toContain("not quality scores");
   });
 });

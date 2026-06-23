@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { X, Copy, Check } from "lucide-react";
+import { X, Copy, Check, Download } from "lucide-react";
 import { MODULE_CATALOG, MODULE_GROUPS, type BookConfig, type PromptGroup } from "@/lib/rush-engine/engine";
 import { TH_MODULES } from "@/lib/rush-engine/th";
-import { analyzeThai } from "@/lib/rush-engine/thai-analyzer";
-import { analyzeProse } from "@/lib/rush-engine/prose-analyzer";
+import { analyzeThai, formatThaiReport } from "@/lib/rush-engine/thai-analyzer";
+import { analyzeProse, formatProseReport } from "@/lib/rush-engine/prose-analyzer";
 
 export const GROUP_COLORS: Record<PromptGroup, string> = {
   core: "border-[#c9a84c] text-[#c9a84c]",
@@ -33,6 +33,35 @@ export function Stat({ value, label }: { value: string; label: string }) {
     <div className="p-2 bg-white/5 rounded-lg text-center">
       <div className="text-lg font-bold text-[#c9a84c]">{value}</div>
       <div className="text-[0.6rem] text-gray-500 mt-0.5">{label}</div>
+    </div>
+  );
+}
+
+function ReportActions({ report, filename }: { report: string; filename: string }) {
+  const [copied, setCopied] = useState(false);
+  const copy = async () => {
+    await navigator.clipboard.writeText(report);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+  const download = () => {
+    const url = URL.createObjectURL(new Blob([report], { type: "text/markdown" }));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+  return (
+    <div className="flex gap-2">
+      <button onClick={copy} className="inline-flex items-center gap-1.5 text-[0.65rem] px-2.5 py-1 rounded border border-[#c9a84c]/40 text-[#c9a84c] hover:bg-[#c9a84c]/10">
+        {copied ? <Check className="w-3 h-3 text-green-400" /> : <Copy className="w-3 h-3" />}
+        {copied ? "คัดลอกแล้ว / Copied" : "Copy report"}
+      </button>
+      <button onClick={download} className="inline-flex items-center gap-1.5 text-[0.65rem] px-2.5 py-1 rounded border border-[#c9a84c]/40 text-[#c9a84c] hover:bg-[#c9a84c]/10">
+        <Download className="w-3 h-3" />
+        Download .md
+      </button>
     </div>
   );
 }
@@ -89,6 +118,7 @@ export function ThaiAnalyzerModal({ onClose }: { onClose: () => void }) {
         />
         {a && (
           <div className="mt-4 space-y-4 text-sm">
+            <ReportActions report={formatThaiReport(a)} filename="thai-analysis.md" />
             <div className="grid grid-cols-3 gap-2">
               <Stat value={String(a.wordCount)} label="คำ" />
               <Stat value={String(a.uniqueWords)} label="คำไม่ซ้ำ" />
@@ -368,6 +398,7 @@ export function ProseAnalyzerModal({ onClose }: { onClose: () => void }) {
         />
         {a && (
           <div className="mt-4 space-y-4 text-sm">
+            <ReportActions report={formatProseReport(a)} filename="prose-analysis.md" />
             <div className="grid grid-cols-3 gap-2">
               <Stat value={String(a.wordCount)} label="words" />
               <Stat value={String(a.uniqueWords)} label="unique" />

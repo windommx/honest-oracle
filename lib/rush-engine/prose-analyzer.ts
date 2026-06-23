@@ -240,3 +240,39 @@ export function analyzeProse(text: string): ProseAnalysis {
     passive,
   };
 }
+
+const joinCounts = (items: { word?: string; phrase?: string; count: number }[]) =>
+  items.length ? items.map((i) => `${i.word ?? i.phrase} ×${i.count}`).join(", ") : "—";
+
+/** Render a deterministic Prose Analysis as a portable Markdown report. */
+export function formatProseReport(a: ProseAnalysis): string {
+  const filterTotal = a.filterWords.reduce((s, w) => s + w.count, 0);
+  return [
+    "# Prose Analysis Report",
+    "",
+    `- Words: ${a.wordCount} · Unique: ${a.uniqueWords} · Sentences: ${a.sentences.count}`,
+    `- Avg words/sentence: ${a.sentences.avgWords} · Longest: ${a.sentences.longest}`,
+    `- Rhythm: CV ${a.rhythm.cv}% · stdev ${a.rhythm.stdev} · longest same-length run ${a.rhythm.monotonyRun}`,
+    `- Readability (estimate): Flesch Ease ${a.readability.fleschEase} · FK grade ${a.readability.fkGrade} · ${a.readability.syllablesPerWord} syllables/word`,
+    "",
+    `## AI-slop / formulas (${a.slop.length})`,
+    joinCounts(a.slop),
+    "",
+    `## Told emotions (${a.telling.count} · ${a.telling.ratio}/100 words)`,
+    joinCounts(a.telling.words),
+    "",
+    `## Filter / crutch words (${filterTotal})`,
+    joinCounts(a.filterWords),
+    "",
+    `## -ly adverbs (${a.adverbs.count} · ${a.adverbs.ratio}/100 words)`,
+    joinCounts(a.adverbs.words),
+    "",
+    `## Possible passive voice (${a.passive.count}, heuristic)`,
+    a.passive.samples.length ? a.passive.samples.join("; ") : "—",
+    "",
+    `## Repeated words / echoes (${a.echoes.length})`,
+    joinCounts(a.echoes),
+    "",
+    "_Deterministic, client-side — counts and statistics, not quality scores._",
+  ].join("\n");
+}

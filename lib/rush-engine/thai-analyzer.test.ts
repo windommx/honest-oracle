@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { analyzeThai, tokenizeThai, THAI_AI_TELLS } from "./thai-analyzer";
+import { analyzeThai, tokenizeThai, formatThaiReport, THAI_AI_TELLS } from "./thai-analyzer";
 
 describe("tokenizeThai", () => {
   it("segments Thai text into multiple words", () => {
@@ -74,6 +74,14 @@ describe("analyzeThai", () => {
   it("returns empty AI-tells for clean prose", () => {
     const a = analyzeThai("เขาวางถ้วยกาแฟลงบนโต๊ะไม้เก่า");
     expect(a.aiTells).toHaveLength(0);
+  });
+
+  it("renders a Thai Markdown report with key sections", () => {
+    const md = formatThaiReport(analyzeThai("เธอรู้สึกเศร้า น้ำตาไหลริน"));
+    expect(md).toContain("# รายงานวิเคราะห์ภาษาไทย");
+    expect(md).toContain("คำคลิเชแบบ AI");
+    expect(md).toContain("น้ำตาไหลริน");
+    expect(md).toContain("ไม่ใช่คะแนนคุณภาพ");
   });
 
   it("exposes a non-empty cliché list", () => {

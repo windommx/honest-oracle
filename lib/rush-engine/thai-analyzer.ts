@@ -226,3 +226,33 @@ export function analyzeThai(text: string): ThaiAnalysis {
     aiTells,
   };
 }
+
+const joinThai = (items: { word?: string; phrase?: string; count: number }[]) =>
+  items.length ? items.map((i) => `${i.word ?? i.phrase} ×${i.count}`).join(", ") : "—";
+
+/** Render a deterministic Thai Analysis as a portable Markdown report. */
+export function formatThaiReport(a: ThaiAnalysis): string {
+  return [
+    "# รายงานวิเคราะห์ภาษาไทย",
+    "",
+    `- คำ: ${a.wordCount} · คำไม่ซ้ำ: ${a.uniqueWords} · ประโยค: ${a.sentences.count}`,
+    `- คำ/ประโยค (เฉลี่ย): ${a.sentences.avgWords} · ประโยคยาวสุด: ${a.sentences.longest}`,
+    `- จังหวะ: CV ${a.rhythm.cv}% · ส่วนเบี่ยงเบน ${a.rhythm.stdev} · ประโยคยาวพอกันติดกัน ${a.rhythm.monotonyRun}`,
+    `- บทพูด: สัดส่วน ${a.dialogue.ratio}% · บรรทัด ${a.dialogue.lines} · พูดต่อเนื่องสุด ${a.dialogue.talkingHeadRun}`,
+    `- คำบอกอารมณ์ (telling): ${a.telling.count} · ${a.telling.ratio}/100 คำ`,
+    "",
+    `## คำคลิเชแบบ AI (${a.aiTells.length})`,
+    joinThai(a.aiTells),
+    "",
+    `## คำบอกอารมณ์ตรง ๆ (${a.telling.count})`,
+    joinThai(a.telling.words),
+    "",
+    `## คำซ้ำใกล้กัน ≤40 คำ (${a.nearRepeats.length})`,
+    joinThai(a.nearRepeats),
+    "",
+    `## คำซ้ำบ่อย echoes ≥3 (${a.echoes.length})`,
+    joinThai(a.echoes),
+    "",
+    "_เครื่องมือฝั่งเบราว์เซอร์ (ไม่เรียก AI) — เป็นการนับและสถิติ ไม่ใช่คะแนนคุณภาพ_",
+  ].join("\n");
+}
