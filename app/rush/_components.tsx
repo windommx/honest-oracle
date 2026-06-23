@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { X, Copy, Check, Download } from "lucide-react";
+import { X, Copy, Check, Download, Trash2 } from "lucide-react";
 import { MODULE_CATALOG, MODULE_GROUPS, type BookConfig, type PromptGroup } from "@/lib/rush-engine/engine";
 import { TH_MODULES } from "@/lib/rush-engine/th";
 import { analyzeThai, tokenizeThai, formatThaiReport, thaiDeltas, scanThaiManuscript } from "@/lib/rush-engine/thai-analyzer";
 import { analyzeProse, formatProseReport, proseDeltas, scanManuscript } from "@/lib/rush-engine/prose-analyzer";
 import { wordDiff, diffTokens, type DiffOp } from "@/lib/rush-engine/text-util";
+import { listManuscripts, getManuscript, saveManuscript, deleteManuscript, type StoredManuscript } from "./_manuscript-store";
 
 export const GROUP_COLORS: Record<PromptGroup, string> = {
   core: "border-[#c9a84c] text-[#c9a84c]",
@@ -165,6 +166,65 @@ function Mechanics({ items, title }: { items: { issue: string; count: number }[]
   );
 }
 
+/** Saved-manuscript bar: load / save / delete named drafts in localStorage. */
+function ManuscriptBar({ lang, text, onLoad }: { lang: "th" | "en"; text: string; onLoad: (t: string) => void }) {
+  const [items, setItems] = useState<StoredManuscript[]>([]);
+  const [selected, setSelected] = useState("");
+  const [name, setName] = useState("");
+  const refresh = () => setItems(listManuscripts(lang));
+  useEffect(refresh, [lang]);
+
+  const load = (id: string) => {
+    setSelected(id);
+    const m = id ? getManuscript(id) : undefined;
+    if (m) onLoad(m.text);
+  };
+  const save = () => {
+    if (!text.trim()) return;
+    const title = name.trim() || `${lang === "th" ? "ฉบับ" : "Draft"} ${new Date().toLocaleString()}`;
+    const rec = saveManuscript({ title, lang, text });
+    setName("");
+    refresh();
+    setSelected(rec.id);
+  };
+  const remove = () => {
+    if (!selected) return;
+    deleteManuscript(selected);
+    setSelected("");
+    refresh();
+  };
+
+  return (
+    <div className="flex flex-wrap items-center gap-2 mb-2">
+      <select
+        value={selected}
+        onChange={(e) => load(e.target.value)}
+        aria-label={lang === "th" ? "โหลดฉบับที่บันทึก" : "Load saved manuscript"}
+        className="text-xs bg-[#08080e] border border-white/10 rounded px-2 py-1 text-gray-300 max-w-[180px]"
+      >
+        <option value="">{lang === "th" ? `— โหลดฉบับ (${items.length}) —` : `— Load saved (${items.length}) —`}</option>
+        {items.map((m) => (
+          <option key={m.id} value={m.id}>{m.title}</option>
+        ))}
+      </select>
+      {selected && (
+        <button onClick={remove} className="text-[0.65rem] px-2 py-1 rounded border border-red-400/40 text-red-300 hover:bg-red-400/10" aria-label="Delete saved manuscript">
+          <Trash2 className="w-3 h-3" />
+        </button>
+      )}
+      <input
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        placeholder={lang === "th" ? "ชื่อฉบับ…" : "name…"}
+        className="text-xs bg-[#08080e] border border-white/10 rounded px-2 py-1 text-gray-300 w-28"
+      />
+      <button onClick={save} className="text-[0.65rem] px-2.5 py-1 rounded border border-[#c9a84c]/40 text-[#c9a84c] hover:bg-[#c9a84c]/10">
+        {lang === "th" ? "บันทึกฉบับ" : "Save draft"}
+      </button>
+    </div>
+  );
+}
+
 /** useState that persists to localStorage so a pasted draft survives reload. */
 function usePersistedState(key: string): [string, (v: string) => void] {
   const [value, setValue] = useState("");
@@ -247,6 +307,7 @@ export function ThaiAnalyzerModal({ onClose }: { onClose: () => void }) {
         <p className="text-xs text-gray-500 mb-3">
           เครื่องมือฝั่งเบราว์เซอร์ (ไม่เรียก AI) — นับคำด้วยตัวตัดคำไทย หาคำซ้ำ/echoes และสแกนคำคลิเชแบบ AI
         </p>
+        <ManuscriptBar lang="th" text={text} onLoad={setText} />
         <textarea
           value={text}
           onChange={(e) => setText(e.target.value)}
@@ -602,6 +663,7 @@ export function ProseAnalyzerModal({ onClose }: { onClose: () => void }) {
         <p className="text-xs text-gray-500 mb-3">
           Browser-side, no AI — counts AI-slop words, filter/crutch words, -ly adverbs, told emotions, and sentence rhythm. You see exactly what was matched.
         </p>
+        <ManuscriptBar lang="en" text={text} onLoad={setText} />
         <textarea
           value={text}
           onChange={(e) => setText(e.target.value)}

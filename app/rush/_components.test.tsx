@@ -1,9 +1,11 @@
 // @vitest-environment jsdom
-import { describe, it, expect, afterEach, vi } from "vitest";
+import { describe, it, expect, afterEach, beforeEach, vi } from "vitest";
 import { render, screen, fireEvent, cleanup } from "@testing-library/react";
 import { GuideModal, ThaiAnalyzerModal, ProseAnalyzerModal } from "./_components";
 
 afterEach(cleanup);
+// Analyzer input and the manuscript store both use localStorage; isolate tests.
+beforeEach(() => window.localStorage.clear());
 
 describe("GuideModal", () => {
   it("renders the workflow guide and module-disambiguation section", () => {
@@ -119,5 +121,16 @@ describe("ProseAnalyzerModal", () => {
     expect(screen.getByText(/Per-chapter heatmap/i)).toBeTruthy();
     // Chapter title appears as a table cell (textarea also contains it → use getAllByText)
     expect(screen.getAllByText(/Chapter 2/).length).toBeGreaterThan(1);
+  });
+
+  it("saves the current text as a named manuscript and lists it for loading", () => {
+    render(<ProseAnalyzerModal onClose={() => {}} />);
+    fireEvent.change(screen.getByPlaceholderText(/Paste English prose/i), {
+      target: { value: "Some draft prose to keep." },
+    });
+    fireEvent.change(screen.getByPlaceholderText(/name…/i), { target: { value: "My chapter" } });
+    fireEvent.click(screen.getByText(/Save draft/i));
+    // The saved draft now appears as an <option> in the load dropdown.
+    expect(screen.getByRole("option", { name: "My chapter" })).toBeTruthy();
   });
 });
