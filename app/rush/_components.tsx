@@ -448,6 +448,27 @@ export function ProseAnalyzerModal({ onClose }: { onClose: () => void }) {
             </div>
 
             <div>
+              <h3 className="text-xs font-semibold tracking-widest text-gray-400 uppercase mb-2">
+                Possible passive voice ({a.passive.count})
+              </h3>
+              {a.passive.count === 0 ? (
+                <p className="text-xs text-green-400">✓ No likely passive constructions</p>
+              ) : (
+                <>
+                  <div className="flex flex-wrap gap-1.5">
+                    {a.passive.samples.map((s, i) => (
+                      <span key={`${s}-${i}`} className="text-xs px-2 py-0.5 rounded border border-blue-400/40 text-blue-300">
+                        {s}
+                      </span>
+                    ))}
+                  </div>
+                  <p className="text-[0.6rem] text-gray-500 mt-1">Heuristic (be-verb + participle) — verify each; some, like &quot;was tired&quot;, are not passive.</p>
+                  <AuditButton id="LINE_EDIT" label="Copy Line Edit + this text" />
+                </>
+              )}
+            </div>
+
+            <div>
               <h3 className="text-xs font-semibold tracking-widest text-gray-400 uppercase mb-2">Repeated words (echoes ≥4)</h3>
               {a.echoes.length === 0 ? (
                 <p className="text-xs text-gray-500">— no over-repeated content words</p>

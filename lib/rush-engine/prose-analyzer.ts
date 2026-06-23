@@ -41,6 +41,17 @@ const LY_FALSE_FRIENDS = new Set([
   "imply", "comply", "multiply", "assembly", "anomaly", "monopoly", "melancholy",
 ]);
 
+// Common irregular past participles (the -ed/-en regex misses these).
+const IRREGULAR_PP = new Set([
+  "done", "gone", "made", "seen", "given", "taken", "written", "shown", "known",
+  "found", "held", "kept", "left", "told", "brought", "bought", "caught", "taught",
+  "thought", "built", "sent", "spent", "lost", "meant", "felt", "dealt", "met", "set",
+  "put", "cut", "hit", "read", "led", "fed", "hidden", "broken", "chosen", "frozen",
+  "spoken", "stolen", "driven", "ridden", "risen", "fallen", "eaten", "beaten",
+  "forgotten", "gotten", "bitten", "torn", "worn", "born", "sworn", "drawn", "thrown",
+  "grown", "blown", "flown", "struck", "bound", "wound", "shot", "split", "spread",
+]);
+
 const STOPWORDS = new Set([
   "the", "a", "an", "and", "or", "but", "of", "to", "in", "on", "at", "for", "with",
   "as", "by", "from", "is", "are", "was", "were", "be", "been", "being", "it", "its",
@@ -70,6 +81,24 @@ export interface ProseAnalysis {
   telling: { count: number; ratio: number; words: { word: string; count: number }[] };
   /** Content words repeated unusually often (≥4). */
   echoes: { word: string; count: number }[];
+  /** Possible passive voice (heuristic: be-verb + past participle). Some false positives. */
+  passive: { count: number; ratio: number; samples: string[] };
+}
+
+/** Heuristic passive-voice finder: be-verb (+ optional adverb) + a past participle. */
+export function detectPassive(text: string): { count: number; samples: string[] } {
+  const re = /\b(am|is|are|was|were|be|been|being|gets?|got)\b((?:\s+\w+ly)?\s+)([a-z]+)/gi;
+  const samples: string[] = [];
+  let count = 0;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(text)) !== null) {
+    const pp = m[3].toLowerCase();
+    if (/(?:ed|en)$/.test(pp) || IRREGULAR_PP.has(pp)) {
+      count++;
+      if (samples.length < 10) samples.push(`${m[1]}${m[2]}${m[3]}`.replace(/\s+/g, " ").trim());
+    }
+  }
+  return { count, samples };
 }
 
 export function tokenizeProse(text: string): string[] {
@@ -139,6 +168,14 @@ export function analyzeProse(text: string): ProseAnalysis {
     words: tellList,
   };
 
+  // Possible passive voice (heuristic).
+  const pv = detectPassive(text);
+  const passive = {
+    count: pv.count,
+    ratio: words.length ? Math.round((pv.count / words.length) * 1000) / 10 : 0,
+    samples: pv.samples,
+  };
+
   // Echoes: content words repeated ≥4 times.
   const echoes = Array.from(freq.entries())
     .filter(([w, c]) => c >= 4 && w.length >= 3 && !STOPWORDS.has(w))
@@ -200,5 +237,6 @@ export function analyzeProse(text: string): ProseAnalysis {
     adverbs,
     telling,
     echoes,
+    passive,
   };
 }

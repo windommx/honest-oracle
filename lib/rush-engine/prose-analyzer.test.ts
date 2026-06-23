@@ -73,6 +73,14 @@ describe("analyzeProse", () => {
     expect(hard.readability.fkGrade).toBeGreaterThan(easy.readability.fkGrade);
   });
 
+  it("detects likely passive voice and leaves active prose alone", () => {
+    const passiveText = analyzeProse("The vase was broken by the cat. Mistakes were made.");
+    expect(passiveText.passive.count).toBeGreaterThanOrEqual(2);
+    expect(passiveText.passive.samples.join(" ")).toMatch(/was broken|were made/);
+    const activeText = analyzeProse("The cat broke the vase. She ran home.");
+    expect(activeText.passive.count).toBe(0);
+  });
+
   it("exposes a non-empty slop term list", () => {
     expect(SLOP_TERMS.length).toBeGreaterThan(10);
   });
