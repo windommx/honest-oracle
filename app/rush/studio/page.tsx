@@ -29,6 +29,21 @@ export default function StudioPage() {
     }
   }, [provider, meta]);
 
+  // Prefill from "Run in Studio" on the generator (passed via sessionStorage).
+  useEffect(() => {
+    try {
+      const raw = window.sessionStorage.getItem("rush.studio.prefill");
+      if (raw) {
+        const d = JSON.parse(raw) as { system?: string; prompt?: string };
+        if (d.system) setSystem(d.system);
+        if (d.prompt) setPrompt(d.prompt);
+        window.sessionStorage.removeItem("rush.studio.prefill");
+      }
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
   const onKey = (v: string) => {
     setApiKey(v);
     try {

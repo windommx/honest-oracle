@@ -213,6 +213,21 @@ export default function RushPage() {
     setTimeout(() => setCopiedId((c) => (c === p.id ? null : c)), 1500);
   }
 
+  // Hand a prompt to Rush Studio: MASTER becomes the system prompt; the prompts
+  // can be large, so pass via sessionStorage rather than the URL.
+  function runInStudio(p: GeneratedPrompt) {
+    const master = prompts.find((x) => x.id === "MASTER")?.prompt ?? "";
+    try {
+      window.sessionStorage.setItem(
+        "rush.studio.prefill",
+        JSON.stringify({ system: p.id === "MASTER" ? "" : master, prompt: p.prompt })
+      );
+    } catch {
+      /* ignore */
+    }
+    window.location.href = "/rush/studio";
+  }
+
   async function copyAll() {
     if (!prompts.length) return;
     const text = prompts.map((p) => `# ${p.id}: ${p.name}\n# Usage: ${p.usage}\n\n${p.prompt}`).join("\n\n\n");
@@ -714,6 +729,9 @@ export default function RushPage() {
                             </button>
                             <div className="flex items-center gap-2 flex-shrink-0">
                               <span className={`text-[0.6rem] px-1.5 py-0.5 border rounded ${GROUP_COLORS[p.group]}`}>{groupLabel(p.group)}</span>
+                              <button onClick={() => runInStudio(p)} className="text-gray-400 hover:text-[#c9a84c]" title="Run in Studio" aria-label={`Run ${p.id} in Studio`}>
+                                <Play className="w-4 h-4" />
+                              </button>
                               <button onClick={() => copyPrompt(p)} className="text-gray-400 hover:text-[#c9a84c]" title="Copy" aria-label={`Copy ${p.id}`}>
                                 {copiedId === p.id ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
                               </button>
