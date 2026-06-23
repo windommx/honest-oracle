@@ -71,6 +71,25 @@ export interface ThaiAnalysis {
   /** Content words repeated within a short span (≤40 tokens) — local repetition. */
   nearRepeats: { word: string; count: number }[];
   aiTells: { phrase: string; count: number }[];
+  /** Mechanical issues (deterministic, exact). */
+  mechanics: { issue: string; count: number }[];
+}
+
+/** Deterministic Thai mechanical checks. */
+export function thaiMechanics(text: string, words: string[]): { issue: string; count: number }[] {
+  const m = (re: RegExp) => (text.match(re) ?? []).length;
+  let adjacentRepeat = 0;
+  for (let i = 1; i < words.length; i++) {
+    if (words[i] === words[i - 1] && words[i].length >= 2) adjacentRepeat++;
+  }
+  const checks: { issue: string; count: number }[] = [
+    { issue: "เว้นวรรคซ้อน (double space)", count: m(/ {2,}/g) },
+    { issue: "เว้นวรรคหน้าเครื่องหมาย", count: m(/[ \t]+[,.;:!?]/g) },
+    { issue: "เครื่องหมายซ้ำ (!! ?!)", count: m(/[!?]{2,}/g) },
+    { issue: "คำซ้ำติดกัน", count: adjacentRepeat },
+    { issue: "ปนอัญประกาศตรง/โค้ง", count: /[”“]/.test(text) && /["]/.test(text) ? 1 : 0 },
+  ];
+  return checks.filter((c) => c.count > 0);
 }
 
 // Thai block + Latin letters/digits (avoids the /u flag for broad TS target support).
@@ -226,6 +245,7 @@ export function analyzeThai(text: string): ThaiAnalysis {
     echoes,
     nearRepeats,
     aiTells,
+    mechanics: thaiMechanics(text, words),
   };
 }
 
@@ -254,6 +274,9 @@ export function formatThaiReport(a: ThaiAnalysis): string {
     "",
     `## คำซ้ำบ่อย echoes ≥3 (${a.echoes.length})`,
     joinThai(a.echoes),
+    "",
+    `## ข้อผิดพลาดเชิงกล (${a.mechanics.length})`,
+    a.mechanics.length ? a.mechanics.map((mm) => `${mm.issue} ×${mm.count}`).join(", ") : "—",
     "",
     "_เครื่องมือฝั่งเบราว์เซอร์ (ไม่เรียก AI) — เป็นการนับและสถิติ ไม่ใช่คะแนนคุณภาพ_",
   ].join("\n");

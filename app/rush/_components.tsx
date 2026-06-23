@@ -4,8 +4,9 @@ import { useEffect, useMemo, useState } from "react";
 import { X, Copy, Check, Download } from "lucide-react";
 import { MODULE_CATALOG, MODULE_GROUPS, type BookConfig, type PromptGroup } from "@/lib/rush-engine/engine";
 import { TH_MODULES } from "@/lib/rush-engine/th";
-import { analyzeThai, formatThaiReport, thaiDeltas, scanThaiManuscript } from "@/lib/rush-engine/thai-analyzer";
+import { analyzeThai, tokenizeThai, formatThaiReport, thaiDeltas, scanThaiManuscript } from "@/lib/rush-engine/thai-analyzer";
 import { analyzeProse, formatProseReport, proseDeltas, scanManuscript } from "@/lib/rush-engine/prose-analyzer";
+import { wordDiff, diffTokens, type DiffOp } from "@/lib/rush-engine/text-util";
 
 export const GROUP_COLORS: Record<PromptGroup, string> = {
   core: "border-[#c9a84c] text-[#c9a84c]",
@@ -128,8 +129,66 @@ function Heatmap({ title, headers, rows, note }: {
   );
 }
 
+function DiffView({ ops }: { ops: DiffOp[] | null }) {
+  if (!ops) return <p className="text-[0.65rem] text-gray-500 mt-2">ข้อความยาวเกินไปสำหรับ inline diff — ดูที่ตาราง metric ด้านบน / Too long for inline diff.</p>;
+  return (
+    <div className="mt-2 text-xs leading-6 bg-[#08080e] border border-white/5 rounded-lg p-3 max-h-[200px] overflow-y-auto whitespace-pre-wrap">
+      {ops.map((op, i) =>
+        op.type === "same" ? (
+          <span key={i} className="text-gray-500">{op.text} </span>
+        ) : op.type === "add" ? (
+          <span key={i} className="text-green-400 bg-green-400/10">{op.text} </span>
+        ) : (
+          <span key={i} className="text-red-400/80 line-through">{op.text} </span>
+        )
+      )}
+    </div>
+  );
+}
+
+function Mechanics({ items, title }: { items: { issue: string; count: number }[]; title: string }) {
+  return (
+    <div>
+      <h3 className="text-xs font-semibold tracking-widest text-gray-400 uppercase mb-2">{title}</h3>
+      {items.length === 0 ? (
+        <p className="text-xs text-green-400">✓ —</p>
+      ) : (
+        <div className="flex flex-wrap gap-1.5">
+          {items.map((mm) => (
+            <span key={mm.issue} className="text-xs px-2 py-0.5 rounded border border-amber-400/40 text-amber-300">
+              {mm.issue} ×{mm.count}
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** useState that persists to localStorage so a pasted draft survives reload. */
+function usePersistedState(key: string): [string, (v: string) => void] {
+  const [value, setValue] = useState("");
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem(key);
+      if (saved) setValue(saved);
+    } catch {
+      /* ignore */
+    }
+  }, [key]);
+  const set = (v: string) => {
+    setValue(v);
+    try {
+      window.localStorage.setItem(key, v);
+    } catch {
+      /* ignore */
+    }
+  };
+  return [value, set];
+}
+
 export function ThaiAnalyzerModal({ onClose }: { onClose: () => void }) {
-  const [text, setText] = useState("");
+  const [text, setText] = usePersistedState("rush.analyzer.th");
   const [revised, setRevised] = useState("");
   const [showCompare, setShowCompare] = useState(false);
   const [showScan, setShowScan] = useState(false);
@@ -206,7 +265,10 @@ export function ThaiAnalyzerModal({ onClose }: { onClose: () => void }) {
           />
         )}
         {showCompare && deltas && (
-          <DeltaTable title="ก่อน → หลัง" deltas={deltas} note="เขียว = ดีขึ้นจริงบน signal นั้น · เทา = metric กลาง เป็นการนับ ไม่ใช่คำตัดสินคุณภาพ" />
+          <>
+            <DeltaTable title="ก่อน → หลัง" deltas={deltas} note="เขียว = ดีขึ้นจริงบน signal นั้น · เทา = metric กลาง เป็นการนับ ไม่ใช่คำตัดสินคุณภาพ" />
+            <DiffView ops={diffTokens(tokenizeThai(text), tokenizeThai(revised), "")} />
+          </>
         )}
         {scan.length > 1 && (
           <button onClick={() => setShowScan((v) => !v)} className="mt-2 ml-3 text-[0.7rem] text-[#c9a84c] hover:underline">
@@ -345,6 +407,8 @@ export function ThaiAnalyzerModal({ onClose }: { onClose: () => void }) {
               )}
             </div>
 
+            <Mechanics items={a.mechanics} title="ข้อผิดพลาดเชิงกล" />
+
             <div>
               <h3 className="text-xs font-semibold tracking-widest text-gray-400 uppercase mb-2">คำที่ใช้บ่อยสุด</h3>
               <div className="flex flex-wrap gap-1.5">
@@ -478,7 +542,7 @@ function Chips({ items, tone }: { items: { word?: string; phrase?: string; count
 }
 
 export function ProseAnalyzerModal({ onClose }: { onClose: () => void }) {
-  const [text, setText] = useState("");
+  const [text, setText] = usePersistedState("rush.analyzer.en");
   const [revised, setRevised] = useState("");
   const [showCompare, setShowCompare] = useState(false);
   const [showScan, setShowScan] = useState(false);
@@ -559,7 +623,10 @@ export function ProseAnalyzerModal({ onClose }: { onClose: () => void }) {
           />
         )}
         {showCompare && deltas && (
-          <DeltaTable title="Before → After" deltas={deltas} note="Green = measurably improved on that signal · gray = neutral metric. Counts, not a quality verdict." />
+          <>
+            <DeltaTable title="Before → After" deltas={deltas} note="Green = measurably improved on that signal · gray = neutral metric. Counts, not a quality verdict." />
+            <DiffView ops={wordDiff(text, revised)} />
+          </>
         )}
         {scan.length > 1 && (
           <button
@@ -698,6 +765,8 @@ export function ProseAnalyzerModal({ onClose }: { onClose: () => void }) {
                 <Chips items={a.echoes} tone="border-orange-400/40 text-orange-300" />
               )}
             </div>
+
+            <Mechanics items={a.mechanics} title="Mechanics" />
           </div>
         )}
       </div>

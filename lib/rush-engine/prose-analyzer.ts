@@ -87,6 +87,22 @@ export interface ProseAnalysis {
   echoes: { word: string; count: number }[];
   /** Possible passive voice (heuristic: be-verb + past participle). Some false positives. */
   passive: { count: number; ratio: number; samples: string[] };
+  /** Mechanical issues (deterministic, exact): double spaces, repeated words, etc. */
+  mechanics: { issue: string; count: number }[];
+}
+
+/** Deterministic mechanical checks — exact pattern matches, not judgements. */
+export function proseMechanics(text: string): { issue: string; count: number }[] {
+  const m = (re: RegExp) => (text.match(re) ?? []).length;
+  const checks: { issue: string; count: number }[] = [
+    { issue: "double spaces", count: m(/ {2,}/g) },
+    { issue: "space before punctuation", count: m(/[ \t]+[,.;:!?]/g) },
+    { issue: "no space after . ! ?", count: m(/[.!?][A-Za-z]/g) },
+    { issue: 'repeated word ("the the")', count: m(/\b(\w+)\s+\1\b/gi) },
+    { issue: "doubled punctuation (!! ?!)", count: m(/[!?]{2,}/g) },
+    { issue: "mixed straight/curly quotes", count: /[”“]/.test(text) && /["]/.test(text) ? 1 : 0 },
+  ];
+  return checks.filter((c) => c.count > 0);
 }
 
 // Common -ed/-en words that are NOT past participles (adjectives/nouns/adverbs),
@@ -252,6 +268,7 @@ export function analyzeProse(text: string): ProseAnalysis {
     telling,
     echoes,
     passive,
+    mechanics: proseMechanics(text),
   };
 }
 
@@ -344,6 +361,9 @@ export function formatProseReport(a: ProseAnalysis): string {
     "",
     `## Possible passive voice (${a.passive.count}, heuristic)`,
     a.passive.samples.length ? a.passive.samples.join("; ") : "—",
+    "",
+    `## Mechanics (${a.mechanics.length})`,
+    a.mechanics.length ? a.mechanics.map((mm) => `${mm.issue} ×${mm.count}`).join(", ") : "—",
     "",
     `## Repeated words / echoes (${a.echoes.length})`,
     joinCounts(a.echoes),

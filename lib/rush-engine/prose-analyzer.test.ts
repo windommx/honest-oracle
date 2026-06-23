@@ -95,6 +95,18 @@ describe("analyzeProse", () => {
     expect(a.passive.count).toBe(0);
   });
 
+  it("flags mechanical issues (double space, repeated word, space before comma)", () => {
+    const a = analyzeProse("He went  home and and sat , quietly.");
+    const issues = a.mechanics.map((m) => m.issue);
+    expect(issues).toContain("double spaces");
+    expect(issues.some((i) => i.startsWith("repeated word"))).toBe(true);
+    expect(issues).toContain("space before punctuation");
+  });
+
+  it("reports no mechanics for clean prose", () => {
+    expect(analyzeProse("She set the keys on the table.").mechanics).toHaveLength(0);
+  });
+
   it("does not double-count overlapping slop phrases (a testament to ⊃ testament)", () => {
     const a = analyzeProse("This book is a testament to her skill.");
     const testament = a.slop.find((s) => s.phrase === "testament");

@@ -83,6 +83,13 @@ describe("analyzeThai", () => {
     expect(a.aiTells).toHaveLength(0);
   });
 
+  it("flags Thai mechanical issues (double space, doubled punctuation)", () => {
+    const a = analyzeThai("เขาเดิน  มา!!");
+    const issues = a.mechanics.map((m) => m.issue);
+    expect(issues.some((i) => i.includes("double space"))).toBe(true);
+    expect(issues.some((i) => i.includes("!! ?!"))).toBe(true);
+  });
+
   it("does not double-count overlapping clichés (หัวใจสลาย ⊃ ใจสลาย)", () => {
     const a = analyzeThai("หัวใจสลาย");
     expect(a.aiTells.find((t) => t.phrase === "หัวใจสลาย")?.count).toBe(1);
