@@ -247,9 +247,13 @@ function usePersistedState(key: string): [string, (v: string) => void] {
   return [value, set];
 }
 
-export function ThaiAnalyzerModal({ onClose }: { onClose: () => void }) {
+export function ThaiAnalyzerModal({ onClose, initialText }: { onClose: () => void; initialText?: string }) {
   const [text, setText] = usePersistedState("rush.analyzer.th");
   const [revised, setRevised] = useState("");
+  useEffect(() => {
+    if (initialText) setText(initialText);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [showCompare, setShowCompare] = useState(false);
   const [showScan, setShowScan] = useState(false);
   const [copiedAudit, setCopiedAudit] = useState<string | null>(null);
@@ -602,13 +606,17 @@ function Chips({ items, tone }: { items: { word?: string; phrase?: string; count
   );
 }
 
-export function ProseAnalyzerModal({ onClose }: { onClose: () => void }) {
+export function ProseAnalyzerModal({ onClose, initialText }: { onClose: () => void; initialText?: string }) {
   const [text, setText] = usePersistedState("rush.analyzer.en");
   const [revised, setRevised] = useState("");
   const [showCompare, setShowCompare] = useState(false);
   const [showScan, setShowScan] = useState(false);
   const [copiedAudit, setCopiedAudit] = useState<string | null>(null);
   const a = useMemo(() => (text.trim() ? analyzeProse(text) : null), [text]);
+  useEffect(() => {
+    if (initialText) setText(initialText);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const deltas = useMemo(
     () => (text.trim() && revised.trim() ? proseDeltas(analyzeProse(text), analyzeProse(revised)) : null),
     [text, revised]

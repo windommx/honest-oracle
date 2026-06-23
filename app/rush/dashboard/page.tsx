@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Crown, BookOpen, Plus, Trash2, Share2, Lock, ArrowRight, Loader2, Search } from "lucide-react";
 import { BOOK_TYPES, type BookConfig, type BookTypeKey } from "@/lib/rush-engine/engine";
 import { titleCase } from "../_utils";
+import { listManuscripts, deleteManuscript, type StoredManuscript } from "../_manuscript-store";
 
 type Project = {
   id: string;
@@ -46,6 +47,14 @@ export default function DashboardPage() {
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
   const [sort, setSort] = useState<Sort>("recent");
+  const [manuscripts, setManuscripts] = useState<StoredManuscript[]>([]);
+
+  useEffect(() => setManuscripts(listManuscripts()), []);
+
+  const delManuscript = (id: string) => {
+    deleteManuscript(id);
+    setManuscripts(listManuscripts());
+  };
 
   useEffect(() => {
     (async () => {
@@ -242,6 +251,40 @@ export default function DashboardPage() {
                   </div>
                 );
               })}
+            </div>
+          )}
+
+          {manuscripts.length > 0 && (
+            <div className="mt-10">
+              <h2 className="text-lg font-semibold text-gray-200 mb-1">ต้นฉบับที่บันทึก (ในเครื่องนี้)</h2>
+              <p className="text-xs text-gray-500 mb-4">เก็บฝั่งเบราว์เซอร์ ไม่ขึ้น server — เปิดในเครื่อง/บราวเซอร์เดิมเท่านั้น</p>
+              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {manuscripts.map((m) => (
+                  <div key={m.id} className="glass-card rounded-xl p-4 border border-white/5 hover:border-[#c9a84c]/40 transition-colors">
+                    <div className="flex items-start justify-between gap-2">
+                      <h3 className="font-medium text-gray-100 truncate text-sm" title={m.title}>{m.title}</h3>
+                      <span className="text-[0.6rem] px-1.5 py-0.5 rounded border border-white/15 text-gray-300 shrink-0">
+                        {m.lang === "th" ? "ไทย" : "EN"}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-3 mt-1.5 text-[0.65rem] text-gray-600">
+                      <span>{m.text.length.toLocaleString()} ตัวอักษร</span>
+                      <span>{new Date(m.updatedAt).toLocaleDateString("th-TH", { dateStyle: "medium" })}</span>
+                    </div>
+                    <div className="flex items-center gap-2 mt-3 pt-3 border-t border-white/5">
+                      <button
+                        onClick={() => router.push(`/rush?analyze=${m.id}`)}
+                        className="flex-1 py-1.5 bg-white/5 border border-[#c9a84c]/20 text-[#c9a84c] rounded-lg hover:border-[#c9a84c]/50 transition-colors text-xs flex items-center justify-center gap-1"
+                      >
+                        วิเคราะห์ <ArrowRight className="w-3.5 h-3.5" />
+                      </button>
+                      <button onClick={() => delManuscript(m.id)} className="p-1.5 text-gray-600 hover:text-red-400 transition-colors" aria-label="Delete manuscript" title="ลบ">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </div>

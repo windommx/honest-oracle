@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { titleCase, copyText, slug, downloadBlob } from "./_utils";
 import { GROUP_COLORS, Field, Stat, FilterChip, GuideModal, ThaiAnalyzerModal, ProseAnalyzerModal } from "./_components";
+import { getManuscript } from "./_manuscript-store";
 import {
   BOOK_TYPES,
   MODULE_GROUPS,
@@ -80,6 +81,7 @@ export default function RushPage() {
   const [showGuide, setShowGuide] = useState(false);
   const [showAnalyzer, setShowAnalyzer] = useState(false);
   const [showProse, setShowProse] = useState(false);
+  const [analyzeText, setAnalyzeText] = useState<string | undefined>(undefined);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 
   const allGroups = MODULE_GROUPS.map((m) => m.key);
@@ -115,8 +117,18 @@ export default function RushPage() {
 
   useEffect(() => {
     refreshProjects();
-    const pid = new URLSearchParams(window.location.search).get("project");
+    const params = new URLSearchParams(window.location.search);
+    const pid = params.get("project");
     if (pid) loadProject(pid);
+    const mid = params.get("analyze");
+    if (mid) {
+      const m = getManuscript(mid);
+      if (m) {
+        setAnalyzeText(m.text);
+        if (m.lang === "th") setShowAnalyzer(true);
+        else setShowProse(true);
+      }
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -704,8 +716,8 @@ export default function RushPage() {
       </div>
 
       {showGuide && <GuideModal onClose={() => setShowGuide(false)} />}
-      {showAnalyzer && <ThaiAnalyzerModal onClose={() => setShowAnalyzer(false)} />}
-      {showProse && <ProseAnalyzerModal onClose={() => setShowProse(false)} />}
+      {showAnalyzer && <ThaiAnalyzerModal onClose={() => setShowAnalyzer(false)} initialText={analyzeText} />}
+      {showProse && <ProseAnalyzerModal onClose={() => setShowProse(false)} initialText={analyzeText} />}
 
       <style jsx>{`
         :global(.input) {

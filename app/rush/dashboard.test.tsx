@@ -1,11 +1,13 @@
 // @vitest-environment jsdom
-import { describe, it, expect, vi, afterEach } from "vitest";
+import { describe, it, expect, vi, afterEach, beforeEach } from "vitest";
 import { render, screen, cleanup } from "@testing-library/react";
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
 
 import DashboardPage from "./dashboard/page";
+import { saveManuscript } from "./_manuscript-store";
 
+beforeEach(() => window.localStorage.clear());
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
@@ -35,5 +37,13 @@ describe("Dashboard", () => {
     mockFetch(401, {});
     render(<DashboardPage />);
     expect(await screen.findByText(/เข้าสู่ระบบเพื่อบันทึก/)).toBeTruthy();
+  });
+
+  it("lists locally-saved manuscripts even without login", async () => {
+    mockFetch(401, {});
+    saveManuscript({ title: "ร่างบทที่หนึ่ง", lang: "th", text: "เนื้อเรื่อง" });
+    render(<DashboardPage />);
+    expect(await screen.findByText("ร่างบทที่หนึ่ง")).toBeTruthy();
+    expect(screen.getByText(/ต้นฉบับที่บันทึก/)).toBeTruthy();
   });
 });
