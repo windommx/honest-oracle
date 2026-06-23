@@ -16,8 +16,12 @@ export const MODULE_GROUPS: { key: Exclude<PromptGroup, "core">; label: string; 
 export function defaultGroupsFor(type: BookTypeKey): Exclude<PromptGroup, "core">[] {
   const fiction = type === "novel" || type === "memoir" || type === "kids" || type === "poetry";
   const groups: Exclude<PromptGroup, "core">[] = ["prose", "marketing"];
-  if (fiction) groups.unshift("craft");
-  else groups.unshift("nonfiction");
+  if (fiction) {
+    groups.unshift("craft");
+    groups.push("nis"); // grounded narrative-intelligence audits — the differentiator, on by default for fiction
+  } else {
+    groups.unshift("nonfiction");
+  }
   return groups;
 }
 
@@ -660,6 +664,48 @@ End with: a 0-100 dialogue score and the worst talking-heads scene to break up.
 [INSERT TEXT HERE]`;
 }
 
+function moduleNisPov(): string {
+  return `Run a POV & TENSE CONSISTENCY audit. Lock onto each scene's point-of-view character and the book's chosen tense, then catch every slip.
+
+Flag per finding: { type: head-hop (POV jumps to another character mid-scene) | tense-slip (past↔present) | pov-distance (filter verbs — saw/felt/heard/realized — that break deep POV) | impossible-knowledge (the POV character narrates something they cannot see/know), chapter, evidence: ["the offending quote"], severity, fix }
+
+${NIS_RULES}
+
+End with: a 0-100 POV-discipline score and the single worst head-hop to fix first.
+
+═══ MANUSCRIPT ═══
+[INSERT MANUSCRIPT HERE]`;
+}
+
+function moduleNisShow(): string {
+  return `Run a SHOW-vs-TELL audit. Find places that summarize or name an emotion/conclusion where a dramatized moment would land harder.
+
+For each finding output: { chapter, told: "the telling sentence (quote)", why: "named emotion | summary instead of scene | filtering verb | stated conclusion the reader should infer", showing: "a concrete rewrite that dramatizes it via action/body/sensory detail", severity }
+
+Balance rule: telling is correct for transitions, time-skips, and compressing the unimportant — do NOT flag those. Only flag telling that steals a moment that deserved a scene.
+
+${NIS_RULES}
+
+End with: a 0-100 show/tell balance score and the one told moment most worth dramatizing.
+
+═══ MANUSCRIPT ═══
+[INSERT MANUSCRIPT HERE]`;
+}
+
+function moduleNisTheme(): string {
+  return `Run a THEME & MOTIF audit. First state the book's controlling theme in one sentence (as evidenced by the text, not as you'd wish it).
+
+Then build a MOTIF TABLE: each recurring image/symbol/motif → every instance (chapter + quote) → whether it pays into the theme or is decorative.
+Flag: (a) motifs introduced once and dropped, (b) on-the-nose thematic statements (a character or narrator stating the theme outright), (c) an ending that doesn't earn the theme.
+
+${NIS_RULES}
+
+End with: a 0-100 thematic-coherence score and the single change that would sharpen the theme most.
+
+═══ MANUSCRIPT ═══
+[INSERT MANUSCRIPT HERE]`;
+}
+
 // ── Catalog assembly ───────────────────────────────────────────
 
 type ModuleDef = { id: string; group: PromptGroup; name: string; description: string; usage: string; build: (c: BookConfig) => string };
@@ -710,4 +756,7 @@ export const MODULE_CATALOG: ModuleDef[] = [
   { id: "NIS_PACING", group: "nis", name: "Pacing Audit", description: "Per-chapter pace from concrete signals; finds the saggy middle + rushed climax.", usage: "Run on the assembled manuscript.", build: moduleNisPacing },
   { id: "NIS_FORESHADOW", group: "nis", name: "Foreshadow & Payoff Audit", description: "Pairs setups to payoffs; flags unfired guns and unseeded reveals.", usage: "Run on a full draft to check planting.", build: moduleNisForeshadow },
   { id: "NIS_DIALOGUE", group: "nis", name: "Dialogue-Fatigue Audit", description: "Talking-heads runs, on-the-nose exposition, samey voices (pairs with Thai Analyzer).", usage: "Run on dialogue-heavy chapters.", build: moduleNisDialogue },
+  { id: "NIS_POV", group: "nis", name: "POV & Tense Audit", description: "Head-hopping, tense slips, deep-POV distance, impossible knowledge — each quoted.", usage: "Run on a full draft to lock POV/tense.", build: moduleNisPov },
+  { id: "NIS_SHOW", group: "nis", name: "Show-vs-Tell Audit", description: "Flags told emotions/summaries with a concrete showing rewrite; spares legit transitions.", usage: "Run on draft scenes that feel flat.", build: moduleNisShow },
+  { id: "NIS_THEME", group: "nis", name: "Theme & Motif Audit", description: "Tracks every motif instance with quotes; flags dropped motifs and on-the-nose theme.", usage: "Run on the assembled manuscript.", build: moduleNisTheme },
 ];

@@ -12,7 +12,7 @@ import {
   type BookTypeKey,
   type PromptGroup,
 } from "./engine";
-import { TH_META, TH_MODULES } from "./th";
+import { TH_GROUP_LABEL, TH_META, TH_MODULES } from "./th";
 
 function cfg(overrides: Partial<BookConfig> = {}): BookConfig {
   return {
@@ -167,7 +167,7 @@ describe("generateAllPrompts — module groups", () => {
     marketing: 4,
     advanced: 3,
     agents: 6,
-    nis: 5,
+    nis: 8,
   };
 
   it("appends exactly the modules for each requested group", () => {
@@ -179,10 +179,10 @@ describe("generateAllPrompts — module groups", () => {
     }
   });
 
-  it("includes all 37 optional modules when every group is on", () => {
+  it("includes all 40 optional modules when every group is on", () => {
     const all = MODULE_GROUPS.map((m) => m.key);
     const pack = generateAllPrompts(cfg(), all);
-    expect(pack.filter((p) => p.group !== "core").length).toBe(37);
+    expect(pack.filter((p) => p.group !== "core").length).toBe(40);
   });
 
   it("hardens the KDP module with a verification checklist (no live-data claim)", () => {
@@ -316,5 +316,10 @@ describe("catalog integrity", () => {
     for (const m of MODULE_CATALOG) {
       expect(/[฀-๿]/.test(TH_MODULES[m.id](c))).toBe(true);
     }
+  });
+
+  it("every declared group has a Thai label (no silent raw-key fallback in the UI)", () => {
+    const missing = MODULE_GROUPS.map((g) => g.key).filter((k) => !TH_GROUP_LABEL[k]);
+    expect(missing).toEqual([]);
   });
 });
