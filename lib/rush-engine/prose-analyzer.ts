@@ -274,6 +274,51 @@ export function proseDeltas(before: ProseAnalysis, after: ProseAnalysis): Metric
   ];
 }
 
+export interface ChapterScan {
+  title: string;
+  words: number;
+  fleschEase: number;
+  cv: number;
+  slop: number;
+  telling: number;
+  passive: number;
+}
+
+const HEADING = /^\s*(?:#{1,3}\s+\S|(?:chapter|ch\.?|part|บทที่|บท|ตอนที่|ตอน)\s+[\dIVXLivxl]+)/i;
+
+/** Split a manuscript into chapters on Markdown headings or "Chapter N" / "บทที่ N" lines. */
+export function splitChapters(text: string): { title: string; body: string }[] {
+  const lines = text.split(/\r?\n/);
+  const heads = lines.map((l, i) => (HEADING.test(l) ? i : -1)).filter((i) => i >= 0);
+  if (heads.length === 0) return [{ title: "Full text", body: text }];
+
+  const chunks: { title: string; body: string }[] = [];
+  const preamble = lines.slice(0, heads[0]).join("\n").trim();
+  if (preamble) chunks.push({ title: "(intro)", body: preamble });
+  heads.forEach((start, h) => {
+    const end = h + 1 < heads.length ? heads[h + 1] : lines.length;
+    const title = lines[start].replace(/^\s*#{1,3}\s*/, "").trim() || `Section ${h + 1}`;
+    chunks.push({ title, body: lines.slice(start + 1, end).join("\n") });
+  });
+  return chunks;
+}
+
+/** Per-chapter deterministic scorecard — find the weakest chapters at a glance. */
+export function scanManuscript(text: string): ChapterScan[] {
+  return splitChapters(text).map(({ title, body }) => {
+    const a = analyzeProse(body);
+    return {
+      title,
+      words: a.wordCount,
+      fleschEase: a.readability.fleschEase,
+      cv: a.rhythm.cv,
+      slop: a.slop.reduce((s, w) => s + w.count, 0),
+      telling: a.telling.count,
+      passive: a.passive.count,
+    };
+  });
+}
+
 const joinCounts = (items: { word?: string; phrase?: string; count: number }[]) =>
   items.length ? items.map((i) => `${i.word ?? i.phrase} ×${i.count}`).join(", ") : "—";
 

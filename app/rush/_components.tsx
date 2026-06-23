@@ -5,7 +5,7 @@ import { X, Copy, Check, Download } from "lucide-react";
 import { MODULE_CATALOG, MODULE_GROUPS, type BookConfig, type PromptGroup } from "@/lib/rush-engine/engine";
 import { TH_MODULES } from "@/lib/rush-engine/th";
 import { analyzeThai, formatThaiReport } from "@/lib/rush-engine/thai-analyzer";
-import { analyzeProse, formatProseReport, proseDeltas } from "@/lib/rush-engine/prose-analyzer";
+import { analyzeProse, formatProseReport, proseDeltas, scanManuscript } from "@/lib/rush-engine/prose-analyzer";
 
 export const GROUP_COLORS: Record<PromptGroup, string> = {
   core: "border-[#c9a84c] text-[#c9a84c]",
@@ -351,12 +351,22 @@ export function ProseAnalyzerModal({ onClose }: { onClose: () => void }) {
   const [text, setText] = useState("");
   const [revised, setRevised] = useState("");
   const [showCompare, setShowCompare] = useState(false);
+  const [showScan, setShowScan] = useState(false);
   const [copiedAudit, setCopiedAudit] = useState<string | null>(null);
   const a = useMemo(() => (text.trim() ? analyzeProse(text) : null), [text]);
   const deltas = useMemo(
     () => (text.trim() && revised.trim() ? proseDeltas(analyzeProse(text), analyzeProse(revised)) : null),
     [text, revised]
   );
+  const scan = useMemo(() => (text.trim() ? scanManuscript(text) : []), [text]);
+  // Indices of the weakest chapter per signal (to flag in the heatmap).
+  const worst = useMemo(() => {
+    if (scan.length < 2) return { ease: -1, slop: -1, cv: -1 };
+    const argEase = scan.reduce((b, c, i) => (c.fleschEase < scan[b].fleschEase ? i : b), 0);
+    const argSlop = scan.reduce((b, c, i) => (c.slop > scan[b].slop ? i : b), 0);
+    const argCv = scan.reduce((b, c, i) => (c.cv < scan[b].cv ? i : b), 0);
+    return { ease: argEase, slop: scan[argSlop].slop > 0 ? argSlop : -1, cv: argCv };
+  }, [scan]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
@@ -437,6 +447,48 @@ export function ProseAnalyzerModal({ onClose }: { onClose: () => void }) {
               })}
             </div>
             <p className="text-[0.6rem] text-gray-500 mt-1">Green = measurably improved on that signal · gray = neutral metric. Counts, not a quality verdict.</p>
+          </div>
+        )}
+        {scan.length > 1 && (
+          <button
+            onClick={() => setShowScan((v) => !v)}
+            className="mt-2 ml-3 text-[0.7rem] text-[#c9a84c] hover:underline"
+          >
+            {showScan ? "− Hide per-chapter scan" : `+ Per-chapter scan (${scan.length} chapters)`}
+          </button>
+        )}
+        {showScan && scan.length > 1 && (
+          <div className="mt-3">
+            <h3 className="text-xs font-semibold tracking-widest text-gray-400 uppercase mb-2">Per-chapter heatmap</h3>
+            <div className="overflow-x-auto rounded-lg border border-white/10">
+              <table className="w-full text-[0.7rem]">
+                <thead>
+                  <tr className="text-gray-500 border-b border-white/10">
+                    <th className="text-left px-2 py-1.5 font-medium">Chapter</th>
+                    <th className="px-2 py-1.5 font-medium">words</th>
+                    <th className="px-2 py-1.5 font-medium">ease</th>
+                    <th className="px-2 py-1.5 font-medium">slop</th>
+                    <th className="px-2 py-1.5 font-medium">tell</th>
+                    <th className="px-2 py-1.5 font-medium">passv</th>
+                    <th className="px-2 py-1.5 font-medium">CV%</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {scan.map((c, i) => (
+                    <tr key={`${c.title}-${i}`} className="border-b border-white/5 last:border-0">
+                      <td className="text-left px-2 py-1 text-gray-300 truncate max-w-[160px]" title={c.title}>{c.title}</td>
+                      <td className="px-2 py-1 text-center text-gray-400 tabular-nums">{c.words}</td>
+                      <td className={`px-2 py-1 text-center tabular-nums ${worst.ease === i ? "text-red-400 font-semibold" : "text-gray-400"}`}>{c.fleschEase}</td>
+                      <td className={`px-2 py-1 text-center tabular-nums ${worst.slop === i ? "text-red-400 font-semibold" : "text-gray-400"}`}>{c.slop}</td>
+                      <td className="px-2 py-1 text-center text-gray-400 tabular-nums">{c.telling}</td>
+                      <td className="px-2 py-1 text-center text-gray-400 tabular-nums">{c.passive}</td>
+                      <td className={`px-2 py-1 text-center tabular-nums ${worst.cv === i ? "text-red-400 font-semibold" : "text-gray-400"}`}>{c.cv}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <p className="text-[0.6rem] text-gray-500 mt-1">Red = weakest chapter on that signal (lowest ease/rhythm, most slop). Deterministic counts, not a verdict.</p>
           </div>
         )}
         {a && (

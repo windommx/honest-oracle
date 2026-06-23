@@ -83,4 +83,15 @@ describe("ProseAnalyzerModal", () => {
     expect(screen.getByText(/Before → After/i)).toBeTruthy();
     expect(screen.getByText("AI-slop terms")).toBeTruthy();
   });
+
+  it("offers a per-chapter scan when the text has multiple chapters", () => {
+    render(<ProseAnalyzerModal onClose={() => {}} />);
+    fireEvent.change(screen.getByPlaceholderText(/Paste English prose/i), {
+      target: { value: "## Chapter 1\nShe ran home fast.\n## Chapter 2\nHe delved into the rich tapestry." },
+    });
+    fireEvent.click(screen.getByText(/Per-chapter scan/i));
+    expect(screen.getByText(/Per-chapter heatmap/i)).toBeTruthy();
+    // Chapter title appears as a table cell (textarea also contains it → use getAllByText)
+    expect(screen.getAllByText(/Chapter 2/).length).toBeGreaterThan(1);
+  });
 });

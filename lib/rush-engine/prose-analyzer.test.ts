@@ -1,5 +1,14 @@
 import { describe, it, expect } from "vitest";
-import { analyzeProse, tokenizeProse, countSyllables, formatProseReport, proseDeltas, SLOP_TERMS } from "./prose-analyzer";
+import {
+  analyzeProse,
+  tokenizeProse,
+  countSyllables,
+  formatProseReport,
+  proseDeltas,
+  splitChapters,
+  scanManuscript,
+  SLOP_TERMS,
+} from "./prose-analyzer";
 
 describe("tokenizeProse", () => {
   it("splits English into lowercased word tokens", () => {
@@ -105,5 +114,21 @@ describe("analyzeProse", () => {
     expect(slop.good).toBe("lower");
     const told = deltas.find((d) => d.label === "Told emotions")!;
     expect(told.after).toBeLessThan(told.before);
+  });
+
+  it("splits a manuscript on headings and falls back to one chunk", () => {
+    const single = splitChapters("Just one block of prose with no headings.");
+    expect(single).toHaveLength(1);
+    const multi = splitChapters("## Chapter 1\nShe ran.\n## Chapter 2\nHe stayed.");
+    expect(multi.length).toBe(2);
+    expect(multi[0].title).toMatch(/Chapter 1/);
+    expect(multi[1].body).toContain("He stayed");
+  });
+
+  it("scores each chapter so the weakest one is visible", () => {
+    const scan = scanManuscript("Chapter 1\nShe slammed the door shut.\nChapter 2\nHe delved into the tapestry.");
+    expect(scan).toHaveLength(2);
+    expect(scan[1].slop).toBeGreaterThan(scan[0].slop); // ch2 has slop, ch1 doesn't
+    expect(scan.every((c) => c.words > 0)).toBe(true);
   });
 });
