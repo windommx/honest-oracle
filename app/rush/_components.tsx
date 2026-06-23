@@ -76,6 +76,17 @@ export function ThaiAnalyzerModal({ onClose }: { onClose: () => void }) {
               <Stat value={String(a.sentences.longest)} label="ประโยคยาวสุด (คำ)" />
             </div>
             <div className="grid grid-cols-3 gap-2">
+              <Stat value={`${a.rhythm.cv}%`} label="ความแปรผัน (CV)" />
+              <Stat value={String(a.rhythm.stdev)} label="ส่วนเบี่ยงเบน" />
+              <Stat value={String(a.rhythm.monotonyRun)} label="ประโยคยาวพอกันติดกัน" />
+            </div>
+            {a.sentences.count >= 4 && (a.rhythm.cv < 35 || a.rhythm.monotonyRun >= 5) && (
+              <p className="text-[0.65rem] text-cyan-300/80">
+                ⚠️ จังหวะค่อนข้างแบน — ความยาวประโยคใกล้เคียงกันมาก (CV {a.rhythm.cv}%
+                {a.rhythm.monotonyRun >= 5 ? ` · ยาวพอกัน ${a.rhythm.monotonyRun} ประโยคติด` : ""}). ลองสลับประโยคสั้น-ยาว หรือรัน NIS Pacing audit
+              </p>
+            )}
+            <div className="grid grid-cols-3 gap-2">
               <Stat value={`${a.dialogue.ratio}%`} label="สัดส่วนบทพูด" />
               <Stat value={String(a.dialogue.lines)} label="บรรทัดบทพูด" />
               <Stat value={String(a.dialogue.talkingHeadRun)} label="พูดต่อเนื่องสุด" />

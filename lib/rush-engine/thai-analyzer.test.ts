@@ -38,6 +38,13 @@ describe("analyzeThai", () => {
     expect(a.dialogue.ratio).toBeGreaterThan(0);
   });
 
+  it("measures rhythm: uniform sentences are monotonous, varied ones are not", () => {
+    const flat = analyzeThai("เขาเดินไปตลาด\nเธอเดินไปตลาด\nฉันเดินไปตลาด\nเราเดินไปตลาด");
+    expect(flat.rhythm.monotonyRun).toBeGreaterThanOrEqual(3);
+    const varied = analyzeThai("เขาวิ่ง\nเธอยืนมองท้องฟ้าสีครามที่ทอดยาวเหนือทุ่งหญ้ากว้างไกลสุดลูกหูลูกตา\nเงียบ");
+    expect(varied.rhythm.cv).toBeGreaterThan(flat.rhythm.cv);
+  });
+
   it("counts telling markers (filter verbs + named emotions)", () => {
     const a = analyzeThai("เธอรู้สึกโกรธมาก เขาเสียใจและกลัว");
     const matched = a.telling.words.map((w) => w.word);

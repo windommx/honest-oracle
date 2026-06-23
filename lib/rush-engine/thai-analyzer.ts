@@ -57,6 +57,8 @@ export interface ThaiAnalysis {
   uniqueWords: number;
   /** Sentence-length stats (Thai has no full stop; split on punctuation + newlines). */
   sentences: { count: number; avgWords: number; longest: number };
+  /** Rhythm: variation in sentence length (low cv / long monotonyRun = flat prose). */
+  rhythm: { stdev: number; cv: number; monotonyRun: number };
   /** Dialogue signals — for the NIS Dialogue-Fatigue check (deterministic). */
   dialogue: { ratio: number; lines: number; talkingHeadRun: number };
   /** Telling signals — filter verbs + named emotions (for the NIS Show-vs-Tell check). */
@@ -151,6 +153,30 @@ export function analyzeThai(text: string): ThaiAnalysis {
     longest: sentenceLens.length ? Math.max(...sentenceLens) : 0,
   };
 
+  // Rhythm: how much sentence length VARIES. Uniform length reads flat/AI-slop and
+  // flattens pacing. Coefficient of variation (stdev/mean) is a real statistic, not a
+  // score; monotonyRun = longest run of consecutive sentences within ±2 words.
+  const mean = sentenceLens.length ? sentenceLens.reduce((s, n) => s + n, 0) / sentenceLens.length : 0;
+  const variance = sentenceLens.length
+    ? sentenceLens.reduce((s, n) => s + (n - mean) ** 2, 0) / sentenceLens.length
+    : 0;
+  const stdev = Math.sqrt(variance);
+  let flatRun = 1;
+  let maxFlatRun = sentenceLens.length ? 1 : 0;
+  for (let i = 1; i < sentenceLens.length; i++) {
+    if (Math.abs(sentenceLens[i] - sentenceLens[i - 1]) <= 2) {
+      flatRun++;
+      if (flatRun > maxFlatRun) maxFlatRun = flatRun;
+    } else {
+      flatRun = 1;
+    }
+  }
+  const rhythm = {
+    stdev: Math.round(stdev * 10) / 10,
+    cv: mean ? Math.round((stdev / mean) * 100) : 0, // % — lower = more monotonous
+    monotonyRun: maxFlatRun,
+  };
+
   // Dialogue signals: ratio of quoted words, dialogue-line count, and the longest
   // "talking-heads" run (consecutive dialogue lines with no narration beat between).
   const lines = text.split(/\n+/).map((l) => l.trim()).filter(Boolean);
@@ -191,6 +217,7 @@ export function analyzeThai(text: string): ThaiAnalysis {
     charCount: text.replace(/\s/g, "").length,
     uniqueWords: freq.size,
     sentences,
+    rhythm,
     dialogue,
     telling,
     topWords,
