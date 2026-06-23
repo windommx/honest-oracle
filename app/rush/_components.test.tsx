@@ -34,4 +34,18 @@ describe("ThaiAnalyzerModal", () => {
     fireEvent.change(textarea, { target: { value: "เขาวางถ้วยกาแฟลงบนโต๊ะไม้เก่า" } });
     expect(screen.getByText(/ไม่พบคำคลิเชแบบ AI/)).toBeTruthy();
   });
+
+  it("copies a NIS audit prompt pre-filled with the analyzed text", () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.assign(navigator, { clipboard: { writeText } });
+    render(<ThaiAnalyzerModal onClose={() => {}} />);
+    const textarea = screen.getByPlaceholderText(/วางข้อความภาษาไทย/);
+    // 6 consecutive dialogue lines → talking-heads run trips the NIS Dialogue button
+    fireEvent.change(textarea, { target: { value: '"หนึ่ง"\n"สอง"\n"สาม"\n"สี่"\n"ห้า"\n"หก"' } });
+    fireEvent.click(screen.getByText(/NIS Dialogue audit/));
+    expect(writeText).toHaveBeenCalledTimes(1);
+    const arg = writeText.mock.calls[0][0] as string;
+    expect(arg).toContain("หนึ่ง"); // the analyzed text is inlined
+    expect(arg).not.toContain("[วางข้อความที่นี่]"); // placeholder was replaced
+  });
 });

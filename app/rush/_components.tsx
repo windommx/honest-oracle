@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { X } from "lucide-react";
-import { MODULE_GROUPS, type PromptGroup } from "@/lib/rush-engine/engine";
+import { X, Copy, Check } from "lucide-react";
+import { MODULE_GROUPS, type BookConfig, type PromptGroup } from "@/lib/rush-engine/engine";
+import { TH_MODULES } from "@/lib/rush-engine/th";
 import { analyzeThai } from "@/lib/rush-engine/thai-analyzer";
 
 export const GROUP_COLORS: Record<PromptGroup, string> = {
@@ -37,6 +38,7 @@ export function Stat({ value, label }: { value: string; label: string }) {
 
 export function ThaiAnalyzerModal({ onClose }: { onClose: () => void }) {
   const [text, setText] = useState("");
+  const [copiedAudit, setCopiedAudit] = useState<string | null>(null);
   const a = useMemo(() => (text.trim() ? analyzeThai(text) : null), [text]);
 
   useEffect(() => {
@@ -44,6 +46,27 @@ export function ThaiAnalyzerModal({ onClose }: { onClose: () => void }) {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
+
+  // Copy a NIS audit prompt with the analyzed text pre-filled into its placeholder —
+  // closing the loop from a deterministic signal to its grounded LLM audit.
+  const copyAudit = async (id: string) => {
+    const build = TH_MODULES[id];
+    if (!build) return;
+    const prompt = build({} as BookConfig).replace(/\[วางต้นฉบับที่นี่\]|\[วางข้อความที่นี่\]/, text.trim());
+    await navigator.clipboard.writeText(prompt);
+    setCopiedAudit(id);
+    setTimeout(() => setCopiedAudit((c) => (c === id ? null : c)), 2000);
+  };
+
+  const AuditButton = ({ id, label }: { id: string; label: string }) => (
+    <button
+      onClick={() => copyAudit(id)}
+      className="mt-2 inline-flex items-center gap-1.5 text-[0.65rem] px-2.5 py-1 rounded border border-red-400/40 text-red-300 hover:bg-red-400/10"
+    >
+      {copiedAudit === id ? <Check className="w-3 h-3 text-green-400" /> : <Copy className="w-3 h-3" />}
+      {copiedAudit === id ? "คัดลอกแล้ว — วางใน LLM ได้เลย" : label}
+    </button>
+  );
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70" onClick={onClose}>
@@ -81,10 +104,13 @@ export function ThaiAnalyzerModal({ onClose }: { onClose: () => void }) {
               <Stat value={String(a.rhythm.monotonyRun)} label="ประโยคยาวพอกันติดกัน" />
             </div>
             {a.sentences.count >= 4 && (a.rhythm.cv < 35 || a.rhythm.monotonyRun >= 5) && (
-              <p className="text-[0.65rem] text-cyan-300/80">
-                ⚠️ จังหวะค่อนข้างแบน — ความยาวประโยคใกล้เคียงกันมาก (CV {a.rhythm.cv}%
-                {a.rhythm.monotonyRun >= 5 ? ` · ยาวพอกัน ${a.rhythm.monotonyRun} ประโยคติด` : ""}). ลองสลับประโยคสั้น-ยาว หรือรัน NIS Pacing audit
-              </p>
+              <div>
+                <p className="text-[0.65rem] text-cyan-300/80">
+                  ⚠️ จังหวะค่อนข้างแบน — ความยาวประโยคใกล้เคียงกันมาก (CV {a.rhythm.cv}%
+                  {a.rhythm.monotonyRun >= 5 ? ` · ยาวพอกัน ${a.rhythm.monotonyRun} ประโยคติด` : ""}). ลองสลับประโยคสั้น-ยาว
+                </p>
+                <AuditButton id="NIS_PACING" label="คัดลอก NIS Pacing audit + ข้อความนี้" />
+              </div>
             )}
             <div className="grid grid-cols-3 gap-2">
               <Stat value={`${a.dialogue.ratio}%`} label="สัดส่วนบทพูด" />
@@ -92,10 +118,13 @@ export function ThaiAnalyzerModal({ onClose }: { onClose: () => void }) {
               <Stat value={String(a.dialogue.talkingHeadRun)} label="พูดต่อเนื่องสุด" />
             </div>
             {(a.dialogue.talkingHeadRun >= 6 || a.dialogue.ratio > 70) && (
-              <p className="text-[0.65rem] text-orange-300/80">
-                ⚠️ {a.dialogue.talkingHeadRun >= 6 ? `บทพูดต่อเนื่อง ${a.dialogue.talkingHeadRun} บรรทัดโดยไม่มี action คั่น (talking-heads)` : ""}
-                {a.dialogue.ratio > 70 ? ` · บทพูด ${a.dialogue.ratio}% อาจมากเกินไป` : ""}
-              </p>
+              <div>
+                <p className="text-[0.65rem] text-orange-300/80">
+                  ⚠️ {a.dialogue.talkingHeadRun >= 6 ? `บทพูดต่อเนื่อง ${a.dialogue.talkingHeadRun} บรรทัดโดยไม่มี action คั่น (talking-heads)` : ""}
+                  {a.dialogue.ratio > 70 ? ` · บทพูด ${a.dialogue.ratio}% อาจมากเกินไป` : ""}
+                </p>
+                <AuditButton id="NIS_DIALOGUE" label="คัดลอก NIS Dialogue audit + ข้อความนี้" />
+              </div>
             )}
 
             <div>
@@ -114,9 +143,12 @@ export function ThaiAnalyzerModal({ onClose }: { onClose: () => void }) {
                     ))}
                   </div>
                   {a.telling.ratio >= 2 && (
-                    <p className="text-[0.65rem] text-fuchsia-300/70 mt-1.5">
-                      ความหนาแน่นของคำ &quot;บอก&quot; ค่อนข้างสูง — ลองรัน NIS Show-vs-Tell audit เพื่อหาช่วงที่ควรเปลี่ยนเป็น &quot;แสดง&quot;
-                    </p>
+                    <div className="mt-1.5">
+                      <p className="text-[0.65rem] text-fuchsia-300/70">
+                        ความหนาแน่นของคำ &quot;บอก&quot; ค่อนข้างสูง — ลองเปลี่ยนช่วงที่บอกตรง ๆ ให้ &quot;แสดง&quot;
+                      </p>
+                      <AuditButton id="NIS_SHOW" label="คัดลอก NIS Show-vs-Tell audit + ข้อความนี้" />
+                    </div>
                   )}
                 </>
               )}
