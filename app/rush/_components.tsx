@@ -369,6 +369,7 @@ export function GuideModal({ onClose }: { onClose: () => void }) {
     "เขียนทีละบทด้วย CH_1, CH_2, … โมเดลจะออกบล็อก <<<STATE>>> ท้ายแต่ละบท",
     "คัดลอก <<<STATE>>> ล่าสุดมาวางในช่อง Story Bible / STATE แล้วกด Generate ใหม่ → ฉีดเข้าทุกบทอัตโนมัติ (continuity)",
     "ขัดเกลาด้วย ANALYSIS → REVISION, เก็บงานด้วย Front/Back Matter",
+    "ตรวจร้อยแก้วฟรีก่อนส่ง LLM: กดปุ่ม วิเคราะห์ไทย / Prose (EN) หาจุดอ่อน แล้วกดคัดลอก NIS audit ที่เกี่ยวพร้อมข้อความ → วางใน LLM เจาะเฉพาะจุด",
     "ตอนจะตีพิมพ์ ใช้กลุ่ม Marketing (Title, Blurb, KDP Metadata, Submission Pack)",
   ];
   return (
@@ -411,7 +412,8 @@ export function GuideModal({ onClose }: { onClose: () => void }) {
           {[
             { goal: "ทำให้ร้อยแก้วดีขึ้น", items: "Anti-Slop (ลบสำนวนกลาง ๆ แบบ AI) · Anti-Safe (กล้าเสี่ยง ไม่จบแบบเซฟ) · Line Edit (แก้ระดับประโยค) · Readability (คุมระดับความยาก)" },
             { goal: "ตรวจ/ประเมินดราฟต์", items: "Analysis (คะแนนรายบท) · Quality Gate (ผ่าน/ไม่ผ่านก่อนตีพิมพ์) · Feedback (สรุปส่งต่อบทถัดไป)" },
-            { goal: "ความต่อเนื่อง", items: "Story Bible/STATE (ฉีดทุกบท) · Worldbuilding Codex (สร้าง bible + ตรวจ) · Rolling Recap (สรุปต่อเนื่อง)" },
+            { goal: "ตรวจต้นฉบับเชิงลึก (อ้างหลักฐาน)", items: "Narrative Intelligence (NIS) — Plot-hole/Continuity · Character · Pacing · Foreshadow · Dialogue · POV · Show-vs-Tell · Theme ทุก audit ต้องอ้างข้อความที่พิสูจน์ได้ (เปิดให้นิยายอัตโนมัติ)" },
+            { goal: "ความต่อเนื่อง", items: "Story Bible/STATE (ฉีดทุกบท) · Worldbuilding Codex (สร้าง bible + ตรวจ) · Rolling Recap (สรุปต่อเนื่อง) · Series Bible (canon ข้ามเล่มสำหรับซีรีส์)" },
             { goal: "วางโครง/ตัวละคร", items: "Structure Outline (โครงทั้งเล่ม) · Character Voice/Arc · Scene Builder · Conflict Map (ความตึง)" },
             { goal: "หลายเอเจนต์ (ขั้นสูง)", items: "Agent Pack — ต้องมี multi-agent setup เอง (เช่น Claude Projects); ไม่ได้รันในแอปนี้" },
           ].map((r) => (
@@ -420,6 +422,19 @@ export function GuideModal({ onClose }: { onClose: () => void }) {
               <span className="text-gray-400"> {r.items}</span>
             </div>
           ))}
+        </div>
+
+        <h3 className="text-xs font-semibold tracking-widest text-gray-400 uppercase mb-2">เครื่องมือวิเคราะห์ (ฟรี ไม่เรียก AI)</h3>
+        <div className="space-y-2 mb-5 text-sm">
+          <p className="text-gray-400">
+            ปุ่ม <span className="text-[#c9a84c]">วิเคราะห์ไทย</span> และ <span className="text-[#c9a84c]">Prose (EN)</span> ที่หัวหน้าจอ —
+            ตรวจร้อยแก้วฝั่งเบราว์เซอร์แบบ deterministic (วัดได้ โชว์ทุกคำที่ match ไม่ใช่คะแนนลอย ๆ)
+          </p>
+          <div><span className="text-[#c9a84c]">หาจุดน่าสงสัย:</span><span className="text-gray-400"> คำคลิเช AI · คำบอกอารมณ์ (telling) · จังหวะประโยคแบน · คำซ้ำ · (EN) AI-slop, filter words, -ly adverbs, passive, Flesch readability</span></div>
+          <div><span className="text-[#c9a84c]">เทียบฉบับแก้:</span><span className="text-gray-400"> วางก่อน→หลัง เห็น delta ว่าการแก้ดีขึ้นจริงไหมตามตัวเลข</span></div>
+          <div><span className="text-[#c9a84c]">สแกนรายบท:</span><span className="text-gray-400"> วางทั้งเล่ม → heatmap บอกบทที่อ่อนสุดต่อ signal</span></div>
+          <div><span className="text-[#c9a84c]">ปิด loop:</span><span className="text-gray-400"> เจอจุดอ่อนแล้วกดปุ่มเดียว คัดลอก NIS audit ที่เกี่ยวพร้อมแปะข้อความให้ → วางใน LLM เจาะเฉพาะจุด (ประหยัด token)</span></div>
+          <div><span className="text-[#c9a84c]">ส่งออก:</span><span className="text-gray-400"> Copy report / Download .md เก็บไว้เทียบ draft</span></div>
         </div>
 
         <h3 className="text-xs font-semibold tracking-widest text-gray-400 uppercase mb-2">เคล็ดลับ</h3>
