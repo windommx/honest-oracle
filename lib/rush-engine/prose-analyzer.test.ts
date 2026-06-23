@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { analyzeProse, tokenizeProse, SLOP_TERMS } from "./prose-analyzer";
+import { analyzeProse, tokenizeProse, countSyllables, SLOP_TERMS } from "./prose-analyzer";
 
 describe("tokenizeProse", () => {
   it("splits English into lowercased word tokens", () => {
@@ -56,6 +56,21 @@ describe("analyzeProse", () => {
   it("flags repeated content words as echoes", () => {
     const a = analyzeProse("shadow shadow shadow shadow crept across the shadow wall");
     expect(a.echoes.some((e) => e.word === "shadow")).toBe(true);
+  });
+
+  it("estimates syllables with the vowel-group heuristic", () => {
+    expect(countSyllables("cat")).toBe(1);
+    expect(countSyllables("running")).toBe(2);
+    expect(countSyllables("readability")).toBeGreaterThanOrEqual(4);
+  });
+
+  it("computes Flesch readability: simple prose scores easier than dense prose", () => {
+    const easy = analyzeProse("The cat sat. The dog ran. We had fun.");
+    const hard = analyzeProse(
+      "The unprecedented institutional ramifications necessitated comprehensive reconsideration of methodological assumptions."
+    );
+    expect(easy.readability.fleschEase).toBeGreaterThan(hard.readability.fleschEase);
+    expect(hard.readability.fkGrade).toBeGreaterThan(easy.readability.fkGrade);
   });
 
   it("exposes a non-empty slop term list", () => {

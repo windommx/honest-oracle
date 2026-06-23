@@ -378,6 +378,17 @@ export function ProseAnalyzerModal({ onClose }: { onClose: () => void }) {
               <Stat value={`${a.rhythm.cv}%`} label="rhythm variation (CV)" />
               <Stat value={String(a.rhythm.monotonyRun)} label="same-length run" />
             </div>
+            <div className="grid grid-cols-3 gap-2">
+              <Stat value={String(a.readability.fleschEase)} label="Flesch Reading Ease" />
+              <Stat value={String(a.readability.fkGrade)} label="grade level (FK)" />
+              <Stat value={String(a.readability.syllablesPerWord)} label="syllables/word" />
+            </div>
+            <div>
+              <p className="text-[0.6rem] text-gray-500">
+                Reading Ease 60–70 ≈ plain English · higher = easier. Estimate (heuristic syllables).
+              </p>
+              <AuditButton id="READABILITY" label="Copy Readability Control rewrite + this text" />
+            </div>
             {a.sentences.count >= 4 && (a.rhythm.cv < 35 || a.rhythm.monotonyRun >= 5) && (
               <div>
                 <p className="text-[0.65rem] text-cyan-300/80">

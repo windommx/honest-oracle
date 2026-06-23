@@ -58,6 +58,8 @@ export interface ProseAnalysis {
   sentences: { count: number; avgWords: number; longest: number };
   /** Sentence-length variation — low cv / long monotonyRun = flat prose. */
   rhythm: { stdev: number; cv: number; monotonyRun: number };
+  /** Readability via the standard Flesch formulas (estimate; syllables are heuristic). */
+  readability: { fleschEase: number; fkGrade: number; syllablesPerWord: number; wordsPerSentence: number };
   /** AI-slop words & hollow formulas found. */
   slop: { phrase: string; count: number }[];
   /** Filter / crutch words (just, really, felt…). */
@@ -72,6 +74,16 @@ export interface ProseAnalysis {
 
 export function tokenizeProse(text: string): string[] {
   return (text.toLowerCase().match(/[a-z']+/g) ?? []).map((w) => w.replace(/^'+|'+$/g, "")).filter(Boolean);
+}
+
+/** Heuristic English syllable count (vowel-group method; the standard approximation). */
+export function countSyllables(word: string): number {
+  let w = word.toLowerCase().replace(/[^a-z]/g, "");
+  if (!w) return 0;
+  if (w.length <= 3) return 1;
+  w = w.replace(/(?:[^laeiouy]es|ed|[^laeiouy]e)$/, "").replace(/^y/, "");
+  const groups = w.match(/[aeiouy]{1,2}/g);
+  return groups ? groups.length : 1;
 }
 
 function countTop(map: Map<string, number>): { word: string; count: number }[] {
@@ -164,12 +176,25 @@ export function analyzeProse(text: string): ProseAnalysis {
     monotonyRun: maxFlatRun,
   };
 
+  // Readability — standard Flesch formulas (an estimate; syllable count is heuristic).
+  const syllables = words.reduce((s, w) => s + countSyllables(w), 0);
+  const wps = sentences.count ? words.length / sentences.count : 0;
+  const spw = words.length ? syllables / words.length : 0;
+  const have = words.length > 0 && sentences.count > 0;
+  const readability = {
+    fleschEase: have ? Math.round((206.835 - 1.015 * wps - 84.6 * spw) * 10) / 10 : 0,
+    fkGrade: have ? Math.round((0.39 * wps + 11.8 * spw - 15.59) * 10) / 10 : 0,
+    syllablesPerWord: Math.round(spw * 100) / 100,
+    wordsPerSentence: Math.round(wps * 10) / 10,
+  };
+
   return {
     wordCount: words.length,
     charCount: text.replace(/\s/g, "").length,
     uniqueWords: freq.size,
     sentences,
     rhythm,
+    readability,
     slop,
     filterWords,
     adverbs,
