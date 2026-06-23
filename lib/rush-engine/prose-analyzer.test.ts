@@ -154,5 +154,6 @@ describe("analyzeProse", () => {
     expect(scan).toHaveLength(2);
     expect(scan[1].slop).toBeGreaterThan(scan[0].slop); // ch2 has slop, ch1 doesn't
     expect(scan.every((c) => c.words > 0)).toBe(true);
+    expect(scan[1].body).toContain("delved"); // body carried for click-to-load
   });
 });

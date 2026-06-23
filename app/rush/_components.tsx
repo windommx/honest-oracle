@@ -94,11 +94,12 @@ function DeltaTable({ title, deltas, note }: { title: string; deltas: Delta[]; n
   );
 }
 
-function Heatmap({ title, headers, rows, note }: {
+function Heatmap({ title, headers, rows, note, onRowClick }: {
   title: string;
   headers: string[];
   rows: { title: string; cells: { value: number; bad?: boolean }[] }[];
   note: string;
+  onRowClick?: (i: number) => void;
 }) {
   return (
     <div className="mt-3">
@@ -115,7 +116,11 @@ function Heatmap({ title, headers, rows, note }: {
           </thead>
           <tbody>
             {rows.map((r, i) => (
-              <tr key={`${r.title}-${i}`} className="border-b border-white/5 last:border-0">
+              <tr
+                key={`${r.title}-${i}`}
+                onClick={onRowClick ? () => onRowClick(i) : undefined}
+                className={`border-b border-white/5 last:border-0 ${onRowClick ? "cursor-pointer hover:bg-white/5" : ""}`}
+              >
                 <td className="text-left px-2 py-1 text-gray-300 truncate max-w-[160px]" title={r.title}>{r.title}</td>
                 {r.cells.map((c, j) => (
                   <td key={j} className={`px-2 py-1 text-center tabular-nums ${c.bad ? "text-red-400 font-semibold" : "text-gray-400"}`}>{c.value}</td>
@@ -355,7 +360,11 @@ export function ThaiAnalyzerModal({ onClose, initialText }: { onClose: () => voi
                 { value: c.echoes },
               ],
             }))}
-            note="แดง = บทที่อ่อนสุดบน signal นั้น (จังหวะแบนสุด/คลิเชมากสุด) เป็นการนับ ไม่ใช่คำตัดสิน"
+            note="คลิกแถวเพื่อโหลดบทนั้นมาวิเคราะห์ + ปุ่ม audit. แดง = บทอ่อนสุดบน signal นั้น เป็นการนับ ไม่ใช่คำตัดสิน"
+            onRowClick={(i) => {
+              setText(scan[i].body);
+              setShowScan(false);
+            }}
           />
         )}
         {a && (
@@ -721,7 +730,11 @@ export function ProseAnalyzerModal({ onClose, initialText }: { onClose: () => vo
                 { value: c.cv, bad: worst.cv === i },
               ],
             }))}
-            note="Red = weakest chapter on that signal (lowest ease/rhythm, most slop). Deterministic counts, not a verdict."
+            note="Click a row to load that chapter for analysis + one-click audit. Red = weakest chapter on that signal. Deterministic counts, not a verdict."
+            onRowClick={(i) => {
+              setText(scan[i].body);
+              setShowScan(false);
+            }}
           />
         )}
         {a && (

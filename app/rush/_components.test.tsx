@@ -123,6 +123,18 @@ describe("ProseAnalyzerModal", () => {
     expect(screen.getAllByText(/Chapter 2/).length).toBeGreaterThan(1);
   });
 
+  it("loads a chapter into the analyzer when its heatmap row is clicked", () => {
+    render(<ProseAnalyzerModal onClose={() => {}} />);
+    const ta = screen.getByPlaceholderText(/Paste English prose/i) as HTMLTextAreaElement;
+    fireEvent.change(ta, { target: { value: "## Chapter 1\nShe ran home.\n## Chapter 2\nHe delved into the tapestry." } });
+    fireEvent.click(screen.getByText(/Per-chapter scan/i));
+    // Click the row whose title cell is "Chapter 2"
+    const cell = screen.getAllByText("Chapter 2").find((el) => el.tagName === "TD")!;
+    fireEvent.click(cell.closest("tr")!);
+    expect(ta.value).toContain("delved");
+    expect(ta.value).not.toContain("She ran home");
+  });
+
   it("saves the current text as a named manuscript and lists it for loading", () => {
     render(<ProseAnalyzerModal onClose={() => {}} />);
     fireEvent.change(screen.getByPlaceholderText(/Paste English prose/i), {

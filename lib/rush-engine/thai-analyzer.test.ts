@@ -126,6 +126,7 @@ describe("analyzeThai", () => {
     expect(scan).toHaveLength(2);
     expect(scan[1].aiTells).toBeGreaterThan(scan[0].aiTells);
     expect(scan.every((c) => c.words > 0)).toBe(true);
+    expect(scan[1].body).toContain("น้ำตาไหลริน"); // body carried for click-to-load
   });
 
   it("exposes a non-empty cliché list", () => {

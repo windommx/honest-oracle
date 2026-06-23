@@ -312,6 +312,7 @@ export function thaiDeltas(before: ThaiAnalysis, after: ThaiAnalysis): ThaiMetri
 
 export interface ThaiChapterScan {
   title: string;
+  body: string;
   words: number;
   cv: number;
   dialogueRatio: number;
@@ -327,6 +328,7 @@ export function scanThaiManuscript(text: string): ThaiChapterScan[] {
       const a = analyzeThai(body);
       return {
         title,
+        body,
         words: a.wordCount,
         cv: a.rhythm.cv,
         dialogueRatio: a.dialogue.ratio,

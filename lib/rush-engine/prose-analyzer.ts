@@ -307,6 +307,7 @@ export function proseDeltas(before: ProseAnalysis, after: ProseAnalysis): Metric
 
 export interface ChapterScan {
   title: string;
+  body: string;
   words: number;
   fleschEase: number;
   cv: number;
@@ -322,6 +323,7 @@ export function scanManuscript(text: string): ChapterScan[] {
       const a = analyzeProse(body);
       return {
         title,
+        body,
         words: a.wordCount,
         fleschEase: a.readability.fleschEase,
         cv: a.rhythm.cv,
