@@ -42,10 +42,10 @@ describe("Dashboard", () => {
   it("shows the quick-action hub (Studio, analyzer, prompt tool)", async () => {
     mockFetch(200, { projects: [] });
     render(<DashboardPage />);
-    expect(await screen.findByText("Rush Studio")).toBeTruthy();
-    expect(screen.getByText("วิเคราะห์ร้อยแก้ว")).toBeTruthy();
-    const studioLink = screen.getByText("Rush Studio").closest("a");
-    expect(studioLink?.getAttribute("href")).toBe("/rush/studio");
+    // "Rush Studio" appears as a nav tab and a quick action — at least one links to /rush/studio
+    const studio = await screen.findAllByText("Rush Studio");
+    expect(studio.some((el) => el.closest("a")?.getAttribute("href") === "/rush/studio")).toBe(true);
+    expect(screen.getAllByText("วิเคราะห์ร้อยแก้ว").length).toBeGreaterThan(0);
   });
 
   it("lists locally-saved manuscripts even without login", async () => {
