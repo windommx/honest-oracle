@@ -5,7 +5,7 @@ import { X, Copy, Check, Download } from "lucide-react";
 import { MODULE_CATALOG, MODULE_GROUPS, type BookConfig, type PromptGroup } from "@/lib/rush-engine/engine";
 import { TH_MODULES } from "@/lib/rush-engine/th";
 import { analyzeThai, formatThaiReport } from "@/lib/rush-engine/thai-analyzer";
-import { analyzeProse, formatProseReport } from "@/lib/rush-engine/prose-analyzer";
+import { analyzeProse, formatProseReport, proseDeltas } from "@/lib/rush-engine/prose-analyzer";
 
 export const GROUP_COLORS: Record<PromptGroup, string> = {
   core: "border-[#c9a84c] text-[#c9a84c]",
@@ -349,8 +349,14 @@ function Chips({ items, tone }: { items: { word?: string; phrase?: string; count
 
 export function ProseAnalyzerModal({ onClose }: { onClose: () => void }) {
   const [text, setText] = useState("");
+  const [revised, setRevised] = useState("");
+  const [showCompare, setShowCompare] = useState(false);
   const [copiedAudit, setCopiedAudit] = useState<string | null>(null);
   const a = useMemo(() => (text.trim() ? analyzeProse(text) : null), [text]);
+  const deltas = useMemo(
+    () => (text.trim() && revised.trim() ? proseDeltas(analyzeProse(text), analyzeProse(revised)) : null),
+    [text, revised]
+  );
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
@@ -396,6 +402,43 @@ export function ProseAnalyzerModal({ onClose }: { onClose: () => void }) {
           placeholder="Paste English prose here…"
           className="input min-h-[140px] resize-y"
         />
+        <button
+          onClick={() => setShowCompare((v) => !v)}
+          className="mt-2 text-[0.7rem] text-[#c9a84c] hover:underline"
+        >
+          {showCompare ? "− Hide revision compare" : "+ Compare a revision (before → after)"}
+        </button>
+        {showCompare && (
+          <textarea
+            value={revised}
+            onChange={(e) => setRevised(e.target.value)}
+            placeholder="Paste the revised version here to see what measurably changed…"
+            className="input min-h-[120px] resize-y mt-2"
+          />
+        )}
+        {showCompare && deltas && (
+          <div className="mt-4">
+            <h3 className="text-xs font-semibold tracking-widest text-gray-400 uppercase mb-2">Before → After</h3>
+            <div className="rounded-lg border border-white/10 overflow-hidden">
+              {deltas.map((d) => {
+                const improved = d.good === "lower" ? d.delta < 0 : d.good === "higher" ? d.delta > 0 : null;
+                const color = d.delta === 0 || improved === null ? "text-gray-400" : improved ? "text-green-400" : "text-red-400";
+                return (
+                  <div key={d.label} className="flex items-center justify-between px-3 py-1.5 text-xs border-b border-white/5 last:border-0">
+                    <span className="text-gray-300">{d.label}</span>
+                    <span className="flex items-center gap-2">
+                      <span className="text-gray-500">{d.before} → {d.after}</span>
+                      <span className={`w-12 text-right tabular-nums ${color}`}>
+                        {d.delta > 0 ? `+${d.delta}` : d.delta}
+                      </span>
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+            <p className="text-[0.6rem] text-gray-500 mt-1">Green = measurably improved on that signal · gray = neutral metric. Counts, not a quality verdict.</p>
+          </div>
+        )}
         {a && (
           <div className="mt-4 space-y-4 text-sm">
             <ReportActions report={formatProseReport(a)} filename="prose-analysis.md" />

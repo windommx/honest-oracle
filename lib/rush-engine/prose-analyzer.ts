@@ -241,6 +241,39 @@ export function analyzeProse(text: string): ProseAnalysis {
   };
 }
 
+export interface MetricDelta {
+  label: string;
+  before: number;
+  after: number;
+  delta: number;
+  /** Which direction counts as an improvement (for colouring); "neutral" = no judgement. */
+  good: "lower" | "higher" | "neutral";
+}
+
+/** Compare two analyses metric-by-metric so a writer can see if a revision measurably improved. */
+export function proseDeltas(before: ProseAnalysis, after: ProseAnalysis): MetricDelta[] {
+  const filt = (a: ProseAnalysis) => a.filterWords.reduce((s, w) => s + w.count, 0);
+  const slopN = (a: ProseAnalysis) => a.slop.reduce((s, w) => s + w.count, 0);
+  const row = (label: string, b: number, af: number, good: MetricDelta["good"]): MetricDelta => ({
+    label,
+    before: b,
+    after: af,
+    delta: Math.round((af - b) * 10) / 10,
+    good,
+  });
+  return [
+    row("Words", before.wordCount, after.wordCount, "neutral"),
+    row("Flesch Reading Ease", before.readability.fleschEase, after.readability.fleschEase, "higher"),
+    row("Grade level (FK)", before.readability.fkGrade, after.readability.fkGrade, "neutral"),
+    row("Rhythm variation (CV%)", before.rhythm.cv, after.rhythm.cv, "higher"),
+    row("AI-slop terms", slopN(before), slopN(after), "lower"),
+    row("Told emotions", before.telling.count, after.telling.count, "lower"),
+    row("Filter / crutch words", filt(before), filt(after), "lower"),
+    row("-ly adverbs", before.adverbs.count, after.adverbs.count, "lower"),
+    row("Possible passive", before.passive.count, after.passive.count, "lower"),
+  ];
+}
+
 const joinCounts = (items: { word?: string; phrase?: string; count: number }[]) =>
   items.length ? items.map((i) => `${i.word ?? i.phrase} ×${i.count}`).join(", ") : "—";
 

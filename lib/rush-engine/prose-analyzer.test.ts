@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { analyzeProse, tokenizeProse, countSyllables, formatProseReport, SLOP_TERMS } from "./prose-analyzer";
+import { analyzeProse, tokenizeProse, countSyllables, formatProseReport, proseDeltas, SLOP_TERMS } from "./prose-analyzer";
 
 describe("tokenizeProse", () => {
   it("splits English into lowercased word tokens", () => {
@@ -92,5 +92,18 @@ describe("analyzeProse", () => {
     expect(md).toContain("delve");
     expect(md).toContain("Told emotions");
     expect(md).toContain("not quality scores");
+  });
+
+  it("diffs two drafts so a revision's improvement is measurable", () => {
+    const before = analyzeProse("She was very angry. He just delved into the rich tapestry.");
+    const after = analyzeProse("She slammed the door. He opened the report.");
+    const deltas = proseDeltas(before, after);
+    const slop = deltas.find((d) => d.label === "AI-slop terms")!;
+    expect(slop.before).toBeGreaterThan(0);
+    expect(slop.after).toBe(0);
+    expect(slop.delta).toBeLessThan(0); // fewer slop terms after — improvement (good=lower)
+    expect(slop.good).toBe("lower");
+    const told = deltas.find((d) => d.label === "Told emotions")!;
+    expect(told.after).toBeLessThan(told.before);
   });
 });

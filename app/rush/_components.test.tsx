@@ -70,4 +70,17 @@ describe("ProseAnalyzerModal", () => {
     expect(arg).toContain("delve");
     expect(arg).not.toContain("[INSERT DRAFT HERE]");
   });
+
+  it("shows a before→after delta table when comparing a revision", () => {
+    render(<ProseAnalyzerModal onClose={() => {}} />);
+    fireEvent.change(screen.getByPlaceholderText(/Paste English prose/i), {
+      target: { value: "She was very angry. He delved into the tapestry." },
+    });
+    fireEvent.click(screen.getByText(/Compare a revision/i));
+    fireEvent.change(screen.getByPlaceholderText(/Paste the revised version/i), {
+      target: { value: "She slammed the door. He read the report." },
+    });
+    expect(screen.getByText(/Before → After/i)).toBeTruthy();
+    expect(screen.getByText("AI-slop terms")).toBeTruthy();
+  });
 });
