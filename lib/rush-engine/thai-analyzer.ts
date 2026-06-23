@@ -35,6 +35,20 @@ export const THAI_AI_TELLS = [
   "บทเรียนล้ำค่า", "ทุกอย่างจะดีขึ้น", "แสงสว่างในความมืด", "ก้าวข้ามผ่าน",
 ];
 
+// "Telling" markers — filter/cognition verbs + directly-named emotions. A high
+// density of these is a deterministic signal that a passage TELLS emotion instead
+// of SHOWING it (pairs with the NIS Show-vs-Tell audit). This is a measured
+// word-match, NOT a quality verdict — the user sees which words matched and decides.
+export const THAI_TELL_WORDS = [
+  // filter / cognition verbs (distance the reader from the moment)
+  "รู้สึก", "ตระหนัก", "นึกว่า", "คิดว่า", "สังเกตเห็น", "รับรู้ว่า", "เข้าใจว่า",
+  // directly named emotions
+  "โกรธ", "เศร้า", "ดีใจ", "เสียใจ", "กลัว", "ตื่นเต้น", "เหงา", "อิจฉา",
+  "ผิดหวัง", "ประหม่า", "กังวล", "โมโห", "หงุดหงิด", "ตกใจ", "อาย", "เขิน",
+  "เกลียด", "สงสาร", "ภูมิใจ", "สับสน", "เบื่อ", "สิ้นหวัง", "ซาบซึ้ง",
+  "ปลื้ม", "ละอาย", "ท้อแท้", "หวาดกลัว", "ดีอกดีใจ", "ขมขื่น",
+];
+
 const NEAR_WINDOW = 40; // tokens — a content word repeated within this span is a near-repeat
 
 export interface ThaiAnalysis {
@@ -45,6 +59,8 @@ export interface ThaiAnalysis {
   sentences: { count: number; avgWords: number; longest: number };
   /** Dialogue signals — for the NIS Dialogue-Fatigue check (deterministic). */
   dialogue: { ratio: number; lines: number; talkingHeadRun: number };
+  /** Telling signals — filter verbs + named emotions (for the NIS Show-vs-Tell check). */
+  telling: { count: number; ratio: number; words: { word: string; count: number }[] };
   topWords: { word: string; count: number }[];
   echoes: { word: string; count: number }[];
   /** Content words repeated within a short span (≤40 tokens) — local repetition. */
@@ -159,12 +175,24 @@ export function analyzeThai(text: string): ThaiAnalysis {
     talkingHeadRun: maxRun,
   };
 
+  // Telling signal: count filter verbs + named-emotion words (non-overlapping list).
+  const tellWords = THAI_TELL_WORDS.map((word) => ({ word, count: text.split(word).length - 1 }))
+    .filter((t) => t.count > 0)
+    .sort((a, b) => b.count - a.count);
+  const tellCount = tellWords.reduce((s, t) => s + t.count, 0);
+  const telling = {
+    count: tellCount,
+    ratio: words.length ? Math.round((tellCount / words.length) * 1000) / 10 : 0, // per-100-words, 1 decimal
+    words: tellWords,
+  };
+
   return {
     wordCount: words.length,
     charCount: text.replace(/\s/g, "").length,
     uniqueWords: freq.size,
     sentences,
     dialogue,
+    telling,
     topWords,
     echoes,
     nearRepeats,

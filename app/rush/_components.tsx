@@ -88,6 +88,30 @@ export function ThaiAnalyzerModal({ onClose }: { onClose: () => void }) {
             )}
 
             <div>
+              <h3 className="text-xs font-semibold tracking-widest text-gray-400 uppercase mb-2">
+                บอก vs แสดง — คำบอกอารมณ์ตรง ๆ ({a.telling.ratio}/100 คำ)
+              </h3>
+              {a.telling.words.length === 0 ? (
+                <p className="text-xs text-green-400">✓ ไม่พบกริยากรอง/คำบอกอารมณ์ตรง ๆ</p>
+              ) : (
+                <>
+                  <div className="flex flex-wrap gap-1.5">
+                    {a.telling.words.slice(0, 20).map((t) => (
+                      <span key={t.word} className="text-xs px-2 py-0.5 rounded border border-fuchsia-400/40 text-fuchsia-300">
+                        {t.word} ×{t.count}
+                      </span>
+                    ))}
+                  </div>
+                  {a.telling.ratio >= 2 && (
+                    <p className="text-[0.65rem] text-fuchsia-300/70 mt-1.5">
+                      ความหนาแน่นของคำ &quot;บอก&quot; ค่อนข้างสูง — ลองรัน NIS Show-vs-Tell audit เพื่อหาช่วงที่ควรเปลี่ยนเป็น &quot;แสดง&quot;
+                    </p>
+                  )}
+                </>
+              )}
+            </div>
+
+            <div>
               <h3 className="text-xs font-semibold tracking-widest text-gray-400 uppercase mb-2">AI-tell / คำคลิเช</h3>
               {a.aiTells.length === 0 ? (
                 <p className="text-xs text-green-400">✓ ไม่พบคำคลิเชแบบ AI</p>

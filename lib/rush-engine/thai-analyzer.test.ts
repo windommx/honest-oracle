@@ -38,6 +38,20 @@ describe("analyzeThai", () => {
     expect(a.dialogue.ratio).toBeGreaterThan(0);
   });
 
+  it("counts telling markers (filter verbs + named emotions)", () => {
+    const a = analyzeThai("เธอรู้สึกโกรธมาก เขาเสียใจและกลัว");
+    const matched = a.telling.words.map((w) => w.word);
+    expect(matched).toContain("รู้สึก");
+    expect(matched).toContain("โกรธ");
+    expect(a.telling.count).toBeGreaterThanOrEqual(4);
+    expect(a.telling.ratio).toBeGreaterThan(0);
+  });
+
+  it("returns no telling markers for shown prose", () => {
+    const a = analyzeThai("เขากำมือแน่นจนข้อนิ้วขาว แล้วผลักประตูจนกระแทกผนัง");
+    expect(a.telling.count).toBe(0);
+  });
+
   it("detects near-repeats (same content word within a short span)", () => {
     const a = analyzeThai("แมวดำกระโดดข้ามรั้ว แล้วแมวขาวก็เดินตามมา");
     expect(a.nearRepeats.some((r) => r.word === "แมว")).toBe(true);
