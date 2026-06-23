@@ -90,6 +90,18 @@ describe("analyzeProse", () => {
     expect(activeText.passive.count).toBe(0);
   });
 
+  it("does not flag be-verb + adjective/number as passive (red, ten, open, often)", () => {
+    const a = analyzeProse("The sky is red. He is ten. The door is open. She was often late.");
+    expect(a.passive.count).toBe(0);
+  });
+
+  it("does not double-count overlapping slop phrases (a testament to ⊃ testament)", () => {
+    const a = analyzeProse("This book is a testament to her skill.");
+    const testament = a.slop.find((s) => s.phrase === "testament");
+    expect(testament).toBeUndefined(); // absorbed by "a testament to"
+    expect(a.slop.find((s) => s.phrase === "a testament to")?.count).toBe(1);
+  });
+
   it("exposes a non-empty slop term list", () => {
     expect(SLOP_TERMS.length).toBeGreaterThan(10);
   });

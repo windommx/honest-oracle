@@ -5,6 +5,7 @@
 // ╚══════════════════════════════════════════════════════════════════╝
 
 import { splitChapters } from "./chapters";
+import { countPhrases } from "./text-util";
 export { splitChapters }; // re-exported for callers importing it from the analyzer
 
 // AI-slop words & hollow formulas (substring match on lowercased text).
@@ -88,6 +89,16 @@ export interface ProseAnalysis {
   passive: { count: number; ratio: number; samples: string[] };
 }
 
+// Common -ed/-en words that are NOT past participles (adjectives/nouns/adverbs),
+// to cut the worst false positives of the be-verb + "ends in ed/en" heuristic.
+const NOT_PARTICIPLE = new Set([
+  "red", "ten", "then", "when", "even", "seven", "eleven", "often", "open", "green",
+  "screen", "between", "keen", "golden", "wooden", "sudden", "garden", "kitchen",
+  "oven", "children", "women", "men", "token", "linen", "siren", "dozen", "citizen",
+  "naked", "wicked", "sacred", "hundred", "kindred", "hatred", "aged", "rugged",
+  "ragged", "crooked", "dogged", "bed", "wed", "shed", "fed", "led", "bred", "sled",
+]);
+
 /** Heuristic passive-voice finder: be-verb (+ optional adverb) + a past participle. */
 export function detectPassive(text: string): { count: number; samples: string[] } {
   const re = /\b(am|is|are|was|were|be|been|being|gets?|got)\b((?:\s+\w+ly)?\s+)([a-z]+)/gi;
@@ -96,6 +107,7 @@ export function detectPassive(text: string): { count: number; samples: string[] 
   let m: RegExpExecArray | null;
   while ((m = re.exec(text)) !== null) {
     const pp = m[3].toLowerCase();
+    if (NOT_PARTICIPLE.has(pp)) continue;
     if (/(?:ed|en)$/.test(pp) || IRREGULAR_PP.has(pp)) {
       count++;
       if (samples.length < 10) samples.push(`${m[1]}${m[2]}${m[3]}`.replace(/\s+/g, " ").trim());
@@ -131,10 +143,9 @@ export function analyzeProse(text: string): ProseAnalysis {
   const freq = new Map<string, number>();
   words.forEach((w) => freq.set(w, (freq.get(w) ?? 0) + 1));
 
-  // Slop: substring match (covers multi-word formulas).
-  const slop = SLOP_TERMS.map((phrase) => ({ phrase, count: lower.split(phrase).length - 1 }))
-    .filter((s) => s.count > 0)
-    .sort((a, b) => b.count - a.count);
+  // Slop: substring match (covers multi-word formulas), overlap-corrected so e.g.
+  // "a testament to" isn't also counted as "testament".
+  const slop = countPhrases(lower, SLOP_TERMS).sort((a, b) => b.count - a.count);
 
   // Filter words.
   const filterMap = new Map<string, number>();
@@ -289,18 +300,20 @@ export interface ChapterScan {
 
 /** Per-chapter deterministic scorecard — find the weakest chapters at a glance. */
 export function scanManuscript(text: string): ChapterScan[] {
-  return splitChapters(text).map(({ title, body }) => {
-    const a = analyzeProse(body);
-    return {
-      title,
-      words: a.wordCount,
-      fleschEase: a.readability.fleschEase,
-      cv: a.rhythm.cv,
-      slop: a.slop.reduce((s, w) => s + w.count, 0),
-      telling: a.telling.count,
-      passive: a.passive.count,
-    };
-  });
+  return splitChapters(text)
+    .map(({ title, body }) => {
+      const a = analyzeProse(body);
+      return {
+        title,
+        words: a.wordCount,
+        fleschEase: a.readability.fleschEase,
+        cv: a.rhythm.cv,
+        slop: a.slop.reduce((s, w) => s + w.count, 0),
+        telling: a.telling.count,
+        passive: a.passive.count,
+      };
+    })
+    .filter((c) => c.words > 0); // drop empty header-only chunks
 }
 
 const joinCounts = (items: { word?: string; phrase?: string; count: number }[]) =>

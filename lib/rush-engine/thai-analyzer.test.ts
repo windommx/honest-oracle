@@ -83,6 +83,19 @@ describe("analyzeThai", () => {
     expect(a.aiTells).toHaveLength(0);
   });
 
+  it("does not double-count overlapping clichés (หัวใจสลาย ⊃ ใจสลาย)", () => {
+    const a = analyzeThai("หัวใจสลาย");
+    expect(a.aiTells.find((t) => t.phrase === "หัวใจสลาย")?.count).toBe(1);
+    expect(a.aiTells.find((t) => t.phrase === "ใจสลาย")).toBeUndefined();
+  });
+
+  it("does not double-count overlapping telling words (หวาดกลัว ⊃ กลัว)", () => {
+    const a = analyzeThai("เธอหวาดกลัว");
+    expect(a.telling.words.find((w) => w.word === "หวาดกลัว")?.count).toBe(1);
+    expect(a.telling.words.find((w) => w.word === "กลัว")).toBeUndefined();
+    expect(a.telling.count).toBe(1);
+  });
+
   it("renders a Thai Markdown report with key sections", () => {
     const md = formatThaiReport(analyzeThai("เธอรู้สึกเศร้า น้ำตาไหลริน"));
     expect(md).toContain("# รายงานวิเคราะห์ภาษาไทย");

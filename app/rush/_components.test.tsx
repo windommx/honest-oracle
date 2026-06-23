@@ -84,6 +84,19 @@ describe("ProseAnalyzerModal", () => {
     expect(arg).not.toContain("[INSERT DRAFT HERE]");
   });
 
+  it("inserts text containing '$' verbatim (no replacement-pattern corruption)", () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.assign(navigator, { clipboard: { writeText } });
+    render(<ProseAnalyzerModal onClose={() => {}} />);
+    fireEvent.change(screen.getByPlaceholderText(/Paste English prose/i), {
+      target: { value: "The deal was worth $5 and cost $1,000 to delve into the tapestry." },
+    });
+    fireEvent.click(screen.getByText(/Anti-AI-Slop rewrite/i));
+    const arg = writeText.mock.calls[0][0] as string;
+    expect(arg).toContain("$5");
+    expect(arg).toContain("$1,000");
+  });
+
   it("shows a before→after delta table when comparing a revision", () => {
     render(<ProseAnalyzerModal onClose={() => {}} />);
     fireEvent.change(screen.getByPlaceholderText(/Paste English prose/i), {

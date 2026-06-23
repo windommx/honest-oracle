@@ -158,7 +158,9 @@ export function ThaiAnalyzerModal({ onClose }: { onClose: () => void }) {
   const copyAudit = async (id: string) => {
     const build = TH_MODULES[id];
     if (!build) return;
-    const prompt = build({} as BookConfig).replace(/\[วางต้นฉบับที่นี่\]|\[วางข้อความที่นี่\]/, text.trim());
+    // Function replacer so `$` sequences in the pasted text aren't treated as
+    // special replacement patterns ($&, $1, $$).
+    const prompt = build({} as BookConfig).replace(/\[วางต้นฉบับที่นี่\]|\[วางข้อความที่นี่\]/, () => text.trim());
     await navigator.clipboard.writeText(prompt);
     setCopiedAudit(id);
     setTimeout(() => setCopiedAudit((c) => (c === id ? null : c)), 2000);
@@ -506,7 +508,9 @@ export function ProseAnalyzerModal({ onClose }: { onClose: () => void }) {
   const copyAudit = async (id: string) => {
     const mod = MODULE_CATALOG.find((m) => m.id === id);
     if (!mod) return;
-    const prompt = mod.build({} as BookConfig).replace(/\[INSERT (?:DRAFT|MANUSCRIPT)[^\]]*\]/, text.trim());
+    // Function replacer so `$` in pasted prose (e.g. "$5") isn't treated as a
+    // special replacement pattern.
+    const prompt = mod.build({} as BookConfig).replace(/\[INSERT (?:DRAFT|MANUSCRIPT)[^\]]*\]/, () => text.trim());
     await navigator.clipboard.writeText(prompt);
     setCopiedAudit(id);
     setTimeout(() => setCopiedAudit((c) => (c === id ? null : c)), 2000);

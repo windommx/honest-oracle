@@ -4,6 +4,7 @@
 // ╚══════════════════════════════════════════════════════════════════╝
 
 import { splitChapters } from "./chapters";
+import { countPhrases } from "./text-util";
 
 const THAI_STOPWORDS = new Set([
   "ที่", "และ", "เป็น", "ของ", "ใน", "มี", "ไม่", "ได้", "จะ", "ก็", "ให้", "แต่", "กับ", "นี้",
@@ -139,10 +140,8 @@ export function analyzeThai(text: string): ThaiAnalysis {
     .sort((a, b) => b[1] - a[1])
     .map(([word, count]) => ({ word, count }));
 
-  const aiTells = THAI_AI_TELLS.map((phrase) => ({
-    phrase,
-    count: text.split(phrase).length - 1,
-  })).filter((t) => t.count > 0);
+  // Overlap-corrected so e.g. "หัวใจสลาย" isn't also counted as "ใจสลาย".
+  const aiTells = countPhrases(text, THAI_AI_TELLS);
 
   // Sentence stats: split on terminal punctuation and newlines (Thai rarely uses ".").
   const sentenceLens = text
@@ -203,9 +202,10 @@ export function analyzeThai(text: string): ThaiAnalysis {
     talkingHeadRun: maxRun,
   };
 
-  // Telling signal: count filter verbs + named-emotion words (non-overlapping list).
-  const tellWords = THAI_TELL_WORDS.map((word) => ({ word, count: text.split(word).length - 1 }))
-    .filter((t) => t.count > 0)
+  // Telling signal: filter verbs + named-emotion words, overlap-corrected so e.g.
+  // "หวาดกลัว" isn't also counted as "กลัว".
+  const tellWords = countPhrases(text, THAI_TELL_WORDS)
+    .map(({ phrase, count }) => ({ word: phrase, count }))
     .sort((a, b) => b.count - a.count);
   const tellCount = tellWords.reduce((s, t) => s + t.count, 0);
   const telling = {
@@ -299,16 +299,18 @@ export interface ThaiChapterScan {
 
 /** Per-chapter deterministic scorecard for a Thai manuscript. */
 export function scanThaiManuscript(text: string): ThaiChapterScan[] {
-  return splitChapters(text).map(({ title, body }) => {
-    const a = analyzeThai(body);
-    return {
-      title,
-      words: a.wordCount,
-      cv: a.rhythm.cv,
-      dialogueRatio: a.dialogue.ratio,
-      telling: a.telling.count,
-      aiTells: a.aiTells.length,
-      echoes: a.echoes.length,
-    };
-  });
+  return splitChapters(text)
+    .map(({ title, body }) => {
+      const a = analyzeThai(body);
+      return {
+        title,
+        words: a.wordCount,
+        cv: a.rhythm.cv,
+        dialogueRatio: a.dialogue.ratio,
+        telling: a.telling.count,
+        aiTells: a.aiTells.length,
+        echoes: a.echoes.length,
+      };
+    })
+    .filter((c) => c.words > 0); // drop empty header-only chunks
 }
