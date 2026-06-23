@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Crown, BookOpen, Plus, Trash2, Share2, Lock, ArrowRight, Loader2, Search } from "lucide-react";
+import { Crown, BookOpen, Plus, Trash2, Share2, Lock, ArrowRight, Loader2, Search, Play, Wand2, Sparkles } from "lucide-react";
 import { BOOK_TYPES, type BookConfig, type BookTypeKey } from "@/lib/rush-engine/engine";
 import { titleCase } from "../_utils";
 import { listManuscripts, deleteManuscript, type StoredManuscript } from "../_manuscript-store";
@@ -125,6 +125,31 @@ export default function DashboardPage() {
               <Plus className="w-4 h-4" />
               สร้างหนังสือใหม่
             </Link>
+          </div>
+
+          {/* quick actions — the whole Rush workflow in one place */}
+          <div className="grid sm:grid-cols-3 gap-3 mb-6">
+            <QuickAction
+              href="/rush"
+              icon={<Wand2 className="w-5 h-5" />}
+              title="เครื่องมือ prompt"
+              sub="สร้างชุด prompt แต่งหนังสือ"
+              gradient="from-indigo-500/30 to-purple-600/20"
+            />
+            <QuickAction
+              href="/rush/studio"
+              icon={<Play className="w-5 h-5" />}
+              title="Rush Studio"
+              sub="รัน prompt ด้วย key ของคุณ"
+              gradient="from-amber-500/30 to-orange-600/20"
+            />
+            <QuickAction
+              href="/rush?tool=thai"
+              icon={<Sparkles className="w-5 h-5" />}
+              title="วิเคราะห์ร้อยแก้ว"
+              sub="ตรวจไทย/EN + NIS audit ฟรี"
+              gradient="from-emerald-500/30 to-teal-600/20"
+            />
           </div>
 
           {/* stats row */}
@@ -290,6 +315,22 @@ export default function DashboardPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+function QuickAction({ href, icon, title, sub, gradient }: { href: string; icon: React.ReactNode; title: string; sub: string; gradient: string }) {
+  return (
+    <Link
+      href={href}
+      className={`group glass-card rounded-2xl p-4 border border-white/5 hover:border-[#c9a84c]/40 transition-colors flex items-center gap-3 bg-gradient-to-br ${gradient}`}
+    >
+      <span className="w-10 h-10 rounded-xl bg-black/30 flex items-center justify-center text-[#c9a84c] shrink-0">{icon}</span>
+      <span className="min-w-0">
+        <span className="block text-sm font-semibold text-gray-100">{title}</span>
+        <span className="block text-[0.7rem] text-gray-400 truncate">{sub}</span>
+      </span>
+      <ArrowRight className="w-4 h-4 text-gray-500 ml-auto group-hover:text-[#c9a84c] transition-colors shrink-0" />
+    </Link>
   );
 }
 

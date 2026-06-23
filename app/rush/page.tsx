@@ -146,6 +146,9 @@ export default function RushPage() {
         else setShowProse(true);
       }
     }
+    const tool = params.get("tool");
+    if (tool === "thai") setShowAnalyzer(true);
+    else if (tool === "prose") setShowProse(true);
     hydratedRef.current = true;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

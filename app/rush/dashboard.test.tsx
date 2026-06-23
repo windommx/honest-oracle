@@ -39,6 +39,15 @@ describe("Dashboard", () => {
     expect(await screen.findByText(/เข้าสู่ระบบเพื่อบันทึก/)).toBeTruthy();
   });
 
+  it("shows the quick-action hub (Studio, analyzer, prompt tool)", async () => {
+    mockFetch(200, { projects: [] });
+    render(<DashboardPage />);
+    expect(await screen.findByText("Rush Studio")).toBeTruthy();
+    expect(screen.getByText("วิเคราะห์ร้อยแก้ว")).toBeTruthy();
+    const studioLink = screen.getByText("Rush Studio").closest("a");
+    expect(studioLink?.getAttribute("href")).toBe("/rush/studio");
+  });
+
   it("lists locally-saved manuscripts even without login", async () => {
     mockFetch(401, {});
     saveManuscript({ title: "ร่างบทที่หนึ่ง", lang: "th", text: "เนื้อเรื่อง" });
