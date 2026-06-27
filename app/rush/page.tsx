@@ -65,7 +65,11 @@ export default function RushPage() {
   const [language, setLanguage] = useState<BookConfig["language"]>("thai");
   const [outline, setOutline] = useState("");
   const [storyBible, setStoryBible] = useState("");
-  const [promptLanguage, setPromptLanguage] = useState<"en" | "th">("en");
+  // Default matches the default book language (thai) so a Thai author gets Thai
+  // scaffolding — incl. Thai title/blurb/KDP — out of the box.
+  const [promptLanguage, setPromptLanguage] = useState<"en" | "th">("th");
+  const [promptLangTouched, setPromptLangTouched] = useState(false);
+  const couplePrimed = useRef(false);
 
   const [groups, setGroups] = useState<OptionalGroup[]>(defaultGroupsFor("nonfiction"));
   const [prompts, setPrompts] = useState<GeneratedPrompt[]>([]);
@@ -153,6 +157,17 @@ export default function RushPage() {
     hydratedRef.current = true;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Couple prompt language to book language until the user overrides it: a Thai/
+  // bilingual book uses Thai scaffolding, an English book uses English. Skips the
+  // first run (mount/restore owns the initial value) and any manual override.
+  useEffect(() => {
+    if (!couplePrimed.current) {
+      couplePrimed.current = true;
+      return;
+    }
+    if (!promptLangTouched) setPromptLanguage(language === "english" ? "en" : "th");
+  }, [language, promptLangTouched]);
 
   // Autosave the working draft to localStorage (after the initial restore).
   useEffect(() => {
@@ -350,7 +365,8 @@ export default function RushPage() {
     setLanguage(cfg.language);
     setOutline(cfg.outline ?? "");
     setStoryBible(cfg.storyBible ?? "");
-    setPromptLanguage(cfg.promptLanguage ?? "en");
+    setPromptLanguage(cfg.promptLanguage ?? (cfg.language === "english" ? "en" : "th"));
+    setPromptLangTouched(true); // a loaded/imported project carries an explicit choice
   }
 
   async function toggleShare() {
@@ -548,7 +564,10 @@ export default function RushPage() {
                   {(["en", "th"] as const).map((pl) => (
                     <button
                       key={pl}
-                      onClick={() => setPromptLanguage(pl)}
+                      onClick={() => {
+                        setPromptLanguage(pl);
+                        setPromptLangTouched(true);
+                      }}
                       className={`flex-1 py-2 rounded-lg border text-xs transition-colors ${
                         promptLanguage === pl ? "border-[#c9a84c] text-[#c9a84c] bg-[#c9a84c]/10" : "border-white/10 text-gray-400 hover:border-[#c9a84c]/40"
                       }`}
