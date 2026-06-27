@@ -115,7 +115,21 @@ const NOT_PARTICIPLE = new Set([
   "ragged", "crooked", "dogged", "bed", "wed", "shed", "fed", "led", "bred", "sled",
 ]);
 
-/** Heuristic passive-voice finder: be-verb (+ optional adverb) + a past participle. */
+// High-frequency -ed/-en PREDICATE ADJECTIVES — "she was tired", "he is excited".
+// These are copular, not passive voice; counting them as passive penalizes exactly
+// the emotional prose fiction uses most. (Genuine agentless passives like "was made"
+// / "was killed" are NOT here, so they still count.)
+const COPULAR_ADJ = new Set([
+  "tired", "interested", "excited", "bored", "scared", "worried", "surprised",
+  "confused", "exhausted", "pleased", "frightened", "amazed", "annoyed", "ashamed",
+  "delighted", "depressed", "disappointed", "embarrassed", "frustrated", "satisfied",
+  "terrified", "thrilled", "relaxed", "relieved", "concerned", "determined",
+  "married", "experienced", "talented", "gifted", "supposed", "used",
+]);
+
+/** Heuristic passive-voice finder: be-verb (+ optional adverb) + a past participle.
+ *  Excludes common predicate adjectives (copular "be") to avoid over-flagging
+ *  emotional prose; agentless passives ("was made") are kept. */
 export function detectPassive(text: string): { count: number; samples: string[] } {
   const re = /\b(am|is|are|was|were|be|been|being|gets?|got)\b((?:\s+\w+ly)?\s+)([a-z]+)/gi;
   const samples: string[] = [];
@@ -123,7 +137,7 @@ export function detectPassive(text: string): { count: number; samples: string[] 
   let m: RegExpExecArray | null;
   while ((m = re.exec(text)) !== null) {
     const pp = m[3].toLowerCase();
-    if (NOT_PARTICIPLE.has(pp)) continue;
+    if (NOT_PARTICIPLE.has(pp) || COPULAR_ADJ.has(pp)) continue;
     if (/(?:ed|en)$/.test(pp) || IRREGULAR_PP.has(pp)) {
       count++;
       if (samples.length < 10) samples.push(`${m[1]}${m[2]}${m[3]}`.replace(/\s+/g, " ").trim());

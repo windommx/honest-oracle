@@ -66,6 +66,12 @@ describe("analyzeThai", () => {
     expect(a.telling.count).toBe(0);
   });
 
+  it("reports a non-zero dialogue ratio for dash-style dialogue", () => {
+    const a = analyzeThai("— เธอมาทำไม\n— ฉันมาหาคำตอบ\nเขาเงียบไป");
+    expect(a.dialogue.lines).toBeGreaterThanOrEqual(2);
+    expect(a.dialogue.ratio).toBeGreaterThan(0); // ratio + line-count now agree
+  });
+
   it("detects near-repeats (same content word within a short span)", () => {
     const a = analyzeThai("แมวดำกระโดดข้ามรั้ว แล้วแมวขาวก็เดินตามมา");
     expect(a.nearRepeats.some((r) => r.word === "แมว")).toBe(true);

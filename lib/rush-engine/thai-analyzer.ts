@@ -213,8 +213,15 @@ export function analyzeThai(text: string): ThaiAnalysis {
       run = 0;
     }
   }
+  // Count dialogue words from BOTH quoted spans AND dash-opened lines, so ratio and
+  // line-count use one dialogue model (a dash-style manuscript no longer reports
+  // ratio=0% while talkingHeadRun is large).
   const quoted = text.match(/"[^"]*"|“[^”]*”|«[^»]*»|「[^」]*」|‘[^’]*’/g) ?? [];
-  const dialogueWords = quoted.reduce((s, q) => s + tokenizeThai(q).length, 0);
+  let dialogueWords = quoted.reduce((s, q) => s + tokenizeThai(q).length, 0);
+  for (const l of lines) {
+    const dash = l.match(/^[—–-]\s+(.*)$/);
+    if (dash && !/["“”«»「」‘’]/.test(l)) dialogueWords += tokenizeThai(dash[1]).length;
+  }
   const dialogue = {
     ratio: words.length ? Math.round((dialogueWords / words.length) * 100) : 0,
     lines: dlgLines,

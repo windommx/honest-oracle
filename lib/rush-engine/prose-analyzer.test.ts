@@ -95,6 +95,12 @@ describe("analyzeProse", () => {
     expect(a.passive.count).toBe(0);
   });
 
+  it("does not count predicate adjectives as passive, but keeps agentless passives", () => {
+    expect(analyzeProse("She was tired. He is excited. They were bored and worried.").passive.count).toBe(0);
+    // genuine agentless passives still count
+    expect(analyzeProse("Mistakes were made. The window was shattered.").passive.count).toBeGreaterThanOrEqual(2);
+  });
+
   it("flags mechanical issues (double space, repeated word, space before comma)", () => {
     const a = analyzeProse("He went  home and and sat , quietly.");
     const issues = a.mechanics.map((m) => m.issue);
