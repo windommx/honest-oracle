@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireUser } from "@/lib/server/session";
 import {
   buildProviderRequest,
+  isEndorsedModel,
   parseProviderError,
   parseProviderResponse,
   type Provider,
@@ -29,6 +30,10 @@ export async function POST(request: NextRequest) {
   }
   if (!body.apiKey || !body.model || !body.prompt) {
     return NextResponse.json({ error: "Missing apiKey, model, or prompt" }, { status: 400 });
+  }
+  // Only relay endorsed models — don't forward arbitrary model strings upstream.
+  if (!isEndorsedModel(provider, body.model)) {
+    return NextResponse.json({ error: "Unsupported model" }, { status: 400 });
   }
 
   // Abuse guard: cap the request size and the requested completion length.

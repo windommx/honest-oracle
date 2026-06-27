@@ -1,5 +1,14 @@
 import { describe, it, expect } from "vitest";
-import { buildProviderRequest, parseProviderResponse, parseProviderError, PROVIDERS } from "./llm-provider";
+import { buildProviderRequest, parseProviderResponse, parseProviderError, isEndorsedModel, PROVIDERS } from "./llm-provider";
+
+describe("isEndorsedModel", () => {
+  it("accepts allowlisted models and rejects arbitrary ones", () => {
+    expect(isEndorsedModel("anthropic", PROVIDERS[0].models[0])).toBe(true);
+    expect(isEndorsedModel("anthropic", "claude-evil-preview")).toBe(false);
+    expect(isEndorsedModel("openai", "gpt-4o")).toBe(true);
+    expect(isEndorsedModel("openai", "../etc/passwd")).toBe(false);
+  });
+});
 
 describe("buildProviderRequest", () => {
   it("builds an Anthropic messages request with the key in x-api-key (not logged elsewhere)", () => {

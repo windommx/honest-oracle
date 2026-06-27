@@ -21,6 +21,12 @@ export const PROVIDERS: { id: Provider; label: string; models: string[]; keyHint
   },
 ];
 
+/** Whether (provider, model) is in the endorsed allowlist (PROVIDERS[].models). */
+export function isEndorsedModel(provider: Provider, model: string): boolean {
+  const p = PROVIDERS.find((x) => x.id === provider);
+  return !!p && p.models.includes(model);
+}
+
 export interface RunInput {
   provider: Provider;
   model: string;

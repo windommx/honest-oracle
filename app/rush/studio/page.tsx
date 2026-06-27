@@ -11,6 +11,7 @@ export default function StudioPage() {
   const meta = useMemo(() => PROVIDERS.find((p) => p.id === provider)!, [provider]);
   const [model, setModel] = useState(meta.models[0]);
   const [apiKey, setApiKey] = useState("");
+  const [rememberKey, setRememberKey] = useState(false);
   const [system, setSystem] = useState("");
   const [prompt, setPrompt] = useState("");
   const [output, setOutput] = useState("");
@@ -19,11 +20,25 @@ export default function StudioPage() {
   const [saved, setSaved] = useState(false);
   const [saveLang, setSaveLang] = useState<"th" | "en">("th");
 
-  // The key lives only in this browser (and transits the proxy per run). Per provider.
+  // One-time migration: delete any provider keys a previous build leaked to
+  // localStorage (it now lives in memory, or tab-scoped sessionStorage on opt-in).
+  useEffect(() => {
+    try {
+      Object.keys(window.localStorage)
+        .filter((k) => k.startsWith("rush.studio.key."))
+        .forEach((k) => window.localStorage.removeItem(k));
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  // Load the key only if the user opted into tab-scoped persistence (sessionStorage).
   useEffect(() => {
     setModel(meta.models[0]);
     try {
-      setApiKey(window.localStorage.getItem(`rush.studio.key.${provider}`) ?? "");
+      const saved = window.sessionStorage.getItem(`rush.studio.key.${provider}`);
+      setApiKey(saved ?? "");
+      setRememberKey(!!saved);
     } catch {
       /* ignore */
     }
@@ -44,10 +59,29 @@ export default function StudioPage() {
     }
   }, []);
 
+  const sessKey = `rush.studio.key.${provider}`;
   const onKey = (v: string) => {
     setApiKey(v);
     try {
-      window.localStorage.setItem(`rush.studio.key.${provider}`, v);
+      if (rememberKey) window.sessionStorage.setItem(sessKey, v);
+    } catch {
+      /* ignore */
+    }
+  };
+  const toggleRemember = (on: boolean) => {
+    setRememberKey(on);
+    try {
+      if (on) window.sessionStorage.setItem(sessKey, apiKey);
+      else window.sessionStorage.removeItem(sessKey);
+    } catch {
+      /* ignore */
+    }
+  };
+  const clearKey = () => {
+    setApiKey("");
+    setRememberKey(false);
+    try {
+      window.sessionStorage.removeItem(sessKey);
     } catch {
       /* ignore */
     }
@@ -110,10 +144,10 @@ export default function StudioPage() {
         <div className="max-w-5xl mx-auto">
           <h1 className="text-3xl font-bold gold-gradient">Rush Studio</h1>
           <p className="text-gray-400 mt-1 text-sm mb-2">
-            รัน prompt ด้วย <span className="text-[#c9a84c]">API key ของคุณเอง</span> — แพลตฟอร์มไม่เก็บ key และไม่จ่าย token ให้
+            รัน prompt ด้วย <span className="text-[#c9a84c]">API key ของคุณเอง</span> — เซิร์ฟเวอร์ไม่เก็บ key และไม่จ่าย token ให้
           </p>
           <p className="text-[0.7rem] text-amber-300/80 mb-6 flex items-center gap-1.5">
-            <KeyRound className="w-3.5 h-3.5" /> key เก็บไว้ในเบราว์เซอร์นี้เท่านั้น และส่งผ่าน proxy เฉพาะตอนกดรัน (ไม่บันทึกลงเซิร์ฟเวอร์)
+            <KeyRound className="w-3.5 h-3.5" /> ปกติ key อยู่ในหน่วยความจำหน้านี้เท่านั้น (หายเมื่อรีเฟรช) และส่งผ่าน proxy เฉพาะตอนกดรัน — ไม่ลงเซิร์ฟเวอร์/ดิสก์ เว้นแต่คุณติ๊ก &quot;จำ key ไว้ในแท็บนี้&quot;
           </p>
 
           <div className="grid lg:grid-cols-2 gap-5">
@@ -134,8 +168,15 @@ export default function StudioPage() {
                 </label>
               </div>
               <label className="block">
-                <span className="block text-[0.7rem] text-gray-400 mb-1">API key ({meta.keyHint})</span>
+                <span className="flex items-center justify-between text-[0.7rem] text-gray-400 mb-1">
+                  <span>API key ({meta.keyHint})</span>
+                  {apiKey && <button type="button" onClick={clearKey} className="text-[#c9a84c] hover:underline">ล้าง key</button>}
+                </span>
                 <input type="password" value={apiKey} onChange={(e) => onKey(e.target.value)} placeholder={meta.keyHint} className="input" />
+                <label className="flex items-center gap-1.5 text-[0.65rem] text-gray-500 mt-1.5 cursor-pointer">
+                  <input type="checkbox" checked={rememberKey} onChange={(e) => toggleRemember(e.target.checked)} className="accent-[#c9a84c]" />
+                  จำ key ไว้ในแท็บนี้ (ล้างเมื่อปิดแท็บ)
+                </label>
               </label>
               <label className="block">
                 <span className="block text-[0.7rem] text-gray-400 mb-1">System prompt (เช่น MASTER จากเครื่องมือ prompt)</span>
