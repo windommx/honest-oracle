@@ -4,8 +4,26 @@
 // we subtract the longer phrase's occurrences from the shorter one's raw count.
 // `text.split(phrase)` is a literal string split (no regex), so phrase contents
 // are matched verbatim.
-export function countPhrases(text: string, phrases: string[]): { phrase: string; count: number }[] {
-  const raw = phrases.map((phrase) => ({ phrase, count: text.split(phrase).length - 1 }));
+//
+// opts.tokens: when given (the already-tokenized word array), SINGLE-word phrases
+// are counted by exact token match instead of substring — so "realm" no longer
+// matches inside "realms" and "delve" no longer matches inside "delved". Multi-word
+// phrases (and Thai, which has no spaces → no tokens passed) keep substring matching.
+export function countPhrases(
+  text: string,
+  phrases: string[],
+  opts?: { tokens?: string[] }
+): { phrase: string; count: number }[] {
+  let tokenFreq: Map<string, number> | null = null;
+  if (opts?.tokens) {
+    tokenFreq = new Map();
+    for (const t of opts.tokens) tokenFreq.set(t, (tokenFreq.get(t) ?? 0) + 1);
+  }
+  const raw = phrases.map((phrase) => {
+    const single = tokenFreq && !phrase.includes(" ");
+    const count = single ? (tokenFreq!.get(phrase) ?? 0) : text.split(phrase).length - 1;
+    return { phrase, count };
+  });
   return raw
     .map(({ phrase, count }) => {
       const overlap = raw.reduce(

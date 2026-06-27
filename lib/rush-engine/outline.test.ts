@@ -44,7 +44,9 @@ describe("per-chapter beat injection", () => {
     const ch5 = pack.find((p) => p.id === "CH_5")!;
     expect(ch6.prompt).toContain("PLANNED BEAT — Chapter 6");
     expect(ch6.prompt).toContain("มะลิพบศพในตู้เย็นรถไฟฟ้า");
-    expect(ch5.prompt).not.toContain("มะลิพบศพในตู้เย็นรถไฟฟ้า");
+    expect(ch6.prompt).not.toContain("PLANNED OUTLINE"); // matched → specific beat, not the wholesale block
+    // Unmatched chapters no longer DROP the outline — they get the wholesale block.
+    expect(ch5.prompt).toContain("PLANNED OUTLINE");
   });
 
   it("injects the matching chapter's beat in Thai mode", () => {

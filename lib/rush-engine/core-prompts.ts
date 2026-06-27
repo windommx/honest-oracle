@@ -342,8 +342,9 @@ export function generateChapterPrompt(
     p += `═══ PLANNED BEAT — Chapter ${chapter.number} (from your outline) ═══\n`;
     p += `${chapterBeat}\n`;
     p += `→ Write THIS specific beat. The TYPE/PURPOSE above is only the structural role.\n\n`;
-  } else if (config.outline && config.outline.trim() && (parsedOutline?.size ?? 0) === 0) {
-    // Unstructured outline → include it wholesale.
+  } else if (config.outline && config.outline.trim()) {
+    // No beat matched this chapter number — inject the whole outline rather than
+    // silently dropping the author's outline for unmatched chapters.
     p += `═══ PLANNED OUTLINE (follow the part relevant to Chapter ${chapter.number}) ═══\n`;
     p += `${config.outline.trim()}\n\n`;
   }

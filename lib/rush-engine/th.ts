@@ -277,7 +277,7 @@ export function thChapter(config: BookConfig, architecture: Architecture, chapte
   const chapterBeat = parsedOutline?.get(chapter.number);
   if (chapterBeat) {
     p += `═══ beat ของบทที่ ${chapter.number} (จากโครงของคุณ) ═══\n${chapterBeat}\n→ เขียน beat นี้โดยเฉพาะ ส่วนประเภท/วัตถุประสงค์ด้านบนเป็นแค่บทบาทเชิงโครงสร้าง\n\n`;
-  } else if (config.outline && config.outline.trim() && (parsedOutline?.size ?? 0) === 0) {
+  } else if (config.outline && config.outline.trim()) {
     p += `═══ โครงที่วางไว้ (ทำตามส่วนของบทที่ ${chapter.number}) ═══\n${config.outline.trim()}\n\n`;
   }
 

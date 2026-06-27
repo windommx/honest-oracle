@@ -161,7 +161,7 @@ export function analyzeProse(text: string): ProseAnalysis {
 
   // Slop: substring match (covers multi-word formulas), overlap-corrected so e.g.
   // "a testament to" isn't also counted as "testament".
-  const slop = countPhrases(lower, SLOP_TERMS).sort((a, b) => b.count - a.count);
+  const slop = countPhrases(lower, SLOP_TERMS, { tokens: words }).sort((a, b) => b.count - a.count);
 
   // Filter words.
   const filterMap = new Map<string, number>();

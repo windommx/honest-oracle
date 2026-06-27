@@ -192,6 +192,17 @@ describe("generateAllPrompts — module groups", () => {
     expect(kdp.prompt).toMatch(/cannot see live Amazon data/i);
   });
 
+  it("ships clean dialect glossaries (no corruption, correct Southern negator)", () => {
+    const pack = generateAllPrompts(cfg(), ["dialect"]);
+    const south = pack.find((p) => p.id === "DIALECT_SOUTH")!;
+    const north = pack.find((p) => p.id === "DIALECT_NORTH")!;
+    expect(south.prompt).not.toContain("them"); // no spliced English word
+    expect(south.prompt).not.toContain("กิน → กิน"); // no no-op entry
+    expect(south.prompt).toContain("หม้าย"); // genuine Southern negator
+    expect(north.prompt).not.toMatch(/ไd|จะไd/); // no stray ASCII letter in Thai
+    expect(north.prompt).toContain("จะใด");
+  });
+
   it("dialect modules convert to a regional voice with a glossary", () => {
     const pack = generateAllPrompts(cfg(), ["dialect"]);
     const ids = pack.filter((p) => p.group === "dialect").map((p) => p.id);

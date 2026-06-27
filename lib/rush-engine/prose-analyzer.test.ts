@@ -107,6 +107,21 @@ describe("analyzeProse", () => {
     expect(analyzeProse("She set the keys on the table.").mechanics).toHaveLength(0);
   });
 
+  it("does not flag slop substrings inside unrelated words (delved≠delve, realms≠realm)", () => {
+    const a = analyzeProse("She delved? No — she walked through quiet realms of nothing.");
+    // 'delved'/'realms' are NOT the standalone slop tokens 'delve'/'realm'
+    expect(a.slop.find((s) => s.phrase === "delve")).toBeUndefined();
+    expect(a.slop.find((s) => s.phrase === "realm")).toBeUndefined();
+    // but the bare word still counts
+    expect(analyzeProse("a vast realm").slop.find((s) => s.phrase === "realm")?.count).toBe(1);
+  });
+
+  it("splits chapters numbered with Thai digits (บทที่ ๑)", () => {
+    const scan = scanManuscript("บทที่ ๑\nShe ran.\nบทที่ ๒\nHe stayed.");
+    expect(scan).toHaveLength(2);
+    expect(scan[0].title).toContain("๑");
+  });
+
   it("does not double-count overlapping slop phrases (a testament to ⊃ testament)", () => {
     const a = analyzeProse("This book is a testament to her skill.");
     const testament = a.slop.find((s) => s.phrase === "testament");
