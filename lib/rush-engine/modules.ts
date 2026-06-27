@@ -6,6 +6,7 @@ export const MODULE_GROUPS: { key: Exclude<PromptGroup, "core">; label: string; 
   { key: "nonfiction", label: "Nonfiction Credibility", desc: "Fact-check, argument map, evidence audit, pedagogy, case studies" },
   { key: "prose", label: "Prose Polish", desc: "Voice fingerprint, anti-AI-slop, readability, line edit" },
   { key: "thai", label: "Thai Language", desc: "Register/ราชาศัพท์, sentence flow, transliteration consistency" },
+  { key: "dialect", label: "Thai Dialects", desc: "Isan, Northern (คำเมือง), Southern — convert dialogue to regional voice + glossary" },
   { key: "marketing", label: "Publishing & Marketing", desc: "Title, blurb, KDP metadata, agent submission pack" },
   { key: "advanced", label: "Advanced Pipeline", desc: "Rolling recap (chain-of-density), brainstorm (verbalized sampling)" },
   { key: "agents", label: "Agent Pack", desc: "Multi-agent system prompts: orchestrator + research/bible/architect/writer/critic" },
@@ -325,7 +326,74 @@ function moduleThaiPack(): string {
 [ใส่ข้อความที่นี่]`;
 }
 
+// ── DIALECT modules (Thai regional voices) ─────────────────────
+
+function dialectPrompt(name: string, region: string, notes: string, glossary: string): string {
+  return `แปลง/เขียนบทสนทนาและการบรรยายให้เป็น "${name}" (${region}) อย่างเป็นธรรมชาติและถูกต้องตามวัฒนธรรม โดยคงความหมายและโครงเรื่องเดิม
+
+หลักการ:
+- โฟกัสที่ "บทพูด" ของตัวละครให้เป็นสำเนียง${name} ส่วนการบรรยายเลือกได้ว่าจะใช้ไทยกลางหรือถิ่น (ระบุให้สม่ำเสมอทั้งเรื่อง)
+- ใช้คำลงท้าย/คำสรรพนาม/คำเรียกขานแบบถิ่นให้ถูกบริบทและสถานะตัวละคร
+- รักษาน้ำเสียงและบุคลิกตัวละครเดิม ไม่ทำให้กลายเป็นตัวตลก (ไม่ล้อเลียนสำเนียง)
+- ${notes}
+- ถ้าคำถิ่นใดอาจเข้าใจยาก ให้คงคำถิ่นไว้แล้วใส่วงเล็บความหมายไทยกลางเฉพาะครั้งแรก
+
+═══ คำถิ่นที่พบบ่อย (${name}) ═══
+${glossary}
+
+ผลลัพธ์: (1) ข้อความที่แปลงแล้ว (2) glossary คำถิ่นที่ใช้ในเรื่องนี้เพื่อความสม่ำเสมอ (3) โน้ตจุดที่ปรับให้ผู้เขียนตรวจ
+
+═══ ต้นฉบับ (ไทยกลาง) ═══
+[วางข้อความที่นี่]`;
+}
+
+export function moduleDialectIsan(): string {
+  return dialectPrompt(
+    "ภาษาอีสาน",
+    "ลาว/อีสาน",
+    "ระวังความต่างของถิ่นย่อย (อุบล/ขอนแก่น/โคราชต่างกัน) — เลือกถิ่นย่อยให้ชัดและคงเส้นคงวา",
+    "- เด้อ/เนาะ (คำลงท้าย) · บ่ (ไม่) · กะ (ก็) · เฮา (เรา) · เจ้า/สู (คุณ/พวกเจ้า) · จั่งใด๋ (อย่างไร) · เบิ่ง (ดู) · แซบ (อร่อย) · ม่วน (สนุก) · คือ (เหมือน) · หลาย (มาก) · เว้า (พูด)"
+  );
+}
+
+export function moduleDialectNorth(): string {
+  return dialectPrompt(
+    "คำเมือง (ภาษาเหนือ/ล้านนา)",
+    "ล้านนา/ภาคเหนือ",
+    "ใช้คำสุภาพแบบเมืองให้เหมาะสถานะ คำลงท้าย 'เจ้า' สำหรับความสุภาพ",
+    "- เจ้า (ครับ/ค่ะ สุภาพ) · กา/ก่อ (ไหม) · บ่ (ไม่) · อู้ (พูด) · กิ๋น (กิน) · เปิ้น (เขา) · เฮา (เรา) · ตี้ (ที่) · จะไdๆ→จะใด (อย่างไร) · หละ/แหม (อีก) · งาม (สวย) · ละก่อ (ล่ะ)"
+  );
+}
+
+export function moduleDialectSouth(): string {
+  return dialectPrompt(
+    "ภาษาใต้ (ปักษ์ใต้)",
+    "ภาคใต้",
+    "สำเนียงใต้พูดเร็ว ตัดคำ ใช้เสียงสั้น — สื่อด้วยการสะกดที่อ่านออกเสียงได้ แต่ยังอ่านเข้าใจ",
+    "- หรอย (อร่อย/ดี) · แล (ดู/นะ) · ไซร้/ไหร (อะไร) · บ่อ→ม่าย (ไม่) · ตัว/เธอ→สู/เ themมึง(ตามบริบท) · นุ้ย (เล็ก/น้อง) · เท่อ (โง่/เปิ่น) · พรือ (อย่างไร/ทำไม) · กิน → กิน · ว่าพรือ (ว่าอย่างไร)"
+  );
+}
+
 // ── MARKETING modules ──────────────────────────────────────────
+
+export function moduleCoverArt(config: BookConfig): string {
+  return `สร้าง "บรีฟปกหนังสือ + image prompt" สำหรับ "${config.title}" จำนวน 2 แบบให้เลือก (เอา prompt ไปวางในเครื่องมือสร้างภาพ เช่น Midjourney / DALL·E / Stable Diffusion)
+
+ข้อมูล: ${BOOK_TYPES[config.type].label} · ${config.subGenre.replace(/_/g, " ")} · ผู้อ่าน: ${config.reader}
+แก่นเรื่อง/โทน: ${config.thesis}
+
+สำหรับปก "แต่ละแบบ" (2 แบบ ให้ต่างกันชัด เช่น แบบ A เน้นตัวละคร / แบบ B เน้นสัญลักษณ์-บรรยากาศ) ให้ออก:
+1. คอนเซ็ปต์ 1-2 บรรทัด (อารมณ์ที่ต้องการสื่อ + ทำไมเหมาะกับแนวนี้)
+2. องค์ประกอบภาพ: subject หลัก, ฉากหลัง, มุมกล้อง/องค์ประกอบ, แสง, โทนสี, อารมณ์
+3. ที่ว่างสำหรับ "ชื่อเรื่อง" และชื่อผู้เขียน (บอกตำแหน่งและสไตล์ตัวอักษร)
+4. **MIDJOURNEY PROMPT**: บรรทัดเดียว ภาษาอังกฤษ พร้อม --ar 2:3 --style ที่เหมาะ
+5. **DALL·E / SD PROMPT**: ย่อหน้าอธิบายละเอียด (ภาษาอังกฤษ) + NEGATIVE PROMPT (สิ่งที่ไม่เอา เช่น text artifacts, extra fingers, watermark)
+
+ข้อกำหนด: ต้องเข้ากับแนว ${config.subGenre.replace(/_/g, " ")} และตลาดหนังสือ; เว้นพื้นที่ความปลอดภัยสำหรับตัวอักษร; เลี่ยงคลิเชปกที่ใช้ซ้ำเกินไป
+หมายเหตุ: เครื่องมือนี้สร้าง "prompt ปก" ให้ ไม่ได้เจนรูปเอง — นำไปเจนในเครื่องมือสร้างภาพที่คุณมี`;
+}
+
+// ── MARKETING modules (cont.) ──────────────────────────────────
 
 function moduleTitle(config: BookConfig): string {
   const fiction = isFictionType(config.type);
@@ -754,7 +822,12 @@ export const MODULE_CATALOG: ModuleDef[] = [
   { id: "LINE_EDIT", group: "prose", name: "Line Edit", description: "Filter words, adverbs, passive, clichés, repetition.", usage: "Send a draft for a sentence-level edit.", build: moduleLineEdit },
   // thai
   { id: "THAI_QA", group: "thai", name: "Thai Language QA", description: "Register/ราชาศัพท์, sentence segmentation, transliteration consistency.", usage: "Send Thai-language drafts.", build: moduleThaiPack },
+  // dialect
+  { id: "DIALECT_ISAN", group: "dialect", name: "Isan Voice (อีสาน)", description: "Convert dialogue to Isan/Lao voice + glossary; keeps character & plot.", usage: "Paste a Thai draft to convert.", build: moduleDialectIsan },
+  { id: "DIALECT_NORTH", group: "dialect", name: "Northern / คำเมือง", description: "Convert dialogue to Lanna/Northern voice + glossary.", usage: "Paste a Thai draft to convert.", build: moduleDialectNorth },
+  { id: "DIALECT_SOUTH", group: "dialect", name: "Southern (ปักษ์ใต้)", description: "Convert dialogue to Southern voice + glossary.", usage: "Paste a Thai draft to convert.", build: moduleDialectSouth },
   // marketing
+  { id: "COVER_ART", group: "marketing", name: "Cover Art Prompt (×2)", description: "Two cover concepts + ready Midjourney / DALL·E·SD prompts (you generate the image).", usage: "Run for book-cover image prompts.", build: moduleCoverArt },
   { id: "TITLE", group: "marketing", name: "Title + Subtitle", description: "10 title (and subtitle) options, keyword-aware for nonfiction.", usage: "Run anytime; iterate on positioning.", build: moduleTitle },
   { id: "BLURB", group: "marketing", name: "Blurb / Description", description: "Back-cover copy + Amazon-safe HTML.", usage: "Run for the sales description.", build: moduleBlurb },
   { id: "KDP_META", group: "marketing", name: "KDP Metadata", description: "7 keywords + 3 categories + A+ hook.", usage: "Run before publishing on KDP.", build: moduleKdpMeta },

@@ -164,7 +164,8 @@ describe("generateAllPrompts — module groups", () => {
     nonfiction: 5,
     prose: 4,
     thai: 1,
-    marketing: 4,
+    dialect: 3,
+    marketing: 5,
     advanced: 4,
     agents: 6,
     nis: 8,
@@ -179,16 +180,32 @@ describe("generateAllPrompts — module groups", () => {
     }
   });
 
-  it("includes all 41 optional modules when every group is on", () => {
+  it("includes all 45 optional modules when every group is on", () => {
     const all = MODULE_GROUPS.map((m) => m.key);
     const pack = generateAllPrompts(cfg(), all);
-    expect(pack.filter((p) => p.group !== "core").length).toBe(41);
+    expect(pack.filter((p) => p.group !== "core").length).toBe(45);
   });
 
   it("hardens the KDP module with a verification checklist (no live-data claim)", () => {
     const kdp = generateAllPrompts(cfg(), ["marketing"]).find((p) => p.id === "KDP_META")!;
     expect(kdp.prompt).toContain("VERIFICATION CHECKLIST");
     expect(kdp.prompt).toMatch(/cannot see live Amazon data/i);
+  });
+
+  it("dialect modules convert to a regional voice with a glossary", () => {
+    const pack = generateAllPrompts(cfg(), ["dialect"]);
+    const ids = pack.filter((p) => p.group === "dialect").map((p) => p.id);
+    expect(ids).toEqual(expect.arrayContaining(["DIALECT_ISAN", "DIALECT_NORTH", "DIALECT_SOUTH"]));
+    const isan = pack.find((p) => p.id === "DIALECT_ISAN")!;
+    expect(isan.prompt).toContain("อีสาน");
+    expect(isan.prompt).toContain("glossary");
+  });
+
+  it("cover-art module outputs ready image prompts for two concepts", () => {
+    const cover = generateAllPrompts(cfg(), ["marketing"]).find((p) => p.id === "COVER_ART")!;
+    expect(cover.prompt).toContain("MIDJOURNEY");
+    expect(cover.prompt).toMatch(/2 แบบ|×2/);
+    expect(cover.prompt).toMatch(/ไม่ได้เจนรูปเอง|NEGATIVE/);
   });
 
   it("defaults to sensible groups per book type", () => {

@@ -14,6 +14,7 @@ import {
   ChevronDown,
   Save,
   FileJson,
+  Upload,
   FileText,
   HelpCircle,
   Share2,
@@ -247,8 +248,30 @@ export default function RushPage() {
   }
 
   function downloadJson() {
-    const payload = { config, generatedAt: new Date().toISOString(), prompts };
+    const payload = { config, groups, generatedAt: new Date().toISOString(), prompts };
     downloadBlob(`${slug(config.title)}-prompts.json`, JSON.stringify(payload, null, 2), "application/json");
+  }
+
+  // Import a project from a previously-exported .json (reads its `config`).
+  function importProject(file: File) {
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const data = JSON.parse(String(reader.result)) as { config?: BookConfig; groups?: OptionalGroup[] } & Partial<BookConfig>;
+        const cfg = (data && typeof data === "object" && data.config ? data.config : data) as BookConfig;
+        if (cfg && typeof cfg === "object" && typeof cfg.type === "string" && BOOK_TYPES[cfg.type]) {
+          applyConfig(cfg);
+          if (Array.isArray(data.groups)) setGroups(data.groups);
+          setError("");
+          setNotice("นำเข้าโปรเจกต์แล้ว — กด Generate เพื่อสร้าง prompt");
+        } else {
+          setError("ไฟล์ไม่ถูกต้อง — ต้องเป็น .json ที่มี config");
+        }
+      } catch {
+        setError("อ่านไฟล์ไม่สำเร็จ — รองรับเฉพาะ .json ที่ export จากที่นี่");
+      }
+    };
+    reader.readAsText(file);
   }
 
   async function saveProject() {
@@ -584,6 +607,20 @@ export default function RushPage() {
                 <Sparkles className="w-4 h-4" />
                 Generate Prompts
               </button>
+
+              <label className="mt-2 w-full py-2 border border-white/10 text-gray-400 rounded-xl hover:border-[#c9a84c]/40 hover:text-[#c9a84c] transition-colors flex items-center justify-center gap-1.5 text-xs cursor-pointer">
+                <Upload className="w-4 h-4" /> นำเข้าโปรเจกต์ (.json)
+                <input
+                  type="file"
+                  accept=".json,application/json"
+                  className="hidden"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) importProject(f);
+                    e.target.value = "";
+                  }}
+                />
+              </label>
 
               {prompts.length > 0 && (
                 <div className="grid grid-cols-2 gap-2 mt-2">

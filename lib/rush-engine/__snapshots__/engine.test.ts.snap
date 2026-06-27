@@ -3005,6 +3005,27 @@ Output: the per-scene tension table + a short list of fixes.
     "usage": "Send a draft to map and raise tension.",
   },
   {
+    "description": "Two cover concepts + ready Midjourney / DALL·E·SD prompts (you generate the image).",
+    "group": "marketing",
+    "id": "COVER_ART",
+    "name": "Cover Art Prompt (×2)",
+    "prompt": "สร้าง "บรีฟปกหนังสือ + image prompt" สำหรับ "The Test Book" จำนวน 2 แบบให้เลือก (เอา prompt ไปวางในเครื่องมือสร้างภาพ เช่น Midjourney / DALL·E / Stable Diffusion)
+
+ข้อมูล: Novel / Fiction · thriller · ผู้อ่าน: QA engineers
+แก่นเรื่อง/โทน: A premise worth testing
+
+สำหรับปก "แต่ละแบบ" (2 แบบ ให้ต่างกันชัด เช่น แบบ A เน้นตัวละคร / แบบ B เน้นสัญลักษณ์-บรรยากาศ) ให้ออก:
+1. คอนเซ็ปต์ 1-2 บรรทัด (อารมณ์ที่ต้องการสื่อ + ทำไมเหมาะกับแนวนี้)
+2. องค์ประกอบภาพ: subject หลัก, ฉากหลัง, มุมกล้อง/องค์ประกอบ, แสง, โทนสี, อารมณ์
+3. ที่ว่างสำหรับ "ชื่อเรื่อง" และชื่อผู้เขียน (บอกตำแหน่งและสไตล์ตัวอักษร)
+4. **MIDJOURNEY PROMPT**: บรรทัดเดียว ภาษาอังกฤษ พร้อม --ar 2:3 --style ที่เหมาะ
+5. **DALL·E / SD PROMPT**: ย่อหน้าอธิบายละเอียด (ภาษาอังกฤษ) + NEGATIVE PROMPT (สิ่งที่ไม่เอา เช่น text artifacts, extra fingers, watermark)
+
+ข้อกำหนด: ต้องเข้ากับแนว thriller และตลาดหนังสือ; เว้นพื้นที่ความปลอดภัยสำหรับตัวอักษร; เลี่ยงคลิเชปกที่ใช้ซ้ำเกินไป
+หมายเหตุ: เครื่องมือนี้สร้าง "prompt ปก" ให้ ไม่ได้เจนรูปเอง — นำไปเจนในเครื่องมือสร้างภาพที่คุณมี",
+    "usage": "Run for book-cover image prompts.",
+  },
+  {
     "description": "10 title (and subtitle) options, keyword-aware for nonfiction.",
     "group": "marketing",
     "id": "TITLE",

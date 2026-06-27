@@ -5,6 +5,7 @@
 
 import { BOOK_TYPES } from "./book-types";
 import { parseOutline } from "./outline";
+import { moduleDialectIsan, moduleDialectNorth, moduleDialectSouth, moduleCoverArt } from "./modules";
 import type { Architecture, BookConfig, BookTypeKey, ChapterPlan } from "./types";
 
 const isFiction = (t: BookTypeKey) => t === "novel" || t === "memoir" || t === "kids" || t === "poetry";
@@ -418,6 +419,10 @@ export const TH_MODULES: Record<string, (c: BookConfig) => string> = {
     `ทำ line edit — ขัดเกลาระดับประโยค ไม่เปลี่ยนเนื้อหา คืนข้อความที่แก้แล้ว + เหตุผลสั้น ๆ\n\nแก้:\n- คำกรอง/คำอ่อน: แค่ จริง ๆ มาก ที่ ค่อนข้าง\n- คำขยายอ่อน (แทนด้วยกริยาที่แรงกว่า)\n- กริยากรองในมุมมองลึก: เห็น ได้ยิน รู้สึก สังเกต ตระหนัก\n- ประโยค passive ที่ active ชัดกว่า\n- สำนวนเฝือ (แทนด้วยถ้อยคำใหม่)\n- การซ้ำ: ทำเครื่องหมายคำ/วลีที่ซ้ำใกล้กันเกินไป (และทั้งเล่มถ้าให้มา)\n\nคงเสียงและความหมาย ผลลัพธ์: ข้อความที่แก้แล้ว + รายการตัวอย่างการแก้\n\n═══ ดราฟต์ ═══\n[วางดราฟต์ที่นี่]`,
   THAI_QA: () =>
     `ตรวจและปรับภาษาไทยของต้นฉบับให้ถูกต้องและลื่นไหล ทำ 3 ส่วน:\n\n1) ระดับภาษา/ราชาศัพท์\n- ระบุระดับภาษาเป้าหมาย (ทางการ/กึ่งทางการ/กันเอง) แล้วปรับให้สม่ำเสมอ\n- ตรวจการใช้ราชาศัพท์ในบริบทจำเป็น และจุดที่ปนระดับภาษาผิด\n\n2) การตัดประโยค/ความลื่นไหล\n- ภาษาไทยไม่มีเว้นวรรคระหว่างคำ → หาประโยคยาว/ซับซ้อนเกินแล้วตัดให้อ่านง่าย\n- จัดขอบเขตประโยคและวรรคตอนให้ชัด ลดประโยคซ้อนหลายชั้น\n\n3) การทับศัพท์/ความสม่ำเสมอ\n- ทำให้การสะกดคำทับศัพท์/ชื่อเฉพาะสม่ำเสมอทั้งเล่ม (เลือกมาตรฐานเช่น RTGS แล้วยึดตาม)\n- ทำ glossary คำทับศัพท์ที่ใช้ซ้ำ\n- ตรวจการปนไทย-อังกฤษที่ไม่จำเป็น\n\nผลลัพธ์: ข้อความที่ปรับแล้ว + รายการแก้ไขสำคัญ + glossary คำทับศัพท์\n\n═══ ต้นฉบับภาษาไทย ═══\n[ใส่ข้อความที่นี่]`,
+  DIALECT_ISAN: () => moduleDialectIsan(),
+  DIALECT_NORTH: () => moduleDialectNorth(),
+  DIALECT_SOUTH: () => moduleDialectSouth(),
+  COVER_ART: (c) => moduleCoverArt(c),
   TITLE: (c) => {
     const f = isFiction(c.type);
     let p = `สร้างชื่อเรื่อง + ชื่อรอง สำหรับ "${c.title || "[ชื่อชั่วคราว]"}"\n\nประเภท: ${BOOK_TYPES[c.type].label} · ผู้อ่าน: ${c.reader}\nแก่นเรื่อง: ${c.thesis}\n\n`;
@@ -487,7 +492,7 @@ export const TH_MODULES: Record<string, (c: BookConfig) => string> = {
 
 export const TH_GROUP_LABEL: Record<string, string> = {
   core: "หลัก", craft: "งานคราฟต์", nonfiction: "สารคดี", prose: "ขัดเกลาภาษา",
-  thai: "ภาษาไทย", marketing: "การตลาด", advanced: "ขั้นสูง", agents: "เอเจนต์",
+  thai: "ภาษาไทย", dialect: "ภาษาถิ่น", marketing: "การตลาด", advanced: "ขั้นสูง", agents: "เอเจนต์",
   nis: "ปัญญาเชิงเรื่อง",
 };
 
@@ -519,6 +524,10 @@ export const TH_META: Record<string, { description: string; usage: string }> = {
   READABILITY: { description: "รายงาน Flesch-Kincaid + เขียนใหม่คุมระดับ", usage: "ส่งดราฟต์ + ระดับเป้าหมาย" },
   LINE_EDIT: { description: "คำกรอง คำขยาย passive สำนวนเฝือ การซ้ำ", usage: "ส่งดราฟต์เพื่อแก้ระดับประโยค" },
   THAI_QA: { description: "ราชาศัพท์ ตัดประโยค ความสม่ำเสมอของคำทับศัพท์", usage: "ส่งต้นฉบับภาษาไทย" },
+  DIALECT_ISAN: { description: "แปลงบทพูดเป็นสำเนียงอีสาน + glossary คำถิ่น", usage: "วางต้นฉบับไทยกลางเพื่อแปลง" },
+  DIALECT_NORTH: { description: "แปลงบทพูดเป็นคำเมือง (เหนือ/ล้านนา) + glossary", usage: "วางต้นฉบับไทยกลางเพื่อแปลง" },
+  DIALECT_SOUTH: { description: "แปลงบทพูดเป็นสำเนียงใต้ + glossary", usage: "วางต้นฉบับไทยกลางเพื่อแปลง" },
+  COVER_ART: { description: "คอนเซ็ปต์ปก 2 แบบ + prompt สำหรับ Midjourney/DALL·E·SD", usage: "รันเพื่อขอ prompt ปกหนังสือ" },
   TITLE: { description: "ชื่อเรื่อง+ชื่อรอง 10 แบบ (เล็ง keyword)", usage: "รันเพื่อหาตำแหน่ง/ชื่อ" },
   BLURB: { description: "คำโปรยปกหลัง + HTML สำหรับ Amazon", usage: "รันเพื่อเขียนคำบรรยายขาย" },
   KDP_META: { description: "keyword 7 + หมวด 3 + A+ hook", usage: "รันก่อนตีพิมพ์บน KDP" },

@@ -88,7 +88,7 @@ export interface ContinuityState {
   previousSummary?: string;
   storyBible?: string;
 }
-export type PromptGroup = "core" | "craft" | "nonfiction" | "prose" | "thai" | "marketing" | "advanced" | "agents" | "nis";
+export type PromptGroup = "core" | "craft" | "nonfiction" | "prose" | "thai" | "dialect" | "marketing" | "advanced" | "agents" | "nis";
 
 export interface GeneratedPrompt {
   id: string;
