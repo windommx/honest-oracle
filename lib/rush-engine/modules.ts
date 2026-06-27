@@ -11,6 +11,7 @@ export const MODULE_GROUPS: { key: Exclude<PromptGroup, "core">; label: string; 
   { key: "advanced", label: "Advanced Pipeline", desc: "Rolling recap (chain-of-density), brainstorm (verbalized sampling)" },
   { key: "agents", label: "Agent Pack", desc: "Multi-agent system prompts: orchestrator + research/bible/architect/writer/critic" },
   { key: "nis", label: "Narrative Intelligence", desc: "Grounded audits: plot-hole/continuity, character consistency, pacing, foreshadow/payoff, dialogue fatigue" },
+  { key: "saga", label: "Saga / Multi-Season", desc: "Plan long-form 3–9 season works: macro arc, per-season design, cross-season SAGA STATE continuity, season bridges" },
 ];
 
 /** Default module groups suggested for a given book type. */
@@ -794,6 +795,72 @@ End with: a 0-100 thematic-coherence score and the single change that would shar
 [INSERT MANUSCRIPT HERE]`;
 }
 
+// ── SAGA — long-form multi-season (3–9 seasons/parts) ──────────
+
+export function moduleSagaArchitect(config: BookConfig): string {
+  return `Design a SAGA ARCHITECTURE — a long-form work spanning 3–9 seasons (each season is itself a multi-part book) — for "${config.title}".
+
+First state how many seasons (3–9) fit this premise and why.
+Premise: ${config.thesis}
+
+Output:
+1. SAGA QUESTION — the single dramatic question the WHOLE saga answers.
+2. GLOBAL ARC across seasons — map the macro beats to specific seasons: Setup season → escalation seasons → midpoint-reversal season → all-is-lost season → climax season → resolution. Name which season each beat lands in.
+3. PER-SEASON TABLE — for each season N: logline · role (setup/escalation/turn/descent/climax/resolution) · protagonist state entering vs leaving · what it must PLANT and what it PAYS OFF · the season-ending cliffhanger that hooks the next.
+4. POWER/SCALE LADDER — one line per season showing rising scope (personal → local → … → world/cosmic) so power-creep stays intentional, not accidental.
+5. ESCALATION CHECK — confirm stakes rise every season and the FINALE season pays off the saga question.
+
+FORMAT: also output one line per season as "Season N: <logline> | <role> | ends-on: <hook>" so it pastes into a planner.
+
+═══ SEASON COUNT & NOTES ═══
+[ระบุจำนวน season 3–9 + โน้ต/ตัวละคร/โลก]`;
+}
+
+export function moduleSagaSeason(config: BookConfig): string {
+  return `Design ONE SEASON in depth for "${config.title}" — a season is itself a 3–9 part mini-arc with its own setup→climax, while serving the whole saga.
+
+Given the saga architecture + which season this is, output:
+- SEASON ARC: its own opening → midpoint → climax → turn, and how it advances the SAGA QUESTION.
+- PART BREAKDOWN: for each part 1..N, a one-line beat + its end hook.
+- PLANTS & PAYOFFS: what this season pays off (set up earlier) and what it plants for FUTURE seasons (tag the target season).
+- SEASON CLIFFHANGER into the next season.
+Keep consistent with the saga's power/scale ladder (no unearned jumps).
+
+═══ SAGA PLAN + WHICH SEASON ═══
+[วาง SAGA ARCHITECTURE + ระบุ "นี่คือ Season N จาก M"]`;
+}
+
+export function moduleSagaContinuity(): string {
+  return `Maintain a <<<SAGA STATE>>> ledger that keeps a multi-season saga consistent ACROSS seasons (this extends the per-chapter STATE to season scale).
+
+Sections:
+- CANON: world rules & their LIMITS, tagged with the season each was established.
+- CHARACTER LEDGER: per character — power/level, relationships, secrets, and state at each season's end. Watch for unexplained POWER CREEP.
+- TIMELINE: absolute chronology across seasons; flag any date/age contradiction.
+- REVEAL TRACKER: what the READER knows vs each CHARACTER, per season.
+- OPEN THREADS: each tagged "planted S# → pays off S#".
+- NAMING / CANON RULES: spellings & facts that must not change.
+
+At the END of each season, output an updated <<<SAGA STATE>>> block. BEFORE writing a season, read it and flag anything that contradicts canon (cite the conflicting entries). Never invent canon — mark unknowns [TBD].
+
+═══ SAGA MATERIAL (prior season bibles / latest SAGA STATE) ═══
+[วางวัตถุดิบที่นี่]`;
+}
+
+export function moduleSagaBridge(): string {
+  return `Write a SEASON BRIDGE from one season to the next — the opener that carries momentum across the season gap.
+
+Produce:
+1. PREVIOUSLY (recap): entity-dense, ≤ 200 words, newest/most load-bearing facts first.
+2. CARRIED HOOK: the unresolved cliffhanger the new season must answer.
+3. ESCALATION: why the stakes/scale are bigger now than last season (tie to the power/scale ladder).
+4. OPENING HOOK: how the new season opens so a returning reader is gripped and a lapsed one is re-oriented.
+Stay consistent with the latest <<<SAGA STATE>>>.
+
+═══ PRIOR SEASON SUMMARY + SAGA STATE ═══
+[วางสรุป season ก่อน + STATE]`;
+}
+
 // ── Catalog assembly ───────────────────────────────────────────
 
 type ModuleDef = { id: string; group: PromptGroup; name: string; description: string; usage: string; build: (c: BookConfig) => string };
@@ -853,4 +920,9 @@ export const MODULE_CATALOG: ModuleDef[] = [
   { id: "NIS_POV", group: "nis", name: "POV & Tense Audit", description: "Head-hopping, tense slips, deep-POV distance, impossible knowledge — each quoted.", usage: "Run on a full draft to lock POV/tense.", build: moduleNisPov },
   { id: "NIS_SHOW", group: "nis", name: "Show-vs-Tell Audit", description: "Flags told emotions/summaries with a concrete showing rewrite; spares legit transitions.", usage: "Run on draft scenes that feel flat.", build: moduleNisShow },
   { id: "NIS_THEME", group: "nis", name: "Theme & Motif Audit", description: "Tracks every motif instance with quotes; flags dropped motifs and on-the-nose theme.", usage: "Run on the assembled manuscript.", build: moduleNisTheme },
+  // saga (long-form 3–9 season planning + cross-season continuity)
+  { id: "SAGA_ARCHITECT", group: "saga", name: "Saga Architect (3–9 seasons)", description: "Macro arc across 3–9 seasons: saga question, per-season role/cliffhanger, power-scale ladder.", usage: "Run first to plan a multi-season work.", build: moduleSagaArchitect },
+  { id: "SAGA_SEASON", group: "saga", name: "Season Designer", description: "Designs one season in depth (its parts, plants/payoffs, cliffhanger) within the saga.", usage: "Run per season after the architect.", build: moduleSagaSeason },
+  { id: "SAGA_CONTINUITY", group: "saga", name: "Saga Continuity (SAGA STATE)", description: "Cross-season canon/character/timeline/reveal ledger; watches power-creep.", usage: "Maintain across all seasons.", build: moduleSagaContinuity },
+  { id: "SAGA_BRIDGE", group: "saga", name: "Season Bridge", description: "Season-to-season opener: recap + carried hook + escalation + opening hook.", usage: "Run between seasons.", build: moduleSagaBridge },
 ];

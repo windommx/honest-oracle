@@ -188,6 +188,7 @@ describe("generateAllPrompts — module groups", () => {
     advanced: 4,
     agents: 6,
     nis: 8,
+    saga: 4,
   };
 
   it("appends exactly the modules for each requested group", () => {
@@ -199,10 +200,19 @@ describe("generateAllPrompts — module groups", () => {
     }
   });
 
-  it("includes all 45 optional modules when every group is on", () => {
+  it("includes all 49 optional modules when every group is on", () => {
     const all = MODULE_GROUPS.map((m) => m.key);
     const pack = generateAllPrompts(cfg(), all);
-    expect(pack.filter((p) => p.group !== "core").length).toBe(45);
+    expect(pack.filter((p) => p.group !== "core").length).toBe(49);
+  });
+
+  it("saga group plans long-form 3–9 seasons with cross-season continuity", () => {
+    const pack = generateAllPrompts(cfg({ type: "novel" }), ["saga"]);
+    const ids = pack.filter((p) => p.group === "saga").map((p) => p.id);
+    expect(ids).toEqual(expect.arrayContaining(["SAGA_ARCHITECT", "SAGA_SEASON", "SAGA_CONTINUITY", "SAGA_BRIDGE"]));
+    const arch = pack.find((p) => p.id === "SAGA_ARCHITECT")!;
+    expect(arch.prompt).toMatch(/3.?9 season/i);
+    expect(pack.find((p) => p.id === "SAGA_CONTINUITY")!.prompt).toContain("<<<SAGA STATE>>>");
   });
 
   it("hardens the KDP module with a verification checklist (no live-data claim)", () => {

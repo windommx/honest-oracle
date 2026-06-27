@@ -5,7 +5,16 @@
 
 import { BOOK_TYPES } from "./book-types";
 import { parseOutline } from "./outline";
-import { moduleDialectIsan, moduleDialectNorth, moduleDialectSouth, moduleCoverArt } from "./modules";
+import {
+  moduleDialectIsan,
+  moduleDialectNorth,
+  moduleDialectSouth,
+  moduleCoverArt,
+  moduleSagaArchitect,
+  moduleSagaSeason,
+  moduleSagaContinuity,
+  moduleSagaBridge,
+} from "./modules";
 import type { Architecture, BookConfig, BookTypeKey, ChapterPlan } from "./types";
 
 const isFiction = (t: BookTypeKey) => t === "novel" || t === "memoir" || t === "kids" || t === "poetry";
@@ -419,6 +428,10 @@ export const TH_MODULES: Record<string, (c: BookConfig) => string> = {
     `ทำ line edit — ขัดเกลาระดับประโยค ไม่เปลี่ยนเนื้อหา คืนข้อความที่แก้แล้ว + เหตุผลสั้น ๆ\n\nแก้:\n- คำกรอง/คำอ่อน: แค่ จริง ๆ มาก ที่ ค่อนข้าง\n- คำขยายอ่อน (แทนด้วยกริยาที่แรงกว่า)\n- กริยากรองในมุมมองลึก: เห็น ได้ยิน รู้สึก สังเกต ตระหนัก\n- ประโยค passive ที่ active ชัดกว่า\n- สำนวนเฝือ (แทนด้วยถ้อยคำใหม่)\n- การซ้ำ: ทำเครื่องหมายคำ/วลีที่ซ้ำใกล้กันเกินไป (และทั้งเล่มถ้าให้มา)\n\nคงเสียงและความหมาย ผลลัพธ์: ข้อความที่แก้แล้ว + รายการตัวอย่างการแก้\n\n═══ ดราฟต์ ═══\n[วางดราฟต์ที่นี่]`,
   THAI_QA: () =>
     `ตรวจและปรับภาษาไทยของต้นฉบับให้ถูกต้องและลื่นไหล ทำ 3 ส่วน:\n\n1) ระดับภาษา/ราชาศัพท์\n- ระบุระดับภาษาเป้าหมาย (ทางการ/กึ่งทางการ/กันเอง) แล้วปรับให้สม่ำเสมอ\n- ตรวจการใช้ราชาศัพท์ในบริบทจำเป็น และจุดที่ปนระดับภาษาผิด\n\n2) การตัดประโยค/ความลื่นไหล\n- ภาษาไทยไม่มีเว้นวรรคระหว่างคำ → หาประโยคยาว/ซับซ้อนเกินแล้วตัดให้อ่านง่าย\n- จัดขอบเขตประโยคและวรรคตอนให้ชัด ลดประโยคซ้อนหลายชั้น\n\n3) การทับศัพท์/ความสม่ำเสมอ\n- ทำให้การสะกดคำทับศัพท์/ชื่อเฉพาะสม่ำเสมอทั้งเล่ม (เลือกมาตรฐานเช่น RTGS แล้วยึดตาม)\n- ทำ glossary คำทับศัพท์ที่ใช้ซ้ำ\n- ตรวจการปนไทย-อังกฤษที่ไม่จำเป็น\n\nผลลัพธ์: ข้อความที่ปรับแล้ว + รายการแก้ไขสำคัญ + glossary คำทับศัพท์\n\n═══ ต้นฉบับภาษาไทย ═══\n[ใส่ข้อความที่นี่]`,
+  SAGA_ARCHITECT: (c) => moduleSagaArchitect(c),
+  SAGA_SEASON: (c) => moduleSagaSeason(c),
+  SAGA_CONTINUITY: () => moduleSagaContinuity(),
+  SAGA_BRIDGE: () => moduleSagaBridge(),
   DIALECT_ISAN: () => moduleDialectIsan(),
   DIALECT_NORTH: () => moduleDialectNorth(),
   DIALECT_SOUTH: () => moduleDialectSouth(),
@@ -493,7 +506,7 @@ export const TH_MODULES: Record<string, (c: BookConfig) => string> = {
 export const TH_GROUP_LABEL: Record<string, string> = {
   core: "หลัก", craft: "งานคราฟต์", nonfiction: "สารคดี", prose: "ขัดเกลาภาษา",
   thai: "ภาษาไทย", dialect: "ภาษาถิ่น", marketing: "การตลาด", advanced: "ขั้นสูง", agents: "เอเจนต์",
-  nis: "ปัญญาเชิงเรื่อง",
+  nis: "ปัญญาเชิงเรื่อง", saga: "ซีรีส์/หลายภาค",
 };
 
 export function thChapterMeta(chapter: ChapterPlan): { description: string; usage: string } {
@@ -524,6 +537,10 @@ export const TH_META: Record<string, { description: string; usage: string }> = {
   READABILITY: { description: "รายงาน Flesch-Kincaid + เขียนใหม่คุมระดับ", usage: "ส่งดราฟต์ + ระดับเป้าหมาย" },
   LINE_EDIT: { description: "คำกรอง คำขยาย passive สำนวนเฝือ การซ้ำ", usage: "ส่งดราฟต์เพื่อแก้ระดับประโยค" },
   THAI_QA: { description: "ราชาศัพท์ ตัดประโยค ความสม่ำเสมอของคำทับศัพท์", usage: "ส่งต้นฉบับภาษาไทย" },
+  SAGA_ARCHITECT: { description: "วางแกนเรื่องข้าม 3–9 season + บันได power/scale", usage: "รันก่อนเพื่อวางโครงงานหลาย season" },
+  SAGA_SEASON: { description: "ออกแบบ season เดียวเชิงลึก (parts/plant/payoff/cliffhanger)", usage: "รันต่อ season หลังวางแกน" },
+  SAGA_CONTINUITY: { description: "บัญชี SAGA STATE ข้าม season (canon/ตัวละคร/เวลา/การเปิดเผย)", usage: "ดูแลตลอดทุก season" },
+  SAGA_BRIDGE: { description: "สะพานเชื่อม season: recap + hook ค้าง + ยกระดับ + เปิดเรื่องใหม่", usage: "รันระหว่าง season" },
   DIALECT_ISAN: { description: "แปลงบทพูดเป็นสำเนียงอีสาน + glossary คำถิ่น", usage: "วางต้นฉบับไทยกลางเพื่อแปลง" },
   DIALECT_NORTH: { description: "แปลงบทพูดเป็นคำเมือง (เหนือ/ล้านนา) + glossary", usage: "วางต้นฉบับไทยกลางเพื่อแปลง" },
   DIALECT_SOUTH: { description: "แปลงบทพูดเป็นสำเนียงใต้ + glossary", usage: "วางต้นฉบับไทยกลางเพื่อแปลง" },

@@ -20,6 +20,7 @@ export const GROUP_COLORS: Record<PromptGroup, string> = {
   advanced: "border-cyan-400 text-cyan-400",
   agents: "border-emerald-400 text-emerald-400",
   nis: "border-red-400 text-red-400",
+  saga: "border-violet-400 text-violet-400",
 };
 
 export function Field({ label, children }: { label: string; children: React.ReactNode }) {
