@@ -253,6 +253,21 @@ function usePersistedState(key: string): [string, (v: string) => void] {
   return [value, set];
 }
 
+/** Debounce only large inputs (>instantUnder chars) so analysis doesn't recompute
+ *  on every keystroke for a pasted manuscript; short inputs update immediately. */
+function useDebounced(value: string, ms = 200, instantUnder = 2000): string {
+  const [v, setV] = useState(value);
+  useEffect(() => {
+    if (value.length < instantUnder) {
+      setV(value);
+      return;
+    }
+    const id = setTimeout(() => setV(value), ms);
+    return () => clearTimeout(id);
+  }, [value, ms, instantUnder]);
+  return v;
+}
+
 export function ThaiAnalyzerModal({ onClose, initialText }: { onClose: () => void; initialText?: string }) {
   const [text, setText] = usePersistedState("rush.analyzer.th");
   const [revised, setRevised] = useState("");
@@ -263,12 +278,14 @@ export function ThaiAnalyzerModal({ onClose, initialText }: { onClose: () => voi
   const [showCompare, setShowCompare] = useState(false);
   const [showScan, setShowScan] = useState(false);
   const [copiedAudit, setCopiedAudit] = useState<string | null>(null);
-  const a = useMemo(() => (text.trim() ? analyzeThai(text) : null), [text]);
+  const dtext = useDebounced(text);
+  const drevised = useDebounced(revised);
+  const a = useMemo(() => (dtext.trim() ? analyzeThai(dtext) : null), [dtext]);
   const deltas = useMemo(
-    () => (text.trim() && revised.trim() ? thaiDeltas(analyzeThai(text), analyzeThai(revised)) : null),
-    [text, revised]
+    () => (dtext.trim() && drevised.trim() ? thaiDeltas(analyzeThai(dtext), analyzeThai(drevised)) : null),
+    [dtext, drevised]
   );
-  const scan = useMemo(() => (text.trim() ? scanThaiManuscript(text) : []), [text]);
+  const scan = useMemo(() => (dtext.trim() ? scanThaiManuscript(dtext) : []), [dtext]);
   const worst = useMemo(() => {
     if (scan.length < 2) return { aiTells: -1, cv: -1 };
     const argTells = scan.reduce((b, c, i) => (c.aiTells > scan[b].aiTells ? i : b), 0);
@@ -622,16 +639,18 @@ export function ProseAnalyzerModal({ onClose, initialText }: { onClose: () => vo
   const [showCompare, setShowCompare] = useState(false);
   const [showScan, setShowScan] = useState(false);
   const [copiedAudit, setCopiedAudit] = useState<string | null>(null);
-  const a = useMemo(() => (text.trim() ? analyzeProse(text) : null), [text]);
+  const dtext = useDebounced(text);
+  const drevised = useDebounced(revised);
+  const a = useMemo(() => (dtext.trim() ? analyzeProse(dtext) : null), [dtext]);
   useEffect(() => {
     if (initialText) setText(initialText);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const deltas = useMemo(
-    () => (text.trim() && revised.trim() ? proseDeltas(analyzeProse(text), analyzeProse(revised)) : null),
-    [text, revised]
+    () => (dtext.trim() && drevised.trim() ? proseDeltas(analyzeProse(dtext), analyzeProse(drevised)) : null),
+    [dtext, drevised]
   );
-  const scan = useMemo(() => (text.trim() ? scanManuscript(text) : []), [text]);
+  const scan = useMemo(() => (dtext.trim() ? scanManuscript(dtext) : []), [dtext]);
   // Indices of the weakest chapter per signal (to flag in the heatmap).
   const worst = useMemo(() => {
     if (scan.length < 2) return { ease: -1, slop: -1, cv: -1 };
