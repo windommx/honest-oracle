@@ -121,6 +121,12 @@ describe("buildGlobalContext", () => {
     expect(ctx).toContain("A premise worth testing");
     expect(ctx).toContain("QUALITY STANDARDS");
   });
+
+  it("does not mandate a citation quota with no sources (would induce fabrication)", () => {
+    const ctx = buildGlobalContext(cfg({ type: "nonfiction" }));
+    expect(ctx).not.toMatch(/2 citations per claim|≥ 2 citations/);
+    expect(ctx).toContain("[VERIFY]"); // mark for real citation later instead
+  });
 });
 
 // ── Prompt pack ────────────────────────────────────────────────

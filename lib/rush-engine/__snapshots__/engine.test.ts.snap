@@ -1454,8 +1454,8 @@ Your target reader: QA engineers.
 A premise worth testing
 
 ═══ QUALITY STANDARDS (aim for these; use judgment over rigid ratios) ═══
-- Argument strength: ≥ 70% claims supported
-- Evidence: ≥ 2 citations per claim
+- Argument strength: most claims supported by real evidence
+- Evidence: support each claim, or mark it [VERIFY] for a real source later — NEVER invent a citation
 - Clarity score: ≥ 60%
 - Logic flow: no gaps between paragraphs
 - Pedagogy: objectives + takeaways + exercises
@@ -1575,8 +1575,7 @@ Next chapter: story — ILLUSTRATE: Make the problem real through narrative
 → End this chapter in a way that naturally leads to the next.
 
 ═══ QUALITY CHECKLIST (verify before finalizing) ═══
-  □ All claims supported by evidence
-  □ ≥ 2 citations in chapter
+  □ All claims supported OR marked [VERIFY] (no invented sources)
   □ Jargon defined on first use
   □ Logic flow between paragraphs
   □ Pedagogy elements present
@@ -1632,8 +1631,7 @@ Next chapter: evidence — PROVE: Present research and data supporting a claim
 → End this chapter in a way that naturally leads to the next.
 
 ═══ QUALITY CHECKLIST (verify before finalizing) ═══
-  □ All claims supported by evidence
-  □ ≥ 2 citations in chapter
+  □ All claims supported OR marked [VERIFY] (no invented sources)
   □ Jargon defined on first use
   □ Logic flow between paragraphs
   □ Pedagogy elements present
@@ -1689,8 +1687,7 @@ Next chapter: theory — EXPLAIN: Introduce a framework component with mechanism
 → End this chapter in a way that naturally leads to the next.
 
 ═══ QUALITY CHECKLIST (verify before finalizing) ═══
-  □ All claims supported by evidence
-  □ ≥ 2 citations in chapter
+  □ All claims supported OR marked [VERIFY] (no invented sources)
   □ Jargon defined on first use
   □ Logic flow between paragraphs
   □ Pedagogy elements present
@@ -1747,8 +1744,7 @@ Next chapter: practice — APPLY: Give reader hands-on exercise
 → End this chapter in a way that naturally leads to the next.
 
 ═══ QUALITY CHECKLIST (verify before finalizing) ═══
-  □ All claims supported by evidence
-  □ ≥ 2 citations in chapter
+  □ All claims supported OR marked [VERIFY] (no invented sources)
   □ Jargon defined on first use
   □ Logic flow between paragraphs
   □ Pedagogy elements present
@@ -1804,8 +1800,7 @@ Next chapter: case_study — CLOSE: Restate thesis, call to action, final story
 → End this chapter in a way that naturally leads to the next.
 
 ═══ QUALITY CHECKLIST (verify before finalizing) ═══
-  □ All claims supported by evidence
-  □ ≥ 2 citations in chapter
+  □ All claims supported OR marked [VERIFY] (no invented sources)
   □ Jargon defined on first use
   □ Logic flow between paragraphs
   □ Pedagogy elements present
@@ -1859,8 +1854,7 @@ MUST INCLUDE:
   ✓ lessons
 
 ═══ QUALITY CHECKLIST (verify before finalizing) ═══
-  □ All claims supported by evidence
-  □ ≥ 2 citations in chapter
+  □ All claims supported OR marked [VERIFY] (no invented sources)
   □ Jargon defined on first use
   □ Logic flow between paragraphs
   □ Pedagogy elements present
