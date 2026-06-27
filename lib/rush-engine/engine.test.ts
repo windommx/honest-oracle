@@ -69,6 +69,19 @@ describe("buildArchitecture", () => {
     expect(sceneAt(12)).toBe("resolution"); // last
   });
 
+  it("always emits all core beats — even a short novel gets a climax + peak there", () => {
+    for (const chapters of [6, 7, 8, 10]) {
+      const arch = buildArchitecture(cfg({ type: "novel", chapters }));
+      const beats = arch.chapters.map((c) => c.sceneType);
+      for (const beat of ["opening", "midpoint", "dark_moment", "climax", "resolution"]) {
+        expect(beats).toContain(beat);
+      }
+      const climax = arch.chapters.find((c) => c.sceneType === "climax")!;
+      const maxTension = Math.max(...arch.chapters.map((c) => c.tensionLevel ?? 0));
+      expect(climax.tensionLevel).toBe(maxTension); // tension peaks AT the climax
+    }
+  });
+
   it("keeps tension within [0,1] and escalating toward the climax", () => {
     const arch = buildArchitecture(cfg({ type: "novel", chapters: 20 }));
     for (const c of arch.chapters) {
