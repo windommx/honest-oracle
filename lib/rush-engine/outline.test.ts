@@ -3,10 +3,25 @@ import { parseOutline } from "./outline";
 import { generateAllPrompts, type BookConfig } from "./engine";
 
 describe("parseOutline", () => {
-  it("parses '1. ...' numbered lines", () => {
-    const m = parseOutline("1. opening in the mist\n2. the investigation begins");
+  it("parses '1. ...' numbered lines (bare numbers need a chapter count)", () => {
+    const m = parseOutline("1. opening in the mist\n2. the investigation begins", 8);
     expect(m.get(1)).toBe("opening in the mist");
     expect(m.get(2)).toBe("the investigation begins");
+  });
+
+  it("does not treat timestamps/years as chapter headers", () => {
+    // bare numbers outside [1, maxChapters] (and with no keyword) are NOT headers
+    const m = parseOutline("บทที่ 1 ตื่นเช้า\n10:30 พวกเขาพบกัน\n1980: สงครามเริ่ม", 8);
+    expect(m.get(1)).toContain("ตื่นเช้า");
+    expect(m.get(10)).toBeUndefined();
+    expect(m.get(1980)).toBeUndefined();
+    expect(m.get(1)).toContain("10:30"); // folds into ch1's beat instead of hijacking
+  });
+
+  it("parses Thai-numeral chapter headers (บทที่ ๑)", () => {
+    const m = parseOutline("บทที่ ๑ เปิดเรื่อง\nบทที่ ๒ สืบสวน", 8);
+    expect(m.get(1)).toBe("เปิดเรื่อง");
+    expect(m.get(2)).toBe("สืบสวน");
   });
 
   it("parses Thai chapter headers (บท / บทที่ + . : - —)", () => {
@@ -22,7 +37,7 @@ describe("parseOutline", () => {
   });
 
   it("appends non-header lines to the current chapter (multi-line beats)", () => {
-    const m = parseOutline("1. setup\n   extra detail\n2. next");
+    const m = parseOutline("1. setup\n   extra detail\n2. next", 8);
     expect(m.get(1)).toBe("setup\nextra detail");
     expect(m.get(2)).toBe("next");
   });

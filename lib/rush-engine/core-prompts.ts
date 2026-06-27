@@ -336,7 +336,7 @@ export function generateChapterPrompt(
     p += `→ If no STATE exists yet, reconstruct it from the chapters written so far.\n\n`;
   }
 
-  const parsedOutline = config.outline ? parseOutline(config.outline) : null;
+  const parsedOutline = config.outline ? parseOutline(config.outline, config.chapters) : null;
   const chapterBeat = parsedOutline?.get(chapter.number);
   if (chapterBeat) {
     p += `═══ PLANNED BEAT — Chapter ${chapter.number} (from your outline) ═══\n`;

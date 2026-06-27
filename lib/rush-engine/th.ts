@@ -273,7 +273,7 @@ export function thChapter(config: BookConfig, architecture: Architecture, chapte
     p += `═══ ความต่อเนื่อง ═══\n→ อ่านบล็อก <<<STATE>>> ล่าสุดจากก่อนหน้าในแชทนี้แล้วคงความสอดคล้อง\n→ ถ้ายังไม่มี STATE ให้สร้างขึ้นจากบทที่เขียนไปแล้ว\n\n`;
   }
 
-  const parsedOutline = config.outline ? parseOutline(config.outline) : null;
+  const parsedOutline = config.outline ? parseOutline(config.outline, config.chapters) : null;
   const chapterBeat = parsedOutline?.get(chapter.number);
   if (chapterBeat) {
     p += `═══ beat ของบทที่ ${chapter.number} (จากโครงของคุณ) ═══\n${chapterBeat}\n→ เขียน beat นี้โดยเฉพาะ ส่วนประเภท/วัตถุประสงค์ด้านบนเป็นแค่บทบาทเชิงโครงสร้าง\n\n`;
