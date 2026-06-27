@@ -31,20 +31,33 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Missing apiKey, model, or prompt" }, { status: 400 });
   }
 
+  // Abuse guard: cap the request size and the requested completion length.
+  const MAX_INPUT = 200_000; // chars
+  if (body.prompt.length > MAX_INPUT || (body.system?.length ?? 0) > MAX_INPUT) {
+    return NextResponse.json({ error: "Prompt or system text too large" }, { status: 413 });
+  }
+  const maxTokens = Math.min(Math.max(Number(body.maxTokens) || 4096, 1), 8192);
+
   const req = buildProviderRequest({
     provider,
     model: body.model,
     apiKey: body.apiKey,
     system: body.system,
     prompt: body.prompt,
-    maxTokens: body.maxTokens,
+    maxTokens,
   });
 
+  // Time-bound the upstream call so a slow provider can't hang the request.
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 120_000);
   let res: Response;
   try {
-    res = await fetch(req.url, { method: "POST", headers: req.headers, body: req.body });
-  } catch {
-    return NextResponse.json({ error: "Could not reach the provider" }, { status: 502 });
+    res = await fetch(req.url, { method: "POST", headers: req.headers, body: req.body, signal: controller.signal });
+  } catch (e) {
+    const aborted = e instanceof DOMException && e.name === "AbortError";
+    return NextResponse.json({ error: aborted ? "Provider timed out" : "Could not reach the provider" }, { status: aborted ? 504 : 502 });
+  } finally {
+    clearTimeout(timeout);
   }
 
   const json = await res.json().catch(() => null);
