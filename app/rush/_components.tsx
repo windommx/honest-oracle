@@ -6,6 +6,8 @@ import { MODULE_CATALOG, MODULE_GROUPS, type BookConfig, type PromptGroup } from
 import { TH_MODULES } from "@/lib/rush-engine/th";
 import { analyzeThai, tokenizeThai, formatThaiReport, thaiDeltas, scanThaiManuscript } from "@/lib/rush-engine/thai-analyzer";
 import { analyzeProse, formatProseReport, proseDeltas, scanManuscript } from "@/lib/rush-engine/prose-analyzer";
+import { splitChapters } from "@/lib/rush-engine/chapters";
+import { buildEpub } from "@/lib/rush-engine/epub";
 import { wordDiff, diffTokens, type DiffOp } from "@/lib/rush-engine/text-util";
 import { listManuscripts, getManuscript, saveManuscript, deleteManuscript, type StoredManuscript } from "./_manuscript-store";
 
@@ -67,6 +69,30 @@ function ReportActions({ report, filename }: { report: string; filename: string 
         Download .md
       </button>
     </div>
+  );
+}
+
+/** Build a spec-valid .epub from the pasted text (split into chapters) — client-side. */
+function EpubButton({ text, lang }: { text: string; lang: "th" | "en" }) {
+  const download = () => {
+    const chs = splitChapters(text).filter((c) => c.body.trim());
+    if (!chs.length) return;
+    const bytes = buildEpub({
+      title: chs[0].title === "Full text" ? "Manuscript" : chs[0].title,
+      language: lang === "th" ? "th" : "en",
+      chapters: chs.map((c) => ({ title: c.title, text: c.body })),
+    });
+    const url = URL.createObjectURL(new Blob([bytes.buffer as ArrayBuffer], { type: "application/epub+zip" }));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "manuscript.epub";
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+  return (
+    <button onClick={download} className="inline-flex items-center gap-1.5 text-[0.65rem] px-2.5 py-1 rounded border border-[#c9a84c]/40 text-[#c9a84c] hover:bg-[#c9a84c]/10">
+      <Download className="w-3 h-3" /> .epub
+    </button>
   );
 }
 
@@ -388,7 +414,10 @@ export function ThaiAnalyzerModal({ onClose, initialText }: { onClose: () => voi
         )}
         {a && (
           <div className="mt-4 space-y-4 text-sm">
-            <ReportActions report={formatThaiReport(a)} filename="thai-analysis.md" />
+            <div className="flex gap-2 flex-wrap items-center">
+              <ReportActions report={formatThaiReport(a)} filename="thai-analysis.md" />
+              <EpubButton text={text} lang="th" />
+            </div>
             <div className="grid grid-cols-3 gap-2">
               <Stat value={String(a.wordCount)} label="คำ" />
               <Stat value={String(a.uniqueWords)} label="คำไม่ซ้ำ" />
@@ -760,7 +789,10 @@ export function ProseAnalyzerModal({ onClose, initialText }: { onClose: () => vo
         )}
         {a && (
           <div className="mt-4 space-y-4 text-sm">
-            <ReportActions report={formatProseReport(a)} filename="prose-analysis.md" />
+            <div className="flex gap-2 flex-wrap items-center">
+              <ReportActions report={formatProseReport(a)} filename="prose-analysis.md" />
+              <EpubButton text={text} lang="en" />
+            </div>
             <div className="grid grid-cols-3 gap-2">
               <Stat value={String(a.wordCount)} label="words" />
               <Stat value={String(a.uniqueWords)} label="unique" />
