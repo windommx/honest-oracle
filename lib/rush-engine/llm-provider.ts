@@ -4,7 +4,7 @@
 // ║  through per request. These builders are pure & unit-testable.     ║
 // ╚══════════════════════════════════════════════════════════════════╝
 
-export type Provider = "anthropic" | "openai";
+export type Provider = "anthropic" | "openai" | "gemini" | "groq";
 
 export const PROVIDERS: { id: Provider; label: string; models: string[]; keyHint: string }[] = [
   {
@@ -19,7 +19,24 @@ export const PROVIDERS: { id: Provider; label: string; models: string[]; keyHint
     models: ["gpt-4o", "gpt-4o-mini", "o3-mini"],
     keyHint: "sk-…",
   },
+  {
+    id: "gemini",
+    label: "Google (Gemini)",
+    models: ["gemini-2.0-flash", "gemini-1.5-pro", "gemini-1.5-flash"],
+    keyHint: "AIza…",
+  },
+  {
+    id: "groq",
+    label: "Groq",
+    models: ["llama-3.3-70b-versatile", "llama-3.1-8b-instant"],
+    keyHint: "gsk_…",
+  },
 ];
+
+/** Whether `x` is a supported provider id. */
+export function isProvider(x: unknown): x is Provider {
+  return typeof x === "string" && PROVIDERS.some((p) => p.id === x);
+}
 
 /** Whether (provider, model) is in the endorsed allowlist (PROVIDERS[].models). */
 export function isEndorsedModel(provider: Provider, model: string): boolean {
@@ -61,17 +78,31 @@ export function buildProviderRequest(input: RunInput): ProviderRequest {
       }),
     };
   }
-  // openai
+  if (input.provider === "gemini") {
+    // Google Generative Language API. Key goes in the query string (server-side only).
+    return {
+      url: `https://generativelanguage.googleapis.com/v1beta/models/${input.model}:generateContent?key=${encodeURIComponent(input.apiKey)}`,
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        ...(input.system ? { systemInstruction: { parts: [{ text: input.system }] } } : {}),
+        contents: [{ role: "user", parts: [{ text: input.prompt }] }],
+        generationConfig: { maxOutputTokens: maxTokens },
+      }),
+    };
+  }
+  // openai + groq share the OpenAI Chat Completions shape
   const messages: { role: string; content: string }[] = [];
   if (input.system) messages.push({ role: "system", content: input.system });
   messages.push({ role: "user", content: input.prompt });
+  const isGroq = input.provider === "groq";
   return {
-    url: "https://api.openai.com/v1/chat/completions",
+    url: isGroq ? "https://api.groq.com/openai/v1/chat/completions" : "https://api.openai.com/v1/chat/completions",
     headers: {
       authorization: `Bearer ${input.apiKey}`,
       "content-type": "application/json",
     },
-    body: JSON.stringify({ model: input.model, max_completion_tokens: maxTokens, messages }),
+    // Groq uses max_tokens; OpenAI's newer param is max_completion_tokens.
+    body: JSON.stringify({ model: input.model, ...(isGroq ? { max_tokens: maxTokens } : { max_completion_tokens: maxTokens }), messages }),
   };
 }
 
@@ -86,6 +117,14 @@ export function parseProviderResponse(provider: Provider, json: unknown): string
       .join("")
       .trim();
   }
+  if (provider === "gemini") {
+    const cands = j.candidates as { content?: { parts?: { text?: string }[] } }[] | undefined;
+    return (cands?.[0]?.content?.parts ?? [])
+      .map((p) => p.text ?? "")
+      .join("")
+      .trim();
+  }
+  // openai + groq
   const choices = j.choices as { message?: { content?: string } }[] | undefined;
   return (choices?.[0]?.message?.content ?? "").trim();
 }

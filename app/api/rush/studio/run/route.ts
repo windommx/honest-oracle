@@ -3,6 +3,7 @@ import { requireUser } from "@/lib/server/session";
 import {
   buildProviderRequest,
   isEndorsedModel,
+  isProvider,
   parseProviderError,
   parseProviderResponse,
   type Provider,
@@ -25,7 +26,7 @@ export async function POST(request: NextRequest) {
   }
 
   const provider = body.provider as Provider;
-  if (provider !== "anthropic" && provider !== "openai") {
+  if (!isProvider(provider)) {
     return NextResponse.json({ error: "Unsupported provider" }, { status: 400 });
   }
   if (!body.apiKey || !body.model || !body.prompt) {

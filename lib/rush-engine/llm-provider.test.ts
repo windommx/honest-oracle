@@ -31,6 +31,25 @@ describe("buildProviderRequest", () => {
     expect(body.messages[1]).toEqual({ role: "user", content: "yo" });
   });
 
+  it("builds a Gemini generateContent request with the key in the query string", () => {
+    const req = buildProviderRequest({ provider: "gemini", model: "gemini-2.0-flash", apiKey: "AIza-xyz", system: "sys", prompt: "hi" });
+    expect(req.url).toContain("generativelanguage.googleapis.com");
+    expect(req.url).toContain("gemini-2.0-flash:generateContent");
+    expect(req.url).toContain("key=AIza-xyz");
+    const body = JSON.parse(req.body);
+    expect(body.systemInstruction.parts[0].text).toBe("sys");
+    expect(body.contents[0].parts[0].text).toBe("hi");
+  });
+
+  it("builds a Groq request (OpenAI-compatible) with max_tokens", () => {
+    const req = buildProviderRequest({ provider: "groq", model: "llama-3.3-70b-versatile", apiKey: "gsk_1", prompt: "yo" });
+    expect(req.url).toBe("https://api.groq.com/openai/v1/chat/completions");
+    expect(req.headers.authorization).toBe("Bearer gsk_1");
+    const body = JSON.parse(req.body);
+    expect(body.max_tokens).toBeGreaterThan(0);
+    expect(body.messages[0]).toEqual({ role: "user", content: "yo" });
+  });
+
   it("omits the system field when none is given", () => {
     const a = JSON.parse(buildProviderRequest({ provider: "anthropic", model: "m", apiKey: "k", prompt: "p" }).body);
     expect(a.system).toBeUndefined();
@@ -45,6 +64,10 @@ describe("parseProviderResponse", () => {
   });
   it("reads the OpenAI message content", () => {
     expect(parseProviderResponse("openai", { choices: [{ message: { content: " done " } }] })).toBe("done");
+  });
+  it("reads Gemini candidate parts and Groq choices", () => {
+    expect(parseProviderResponse("gemini", { candidates: [{ content: { parts: [{ text: "ge" }, { text: "mini" }] } }] })).toBe("gemini");
+    expect(parseProviderResponse("groq", { choices: [{ message: { content: "fast" } }] })).toBe("fast");
   });
   it("returns empty string on a malformed payload", () => {
     expect(parseProviderResponse("anthropic", {})).toBe("");
