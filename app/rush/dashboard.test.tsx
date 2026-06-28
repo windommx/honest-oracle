@@ -54,5 +54,6 @@ describe("Dashboard", () => {
     render(<DashboardPage />);
     expect(await screen.findByText("ร่างบทที่หนึ่ง")).toBeTruthy();
     expect(screen.getByText(/ต้นฉบับที่บันทึก/)).toBeTruthy();
+    expect(screen.getByLabelText("Export EPUB")).toBeTruthy(); // EPUB export per manuscript
   });
 });

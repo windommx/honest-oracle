@@ -5,9 +5,10 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   Crown, BookOpen, FileText, Share2, HardDrive, Type, Plus, RefreshCw, Search,
-  LayoutGrid, List, Lock, Globe, Trash2, ArrowRight, Play, Wand2, Sparkles, Loader2,
+  LayoutGrid, List, Lock, Globe, Trash2, ArrowRight, Play, Wand2, Sparkles, Loader2, BookDown,
 } from "lucide-react";
-import { BOOK_TYPES, type BookConfig, type BookTypeKey } from "@/lib/rush-engine/engine";
+import { BOOK_TYPES, buildEpub, type BookConfig, type BookTypeKey } from "@/lib/rush-engine/engine";
+import { splitChapters } from "@/lib/rush-engine/chapters";
 import { titleCase } from "../_utils";
 import { listManuscripts, deleteManuscript, type StoredManuscript } from "../_manuscript-store";
 
@@ -82,6 +83,21 @@ export default function DashboardPage() {
   const delManuscript = (id: string) => {
     deleteManuscript(id);
     setManuscripts(listManuscripts());
+  };
+  const exportEpub = (m: StoredManuscript) => {
+    const chs = splitChapters(m.text).filter((c) => c.body.trim());
+    if (!chs.length) return;
+    const bytes = buildEpub({
+      title: m.title,
+      language: m.lang,
+      chapters: chs.map((c) => ({ title: c.title, text: c.body })),
+    });
+    const url = URL.createObjectURL(new Blob([bytes.buffer as ArrayBuffer], { type: "application/epub+zip" }));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${m.title || "manuscript"}.epub`;
+    link.click();
+    URL.revokeObjectURL(url);
   };
 
   const localChars = useMemo(() => manuscripts.reduce((s, m) => s + m.text.length, 0), [manuscripts]);
@@ -309,6 +325,7 @@ export default function DashboardPage() {
                           <td className="px-5 text-right text-xs text-slate-400">{new Date(m.updatedAt).toLocaleDateString("th-TH", { dateStyle: "medium" })}</td>
                           <td className="px-3 text-right whitespace-nowrap">
                             <button onClick={() => router.push(`/rush?analyze=${m.id}`)} className="text-emerald-400 hover:text-emerald-300 p-1.5" aria-label="Analyze"><Search className="w-4 h-4" /></button>
+                            <button onClick={() => exportEpub(m)} className="text-[#c9a84c] hover:text-amber-300 p-1.5" aria-label="Export EPUB" title="ดาวน์โหลด .epub"><BookDown className="w-4 h-4" /></button>
                             <button onClick={() => delManuscript(m.id)} className="text-slate-500 hover:text-red-400 p-1.5" aria-label="Delete manuscript"><Trash2 className="w-4 h-4" /></button>
                           </td>
                         </tr>
