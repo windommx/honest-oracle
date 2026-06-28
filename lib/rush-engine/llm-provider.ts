@@ -33,6 +33,50 @@ export const PROVIDERS: { id: Provider; label: string; models: string[]; keyHint
   },
 ];
 
+// Static provider profiles from published specs (NOT live telemetry — this is
+// honest guidance, not a real-time bandit). cost: 0=cheap..1=pricey; quality/
+// speed: 0..1; contextChars ≈ max context window in characters (~4 chars/token).
+export const PROVIDER_PROFILE: Record<Provider, { quality: number; cost: number; speed: number; contextChars: number }> = {
+  anthropic: { quality: 0.95, cost: 0.5, speed: 0.6, contextChars: 200_000 * 4 },
+  openai: { quality: 0.92, cost: 0.6, speed: 0.6, contextChars: 128_000 * 4 },
+  gemini: { quality: 0.82, cost: 0.1, speed: 0.8, contextChars: 1_000_000 * 4 },
+  groq: { quality: 0.78, cost: 0.2, speed: 0.98, contextChars: 32_000 * 4 },
+};
+
+export type Priority = "cheap" | "balanced" | "premium";
+
+/** Deterministic provider recommendation from static specs + the task's context
+ *  size and the user's priority. Returns the best fit + a short reason. This is
+ *  guidance, not a live load-balancer (we have no per-provider telemetry). */
+export function recommendProvider(opts: { contextChars: number; priority?: Priority; available?: Provider[] }): { provider: Provider; reason: string } {
+  const priority = opts.priority ?? "balanced";
+  const pool = (opts.available ?? PROVIDERS.map((p) => p.id)).filter((p) => PROVIDER_PROFILE[p]);
+  const WEIGHTS: Record<Priority, { q: number; c: number; s: number }> = {
+    cheap: { q: 0.2, c: 0.5, s: 0.3 },
+    balanced: { q: 0.4, c: 0.3, s: 0.3 },
+    premium: { q: 0.7, c: 0.1, s: 0.2 },
+  };
+  const W = WEIGHTS[priority];
+  // Prefer providers whose context window comfortably fits the task.
+  const fits = pool.filter((p) => opts.contextChars <= PROVIDER_PROFILE[p].contextChars * 0.8);
+  const candidates = fits.length ? fits : pool.slice().sort((a, b) => PROVIDER_PROFILE[b].contextChars - PROVIDER_PROFILE[a].contextChars).slice(0, 1);
+  let best = candidates[0];
+  let bestScore = -1;
+  for (const p of candidates) {
+    const m = PROVIDER_PROFILE[p];
+    const score = m.quality * W.q + (1 - m.cost) * W.c + m.speed * W.s;
+    if (score > bestScore) {
+      bestScore = score;
+      best = p;
+    }
+  }
+  const m = PROVIDER_PROFILE[best];
+  const reason = !fits.length
+    ? `largest context window fits the ${Math.round(opts.contextChars / 4)}-token task`
+    : `best ${priority} fit (quality ${m.quality}, cost ${m.cost}, speed ${m.speed})`;
+  return { provider: best, reason };
+}
+
 /** Whether `x` is a supported provider id. */
 export function isProvider(x: unknown): x is Provider {
   return typeof x === "string" && PROVIDERS.some((p) => p.id === x);

@@ -1,5 +1,20 @@
 import { describe, it, expect } from "vitest";
-import { buildProviderRequest, parseProviderResponse, parseProviderError, isEndorsedModel, PROVIDERS } from "./llm-provider";
+import { buildProviderRequest, parseProviderResponse, parseProviderError, isEndorsedModel, recommendProvider, PROVIDERS } from "./llm-provider";
+
+describe("recommendProvider", () => {
+  it("picks a huge-context provider when the task is large", () => {
+    const r = recommendProvider({ contextChars: 600_000, priority: "balanced" });
+    expect(r.provider).toBe("gemini"); // only Gemini's window fits comfortably
+  });
+  it("favors quality for premium and cheapness for cheap on small tasks", () => {
+    expect(recommendProvider({ contextChars: 4000, priority: "premium" }).provider).toBe("anthropic");
+    expect(["gemini", "groq"]).toContain(recommendProvider({ contextChars: 4000, priority: "cheap" }).provider);
+  });
+  it("respects the available list", () => {
+    const r = recommendProvider({ contextChars: 4000, priority: "premium", available: ["groq", "gemini"] });
+    expect(["groq", "gemini"]).toContain(r.provider);
+  });
+});
 
 describe("isEndorsedModel", () => {
   it("accepts allowlisted models and rejects arbitrary ones", () => {
