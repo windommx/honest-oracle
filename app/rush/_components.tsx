@@ -8,7 +8,7 @@ import { analyzeThai, tokenizeThai, formatThaiReport, thaiDeltas, scanThaiManusc
 import { analyzeProse, formatProseReport, proseDeltas, scanManuscript } from "@/lib/rush-engine/prose-analyzer";
 import { splitChapters } from "@/lib/rush-engine/chapters";
 import { buildEpub } from "@/lib/rush-engine/epub";
-import { consistencyLedger } from "@/lib/rush-engine/consistency";
+import { consistencyLedger, storyBible, formatStoryBible } from "@/lib/rush-engine/consistency";
 import { wordDiff, diffTokens, type DiffOp } from "@/lib/rush-engine/text-util";
 import { listManuscripts, getManuscript, saveManuscript, deleteManuscript, type StoredManuscript } from "./_manuscript-store";
 
@@ -93,6 +93,25 @@ function EpubButton({ text, lang }: { text: string; lang: "th" | "en" }) {
   return (
     <button onClick={download} className="inline-flex items-center gap-1.5 text-[0.65rem] px-2.5 py-1 rounded border border-[#c9a84c]/40 text-[#c9a84c] hover:bg-[#c9a84c]/10">
       <Download className="w-3 h-3" /> .epub
+    </button>
+  );
+}
+
+/** Export a deterministic Story Bible (recurring entities + chapter spans) as Markdown. */
+function BibleButton({ text, lang }: { text: string; lang: "th" | "en" }) {
+  const download = () => {
+    const bible = storyBible(text, lang);
+    if (!bible.entries.length) return;
+    const url = URL.createObjectURL(new Blob([formatStoryBible(bible, lang)], { type: "text/markdown" }));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "story-bible.md";
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+  return (
+    <button onClick={download} className="inline-flex items-center gap-1.5 text-[0.65rem] px-2.5 py-1 rounded border border-[#c9a84c]/40 text-[#c9a84c] hover:bg-[#c9a84c]/10">
+      <Download className="w-3 h-3" /> {lang === "th" ? "คลังเนื้อเรื่อง" : "Story Bible"}
     </button>
   );
 }
@@ -459,6 +478,7 @@ export function ThaiAnalyzerModal({ onClose, initialText }: { onClose: () => voi
             <div className="flex gap-2 flex-wrap items-center">
               <ReportActions report={formatThaiReport(a)} filename="thai-analysis.md" />
               <EpubButton text={text} lang="th" />
+              {scan.length > 1 && <BibleButton text={dtext} lang="th" />}
             </div>
             <div className="grid grid-cols-3 gap-2">
               <Stat value={String(a.wordCount)} label="คำ" />
@@ -835,6 +855,7 @@ export function ProseAnalyzerModal({ onClose, initialText }: { onClose: () => vo
             <div className="flex gap-2 flex-wrap items-center">
               <ReportActions report={formatProseReport(a)} filename="prose-analysis.md" />
               <EpubButton text={text} lang="en" />
+              {scan.length > 1 && <BibleButton text={dtext} lang="en" />}
             </div>
             <div className="grid grid-cols-3 gap-2">
               <Stat value={String(a.wordCount)} label="words" />

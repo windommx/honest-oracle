@@ -71,13 +71,15 @@ export interface ConsistencyLedger {
   dropped: TermStat[]; // appeared early (≥3×) then vanished by mid-book
 }
 
-export function consistencyLedger(text: string, lang: "en" | "th"): ConsistencyLedger {
+type StatMap = Map<string, { count: number; chapters: Set<number> }>;
+
+/** Tokenize per chapter and tally term → {count, chapters}. Shared by the ledger and the bible. */
+function collectStats(text: string, lang: "en" | "th"): { total: number; stats: StatMap } {
   const chunks = splitChapters(text)
     .map((c, i) => ({ n: i + 1, body: c.body }))
     .filter((c) => c.body.trim());
-  const total = chunks.length;
 
-  const stats = new Map<string, { count: number; chapters: Set<number> }>();
+  const stats: StatMap = new Map();
   for (const ch of chunks) {
     const terms = lang === "th" ? termsTh(ch.body) : termsEn(ch.body);
     for (const t of terms) {
@@ -87,11 +89,17 @@ export function consistencyLedger(text: string, lang: "en" | "th"): ConsistencyL
       stats.set(t, s);
     }
   }
+  return { total: chunks.length, stats };
+}
 
-  const toStat = (term: string): TermStat => {
-    const s = stats.get(term)!;
-    return { term, count: s.count, chapters: Array.from(s.chapters).sort((a, b) => a - b) };
-  };
+const statToTerm = (stats: StatMap, term: string): TermStat => {
+  const s = stats.get(term)!;
+  return { term, count: s.count, chapters: Array.from(s.chapters).sort((a, b) => a - b) };
+};
+
+export function consistencyLedger(text: string, lang: "en" | "th"): ConsistencyLedger {
+  const { total, stats } = collectStats(text, lang);
+  const toStat = (term: string): TermStat => statToTerm(stats, term);
 
   // Candidates: terms used ≥2×, capped to the 400 most frequent (bounds the O(n²) clustering).
   const candidates = Array.from(stats.entries())
@@ -141,4 +149,53 @@ export function consistencyLedger(text: string, lang: "en" | "th"): ConsistencyL
       : [];
 
   return { chapters: total, terms: stats.size, variantClusters, dropped };
+}
+
+export interface BibleEntry extends TermStat {
+  firstChapter: number;
+  lastChapter: number;
+  span: number; // chapters from first to last appearance, inclusive
+}
+export interface StoryBible {
+  chapters: number;
+  entries: BibleEntry[];
+}
+
+/** Deterministic codex: every recurring entity (proper noun / Thai content token)
+ *  used ≥ `minCount` times, with its frequency and chapter span. Paste-ready
+ *  continuity reference — counts, no inference about what each term *is*. */
+export function storyBible(text: string, lang: "en" | "th", minCount = 3): StoryBible {
+  const { total, stats } = collectStats(text, lang);
+  const entries: BibleEntry[] = Array.from(stats.entries())
+    .filter(([, s]) => s.count >= minCount)
+    .map(([t]) => {
+      const st = statToTerm(stats, t);
+      const first = st.chapters[0];
+      const last = st.chapters[st.chapters.length - 1];
+      return { ...st, firstChapter: first, lastChapter: last, span: last - first + 1 };
+    })
+    .sort((a, b) => b.count - a.count || a.term.localeCompare(b.term))
+    .slice(0, 200);
+  return { chapters: total, entries };
+}
+
+/** Render a Story Bible as paste-ready Markdown for use as an LLM continuity prompt. */
+export function formatStoryBible(bible: StoryBible, lang: "en" | "th"): string {
+  const th = lang === "th";
+  const lines: string[] = [];
+  lines.push(th ? "# คลังเนื้อเรื่อง (Story Bible)" : "# Story Bible");
+  lines.push(
+    th
+      ? `ดึงอัตโนมัติจาก ${bible.chapters} บท · นับจริง ไม่ใช่การตีความ · ใช้แปะกลับให้ AI เพื่อรักษาความต่อเนื่อง`
+      : `Auto-extracted from ${bible.chapters} chapters · real counts, not interpretation · paste back to your AI to anchor continuity`
+  );
+  lines.push("");
+  lines.push(th ? "| คำ | ครั้ง | บท | ช่วง |" : "| Term | Uses | Chapters | Span |");
+  lines.push("| :--- | ---: | :--- | ---: |");
+  for (const e of bible.entries) {
+    const chs = e.chapters.length > 8 ? `${e.firstChapter}–${e.lastChapter}` : e.chapters.join(", ");
+    lines.push(`| ${e.term} | ${e.count} | ${chs} | ${e.span} |`);
+  }
+  if (th) lines.push("", "> หมายเหตุ: ภาษาไทยขึ้นกับการตัดคำ — ชื่อเฉพาะบางตัวอาจถูกแยกเป็นคำย่อย จึงอาจไม่ครบทุกชื่อ");
+  return lines.join("\n");
 }

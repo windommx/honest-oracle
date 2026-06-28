@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { consistencyLedger, withinOneEdit } from "./consistency";
+import { consistencyLedger, withinOneEdit, storyBible, formatStoryBible } from "./consistency";
 
 describe("withinOneEdit", () => {
   it("is true for a single substitution/insertion/deletion, false otherwise", () => {
@@ -41,5 +41,33 @@ describe("consistencyLedger", () => {
   it("returns empty clusters for consistent prose", () => {
     const led = consistencyLedger("## Ch1\nMarcus spoke.\n## Ch2\nMarcus left.", "en");
     expect(led.variantClusters).toHaveLength(0);
+  });
+});
+
+describe("storyBible", () => {
+  it("extracts recurring entities with frequency and chapter span", () => {
+    const text =
+      "## Ch1\nMarcus met Elena. Marcus smiled.\n## Ch2\nMarcus left.\n## Ch3\nMarcus returned to Elena. Elena waited. Elena hoped.";
+    const bible = storyBible(text, "en");
+    expect(bible.chapters).toBe(3);
+    const marcus = bible.entries.find((e) => e.term === "Marcus");
+    expect(marcus).toBeTruthy();
+    expect(marcus!.count).toBe(4);
+    expect(marcus!.firstChapter).toBe(1);
+    expect(marcus!.lastChapter).toBe(3);
+    expect(marcus!.span).toBe(3);
+  });
+
+  it("omits terms below the minCount threshold", () => {
+    const bible = storyBible("## Ch1\nA rare Sparrow appeared once.\n## Ch2\nNothing.", "en");
+    expect(bible.entries.some((e) => e.term === "Sparrow")).toBe(false);
+  });
+
+  it("renders paste-ready markdown with a table", () => {
+    const bible = storyBible("## Ch1\nNova Nova Nova ran.\n## Ch2\nNova rested.", "en");
+    const md = formatStoryBible(bible, "en");
+    expect(md).toContain("# Story Bible");
+    expect(md).toContain("| Term | Uses | Chapters | Span |");
+    expect(md).toContain("Nova");
   });
 });
