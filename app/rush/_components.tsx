@@ -8,6 +8,7 @@ import { analyzeThai, tokenizeThai, formatThaiReport, thaiDeltas, scanThaiManusc
 import { analyzeProse, formatProseReport, proseDeltas, scanManuscript } from "@/lib/rush-engine/prose-analyzer";
 import { splitChapters } from "@/lib/rush-engine/chapters";
 import { buildEpub } from "@/lib/rush-engine/epub";
+import { consistencyLedger } from "@/lib/rush-engine/consistency";
 import { wordDiff, diffTokens, type DiffOp } from "@/lib/rush-engine/text-util";
 import { listManuscripts, getManuscript, saveManuscript, deleteManuscript, type StoredManuscript } from "./_manuscript-store";
 
@@ -93,6 +94,46 @@ function EpubButton({ text, lang }: { text: string; lang: "th" | "en" }) {
     <button onClick={download} className="inline-flex items-center gap-1.5 text-[0.65rem] px-2.5 py-1 rounded border border-[#c9a84c]/40 text-[#c9a84c] hover:bg-[#c9a84c]/10">
       <Download className="w-3 h-3" /> .epub
     </button>
+  );
+}
+
+/** Deterministic cross-chapter consistency: name-spelling variants + dropped terms. */
+function ConsistencyView({ text, lang }: { text: string; lang: "th" | "en" }) {
+  const led = useMemo(() => consistencyLedger(text, lang), [text, lang]);
+  if (led.chapters < 2 || (led.variantClusters.length === 0 && led.dropped.length === 0)) return null;
+  return (
+    <div>
+      <h3 className="text-xs font-semibold tracking-widest text-gray-400 uppercase mb-2">
+        {lang === "th" ? "ความสม่ำเสมอข้ามบท" : "Cross-chapter consistency"}
+      </h3>
+      {led.variantClusters.length > 0 && (
+        <div className="mb-2">
+          <p className="text-[0.65rem] text-gray-500 mb-1">{lang === "th" ? "สะกดไม่ตรงกัน (อาจเป็นชื่อเดียวกัน):" : "Spelling variants (maybe the same name):"}</p>
+          <div className="flex flex-wrap gap-1.5">
+            {led.variantClusters.slice(0, 12).map((c, i) => (
+              <span key={i} className="text-xs px-2 py-0.5 rounded border border-amber-400/40 text-amber-300">
+                {c.map((t) => `${t.term}×${t.count}`).join(" ≈ ")}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+      {led.dropped.length > 0 && (
+        <div>
+          <p className="text-[0.65rem] text-gray-500 mb-1">{lang === "th" ? "โผล่แล้วหายกลางเล่ม:" : "Introduced then dropped:"}</p>
+          <div className="flex flex-wrap gap-1.5">
+            {led.dropped.slice(0, 12).map((t) => (
+              <span key={t.term} className="text-xs px-2 py-0.5 rounded border border-orange-400/40 text-orange-300">
+                {t.term} ×{t.count} ({lang === "th" ? "บท" : "ch"} {t.chapters.join(",")})
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+      <p className="text-[0.6rem] text-gray-500 mt-1">
+        {lang === "th" ? "นับจริง ไม่ใช่คำตัดสิน · ภาษาไทยขึ้นกับการตัดคำ อาจไม่จับชื่อทุกตัว" : "Real counts, not a verdict."}
+      </p>
+    </div>
   );
 }
 
@@ -412,6 +453,7 @@ export function ThaiAnalyzerModal({ onClose, initialText }: { onClose: () => voi
             }}
           />
         )}
+        {scan.length > 1 && <ConsistencyView text={dtext} lang="th" />}
         {a && (
           <div className="mt-4 space-y-4 text-sm">
             <div className="flex gap-2 flex-wrap items-center">
@@ -787,6 +829,7 @@ export function ProseAnalyzerModal({ onClose, initialText }: { onClose: () => vo
             }}
           />
         )}
+        {scan.length > 1 && <ConsistencyView text={dtext} lang="en" />}
         {a && (
           <div className="mt-4 space-y-4 text-sm">
             <div className="flex gap-2 flex-wrap items-center">
