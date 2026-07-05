@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { consistencyLedger, withinOneEdit, storyBible, formatStoryBible } from "./consistency";
+import { consistencyLedger, withinOneEdit, thaiMarkVariant, storyBible, formatStoryBible } from "./consistency";
 
 describe("withinOneEdit", () => {
   it("is true for a single substitution/insertion/deletion, false otherwise", () => {
@@ -8,6 +8,33 @@ describe("withinOneEdit", () => {
     expect(withinOneEdit("Mali", "Mai")).toBe(true); // deletion
     expect(withinOneEdit("Mali", "Mali")).toBe(false); // identical = not a variant
     expect(withinOneEdit("Mali", "Sara")).toBe(false); // too far
+  });
+});
+
+describe("thaiMarkVariant", () => {
+  it("clusters mark-only differences but rejects consonant swaps", () => {
+    expect(thaiMarkVariant("มะลิ", "มะลี")).toBe(true); // ิ ↔ ี (vowel mark)
+    expect(thaiMarkVariant("เย็น", "เป็น")).toBe(false); // ย ↔ ป (consonant) — different word
+    expect(thaiMarkVariant("เช้า", "เข้า")).toBe(false); // ช ↔ ข (consonant)
+    expect(thaiMarkVariant("มะลิ", "มะลิ")).toBe(false); // identical
+  });
+});
+
+describe("consistencyLedger — Thai precision (dogfood regressions)", () => {
+  it("clusters a Thai mark-variant name and does NOT cluster common consonant-swap words", () => {
+    const text = "บท1\nมะลิ เดิน มะลิ วิ่ง เย็น มาก เย็น จริง\nบท2\nมะลี มา มะลี ไป เป็น ที่ เป็น มา";
+    const led = consistencyLedger(text, "th");
+    const nameCluster = led.variantClusters.find((c) => c.some((t) => t.term === "มะลิ") && c.some((t) => t.term === "มะลี"));
+    expect(nameCluster).toBeTruthy(); // มะลิ ↔ มะลี caught
+    // เย็น/เป็น (consonant swap) must never appear in the same cluster
+    const bad = led.variantClusters.find((c) => c.some((t) => t.term === "เย็น") && c.some((t) => t.term === "เป็น"));
+    expect(bad).toBeFalsy();
+  });
+
+  it("excludes Thai stopwords from dropped terms", () => {
+    const text = "บท1\nนั้น นั้น นั้น หมาป่า หมาป่า หมาป่า\nบท2\nเธอ พัก\nบท3\nเดินทาง\nบท4\nจบ";
+    const led = consistencyLedger(text, "th");
+    expect(led.dropped.some((t) => t.term === "นั้น")).toBe(false); // stopword, not a real dropped term
   });
 });
 

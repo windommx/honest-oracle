@@ -8,7 +8,7 @@
 // ╚══════════════════════════════════════════════════════════════════╝
 
 import { splitChapters } from "./chapters";
-import { tokenizeThai } from "./thai-analyzer";
+import { tokenizeThai, THAI_STOPWORDS } from "./thai-analyzer";
 
 // Capitalized words that are usually sentence-initial, not proper nouns.
 const EN_SKIP = new Set([
@@ -34,7 +34,9 @@ function termsEn(body: string): string[] {
 }
 
 function termsTh(body: string): string[] {
-  return tokenizeThai(body).filter((w) => w.length >= 3 && /[฀-๿]/.test(w));
+  // Drop stopwords — else common function words (นั้น, ความ…) surface as false
+  // "dropped terms" and pollute the codex. (Found by dogfood: นั้น×4 was flagged.)
+  return tokenizeThai(body).filter((w) => w.length >= 3 && /[฀-๿]/.test(w) && !THAI_STOPWORDS.has(w));
 }
 
 /** Edit distance ≤ 1 between two DIFFERENT strings (likely the same name misspelled). */
@@ -61,6 +63,21 @@ export function withinOneEdit(a: string, b: string): boolean {
     }
   }
   return edits + (la - i) + (lb - j) <= 1;
+}
+
+// Thai combining vowel/tone marks (mai han-akat, sara i..u, tone marks, thanthakhat…).
+const TH_MARKS = /[ัิ-ฺ็-๎]/g;
+
+/** Thai variant check: two DIFFERENT tokens that share the same consonant skeleton
+ *  but differ only in vowel/tone marks (มะลิ ↔ มะลี). This is high-precision for Thai —
+ *  a consonant swap (เย็น ↔ เป็น) is almost always a different word, not a misspelling,
+ *  so requiring the stripped forms to match rejects those. Recall is still bounded by
+ *  segmentation (an unknown name split into sub-words won't surface at all). */
+export function thaiMarkVariant(a: string, b: string): boolean {
+  if (a === b) return false;
+  const sa = a.replace(TH_MARKS, "");
+  const sb = b.replace(TH_MARKS, "");
+  return sa.length >= 2 && sa === sb;
 }
 
 export interface TermStat { term: string; count: number; chapters: number[] }
@@ -102,8 +119,13 @@ export function consistencyLedger(text: string, lang: "en" | "th"): ConsistencyL
   const toStat = (term: string): TermStat => statToTerm(stats, term);
 
   // Candidates: terms used ≥2×, capped to the 400 most frequent (bounds the O(n²) clustering).
+  // Min length guards against garbage clusters: Thai is full of unrelated 3-char
+  // monosyllables one edit apart (แสง/แรง, เย็น/เป็น), so require ≥4 chars there;
+  // English proper nouns are already ≥3. (Dogfood: this removes the false positives
+  // while a real 4-char name like มะลิ still qualifies.)
+  const minLen = lang === "th" ? 4 : 3;
   const candidates = Array.from(stats.entries())
-    .filter(([, s]) => s.count >= 2)
+    .filter(([t, s]) => s.count >= 2 && t.length >= minLen)
     .sort((a, b) => b[1].count - a[1].count)
     .slice(0, 400)
     .map(([t]) => t);
@@ -120,12 +142,15 @@ export function consistencyLedger(text: string, lang: "en" | "th"): ConsistencyL
     }
     return r;
   };
+  // English: edit-distance ≤ 1. Thai: mark-only variants (see thaiMarkVariant) —
+  // the generic edit-distance produces garbage on Thai monosyllables.
+  const near = lang === "th" ? thaiMarkVariant : withinOneEdit;
   for (let a = 0; a < candidates.length; a++) {
     for (let b = a + 1; b < candidates.length; b++) {
       const x = candidates[a];
       const y = candidates[b];
       if (x[0] !== y[0]) continue;
-      if (withinOneEdit(x, y)) parent.set(find(x), find(y));
+      if (near(x, y)) parent.set(find(x), find(y));
     }
   }
   const groups = new Map<string, string[]>();
