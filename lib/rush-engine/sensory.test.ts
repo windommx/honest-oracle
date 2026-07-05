@@ -44,4 +44,13 @@ describe("sensoryDensity (Thai)", () => {
     expect(led.total).toBeGreaterThan(0);
     expect(led.senses.map((s) => s.sense)).toEqual(["sight", "sound", "smell", "taste", "touch"]);
   });
+
+  it("catches expanded Thai vocabulary in the right sense (recall regression)", () => {
+    const led = sensoryDensity("ท้องฟ้า ทึบ มืด ฟ้าร้อง สนั่น ดัง รส เฝื่อน ขม หิน สาก เหนอะหนะ", "th");
+    const by = (s: string) => led.senses.find((x) => x.sense === s)!;
+    expect(by("sight").samples.some((w) => w.word === "ทึบ")).toBe(true);
+    expect(by("sound").samples.some((w) => w.word === "สนั่น")).toBe(true);
+    expect(by("taste").samples.some((w) => w.word === "เฝื่อน")).toBe(true);
+    expect(by("touch").samples.some((w) => w.word === "สาก")).toBe(true);
+  });
 });
