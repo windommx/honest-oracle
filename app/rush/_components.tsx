@@ -99,9 +99,9 @@ function EpubButton({ text, lang }: { text: string; lang: "th" | "en" }) {
 }
 
 /** Export a deterministic Story Bible (recurring entities + chapter spans) as Markdown. */
-function BibleButton({ text, lang }: { text: string; lang: "th" | "en" }) {
+function BibleButton({ text, lang, protect }: { text: string; lang: "th" | "en"; protect?: string[] }) {
   const download = () => {
-    const bible = storyBible(text, lang);
+    const bible = storyBible(text, lang, 3, protect);
     if (!bible.entries.length) return;
     const url = URL.createObjectURL(new Blob([formatStoryBible(bible, lang)], { type: "text/markdown" }));
     const link = document.createElement("a");
@@ -156,39 +156,38 @@ function SensoryView({ text, lang }: { text: string; lang: "th" | "en" }) {
   );
 }
 
-/** Deterministic cross-chapter consistency: name-spelling variants + dropped terms. */
-function ConsistencyView({ text, lang }: { text: string; lang: "th" | "en" }) {
-  const [names, setNames] = useState("");
-  // Writer-supplied character/place names kept atomic despite the Thai segmenter.
-  const protect = useMemo(
-    () => names.split(/[,\n]+/).map((n) => n.trim()).filter((n) => n.length >= 2),
-    [names]
+/** Parse a comma/newline glossary string into a protect list (names ≥ 2 chars). */
+function parseGlossary(names: string): string[] {
+  return names.split(/[,\n]+/).map((n) => n.trim()).filter((n) => n.length >= 2);
+}
+
+/** Thai glossary input — writer's cast/place names, kept atomic despite the segmenter. */
+function GlossaryInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  return (
+    <div className="mb-2.5">
+      <input
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder="ชื่อตัวละคร/สถานที่ คั่นด้วยจุลภาค เช่น มะลี, ธนกร"
+        aria-label="ชื่อเฉพาะสำหรับกันการตัดคำ"
+        className="w-full text-xs px-2.5 py-1.5 rounded border border-white/10 bg-white/5 text-gray-200 placeholder:text-gray-600 focus:border-[#c9a84c]/50 focus:outline-none"
+      />
+      <p className="text-[0.6rem] text-gray-500 mt-1">
+        ชื่อที่ตัวตัดคำไทยอาจแยกผิด → ช่วยให้ทั้งการตรวจชื่อสะกดต่างและคลังเนื้อเรื่องแม่นขึ้น (บันทึกอัตโนมัติ)
+      </p>
+    </div>
   );
+}
+
+/** Deterministic cross-chapter consistency: name-spelling variants + dropped terms. */
+function ConsistencyView({ text, lang, protect }: { text: string; lang: "th" | "en"; protect?: string[] }) {
   const led = useMemo(() => consistencyLedger(text, lang, protect), [text, lang, protect]);
-  const th = lang === "th";
-  if (led.chapters < 2) return null;
-  const empty = led.variantClusters.length === 0 && led.dropped.length === 0;
-  // English catches names by capitalization; the glossary only helps Thai segmentation.
-  if (empty && !th) return null;
+  if (led.chapters < 2 || (led.variantClusters.length === 0 && led.dropped.length === 0)) return null;
   return (
     <div>
       <h3 className="text-xs font-semibold tracking-widest text-gray-400 uppercase mb-2">
-        {th ? "ความสม่ำเสมอข้ามบท" : "Cross-chapter consistency"}
+        {lang === "th" ? "ความสม่ำเสมอข้ามบท" : "Cross-chapter consistency"}
       </h3>
-      {th && (
-        <div className="mb-2.5">
-          <input
-            value={names}
-            onChange={(e) => setNames(e.target.value)}
-            placeholder="ชื่อตัวละคร/สถานที่ คั่นด้วยจุลภาค เช่น มะลี, ธนกร"
-            aria-label="ชื่อเฉพาะสำหรับกันการตัดคำ"
-            className="w-full text-xs px-2.5 py-1.5 rounded border border-white/10 bg-white/5 text-gray-200 placeholder:text-gray-600 focus:border-[#c9a84c]/50 focus:outline-none"
-          />
-          <p className="text-[0.6rem] text-gray-500 mt-1">
-            ใส่ชื่อที่ตัวตัดคำไทยอาจแยกผิด → ช่วยให้จับชื่อสะกดต่างได้แม่นขึ้น
-          </p>
-        </div>
-      )}
       {led.variantClusters.length > 0 && (
         <div className="mb-2">
           <p className="text-[0.65rem] text-gray-500 mb-1">{lang === "th" ? "สะกดไม่ตรงกัน (อาจเป็นชื่อเดียวกัน):" : "Spelling variants (maybe the same name):"}</p>
@@ -437,6 +436,8 @@ export function ThaiAnalyzerModal({ onClose, initialText }: { onClose: () => voi
     [dtext, drevised]
   );
   const scan = useMemo(() => (dtext.trim() ? scanThaiManuscript(dtext) : []), [dtext]);
+  const [glossary, setGlossary] = usePersistedState("rush.analyzer.th.glossary");
+  const protect = useMemo(() => parseGlossary(glossary), [glossary]);
   const worst = useMemo(() => {
     if (scan.length < 2) return { aiTells: -1, cv: -1 };
     const argTells = scan.reduce((b, c, i) => (c.aiTells > scan[b].aiTells ? i : b), 0);
@@ -537,13 +538,18 @@ export function ThaiAnalyzerModal({ onClose, initialText }: { onClose: () => voi
           />
         )}
         {a && <div className="mt-4"><SensoryView text={dtext} lang="th" /></div>}
-        {scan.length > 1 && <ConsistencyView text={dtext} lang="th" />}
+        {scan.length > 1 && (
+          <div className="mt-4">
+            <GlossaryInput value={glossary} onChange={setGlossary} />
+            <ConsistencyView text={dtext} lang="th" protect={protect} />
+          </div>
+        )}
         {a && (
           <div className="mt-4 space-y-4 text-sm">
             <div className="flex gap-2 flex-wrap items-center">
               <ReportActions report={formatThaiReport(a)} filename="thai-analysis.md" />
               <EpubButton text={text} lang="th" />
-              {scan.length > 1 && <BibleButton text={dtext} lang="th" />}
+              {scan.length > 1 && <BibleButton text={dtext} lang="th" protect={protect} />}
             </div>
             <div className="grid grid-cols-3 gap-2">
               <Stat value={String(a.wordCount)} label="คำ" />
