@@ -162,9 +162,13 @@ export function analyzeThai(text: string): ThaiAnalysis {
   // Overlap-corrected so e.g. "หัวใจสลาย" isn't also counted as "ใจสลาย".
   const aiTells = countPhrases(text, THAI_AI_TELLS);
 
-  // Sentence stats: split on terminal punctuation and newlines (Thai rarely uses ".").
+  // Clause stats: Thai has no sentence-ending mark — the space is the real clause /
+  // breath boundary (where English would use a comma or period), so we split on space
+  // too, not just terminal punctuation + newlines. Without this, a chapter written as
+  // one flowing paragraph collapses to a single "sentence" and rhythm cv reads 0 for
+  // all real Thai prose (found by dogfood). Counts clauses, honestly labelled as such.
   const sentenceLens = text
-    .split(/[.!?…ฯ\n]+/)
+    .split(/[.!?…ฯ\n ]+/)
     .map((s) => tokenizeThai(s).length)
     .filter((n) => n > 0);
   const sentences = {

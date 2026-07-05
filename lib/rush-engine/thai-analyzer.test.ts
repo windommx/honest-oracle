@@ -45,6 +45,14 @@ describe("analyzeThai", () => {
     expect(a.dialogue.ratio).toBeGreaterThan(0);
   });
 
+  it("splits Thai clauses on spaces so one-paragraph prose still has rhythm", () => {
+    // No terminal punctuation, no newlines — just spaces (the real Thai clause
+    // boundary). Before the dogfood fix this collapsed to 1 sentence, cv 0.
+    const a = analyzeThai("เขาวิ่ง เธอยืนมองท้องฟ้าสีครามที่ทอดยาวไปไกลสุดสายตา เงียบ");
+    expect(a.sentences.count).toBeGreaterThanOrEqual(3);
+    expect(a.rhythm.cv).toBeGreaterThan(0);
+  });
+
   it("measures rhythm: uniform sentences are monotonous, varied ones are not", () => {
     const flat = analyzeThai("เขาเดินไปตลาด\nเธอเดินไปตลาด\nฉันเดินไปตลาด\nเราเดินไปตลาด");
     expect(flat.rhythm.monotonyRun).toBeGreaterThanOrEqual(3);
