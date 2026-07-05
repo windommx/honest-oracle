@@ -110,8 +110,26 @@ function getSegmenter(): SegmenterLike | null {
   }
 }
 
-/** Segment Thai text into words. Falls back to a character-run split if Intl.Segmenter is absent. */
-export function tokenizeThai(text: string): string[] {
+const RE_ESCAPE = /[.*+?^${}()|[\]\\]/g;
+
+/** Segment Thai text into words. Falls back to a character-run split if Intl.Segmenter
+ *  is absent. `protect` (e.g. character/place names the writer supplies) forces those
+ *  exact strings to stay atomic tokens instead of being split by the dictionary
+ *  segmenter — this is the honest lever for the segmentation ceiling (มะลีนั่ง →
+ *  มะลี + นั่ง when มะลี is protected). */
+export function tokenizeThai(text: string, protect?: string[]): string[] {
+  const terms = (protect ?? []).map((t) => t.trim()).filter(Boolean).sort((a, b) => b.length - a.length);
+  if (terms.length) {
+    const re = new RegExp("(" + terms.map((t) => t.replace(RE_ESCAPE, "\\$&")).join("|") + ")");
+    const kept = new Set(terms);
+    const out: string[] = [];
+    for (const piece of text.split(re)) {
+      if (!piece) continue;
+      if (kept.has(piece)) out.push(piece);
+      else out.push(...tokenizeThai(piece)); // recurse without protection
+    }
+    return out;
+  }
   const seg = getSegmenter();
   if (seg) {
     const out: string[] = [];

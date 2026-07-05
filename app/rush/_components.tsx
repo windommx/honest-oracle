@@ -158,13 +158,37 @@ function SensoryView({ text, lang }: { text: string; lang: "th" | "en" }) {
 
 /** Deterministic cross-chapter consistency: name-spelling variants + dropped terms. */
 function ConsistencyView({ text, lang }: { text: string; lang: "th" | "en" }) {
-  const led = useMemo(() => consistencyLedger(text, lang), [text, lang]);
-  if (led.chapters < 2 || (led.variantClusters.length === 0 && led.dropped.length === 0)) return null;
+  const [names, setNames] = useState("");
+  // Writer-supplied character/place names kept atomic despite the Thai segmenter.
+  const protect = useMemo(
+    () => names.split(/[,\n]+/).map((n) => n.trim()).filter((n) => n.length >= 2),
+    [names]
+  );
+  const led = useMemo(() => consistencyLedger(text, lang, protect), [text, lang, protect]);
+  const th = lang === "th";
+  if (led.chapters < 2) return null;
+  const empty = led.variantClusters.length === 0 && led.dropped.length === 0;
+  // English catches names by capitalization; the glossary only helps Thai segmentation.
+  if (empty && !th) return null;
   return (
     <div>
       <h3 className="text-xs font-semibold tracking-widest text-gray-400 uppercase mb-2">
-        {lang === "th" ? "ความสม่ำเสมอข้ามบท" : "Cross-chapter consistency"}
+        {th ? "ความสม่ำเสมอข้ามบท" : "Cross-chapter consistency"}
       </h3>
+      {th && (
+        <div className="mb-2.5">
+          <input
+            value={names}
+            onChange={(e) => setNames(e.target.value)}
+            placeholder="ชื่อตัวละคร/สถานที่ คั่นด้วยจุลภาค เช่น มะลี, ธนกร"
+            aria-label="ชื่อเฉพาะสำหรับกันการตัดคำ"
+            className="w-full text-xs px-2.5 py-1.5 rounded border border-white/10 bg-white/5 text-gray-200 placeholder:text-gray-600 focus:border-[#c9a84c]/50 focus:outline-none"
+          />
+          <p className="text-[0.6rem] text-gray-500 mt-1">
+            ใส่ชื่อที่ตัวตัดคำไทยอาจแยกผิด → ช่วยให้จับชื่อสะกดต่างได้แม่นขึ้น
+          </p>
+        </div>
+      )}
       {led.variantClusters.length > 0 && (
         <div className="mb-2">
           <p className="text-[0.65rem] text-gray-500 mb-1">{lang === "th" ? "สะกดไม่ตรงกัน (อาจเป็นชื่อเดียวกัน):" : "Spelling variants (maybe the same name):"}</p>

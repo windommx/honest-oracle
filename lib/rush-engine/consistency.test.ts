@@ -31,6 +31,15 @@ describe("consistencyLedger — Thai precision (dogfood regressions)", () => {
     expect(bad).toBeFalsy();
   });
 
+  it("protect list raises the segmentation ceiling — catches a name the segmenter would split", () => {
+    const text = "บท1\nมะลิเดินไกล มะลิยิ้มรับ\nบท2\nมะลีนั่งเงียบ มะลีลุกขึ้นยืน";
+    const bare = consistencyLedger(text, "th");
+    const guarded = consistencyLedger(text, "th", ["มะลิ", "มะลี"]);
+    const cluster = guarded.variantClusters.find((c) => c.some((t) => t.term === "มะลิ") && c.some((t) => t.term === "มะลี"));
+    expect(cluster).toBeTruthy(); // with the writer's name list, the variant is caught
+    void bare; // (bare may miss it — that's the documented ceiling this feature lifts)
+  });
+
   it("excludes Thai stopwords from dropped terms", () => {
     const text = "บท1\nนั้น นั้น นั้น หมาป่า หมาป่า หมาป่า\nบท2\nเธอ พัก\nบท3\nเดินทาง\nบท4\nจบ";
     const led = consistencyLedger(text, "th");

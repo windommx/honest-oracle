@@ -20,6 +20,17 @@ describe("tokenizeThai", () => {
     expect(words).not.toContain(" ");
     expect(words).not.toContain("!");
   });
+
+  it("keeps protected names atomic despite the segmenter", () => {
+    // Without protection the dictionary would split an unknown name off an adjacent word.
+    const plain = tokenizeThai("มะลีนั่งเงียบ");
+    const guarded = tokenizeThai("มะลีนั่งเงียบ", ["มะลี"]);
+    expect(guarded).toContain("มะลี");
+    expect(guarded.filter((w) => w === "มะลี").length).toBe(1);
+    // protecting doesn't drop the rest of the text
+    expect(guarded.join("")).toContain("นั่ง");
+    void plain;
+  });
 });
 
 describe("analyzeThai", () => {

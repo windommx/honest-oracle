@@ -33,10 +33,11 @@ function termsEn(body: string): string[] {
   return out;
 }
 
-function termsTh(body: string): string[] {
+function termsTh(body: string, protect?: string[]): string[] {
   // Drop stopwords — else common function words (นั้น, ความ…) surface as false
   // "dropped terms" and pollute the codex. (Found by dogfood: นั้น×4 was flagged.)
-  return tokenizeThai(body).filter((w) => w.length >= 3 && /[฀-๿]/.test(w) && !THAI_STOPWORDS.has(w));
+  // `protect` keeps writer-supplied names atomic despite the segmenter.
+  return tokenizeThai(body, protect).filter((w) => w.length >= 3 && /[฀-๿]/.test(w) && !THAI_STOPWORDS.has(w));
 }
 
 /** Edit distance ≤ 1 between two DIFFERENT strings (likely the same name misspelled). */
@@ -91,14 +92,14 @@ export interface ConsistencyLedger {
 type StatMap = Map<string, { count: number; chapters: Set<number> }>;
 
 /** Tokenize per chapter and tally term → {count, chapters}. Shared by the ledger and the bible. */
-function collectStats(text: string, lang: "en" | "th"): { total: number; stats: StatMap } {
+function collectStats(text: string, lang: "en" | "th", protect?: string[]): { total: number; stats: StatMap } {
   const chunks = splitChapters(text)
     .map((c, i) => ({ n: i + 1, body: c.body }))
     .filter((c) => c.body.trim());
 
   const stats: StatMap = new Map();
   for (const ch of chunks) {
-    const terms = lang === "th" ? termsTh(ch.body) : termsEn(ch.body);
+    const terms = lang === "th" ? termsTh(ch.body, protect) : termsEn(ch.body);
     for (const t of terms) {
       const s = stats.get(t) ?? { count: 0, chapters: new Set<number>() };
       s.count++;
@@ -114,8 +115,8 @@ const statToTerm = (stats: StatMap, term: string): TermStat => {
   return { term, count: s.count, chapters: Array.from(s.chapters).sort((a, b) => a - b) };
 };
 
-export function consistencyLedger(text: string, lang: "en" | "th"): ConsistencyLedger {
-  const { total, stats } = collectStats(text, lang);
+export function consistencyLedger(text: string, lang: "en" | "th", protect?: string[]): ConsistencyLedger {
+  const { total, stats } = collectStats(text, lang, protect);
   const toStat = (term: string): TermStat => statToTerm(stats, term);
 
   // Candidates: terms used ≥2×, capped to the 400 most frequent (bounds the O(n²) clustering).
@@ -189,8 +190,8 @@ export interface StoryBible {
 /** Deterministic codex: every recurring entity (proper noun / Thai content token)
  *  used ≥ `minCount` times, with its frequency and chapter span. Paste-ready
  *  continuity reference — counts, no inference about what each term *is*. */
-export function storyBible(text: string, lang: "en" | "th", minCount = 3): StoryBible {
-  const { total, stats } = collectStats(text, lang);
+export function storyBible(text: string, lang: "en" | "th", minCount = 3, protect?: string[]): StoryBible {
+  const { total, stats } = collectStats(text, lang, protect);
   const entries: BibleEntry[] = Array.from(stats.entries())
     .filter(([, s]) => s.count >= minCount)
     .map(([t]) => {
