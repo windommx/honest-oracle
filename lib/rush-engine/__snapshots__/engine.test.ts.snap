@@ -1402,6 +1402,28 @@ POV: [ ] · เป้าหมาย: [ ] · อุปสรรค: [ ] · ต�
     "usage": "ส่งดราฟต์เพื่อลงประสาทสัมผัส",
   },
   {
+    "description": "เขียนฉากใหม่แบบ deep POV: ปักหมุดเร็ว ตัดกริยากรอง เติมความคิดภายใน เปิดปมค้าง จบด้วยแรงส่ง",
+    "group": "craft",
+    "id": "IMMERSION",
+    "name": "Immersion / Deep-POV Pass",
+    "prompt": "เขียนฉากใหม่เพื่อดึงผู้อ่านเข้าไป "ข้างใน" ประสบการณ์ของตัวละคร POV (deep POV / การขนส่งผู้อ่าน) คงพล็อต ข้อเท็จจริง และความหมายบทสนทนาไว้ — เปลี่ยนแค่ระยะใกล้ ไม่ใช่เปลี่ยนเหตุการณ์
+
+ทำครบทั้งห้า:
+1. ปักหมุดเร็ว — ภายใน 2-3 ประโยคแรก ตรึงผู้อ่านไว้กับสถานที่/ร่างกาย/ขณะนั้น ด้วยรายละเอียดรูปธรรมหนึ่งอย่าง (ไม่ใช่เปิดด้วยพยากรณ์อากาศหรือเกริ่นลอย ๆ)
+2. ตัดกริยากรอง — เอากริยาที่ถอยระยะออก (เห็น / ได้ยิน / รู้สึก / สังเกต / ตระหนัก / มองเห็น) แล้วเล่าการรับรู้ตรง ๆ "เธอได้ยินเสียงประตูลั่นเอี๊ยด" → "ประตูลั่นเอี๊ยด"
+3. ความคิดภายใน — เติมปฏิกิริยา ณ ขณะนั้นของตัวละคร POV (ความคิด / ความรู้สึกทางกาย / การตัดสิน) ให้เราสัมผัสฉากอย่างที่เขาสัมผัส — แต่ "แสดง" ไม่ใช่ตั้งชื่ออารมณ์ตรง ๆ
+4. เปิดปมค้างหนึ่งปม — ปลูกหรือทำให้คมขึ้นซึ่งคำถามค้างหนึ่งข้อที่ผู้อ่านอยากรู้คำตอบ (ช่องว่างข้อมูล) โดยไม่กั๊กแบบถูก ๆ
+5. แรงส่งไปข้างหน้า — จบด้วยแรงส่ง (จุดพลิก คำถามใหม่ การกระทำที่ค้าง) ไม่ใช่ปิดเรียบร้อยเกินไป
+
+กฎ: ไม่พรรณนาเว่อร์หรือสัมผัสคลิเช รายละเอียดที่เติมต้องทำหน้าที่คู่ (อารมณ์/ตัวละคร/แก่นเรื่อง) ห้ามเพิ่มเหตุการณ์ที่ดราฟต์ไม่ได้บอกใบ้ไว้
+
+ผลลัพธ์: ฉากที่เขียนใหม่ ตามด้วยบันทึกการแก้ 3-5 บรรทัด ระบุกริยากรองที่ตัดและปมที่เปิด
+
+═══ ดราฟต์ ═══
+[วางฉากที่นี่]",
+    "usage": "ส่งฉากเพื่อดึงผู้อ่านเข้าไปข้างใน",
+  },
+  {
     "description": "เส้นความตึงรายฉาก + แก้จุดราบ",
     "group": "craft",
     "id": "CONFLICT_MAP",
@@ -2951,6 +2973,28 @@ Output: a per-scene sense table + the targeted additions.
 ═══ DRAFT ═══
 [INSERT DRAFT HERE]",
     "usage": "Send a draft to ground it in the senses.",
+  },
+  {
+    "description": "Deep-POV rewrite: ground fast, cut filter verbs, add interiority, open one loop, end on momentum.",
+    "group": "craft",
+    "id": "IMMERSION",
+    "name": "Immersion / Deep-POV Pass",
+    "prompt": "Rewrite a scene to pull the reader INSIDE the POV character's experience (deep POV / "transportation"). Keep plot, facts, and dialogue meaning — change how close we are, not what happens.
+
+Do all five:
+1. GROUND FAST — within the first 2-3 sentences, anchor the reader in place/body/moment with one concrete, specific detail (not a weather-report or throat-clear opening).
+2. CUT THE FILTER — remove distancing verbs (saw / heard / felt / noticed / realized / could see) and render the perception directly. "She heard the door creak" → "The door creaked."
+3. INTERIORITY — add the POV character's in-the-moment reaction (thought / bodily sensation / judgement) so we experience the scene as they do — but SHOW it, don't name the emotion.
+4. ONE OPEN LOOP — plant or sharpen a single unanswered question the reader now wants closed (an information gap), without withholding cheaply.
+5. FORWARD PULL — end on momentum (a turn, a new question, an unfinished action), not a tidy button.
+
+Rules: no purple prose or cliché sensory filler; every added detail must do double duty (mood / character / theme). Do not add events that aren't implied by the draft.
+
+Output: the rewritten scene, then a 3-5 line changelog naming each filter word cut and each loop opened.
+
+═══ DRAFT ═══
+[INSERT SCENE HERE]",
+    "usage": "Send a scene to pull the reader inside it.",
   },
   {
     "description": "Per-scene tension curve + flat-spot fixes.",

@@ -512,6 +512,24 @@ Output: a per-scene sense table + the targeted additions.
 [INSERT DRAFT HERE]`;
 }
 
+function moduleImmersion(): string {
+  return `Rewrite a scene to pull the reader INSIDE the POV character's experience (deep POV / "transportation"). Keep plot, facts, and dialogue meaning — change how close we are, not what happens.
+
+Do all five:
+1. GROUND FAST — within the first 2-3 sentences, anchor the reader in place/body/moment with one concrete, specific detail (not a weather-report or throat-clear opening).
+2. CUT THE FILTER — remove distancing verbs (saw / heard / felt / noticed / realized / could see) and render the perception directly. "She heard the door creak" → "The door creaked."
+3. INTERIORITY — add the POV character's in-the-moment reaction (thought / bodily sensation / judgement) so we experience the scene as they do — but SHOW it, don't name the emotion.
+4. ONE OPEN LOOP — plant or sharpen a single unanswered question the reader now wants closed (an information gap), without withholding cheaply.
+5. FORWARD PULL — end on momentum (a turn, a new question, an unfinished action), not a tidy button.
+
+Rules: no purple prose or cliché sensory filler; every added detail must do double duty (mood / character / theme). Do not add events that aren't implied by the draft.
+
+Output: the rewritten scene, then a 3-5 line changelog naming each filter word cut and each loop opened.
+
+═══ DRAFT ═══
+[INSERT SCENE HERE]`;
+}
+
 function moduleConflictMap(): string {
   return `Map the TENSION across a draft so it never goes flat.
 
@@ -875,6 +893,7 @@ export const MODULE_CATALOG: ModuleDef[] = [
   { id: "DIALOGUE", group: "craft", name: "Dialogue Polish", description: "Action beats, subtext, trimmed tags.", usage: "Send a dialogue passage to revise.", build: moduleDialoguePolish },
   { id: "ANTI_SAFE", group: "craft", name: "Anti-Safe Pass", description: "Break safe/tidy AI defaults; raise real stakes; ban Thai AI-tell clichés.", usage: "Send a draft to make it riskier.", build: moduleAntiSafe },
   { id: "SENSORY", group: "craft", name: "Sensory Audit", description: "Per-scene 5-sense check (≥3) + targeted concrete additions.", usage: "Send a draft to ground it in the senses.", build: moduleSensoryAudit },
+  { id: "IMMERSION", group: "craft", name: "Immersion / Deep-POV Pass", description: "Deep-POV rewrite: ground fast, cut filter verbs, add interiority, open one loop, end on momentum.", usage: "Send a scene to pull the reader inside it.", build: moduleImmersion },
   { id: "CONFLICT_MAP", group: "craft", name: "Conflict / Tension Map", description: "Per-scene tension curve + flat-spot fixes.", usage: "Send a draft to map and raise tension.", build: moduleConflictMap },
   // nonfiction
   { id: "FACT_CHECK", group: "nonfiction", name: "Citation / Fact-Check", description: "Verify every claim; forbid invented citations.", usage: "Send each nonfiction chapter draft.", build: moduleFactCheck },
