@@ -8,7 +8,7 @@ import { analyzeThai, tokenizeThai, formatThaiReport, thaiDeltas, scanThaiManusc
 import { analyzeProse, formatProseReport, proseDeltas, scanManuscript } from "@/lib/rush-engine/prose-analyzer";
 import { splitChapters } from "@/lib/rush-engine/chapters";
 import { buildEpub } from "@/lib/rush-engine/epub";
-import { consistencyLedger, storyBible, formatStoryBible } from "@/lib/rush-engine/consistency";
+import { consistencyLedger, storyBible, formatStoryBible, suggestThaiNames } from "@/lib/rush-engine/consistency";
 import { sensoryDensity, SENSE_LABEL, type Sense } from "@/lib/rush-engine/sensory";
 import { wordDiff, diffTokens, type DiffOp } from "@/lib/rush-engine/text-util";
 import { listManuscripts, getManuscript, saveManuscript, deleteManuscript, type StoredManuscript } from "./_manuscript-store";
@@ -161,8 +161,13 @@ function parseGlossary(names: string): string[] {
   return names.split(/[,\n]+/).map((n) => n.trim()).filter((n) => n.length >= 2);
 }
 
-/** Thai glossary input — writer's cast/place names, kept atomic despite the segmenter. */
-function GlossaryInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+/** Thai glossary input — writer's cast/place names, kept atomic despite the segmenter.
+ *  `suggestions` are candidate names auto-found in the text; clicking one appends it. */
+function GlossaryInput({ value, onChange, suggestions = [] }: { value: string; onChange: (v: string) => void; suggestions?: string[] }) {
+  const add = (name: string) => {
+    const base = value.trim().replace(/[,\s]+$/, "");
+    onChange(base ? `${base}, ${name}` : name);
+  };
   return (
     <div className="mb-2.5">
       <input
@@ -172,6 +177,20 @@ function GlossaryInput({ value, onChange }: { value: string; onChange: (v: strin
         aria-label="ชื่อเฉพาะสำหรับกันการตัดคำ"
         className="w-full text-xs px-2.5 py-1.5 rounded border border-white/10 bg-white/5 text-gray-200 placeholder:text-gray-600 focus:border-[#c9a84c]/50 focus:outline-none"
       />
+      {suggestions.length > 0 && (
+        <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+          <span className="text-[0.6rem] text-gray-500">น่าจะเป็นชื่อ (กดเพื่อเพิ่ม):</span>
+          {suggestions.map((s) => (
+            <button
+              key={s}
+              onClick={() => add(s)}
+              className="text-[0.7rem] px-2 py-0.5 rounded-full border border-[#c9a84c]/40 text-[#c9a84c] hover:bg-[#c9a84c]/10"
+            >
+              + {s}
+            </button>
+          ))}
+        </div>
+      )}
       <p className="text-[0.6rem] text-gray-500 mt-1">
         ชื่อที่ตัวตัดคำไทยอาจแยกผิด → ช่วยให้ทั้งการตรวจชื่อสะกดต่างและคลังเนื้อเรื่องแม่นขึ้น (บันทึกอัตโนมัติ)
       </p>
@@ -438,6 +457,10 @@ export function ThaiAnalyzerModal({ onClose, initialText }: { onClose: () => voi
   const scan = useMemo(() => (dtext.trim() ? scanThaiManuscript(dtext) : []), [dtext]);
   const [glossary, setGlossary] = usePersistedState("rush.analyzer.th.glossary");
   const protect = useMemo(() => parseGlossary(glossary), [glossary]);
+  const nameSuggestions = useMemo(
+    () => (dtext.trim() ? suggestThaiNames(dtext, protect) : []),
+    [dtext, protect]
+  );
   const worst = useMemo(() => {
     if (scan.length < 2) return { aiTells: -1, cv: -1 };
     const argTells = scan.reduce((b, c, i) => (c.aiTells > scan[b].aiTells ? i : b), 0);
@@ -540,7 +563,7 @@ export function ThaiAnalyzerModal({ onClose, initialText }: { onClose: () => voi
         {a && <div className="mt-4"><SensoryView text={dtext} lang="th" /></div>}
         {scan.length > 1 && (
           <div className="mt-4">
-            <GlossaryInput value={glossary} onChange={setGlossary} />
+            <GlossaryInput value={glossary} onChange={setGlossary} suggestions={nameSuggestions} />
             <ConsistencyView text={dtext} lang="th" protect={protect} />
           </div>
         )}

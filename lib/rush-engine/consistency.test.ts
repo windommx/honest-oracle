@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { consistencyLedger, withinOneEdit, thaiMarkVariant, storyBible, formatStoryBible } from "./consistency";
+import { consistencyLedger, withinOneEdit, thaiMarkVariant, storyBible, formatStoryBible, suggestThaiNames } from "./consistency";
 
 describe("withinOneEdit", () => {
   it("is true for a single substitution/insertion/deletion, false otherwise", () => {
@@ -8,6 +8,20 @@ describe("withinOneEdit", () => {
     expect(withinOneEdit("Mali", "Mai")).toBe(true); // deletion
     expect(withinOneEdit("Mali", "Mali")).toBe(false); // identical = not a variant
     expect(withinOneEdit("Mali", "Sara")).toBe(false); // too far
+  });
+});
+
+describe("suggestThaiNames", () => {
+  it("suggests a repeated name the segmenter splits, ignoring clean-tokenizing words", () => {
+    const text = "บท1\nมะลีนั่งเงียบ มะลีลุกขึ้น มะลีเดินไป หมาป่าหอน หมาป่าไล่ หมาป่าหนี";
+    const s = suggestThaiNames(text);
+    expect(s).toContain("มะลี"); // unknown, split by segmenter → surfaced
+    expect(s).not.toContain("หมาป่า"); // known compound token → no protection needed
+  });
+
+  it("excludes names already in the glossary", () => {
+    const text = "บท1\nมะลีนั่ง มะลีลุก มะลีเดิน";
+    expect(suggestThaiNames(text, ["มะลี"])).not.toContain("มะลี");
   });
 });
 

@@ -225,3 +225,48 @@ export function formatStoryBible(bible: StoryBible, lang: "en" | "th"): string {
   if (th) lines.push("", "> หมายเหตุ: ภาษาไทยขึ้นกับการตัดคำ — ชื่อเฉพาะบางตัวอาจถูกแยกเป็นคำย่อย จึงอาจไม่ครบทุกชื่อ");
   return lines.join("\n");
 }
+
+const THAI = /[฀-๿]/;
+const isNamePart = (t: string) => t.length <= 2 && !THAI_STOPWORDS.has(t) && THAI.test(t);
+
+/** Suggest Thai character/place names the writer may want to protect. Uses the
+ *  segmenter's OWN tokens (so candidates respect syllable boundaries) and looks for
+ *  repeated adjacent token groups that form an unknown name — the segmenter splits
+ *  an unknown proper noun into short syllables (มะ + ลี), so a frequent bigram/
+ *  trigram containing a short non-stopword syllable is a likely name, while clean
+ *  compounds (ความ+รัก) and function words are excluded. Deterministic SUGGESTIONS,
+ *  not a verdict; the writer confirms which to add to the glossary. */
+export function suggestThaiNames(text: string, exclude: string[] = [], limit = 8): string[] {
+  const excl = new Set(exclude);
+  // Chapter bodies only — headings ("บทที่ 1") otherwise surface as fake names.
+  const body = splitChapters(text).map((c) => c.body).join("\n");
+  const toks = tokenizeThai(body).filter((t) => THAI.test(t));
+  const info = new Map<string, { count: number; parts: string[] }>();
+  const bump = (parts: string[]) => {
+    const s = parts.join("");
+    const e = info.get(s) ?? { count: 0, parts };
+    e.count++;
+    info.set(s, e);
+  };
+  for (let i = 0; i < toks.length - 1; i++) {
+    bump([toks[i], toks[i + 1]]);
+    if (i < toks.length - 2) bump([toks[i], toks[i + 1], toks[i + 2]]);
+  }
+  // Keep groups seen ≥3× whose combined string is 3–8 chars, contains at least one
+  // short non-stopword syllable, and isn't entirely stopwords.
+  const cands = Array.from(info.entries()).filter(([s, { count, parts }]) => {
+    if (count < 3 || excl.has(s) || s.length < 3 || s.length > 8) return false;
+    if (!parts.some(isNamePart)) return false;
+    return parts.some((p) => !THAI_STOPWORDS.has(p));
+  });
+  // Prefer longer groups; drop any candidate subsumed by a longer kept one.
+  cands.sort((a, b) => b[0].length - a[0].length || b[1].count - a[1].count);
+  const kept: { s: string; count: number }[] = [];
+  for (const [s, { count }] of cands) {
+    if (!kept.some((k) => k.s.includes(s))) kept.push({ s, count });
+  }
+  return kept
+    .sort((a, b) => b.count * b.s.length - a.count * a.s.length)
+    .slice(0, limit)
+    .map((k) => k.s);
+}
