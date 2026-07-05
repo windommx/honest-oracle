@@ -9,6 +9,7 @@ import { analyzeProse, formatProseReport, proseDeltas, scanManuscript } from "@/
 import { splitChapters } from "@/lib/rush-engine/chapters";
 import { buildEpub } from "@/lib/rush-engine/epub";
 import { consistencyLedger, storyBible, formatStoryBible } from "@/lib/rush-engine/consistency";
+import { sensoryDensity, SENSE_LABEL, type Sense } from "@/lib/rush-engine/sensory";
 import { wordDiff, diffTokens, type DiffOp } from "@/lib/rush-engine/text-util";
 import { listManuscripts, getManuscript, saveManuscript, deleteManuscript, type StoredManuscript } from "./_manuscript-store";
 
@@ -113,6 +114,45 @@ function BibleButton({ text, lang }: { text: string; lang: "th" | "en" }) {
     <button onClick={download} className="inline-flex items-center gap-1.5 text-[0.65rem] px-2.5 py-1 rounded border border-[#c9a84c]/40 text-[#c9a84c] hover:bg-[#c9a84c]/10">
       <Download className="w-3 h-3" /> {lang === "th" ? "คลังเนื้อเรื่อง" : "Story Bible"}
     </button>
+  );
+}
+
+/** Deterministic sensory-detail density by sense (the measurable core of "immersion"). */
+function SensoryView({ text, lang }: { text: string; lang: "th" | "en" }) {
+  const led = useMemo(() => sensoryDensity(text, lang), [text, lang]);
+  if (led.words < 20 || led.total === 0) return null;
+  const max = Math.max(...led.senses.map((s) => s.per1k), 1);
+  const th = lang === "th";
+  return (
+    <div>
+      <h3 className="text-xs font-semibold tracking-widest text-gray-400 uppercase mb-2">
+        {th ? "ความหนาแน่นประสาทสัมผัส" : "Sensory density"}
+      </h3>
+      <div className="space-y-1.5">
+        {led.senses.map((s) => (
+          <div key={s.sense} className="flex items-center gap-2 text-xs">
+            <span className="w-20 shrink-0 text-gray-400">{SENSE_LABEL[s.sense as Sense][th ? "th" : "en"]}</span>
+            <div className="flex-1 h-3 rounded bg-white/5 overflow-hidden">
+              <div className="h-full bg-[#c9a84c]/50" style={{ width: `${(s.per1k / max) * 100}%` }} />
+            </div>
+            <span className="w-24 shrink-0 text-right tabular-nums text-gray-500">
+              {s.count}× · {s.per1k}/1k
+            </span>
+          </div>
+        ))}
+      </div>
+      {led.unused.length > 0 && (
+        <p className="text-[0.65rem] text-orange-300/80 mt-1.5">
+          {th ? "ไม่ได้ใช้เลย: " : "Never used: "}
+          {led.unused.map((u) => SENSE_LABEL[u][th ? "th" : "en"]).join(", ")}
+        </p>
+      )}
+      <p className="text-[0.6rem] text-gray-500 mt-1">
+        {th
+          ? "นับจากรายการคำจริง ไม่ใช่คะแนนคุณภาพ · ขึ้นกับการตัดคำและรายการคำ"
+          : "Counts from a fixed word list, not a quality score · bounded by the lexicon."}
+      </p>
+    </div>
   );
 }
 
@@ -472,6 +512,7 @@ export function ThaiAnalyzerModal({ onClose, initialText }: { onClose: () => voi
             }}
           />
         )}
+        {a && <div className="mt-4"><SensoryView text={dtext} lang="th" /></div>}
         {scan.length > 1 && <ConsistencyView text={dtext} lang="th" />}
         {a && (
           <div className="mt-4 space-y-4 text-sm">
@@ -849,6 +890,7 @@ export function ProseAnalyzerModal({ onClose, initialText }: { onClose: () => vo
             }}
           />
         )}
+        {a && <div className="mt-4"><SensoryView text={dtext} lang="en" /></div>}
         {scan.length > 1 && <ConsistencyView text={dtext} lang="en" />}
         {a && (
           <div className="mt-4 space-y-4 text-sm">
