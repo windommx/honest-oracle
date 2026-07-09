@@ -51,9 +51,37 @@ export function coverCanvas(pageCount: number, trim: TrimSize = "6x9", paper: Pa
 
 export interface KdpCheck { rule: string; ok: boolean; note: string }
 
+// Amazon KDP metadata field limits (real, published).
+export const KDP_LIMITS = { title: 200, subtitle: 200, description: 4000, descriptionMin: 100, keywords: 7, keywordLen: 50, categories: 3 };
+
+export interface KdpMeta {
+  title?: string;
+  subtitle?: string;
+  author?: string;
+  description?: string;
+  keywords?: string[];
+  categories?: string[];
+}
+
+/** Deterministic KDP metadata-compliance checks against real field limits. Only the
+ *  fields the writer supplied are checked — a missing field is reported as "provide it",
+ *  never silently passed. */
+export function kdpMetadataChecks(meta: KdpMeta): KdpCheck[] {
+  const kw = (meta.keywords ?? []).map((k) => k.trim()).filter(Boolean);
+  const cats = (meta.categories ?? []).map((c) => c.trim()).filter(Boolean);
+  const desc = (meta.description ?? "").trim();
+  return [
+    { rule: `Title ≤ ${KDP_LIMITS.title} chars`, ok: !!meta.title && meta.title.length <= KDP_LIMITS.title, note: meta.title ? `${meta.title.length} chars` : "ยังไม่ใส่ชื่อเรื่อง" },
+    { rule: `Description ${KDP_LIMITS.descriptionMin}–${KDP_LIMITS.description} chars`, ok: desc.length >= KDP_LIMITS.descriptionMin && desc.length <= KDP_LIMITS.description, note: desc ? `${desc.length} chars` : "ยังไม่ใส่คำโปรย" },
+    { rule: `≤ ${KDP_LIMITS.keywords} keywords, each ≤ ${KDP_LIMITS.keywordLen} chars`, ok: kw.length > 0 && kw.length <= KDP_LIMITS.keywords && kw.every((k) => k.length <= KDP_LIMITS.keywordLen), note: `${kw.length} keywords` },
+    { rule: `1–${KDP_LIMITS.categories} categories`, ok: cats.length >= 1 && cats.length <= KDP_LIMITS.categories, note: `${cats.length} categories` },
+  ];
+}
+
 /** Deterministic KDP readiness checklist (paperback). Every item is a real,
- *  checkable rule — not a vibe score. Returns the computed page/spine too. */
-export function kdpReadiness(input: { words: number; trim?: TrimSize; paper?: PaperWeight; binding?: "paperback" | "hardcover" }): {
+ *  checkable rule — not a vibe score. When `meta` is supplied, metadata-compliance
+ *  checks are included so this is a full pre-publish gate, not just print math. */
+export function kdpReadiness(input: { words: number; trim?: TrimSize; paper?: PaperWeight; binding?: "paperback" | "hardcover"; meta?: KdpMeta }): {
   pages: number;
   spine: { inches: number; mm: number };
   cover: ReturnType<typeof coverCanvas>;
@@ -74,5 +102,25 @@ export function kdpReadiness(input: { words: number; trim?: TrimSize; paper?: Pa
     { rule: "Spine fits content (paperback < ~0.06\" has no spine text)", ok: true, note: `spine ${spine.inches}" (${spine.mm} mm)` },
     { rule: "Cover bleed 0.125\" each side", ok: true, note: "applied in coverCanvas()" },
   ];
+  if (input.meta) checks.push(...kdpMetadataChecks(input.meta));
   return { pages, spine, cover: coverCanvas(pages, trim, paper), checks, ready: checks.every((c) => c.ok) };
+}
+
+/** Paste-ready KDP submission package as Markdown: computed print specs + the metadata
+ *  checklist. Honest about the one thing a browser can't do (print-ready interior PDF). */
+export function formatKdpPackage(input: { words: number; trim?: TrimSize; paper?: PaperWeight; binding?: "paperback" | "hardcover"; meta?: KdpMeta }): string {
+  const r = kdpReadiness(input);
+  const trim = input.trim ?? "6x9";
+  const paper = input.paper ?? "60_cream";
+  const L: string[] = [];
+  L.push("# KDP Submission Package", "");
+  L.push(`- Trim: ${TRIM[trim].w}"×${TRIM[trim].h}" · Paper: ${paper.replace("_", " ")}`);
+  L.push(`- Est. pages: ${r.pages} (ตรวจซ้ำใน KDP previewer)`);
+  L.push(`- Spine: ${r.spine.inches}" (${r.spine.mm} mm)`);
+  L.push(`- Full cover canvas: ${r.cover.widthIn}"×${r.cover.heightIn}" · ${r.cover.widthPx}×${r.cover.heightPx}px @300dpi`, "");
+  L.push("## Readiness checklist");
+  for (const c of r.checks) L.push(`- [${c.ok ? "x" : " "}] ${c.rule} — ${c.note}`);
+  L.push("", `**${r.ready ? "พร้อมส่ง (ตามที่ตรวจได้)" : "ยังไม่พร้อม — ดูข้อที่ยังไม่ติ๊ก"}**`);
+  L.push("", "> ข้อจำกัดที่ซื่อสัตย์: หน้านี้คำนวณสเปกและตรวจ metadata แบบ deterministic แต่ **ไฟล์เนื้อในพร้อมพิมพ์ (PDF/CMYK)** ต้องทำในโปรแกรมจัดหน้า/เดสก์ท็อป — เบราว์เซอร์ทำ CMYK ที่แม่นยำไม่ได้");
+  return L.join("\n");
 }

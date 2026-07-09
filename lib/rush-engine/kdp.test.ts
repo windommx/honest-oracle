@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { spineWidth, estimatePages, coverCanvas, kdpReadiness } from "./kdp";
+import { spineWidth, estimatePages, coverCanvas, kdpReadiness, kdpMetadataChecks, formatKdpPackage, KDP_LIMITS } from "./kdp";
 
 describe("KDP math", () => {
   it("computes spine width from pages ÷ PPI", () => {
@@ -32,5 +32,45 @@ describe("KDP math", () => {
     expect(ok.ready).toBe(true);
     expect(ok.spine.inches).toBeGreaterThan(0);
     expect(ok.cover.widthPx).toBeGreaterThan(0);
+  });
+});
+
+describe("KDP metadata compliance", () => {
+  it("checks real KDP field limits and reports missing fields as not-ok", () => {
+    const empty = kdpMetadataChecks({});
+    expect(empty.every((c) => !c.ok)).toBe(true); // nothing supplied → nothing passes
+
+    const good = kdpMetadataChecks({
+      title: "เงาในสายหมอก",
+      description: "x".repeat(300),
+      keywords: ["ระทึกขวัญ", "สืบสวน", "ไทย"],
+      categories: ["Fiction", "Mystery"],
+    });
+    expect(good.every((c) => c.ok)).toBe(true);
+  });
+
+  it("flags over-limit fields", () => {
+    const bad = kdpMetadataChecks({
+      title: "x".repeat(KDP_LIMITS.title + 1),
+      description: "short",
+      keywords: new Array(KDP_LIMITS.keywords + 1).fill("k"),
+      categories: [],
+    });
+    expect(bad.find((c) => c.rule.includes("Title"))?.ok).toBe(false);
+    expect(bad.find((c) => c.rule.includes("Description"))?.ok).toBe(false);
+    expect(bad.find((c) => c.rule.includes("keywords"))?.ok).toBe(false);
+    expect(bad.find((c) => c.rule.includes("categories"))?.ok).toBe(false);
+  });
+
+  it("kdpReadiness folds metadata checks in when meta is supplied", () => {
+    const withMeta = kdpReadiness({ words: 30000, meta: { title: "A", description: "y".repeat(200), keywords: ["a"], categories: ["Fiction"] } });
+    expect(withMeta.checks.some((c) => c.rule.includes("Title"))).toBe(true);
+  });
+
+  it("formats a KDP package that admits the print-PDF limitation", () => {
+    const md = formatKdpPackage({ words: 30000, meta: { title: "A", description: "y".repeat(200), keywords: ["a"], categories: ["Fiction"] } });
+    expect(md).toContain("# KDP Submission Package");
+    expect(md).toContain("Readiness checklist");
+    expect(md).toContain("CMYK"); // honest about what a browser can't do
   });
 });
