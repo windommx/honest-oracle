@@ -1,0 +1,100 @@
+import { describe, it, expect } from "vitest";
+import {
+  RIVALS, CAPABILITIES, mark, soleProviders, realGaps, intentionalNonGoals,
+  headToHead, pressureRanking, staleFacts, formatIntelBrief, INTENTIONAL_NONGOALS,
+} from "./competitive";
+
+describe("competitive matrix integrity", () => {
+  it("every capability has a mark for every rival", () => {
+    for (const c of CAPABILITIES) {
+      for (const r of RIVALS) {
+        expect(["yes", "partial", "no", "unknown"]).toContain(mark(c.id, r.id));
+      }
+    }
+  });
+  it("every rival declares a source and an as-of date (honest provenance)", () => {
+    for (const r of RIVALS) {
+      expect(r.source.length).toBeGreaterThan(0);
+      expect(r.asOf).toMatch(/^\d{4}-\d{2}$/);
+    }
+  });
+});
+
+describe("soleProviders", () => {
+  it("returns capabilities only Rush provides fully", () => {
+    const ids = soleProviders().map((c) => c.id);
+    expect(ids).toContain("thai_dialect");
+    expect(ids).toContain("consistency_auto");
+    expect(ids).toContain("sensory_density");
+    expect(ids).toContain("saga");
+    // thai_native is NOT sole — AI Novel Workspace is also Thai-native
+    expect(ids).not.toContain("thai_native");
+  });
+});
+
+describe("realGaps", () => {
+  it("excludes deliberate non-goals and sorts by table-stakes", () => {
+    const gaps = realGaps();
+    const ids = gaps.map((g) => g.cap.id);
+    expect(ids).not.toContain("ai_inline"); // intentional
+    expect(ids).not.toContain("bsr"); // intentional
+    expect(ids).toContain("kdp"); // BookyAI has it, Rush partial
+    expect(ids).toContain("mature_ux"); // soft gap, honestly surfaced
+    // sorted descending by how many rivals have it
+    for (let i = 1; i < gaps.length; i++) expect(gaps[i - 1].tableStakes).toBeGreaterThanOrEqual(gaps[i].tableStakes);
+    // the biggest table-stakes gap has more rivals than the smallest
+    expect(gaps[0].tableStakes).toBeGreaterThan(1);
+  });
+});
+
+describe("intentionalNonGoals", () => {
+  it("surfaces exactly the tagged non-goals with a reason", () => {
+    const ids = intentionalNonGoals().map((n) => n.cap.id);
+    expect(new Set(ids)).toEqual(new Set(Object.keys(INTENTIONAL_NONGOALS)));
+    for (const n of intentionalNonGoals()) expect(n.why.length).toBeGreaterThan(0);
+  });
+});
+
+describe("headToHead", () => {
+  it("splits rival advantages into real vs intentional", () => {
+    const h = headToHead("bookyai");
+    expect(h.rivalOnly).toContain("kdp"); // a real gap BookyAI exposes
+    expect(h.rivalOnlyIntentional).toContain("bsr"); // Rush abstains on purpose
+    expect(h.both).toContain("epub"); // both have it
+  });
+  it("is internally consistent (every capability lands in exactly one bucket or none)", () => {
+    const h = headToHead("sudowrite");
+    const total = h.rushOnly.length + h.rivalOnly.length + h.rivalOnlyIntentional.length + h.both.length;
+    expect(total).toBeLessThanOrEqual(CAPABILITIES.length);
+  });
+});
+
+describe("pressureRanking", () => {
+  it("ranks incumbents (UX/community) above Rush-shaped rivals", () => {
+    const ranked = pressureRanking();
+    expect(ranked[0].pressure).toBeGreaterThanOrEqual(ranked[ranked.length - 1].pressure);
+    // an established web app should expose the soft gaps (mature_ux / community)
+    const nc = ranked.find((r) => r.rival.id === "novelcrafter")!;
+    expect(nc.pressure).toBeGreaterThan(0);
+  });
+});
+
+describe("staleFacts", () => {
+  it("flags rivals older than the window and never Rush", () => {
+    const stale = staleFacts("2026-08", 6);
+    const ids = stale.map((r) => r.id);
+    expect(ids).toContain("novelcrafter"); // as-of 2026-01, >6mo before 2026-08
+    expect(ids).not.toContain("rush");
+    expect(ids).not.toContain("ai_novel_ws"); // as-of 2026-07, fresh
+  });
+});
+
+describe("formatIntelBrief", () => {
+  it("renders the computed brief with the bias note", () => {
+    const md = formatIntelBrief("2026-08");
+    expect(md).toContain("# Competitive Intelligence Brief");
+    expect(md).toContain("Sole advantages");
+    expect(md).toContain("Deliberate non-goals");
+    expect(md).toContain("อคติที่ต้องรู้"); // self-aware bias disclosure
+  });
+});
