@@ -1222,6 +1222,28 @@ Act 3: Climax & Resolution: บท 4-6 — Dark night, climax, resolution
     "usage": "ส่งหลังจบแต่ละบท",
   },
   {
+    "description": "ล็อกคำสัญญาต่อคนอ่าน ขนบ และกับดักของแนวเรื่อง ก่อนวางโครง",
+    "group": "craft",
+    "id": "GENRE_CORE",
+    "name": "Genre Reader-Promise",
+    "prompt": "ก่อนวางโครงเรื่อง ล็อก "คำสัญญาต่อคนอ่าน" ของแนวเรื่องนี้ก่อน — คนอ่านแนว thriller มาหาอะไร — เพื่อให้ทุกการตัดสินใจตอบสิ่งนั้น
+
+แนว: thriller
+แก่นเรื่อง: A premise worth testing
+
+จัดทำ:
+1. คำสัญญาหลัก — ประโยคเดียว ระบุประสบการณ์ทางอารมณ์ที่คนอ่านแนวนี้ "จ่ายเพื่อได้" (โรแมนซ์ = ความลุ้นในความสัมพันธ์และการสมหวังที่คู่ควร · สืบสวน = ความอยากรู้คำตอบ + เฉลยที่แฟร์และคาดไม่ถึง · แฟนตาซี = โลกที่อยากอยู่ + ตัวเอกที่เติบโต · ไซไฟ = ไอเดียเดียวที่ตามไปจนเห็นราคาที่มนุษย์ต้องจ่าย)
+2. สิ่งที่ห้ามพลาด — ขนบที่คนอ่านแนวนี้คาดหวัง หักโดยไม่มีเหตุผล = เสียคนอ่าน
+3. จุดที่เล่นมุมใหม่ได้ — แนวนี้ให้รางวัลกับความสดตรงไหน และลงโทษการนอกลู่ตรงไหน
+4. กับดักที่ทำคนอ่านผิดหวัง — วิธีที่เรื่องแนวนี้มักพลาด + สัญญาณเตือนตั้งแต่ต้น
+5. ตรวจการส่งมอบ — สำหรับ premise ข้างบน ระบุ 3 ฉาก/beat ที่ "ต้อง" ทำให้ได้เพื่อรักษาคำสัญญา
+
+กฎ: อ้างอิงแนวนี้และ premise นี้เฉพาะเจาะจง ห้ามให้คำแนะนำกลาง ๆ แบบ "เขียนให้ดี" ถ้าแนวผสมหลายหมวด ให้บอกว่าคำสัญญาไหนนำ ไหนเสริม
+
+ผลลัพธ์: ห้าหัวข้อ ตามด้วยคำตัดสินหนึ่งบรรทัดว่า premise นี้ถูกวางมาให้ส่งมอบคำสัญญาของแนวหรือยัง",
+    "usage": "รันก่อนสุด — ก่อน Outline — เพื่อจับสิ่งที่คนอ่านแนวนี้คาดหวัง",
+  },
+  {
     "description": "โครงเรื่องรายบท (Save the Cat / Hero's Journey / Kishōtenketsu ฯลฯ)",
     "group": "craft",
     "id": "STRUCTURE",
@@ -2786,6 +2808,28 @@ Output the complete revised chapter (no commentary).",
 ═══ CHAPTER DRAFT TO ANALYZE ═══
 [INSERT COMPLETED CHAPTER HERE]",
     "usage": "Send after each chapter to generate feedback for the next.",
+  },
+  {
+    "description": "Locks the core promise, conventions & failure modes of the book's genre before outlining.",
+    "group": "craft",
+    "id": "GENRE_CORE",
+    "name": "Genre Reader-Promise",
+    "prompt": "Before outlining, lock the READER PROMISE for this book's genre — what readers of thriller actually come for — so every later choice delivers it.
+
+Genre: thriller
+Premise: A premise worth testing
+
+Produce:
+1. CORE PROMISE — one sentence naming the emotional experience readers of this genre pay for (romance = the yearning and its earned payoff; mystery = the itch to know + a fair, surprising solution; fantasy = a world worth living in + a hero who grows; sci-fi = one idea followed honestly to its human cost).
+2. NON-NEGOTIABLES — the conventions these readers expect; breaking them without purpose loses them.
+3. FRESH-ANGLE ZONES — where this genre rewards a new take, vs where it punishes deviation.
+4. FAILURE MODES — the top ways books in this genre disappoint, and the tell-tale early signs.
+5. DELIVERY CHECK — for MY premise above, name 3 concrete beats/scenes that MUST land to keep the promise.
+
+Rules: ground every point in this specific genre and this premise — no generic "write well" advice. If the subgenre blends genres, state which promise leads and which supports.
+
+Output: the five sections, then a one-line verdict on whether the premise is set up to deliver its genre's promise.",
+    "usage": "Run first — before the outline — to nail what readers of this genre expect.",
   },
   {
     "description": "Beat-by-beat outline (Save the Cat / Hero's Journey / Story Circle / Kishōtenketsu / Seven-Point).",

@@ -30,6 +30,25 @@ export function defaultGroupsFor(type: BookTypeKey): Exclude<PromptGroup, "core"
 
 // ── CRAFT modules ──────────────────────────────────────────────
 
+function moduleGenreCore(config: BookConfig): string {
+  const genre = config.subGenre ? config.subGenre.replace(/_/g, " ") : "(set the genre)";
+  return `Before outlining, lock the READER PROMISE for this book's genre — what readers of ${genre} actually come for — so every later choice delivers it.
+
+Genre: ${genre}
+Premise: ${config.thesis || "[state your one-line premise]"}
+
+Produce:
+1. CORE PROMISE — one sentence naming the emotional experience readers of this genre pay for (romance = the yearning and its earned payoff; mystery = the itch to know + a fair, surprising solution; fantasy = a world worth living in + a hero who grows; sci-fi = one idea followed honestly to its human cost).
+2. NON-NEGOTIABLES — the conventions these readers expect; breaking them without purpose loses them.
+3. FRESH-ANGLE ZONES — where this genre rewards a new take, vs where it punishes deviation.
+4. FAILURE MODES — the top ways books in this genre disappoint, and the tell-tale early signs.
+5. DELIVERY CHECK — for MY premise above, name 3 concrete beats/scenes that MUST land to keep the promise.
+
+Rules: ground every point in this specific genre and this premise — no generic "write well" advice. If the subgenre blends genres, state which promise leads and which supports.
+
+Output: the five sections, then a one-line verdict on whether the premise is set up to deliver its genre's promise.`;
+}
+
 function moduleStructureOutline(config: BookConfig): string {
   let p = `You are a story architect. Produce a complete chapter-by-chapter OUTLINE for "${config.title}" before any prose is written.\n\n`;
   p += `Premise: ${config.thesis}\nGenre: ${config.subGenre.replace(/_/g, " ")}\nChapters: ${config.chapters} · ~${config.wordsPerChapter} words each · ${config.language}\n\n`;
@@ -885,6 +904,7 @@ type ModuleDef = { id: string; group: PromptGroup; name: string; description: st
 
 export const MODULE_CATALOG: ModuleDef[] = [
   // craft
+  { id: "GENRE_CORE", group: "craft", name: "Genre Reader-Promise", description: "Locks the core promise, conventions & failure modes of the book's genre before outlining.", usage: "Run first — before the outline — to nail what readers of this genre expect.", build: moduleGenreCore },
   { id: "STRUCTURE", group: "craft", name: "Structure Outline", description: "Beat-by-beat outline (Save the Cat / Hero's Journey / Story Circle / Kishōtenketsu / Seven-Point).", usage: "Run before writing, to plan the whole book.", build: moduleStructureOutline },
   { id: "VOICE_SHEET", group: "craft", name: "Character Voice Sheet", description: "Distinct voice per character; inject into every chapter prompt.", usage: "Fill in characters; paste output into chapter prompts.", build: moduleCharacterVoice },
   { id: "CHAR_ARC", group: "craft", name: "Character Arc Sheet", description: "Lie-vs-Truth arcs (positive/negative/flat) keyed to plot beats.", usage: "Run after the outline, before drafting.", build: moduleCharacterArc },
