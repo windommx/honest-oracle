@@ -1,5 +1,12 @@
 import { describe, it, expect } from "vitest";
-import { analyzeThai, tokenizeThai, THAI_AI_TELLS } from "./thai-analyzer";
+import {
+  analyzeThai,
+  tokenizeThai,
+  formatThaiReport,
+  thaiDeltas,
+  scanThaiManuscript,
+  THAI_AI_TELLS,
+} from "./thai-analyzer";
 
 describe("tokenizeThai", () => {
   it("segments Thai text into multiple words", () => {
@@ -12,6 +19,17 @@ describe("tokenizeThai", () => {
     const words = tokenizeThai("สวัสดี ครับ! ๆ");
     expect(words).not.toContain(" ");
     expect(words).not.toContain("!");
+  });
+
+  it("keeps protected names atomic despite the segmenter", () => {
+    // Without protection the dictionary would split an unknown name off an adjacent word.
+    const plain = tokenizeThai("มะลีนั่งเงียบ");
+    const guarded = tokenizeThai("มะลีนั่งเงียบ", ["มะลี"]);
+    expect(guarded).toContain("มะลี");
+    expect(guarded.filter((w) => w === "มะลี").length).toBe(1);
+    // protecting doesn't drop the rest of the text
+    expect(guarded.join("")).toContain("นั่ง");
+    void plain;
   });
 });
 
@@ -30,6 +48,49 @@ describe("analyzeThai", () => {
     expect(a.sentences.longest).toBeGreaterThanOrEqual(a.sentences.avgWords);
   });
 
+  it("computes dialogue signals (ratio + talking-head run)", () => {
+    const text = '"เธอมาทำไม"\n"ฉันมาหาคำตอบ"\n"คำตอบอะไร"\nเขาเงียบไปครู่หนึ่ง';
+    const a = analyzeThai(text);
+    expect(a.dialogue.lines).toBeGreaterThanOrEqual(3);
+    expect(a.dialogue.talkingHeadRun).toBeGreaterThanOrEqual(3);
+    expect(a.dialogue.ratio).toBeGreaterThan(0);
+  });
+
+  it("splits Thai clauses on spaces so one-paragraph prose still has rhythm", () => {
+    // No terminal punctuation, no newlines — just spaces (the real Thai clause
+    // boundary). Before the dogfood fix this collapsed to 1 sentence, cv 0.
+    const a = analyzeThai("เขาวิ่ง เธอยืนมองท้องฟ้าสีครามที่ทอดยาวไปไกลสุดสายตา เงียบ");
+    expect(a.sentences.count).toBeGreaterThanOrEqual(3);
+    expect(a.rhythm.cv).toBeGreaterThan(0);
+  });
+
+  it("measures rhythm: uniform sentences are monotonous, varied ones are not", () => {
+    const flat = analyzeThai("เขาเดินไปตลาด\nเธอเดินไปตลาด\nฉันเดินไปตลาด\nเราเดินไปตลาด");
+    expect(flat.rhythm.monotonyRun).toBeGreaterThanOrEqual(3);
+    const varied = analyzeThai("เขาวิ่ง\nเธอยืนมองท้องฟ้าสีครามที่ทอดยาวเหนือทุ่งหญ้ากว้างไกลสุดลูกหูลูกตา\nเงียบ");
+    expect(varied.rhythm.cv).toBeGreaterThan(flat.rhythm.cv);
+  });
+
+  it("counts telling markers (filter verbs + named emotions)", () => {
+    const a = analyzeThai("เธอรู้สึกโกรธมาก เขาเสียใจและกลัว");
+    const matched = a.telling.words.map((w) => w.word);
+    expect(matched).toContain("รู้สึก");
+    expect(matched).toContain("โกรธ");
+    expect(a.telling.count).toBeGreaterThanOrEqual(4);
+    expect(a.telling.ratio).toBeGreaterThan(0);
+  });
+
+  it("returns no telling markers for shown prose", () => {
+    const a = analyzeThai("เขากำมือแน่นจนข้อนิ้วขาว แล้วผลักประตูจนกระแทกผนัง");
+    expect(a.telling.count).toBe(0);
+  });
+
+  it("reports a non-zero dialogue ratio for dash-style dialogue", () => {
+    const a = analyzeThai("— เธอมาทำไม\n— ฉันมาหาคำตอบ\nเขาเงียบไป");
+    expect(a.dialogue.lines).toBeGreaterThanOrEqual(2);
+    expect(a.dialogue.ratio).toBeGreaterThan(0); // ratio + line-count now agree
+  });
+
   it("detects near-repeats (same content word within a short span)", () => {
     const a = analyzeThai("แมวดำกระโดดข้ามรั้ว แล้วแมวขาวก็เดินตามมา");
     expect(a.nearRepeats.some((r) => r.word === "แมว")).toBe(true);
@@ -45,6 +106,52 @@ describe("analyzeThai", () => {
   it("returns empty AI-tells for clean prose", () => {
     const a = analyzeThai("เขาวางถ้วยกาแฟลงบนโต๊ะไม้เก่า");
     expect(a.aiTells).toHaveLength(0);
+  });
+
+  it("flags Thai mechanical issues (double space, doubled punctuation)", () => {
+    const a = analyzeThai("เขาเดิน  มา!!");
+    const issues = a.mechanics.map((m) => m.issue);
+    expect(issues.some((i) => i.includes("double space"))).toBe(true);
+    expect(issues.some((i) => i.includes("!! ?!"))).toBe(true);
+  });
+
+  it("does not double-count overlapping clichés (หัวใจสลาย ⊃ ใจสลาย)", () => {
+    const a = analyzeThai("หัวใจสลาย");
+    expect(a.aiTells.find((t) => t.phrase === "หัวใจสลาย")?.count).toBe(1);
+    expect(a.aiTells.find((t) => t.phrase === "ใจสลาย")).toBeUndefined();
+  });
+
+  it("does not double-count overlapping telling words (หวาดกลัว ⊃ กลัว)", () => {
+    const a = analyzeThai("เธอหวาดกลัว");
+    expect(a.telling.words.find((w) => w.word === "หวาดกลัว")?.count).toBe(1);
+    expect(a.telling.words.find((w) => w.word === "กลัว")).toBeUndefined();
+    expect(a.telling.count).toBe(1);
+  });
+
+  it("renders a Thai Markdown report with key sections", () => {
+    const md = formatThaiReport(analyzeThai("เธอรู้สึกเศร้า น้ำตาไหลริน"));
+    expect(md).toContain("# รายงานวิเคราะห์ภาษาไทย");
+    expect(md).toContain("คำคลิเชแบบ AI");
+    expect(md).toContain("น้ำตาไหลริน");
+    expect(md).toContain("ไม่ใช่คะแนนคุณภาพ");
+  });
+
+  it("diffs two Thai drafts so a revision's improvement is measurable", () => {
+    const before = analyzeThai("เธอรู้สึกเศร้า น้ำตาไหลริน หัวใจสลาย");
+    const after = analyzeThai("เธอก้มมองพื้น แล้วเดินจากไป");
+    const deltas = thaiDeltas(before, after);
+    const tells = deltas.find((d) => d.label === "คำคลิเช AI")!;
+    expect(tells.before).toBeGreaterThan(0);
+    expect(tells.after).toBe(0);
+    expect(tells.good).toBe("lower");
+  });
+
+  it("scores each Thai chapter so the weakest is visible", () => {
+    const scan = scanThaiManuscript("บทที่ 1\nเขาเดินเข้ามา\nบทที่ 2\nเธอรู้สึกเศร้า น้ำตาไหลริน");
+    expect(scan).toHaveLength(2);
+    expect(scan[1].aiTells).toBeGreaterThan(scan[0].aiTells);
+    expect(scan.every((c) => c.words > 0)).toBe(true);
+    expect(scan[1].body).toContain("น้ำตาไหลริน"); // body carried for click-to-load
   });
 
   it("exposes a non-empty cliché list", () => {

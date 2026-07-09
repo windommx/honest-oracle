@@ -12,7 +12,7 @@ import {
   type BookTypeKey,
   type PromptGroup,
 } from "./engine";
-import { TH_META, TH_MODULES } from "./th";
+import { TH_GROUP_LABEL, TH_META, TH_MODULES } from "./th";
 
 function cfg(overrides: Partial<BookConfig> = {}): BookConfig {
   return {
@@ -69,6 +69,19 @@ describe("buildArchitecture", () => {
     expect(sceneAt(12)).toBe("resolution"); // last
   });
 
+  it("always emits all core beats — even a short novel gets a climax + peak there", () => {
+    for (const chapters of [6, 7, 8, 10]) {
+      const arch = buildArchitecture(cfg({ type: "novel", chapters }));
+      const beats = arch.chapters.map((c) => c.sceneType);
+      for (const beat of ["opening", "midpoint", "dark_moment", "climax", "resolution"]) {
+        expect(beats).toContain(beat);
+      }
+      const climax = arch.chapters.find((c) => c.sceneType === "climax")!;
+      const maxTension = Math.max(...arch.chapters.map((c) => c.tensionLevel ?? 0));
+      expect(climax.tensionLevel).toBe(maxTension); // tension peaks AT the climax
+    }
+  });
+
   it("keeps tension within [0,1] and escalating toward the climax", () => {
     const arch = buildArchitecture(cfg({ type: "novel", chapters: 20 }));
     for (const c of arch.chapters) {
@@ -107,6 +120,12 @@ describe("buildGlobalContext", () => {
     expect(ctx).toContain("The Test Book");
     expect(ctx).toContain("A premise worth testing");
     expect(ctx).toContain("QUALITY STANDARDS");
+  });
+
+  it("does not mandate a citation quota with no sources (would induce fabrication)", () => {
+    const ctx = buildGlobalContext(cfg({ type: "nonfiction" }));
+    expect(ctx).not.toMatch(/2 citations per claim|≥ 2 citations/);
+    expect(ctx).toContain("[VERIFY]"); // mark for real citation later instead
   });
 });
 
@@ -160,13 +179,16 @@ describe("generateAllPrompts — core", () => {
 
 describe("generateAllPrompts — module groups", () => {
   const counts: Record<Exclude<PromptGroup, "core">, number> = {
-    craft: 9,
+    craft: 11,
     nonfiction: 5,
     prose: 4,
     thai: 1,
-    marketing: 4,
-    advanced: 3,
+    dialect: 3,
+    marketing: 5,
+    advanced: 4,
     agents: 6,
+    nis: 8,
+    saga: 4,
   };
 
   it("appends exactly the modules for each requested group", () => {
@@ -178,16 +200,52 @@ describe("generateAllPrompts — module groups", () => {
     }
   });
 
-  it("includes all 32 optional modules when every group is on", () => {
+  it("includes all 51 optional modules when every group is on", () => {
     const all = MODULE_GROUPS.map((m) => m.key);
     const pack = generateAllPrompts(cfg(), all);
-    expect(pack.filter((p) => p.group !== "core").length).toBe(32);
+    expect(pack.filter((p) => p.group !== "core").length).toBe(51);
+  });
+
+  it("saga group plans long-form 3–9 seasons with cross-season continuity", () => {
+    const pack = generateAllPrompts(cfg({ type: "novel" }), ["saga"]);
+    const ids = pack.filter((p) => p.group === "saga").map((p) => p.id);
+    expect(ids).toEqual(expect.arrayContaining(["SAGA_ARCHITECT", "SAGA_SEASON", "SAGA_CONTINUITY", "SAGA_BRIDGE"]));
+    const arch = pack.find((p) => p.id === "SAGA_ARCHITECT")!;
+    expect(arch.prompt).toMatch(/3.?9 season/i);
+    expect(pack.find((p) => p.id === "SAGA_CONTINUITY")!.prompt).toContain("<<<SAGA STATE>>>");
   });
 
   it("hardens the KDP module with a verification checklist (no live-data claim)", () => {
     const kdp = generateAllPrompts(cfg(), ["marketing"]).find((p) => p.id === "KDP_META")!;
     expect(kdp.prompt).toContain("VERIFICATION CHECKLIST");
     expect(kdp.prompt).toMatch(/cannot see live Amazon data/i);
+  });
+
+  it("ships clean dialect glossaries (no corruption, correct Southern negator)", () => {
+    const pack = generateAllPrompts(cfg(), ["dialect"]);
+    const south = pack.find((p) => p.id === "DIALECT_SOUTH")!;
+    const north = pack.find((p) => p.id === "DIALECT_NORTH")!;
+    expect(south.prompt).not.toContain("them"); // no spliced English word
+    expect(south.prompt).not.toContain("กิน → กิน"); // no no-op entry
+    expect(south.prompt).toContain("หม้าย"); // genuine Southern negator
+    expect(north.prompt).not.toMatch(/ไd|จะไd/); // no stray ASCII letter in Thai
+    expect(north.prompt).toContain("จะใด");
+  });
+
+  it("dialect modules convert to a regional voice with a glossary", () => {
+    const pack = generateAllPrompts(cfg(), ["dialect"]);
+    const ids = pack.filter((p) => p.group === "dialect").map((p) => p.id);
+    expect(ids).toEqual(expect.arrayContaining(["DIALECT_ISAN", "DIALECT_NORTH", "DIALECT_SOUTH"]));
+    const isan = pack.find((p) => p.id === "DIALECT_ISAN")!;
+    expect(isan.prompt).toContain("อีสาน");
+    expect(isan.prompt).toContain("glossary");
+  });
+
+  it("cover-art module outputs ready image prompts for two concepts", () => {
+    const cover = generateAllPrompts(cfg(), ["marketing"]).find((p) => p.id === "COVER_ART")!;
+    expect(cover.prompt).toContain("MIDJOURNEY");
+    expect(cover.prompt).toMatch(/2 แบบ|×2/);
+    expect(cover.prompt).toMatch(/ไม่ได้เจนรูปเอง|NEGATIVE/);
   });
 
   it("defaults to sensible groups per book type", () => {
@@ -315,5 +373,10 @@ describe("catalog integrity", () => {
     for (const m of MODULE_CATALOG) {
       expect(/[฀-๿]/.test(TH_MODULES[m.id](c))).toBe(true);
     }
+  });
+
+  it("every declared group has a Thai label (no silent raw-key fallback in the UI)", () => {
+    const missing = MODULE_GROUPS.map((g) => g.key).filter((k) => !TH_GROUP_LABEL[k]);
+    expect(missing).toEqual([]);
   });
 });

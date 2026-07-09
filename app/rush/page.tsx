@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
   Crown,
@@ -14,17 +14,23 @@ import {
   ChevronDown,
   Save,
   FileJson,
+  Upload,
   FileText,
   HelpCircle,
   Share2,
   Languages,
+  LayoutGrid,
+  Play,
 } from "lucide-react";
 import { titleCase, copyText, slug, downloadBlob } from "./_utils";
-import { GROUP_COLORS, Field, Stat, FilterChip, GuideModal, ThaiAnalyzerModal } from "./_components";
+import { GROUP_COLORS, Field, Stat, FilterChip, GuideModal, ThaiAnalyzerModal, ProseAnalyzerModal } from "./_components";
+import { getManuscript } from "./_manuscript-store";
 import {
   BOOK_TYPES,
   MODULE_GROUPS,
   TH_GROUP_LABEL,
+  STARTER_SEQUENCE,
+  STARTER_GROUPS,
   defaultGroupsFor,
   generateAllPrompts,
   type BookConfig,
@@ -61,13 +67,18 @@ export default function RushPage() {
   const [language, setLanguage] = useState<BookConfig["language"]>("thai");
   const [outline, setOutline] = useState("");
   const [storyBible, setStoryBible] = useState("");
-  const [promptLanguage, setPromptLanguage] = useState<"en" | "th">("en");
+  // Default matches the default book language (thai) so a Thai author gets Thai
+  // scaffolding — incl. Thai title/blurb/KDP — out of the box.
+  const [promptLanguage, setPromptLanguage] = useState<"en" | "th">("th");
+  const [promptLangTouched, setPromptLangTouched] = useState(false);
+  const couplePrimed = useRef(false);
 
   const [groups, setGroups] = useState<OptionalGroup[]>(defaultGroupsFor("nonfiction"));
   const [prompts, setPrompts] = useState<GeneratedPrompt[]>([]);
   const [openId, setOpenId] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [filter, setFilter] = useState<PromptGroup | "all">("all");
+  const [showStarter, setShowStarter] = useState(false);
 
   const [projectId, setProjectId] = useState<string | null>(null);
   const [projects, setProjects] = useState<SavedProject[]>([]);
@@ -78,6 +89,8 @@ export default function RushPage() {
   const [saving, setSaving] = useState(false);
   const [showGuide, setShowGuide] = useState(false);
   const [showAnalyzer, setShowAnalyzer] = useState(false);
+  const [showProse, setShowProse] = useState(false);
+  const [analyzeText, setAnalyzeText] = useState<string | undefined>(undefined);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 
   const allGroups = MODULE_GROUPS.map((m) => m.key);
@@ -111,9 +124,63 @@ export default function RushPage() {
     setGroups((prev) => (prev.includes(g) ? prev.filter((x) => x !== g) : [...prev, g]));
   }
 
+  const hydratedRef = useRef(false);
+
   useEffect(() => {
     refreshProjects();
+    const params = new URLSearchParams(window.location.search);
+    const pid = params.get("project");
+    if (pid) loadProject(pid);
+    else {
+      // Restore the last working draft (client-side) so a non-logged-in setup
+      // — including the Story Bible / STATE — survives a reload.
+      try {
+        const raw = window.localStorage.getItem("rush.generator.draft");
+        if (raw) {
+          const d = JSON.parse(raw) as { config?: BookConfig; groups?: OptionalGroup[] };
+          if (d.config) applyConfig(d.config);
+          if (Array.isArray(d.groups)) setGroups(d.groups);
+        }
+      } catch {
+        /* ignore */
+      }
+    }
+    const mid = params.get("analyze");
+    if (mid) {
+      const m = getManuscript(mid);
+      if (m) {
+        setAnalyzeText(m.text);
+        if (m.lang === "th") setShowAnalyzer(true);
+        else setShowProse(true);
+      }
+    }
+    const tool = params.get("tool");
+    if (tool === "thai") setShowAnalyzer(true);
+    else if (tool === "prose") setShowProse(true);
+    hydratedRef.current = true;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Couple prompt language to book language until the user overrides it: a Thai/
+  // bilingual book uses Thai scaffolding, an English book uses English. Skips the
+  // first run (mount/restore owns the initial value) and any manual override.
+  useEffect(() => {
+    if (!couplePrimed.current) {
+      couplePrimed.current = true;
+      return;
+    }
+    if (!promptLangTouched) setPromptLanguage(language === "english" ? "en" : "th");
+  }, [language, promptLangTouched]);
+
+  // Autosave the working draft to localStorage (after the initial restore).
+  useEffect(() => {
+    if (!hydratedRef.current) return;
+    try {
+      window.localStorage.setItem("rush.generator.draft", JSON.stringify({ config, groups }));
+    } catch {
+      /* quota / unavailable — ignore */
+    }
+  }, [config, groups]);
 
   // Reset the visible window when the result set or filter changes.
   useEffect(() => {
@@ -168,6 +235,21 @@ export default function RushPage() {
     setTimeout(() => setCopiedId((c) => (c === p.id ? null : c)), 1500);
   }
 
+  // Hand a prompt to Rush Studio: MASTER becomes the system prompt; the prompts
+  // can be large, so pass via sessionStorage rather than the URL.
+  function runInStudio(p: GeneratedPrompt) {
+    const master = prompts.find((x) => x.id === "MASTER")?.prompt ?? "";
+    try {
+      window.sessionStorage.setItem(
+        "rush.studio.prefill",
+        JSON.stringify({ system: p.id === "MASTER" ? "" : master, prompt: p.prompt })
+      );
+    } catch {
+      /* ignore */
+    }
+    window.location.href = "/rush/studio";
+  }
+
   async function copyAll() {
     if (!prompts.length) return;
     const text = prompts.map((p) => `# ${p.id}: ${p.name}\n# Usage: ${p.usage}\n\n${p.prompt}`).join("\n\n\n");
@@ -184,8 +266,30 @@ export default function RushPage() {
   }
 
   function downloadJson() {
-    const payload = { config, generatedAt: new Date().toISOString(), prompts };
+    const payload = { config, groups, generatedAt: new Date().toISOString(), prompts };
     downloadBlob(`${slug(config.title)}-prompts.json`, JSON.stringify(payload, null, 2), "application/json");
+  }
+
+  // Import a project from a previously-exported .json (reads its `config`).
+  function importProject(file: File) {
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const data = JSON.parse(String(reader.result)) as { config?: BookConfig; groups?: OptionalGroup[] } & Partial<BookConfig>;
+        const cfg = (data && typeof data === "object" && data.config ? data.config : data) as BookConfig;
+        if (cfg && typeof cfg === "object" && typeof cfg.type === "string" && BOOK_TYPES[cfg.type]) {
+          applyConfig(cfg);
+          if (Array.isArray(data.groups)) setGroups(data.groups);
+          setError("");
+          setNotice("นำเข้าโปรเจกต์แล้ว — กด Generate เพื่อสร้าง prompt");
+        } else {
+          setError("ไฟล์ไม่ถูกต้อง — ต้องเป็น .json ที่มี config");
+        }
+      } catch {
+        setError("อ่านไฟล์ไม่สำเร็จ — รองรับเฉพาะ .json ที่ export จากที่นี่");
+      }
+    };
+    reader.readAsText(file);
   }
 
   async function saveProject() {
@@ -264,7 +368,8 @@ export default function RushPage() {
     setLanguage(cfg.language);
     setOutline(cfg.outline ?? "");
     setStoryBible(cfg.storyBible ?? "");
-    setPromptLanguage(cfg.promptLanguage ?? "en");
+    setPromptLanguage(cfg.promptLanguage ?? (cfg.language === "english" ? "en" : "th"));
+    setPromptLangTouched(true); // a loaded/imported project carries an explicit choice
   }
 
   async function toggleShare() {
@@ -327,9 +432,21 @@ export default function RushPage() {
             <span className="text-lg font-semibold gold-gradient">NaraSuite</span>
           </Link>
           <div className="flex items-center gap-2 text-sm text-gray-300">
+            <Link href="/rush/dashboard" className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#c9a84c]/30 text-[#c9a84c] hover:border-[#c9a84c] transition-colors text-xs">
+              <LayoutGrid className="w-3.5 h-3.5" />
+              แดชบอร์ด
+            </Link>
+            <Link href="/rush/studio" className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#c9a84c]/30 text-[#c9a84c] hover:border-[#c9a84c] transition-colors text-xs">
+              <Play className="w-3.5 h-3.5" />
+              Studio
+            </Link>
             <button onClick={() => setShowAnalyzer(true)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#c9a84c]/30 text-[#c9a84c] hover:border-[#c9a84c] transition-colors text-xs">
               <Languages className="w-3.5 h-3.5" />
               วิเคราะห์ไทย
+            </button>
+            <button onClick={() => setShowProse(true)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#c9a84c]/30 text-[#c9a84c] hover:border-[#c9a84c] transition-colors text-xs">
+              <Languages className="w-3.5 h-3.5" />
+              Prose (EN)
             </button>
             <button onClick={() => setShowGuide(true)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#c9a84c]/30 text-[#c9a84c] hover:border-[#c9a84c] transition-colors text-xs">
               <HelpCircle className="w-3.5 h-3.5" />
@@ -450,7 +567,10 @@ export default function RushPage() {
                   {(["en", "th"] as const).map((pl) => (
                     <button
                       key={pl}
-                      onClick={() => setPromptLanguage(pl)}
+                      onClick={() => {
+                        setPromptLanguage(pl);
+                        setPromptLangTouched(true);
+                      }}
                       className={`flex-1 py-2 rounded-lg border text-xs transition-colors ${
                         promptLanguage === pl ? "border-[#c9a84c] text-[#c9a84c] bg-[#c9a84c]/10" : "border-white/10 text-gray-400 hover:border-[#c9a84c]/40"
                       }`}
@@ -465,6 +585,9 @@ export default function RushPage() {
                 <div className="flex items-center justify-between mb-2">
                   <h2 className="text-xs font-semibold tracking-widest text-gray-400 uppercase">Extra Modules</h2>
                   <div className="flex gap-1">
+                    <button onClick={() => { setGroups(STARTER_GROUPS as OptionalGroup[]); setShowStarter(true); }} className="text-[0.6rem] px-1.5 py-0.5 rounded border border-[#c9a84c]/40 text-[#c9a84c] hover:bg-[#c9a84c]/10" title="เปิดโมดูลสำหรับเริ่มนิยายจากไอเดีย + ดูลำดับ 7 ขั้น">
+                      เริ่มจากไอเดีย
+                    </button>
                     <button onClick={() => setGroups(defaultGroupsFor(type))} className="text-[0.6rem] px-1.5 py-0.5 rounded border border-white/10 text-gray-400 hover:border-[#c9a84c]/40 hover:text-[#c9a84c]" title="กลุ่มที่แนะนำตามประเภทหนังสือ">
                       แนะนำ
                     </button>
@@ -497,6 +620,25 @@ export default function RushPage() {
                     ℹ️ Agent Pack สร้าง “system prompt” สำหรับ multi-agent ที่คุณรันเอง (เช่น Claude Projects) — ไม่ได้รันในแอปนี้
                   </p>
                 )}
+                <button onClick={() => setShowStarter((v) => !v)} className="mt-2 text-[0.65rem] text-[#c9a84c] hover:underline">
+                  {showStarter ? "− ซ่อนลำดับเริ่มจากไอเดีย" : "+ ลำดับเริ่มจากไอเดีย (7 ขั้น)"}
+                </button>
+                {showStarter && (
+                  <ol className="mt-2 space-y-1.5 border-l border-[#c9a84c]/25 pl-3">
+                    {STARTER_SEQUENCE.map((s) => (
+                      <li key={s.key} className="text-[0.7rem] leading-snug">
+                        <span className="text-[#c9a84c] font-semibold tabular-nums">{s.n}.</span>{" "}
+                        <span className="text-gray-200">{s.titleTh}</span>
+                        <span className="block text-[0.62rem] text-gray-500">
+                          {s.whyTh} · <span className="text-gray-400">{s.promptIds.join(" + ")}</span>
+                        </span>
+                      </li>
+                    ))}
+                    <li className="text-[0.6rem] text-gray-600 pt-1">
+                      กด “Generate” แล้วรัน prompt ตามลำดับนี้ — ใส่ไอเดีย → อนุมัติ → ทำต่อ · คุณคุมทิศทางทั้งหมด
+                    </li>
+                  </ol>
+                )}
               </div>
 
               <div className="grid grid-cols-3 gap-2 my-4">
@@ -509,6 +651,20 @@ export default function RushPage() {
                 <Sparkles className="w-4 h-4" />
                 Generate Prompts
               </button>
+
+              <label className="mt-2 w-full py-2 border border-white/10 text-gray-400 rounded-xl hover:border-[#c9a84c]/40 hover:text-[#c9a84c] transition-colors flex items-center justify-center gap-1.5 text-xs cursor-pointer">
+                <Upload className="w-4 h-4" /> นำเข้าโปรเจกต์ (.json)
+                <input
+                  type="file"
+                  accept=".json,application/json"
+                  className="hidden"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) importProject(f);
+                    e.target.value = "";
+                  }}
+                />
+              </label>
 
               {prompts.length > 0 && (
                 <div className="grid grid-cols-2 gap-2 mt-2">
@@ -657,6 +813,9 @@ export default function RushPage() {
                             </button>
                             <div className="flex items-center gap-2 flex-shrink-0">
                               <span className={`text-[0.6rem] px-1.5 py-0.5 border rounded ${GROUP_COLORS[p.group]}`}>{groupLabel(p.group)}</span>
+                              <button onClick={() => runInStudio(p)} className="text-gray-400 hover:text-[#c9a84c]" title="Run in Studio" aria-label={`Run ${p.id} in Studio`}>
+                                <Play className="w-4 h-4" />
+                              </button>
                               <button onClick={() => copyPrompt(p)} className="text-gray-400 hover:text-[#c9a84c]" title="Copy" aria-label={`Copy ${p.id}`}>
                                 {copiedId === p.id ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
                               </button>
@@ -691,7 +850,8 @@ export default function RushPage() {
       </div>
 
       {showGuide && <GuideModal onClose={() => setShowGuide(false)} />}
-      {showAnalyzer && <ThaiAnalyzerModal onClose={() => setShowAnalyzer(false)} />}
+      {showAnalyzer && <ThaiAnalyzerModal onClose={() => setShowAnalyzer(false)} initialText={analyzeText} />}
+      {showProse && <ProseAnalyzerModal onClose={() => setShowProse(false)} initialText={analyzeText} />}
 
       <style jsx>{`
         :global(.input) {

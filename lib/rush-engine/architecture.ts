@@ -1,12 +1,12 @@
 import type { Architecture, BookConfig, ChapterPlan } from "./types";
 
-function calculateTension(ch: number, total: number): number {
-  const x = ch / total;
-  if (x <= 0.25) return 0.3 + x * 1.2;
-  if (x <= 0.5) return 0.6 + (x - 0.25) * 0.8;
-  if (x <= 0.75) return 0.7 + (x - 0.5) * 0.6;
-  if (x <= 0.9) return 0.85 + (x - 0.75) * 0.67;
-  return 0.95 - (x - 0.9) * 1.5;
+// Tension rises monotonically to PEAK at the climax chapter, then drops for the
+// resolution — so tensionMap and the climax beat agree (was: peak landed before
+// the climax, contradicting "tension escalates across acts").
+function calculateTension(i: number, total: number, climaxIdx: number): number {
+  if (i >= total && total > climaxIdx) return 0.5; // resolution falls back
+  if (i >= climaxIdx) return 1;                    // climax peak
+  return Math.round((0.3 + 0.65 * ((i - 1) / Math.max(1, climaxIdx - 1))) * 100) / 100;
 }
 
 function getMustHaves(sceneType: string): string[] {
@@ -108,37 +108,57 @@ export function buildArchitecture(config: BookConfig): Architecture {
 
 function buildFictionArchitecture(arch: Architecture, config: BookConfig) {
   const ch = config.chapters;
-  const act1End = Math.floor(ch * 0.25);
-  const act2Mid = Math.floor(ch * 0.5);
-  const act2End = Math.floor(ch * 0.75);
+  // Compute the core beat indices first, clamped & strictly ordered so every beat
+  // (opening < turning_point < midpoint < dark_moment < climax < resolution) exists
+  // and is correctly placed for any ch >= 6 (degrades gracefully below).
+  const climaxIdx = ch >= 4 ? ch - 1 : ch;
+  const darkIdx = Math.max(1, climaxIdx - 1);
+  let turnIdx = Math.max(2, Math.floor(ch * 0.25) + 1);
+  let midIdx = Math.max(turnIdx + 1, Math.round(ch * 0.5));
+  midIdx = Math.min(midIdx, Math.max(2, darkIdx - 1));
+  turnIdx = Math.min(turnIdx, Math.max(2, midIdx - 1));
+
+  const PURPOSE: Record<string, string> = {
+    opening: "HOOK: Drop reader into compelling scene",
+    setup: "ESTABLISH: World, character, stakes, inciting incident",
+    turning_point: "POINT OF NO RETURN: Protagonist commits",
+    escalation: "ESCALATE: Rising conflict, new allies/enemies",
+    midpoint: "MIDPOINT: Revelation or reversal",
+    complication: "COMPLICATE: Stakes highest, dark moment approaches",
+    dark_moment: "DARK NIGHT: Protagonist at lowest",
+    climax: "CLIMAX: Final confrontation",
+    resolution: "RESOLUTION: New normal, thematic statement",
+  };
+  const beatOf = (i: number): string => {
+    if (i === 1) return "opening";
+    if (i === ch) return "resolution";
+    if (i === climaxIdx) return "climax";
+    if (i === darkIdx) return "dark_moment";
+    if (i === midIdx) return "midpoint";
+    if (i === turnIdx) return "turning_point";
+    if (i < turnIdx) return "setup";
+    if (i < midIdx) return "escalation";
+    return "complication";
+  };
+  const actOf = (st: string): number =>
+    st === "opening" || st === "setup" ? 1 : st === "dark_moment" || st === "climax" || st === "resolution" ? 3 : 2;
 
   arch.parts = [
-    { name: "Act 1: Setup", chapters: [1, act1End], purpose: "Introduce world, characters, stakes" },
-    { name: "Act 2A: Rising Action", chapters: [act1End + 1, act2Mid], purpose: "Escalate conflict, deepen relationships" },
-    { name: "Act 2B: Complications", chapters: [act2Mid + 1, act2End], purpose: "Raise stakes, dark moment" },
-    { name: "Act 3: Resolution", chapters: [act2End + 1, ch], purpose: "Climax, resolution, denouement" },
+    { name: "Act 1: Setup", chapters: [1, Math.max(1, turnIdx - 1)], purpose: "Introduce world, characters, stakes" },
+    { name: "Act 2A: Rising Action", chapters: [turnIdx, Math.max(turnIdx, midIdx - 1)], purpose: "Escalate conflict, deepen relationships" },
+    { name: "Act 2B: Complications", chapters: [midIdx, Math.max(midIdx, darkIdx - 1)], purpose: "Raise stakes toward the dark moment" },
+    { name: "Act 3: Climax & Resolution", chapters: [darkIdx, ch], purpose: "Dark night, climax, resolution" },
   ];
 
   for (let i = 1; i <= ch; i++) {
-    let act: number, purpose: string, sceneType: string;
-    if (i === 1) { act = 1; purpose = "HOOK: Drop reader into compelling scene"; sceneType = "opening"; }
-    else if (i <= act1End) { act = 1; purpose = "ESTABLISH: World, character, stakes, inciting incident"; sceneType = "setup"; }
-    else if (i === act1End + 1) { act = 2; purpose = "POINT OF NO RETURN: Protagonist commits"; sceneType = "turning_point"; }
-    else if (i < act2Mid) { act = 2; purpose = "ESCALATE: Rising conflict, new allies/enemies"; sceneType = "escalation"; }
-    else if (i === act2Mid) { act = 2; purpose = "MIDPOINT: Revelation or reversal"; sceneType = "midpoint"; }
-    else if (i <= act2End) { act = 2; purpose = "COMPLICATE: Stakes highest, dark moment approaches"; sceneType = "complication"; }
-    else if (i === act2End + 1) { act = 3; purpose = "DARK NIGHT: Protagonist at lowest"; sceneType = "dark_moment"; }
-    else if (i === ch - 1) { act = 3; purpose = "CLIMAX: Final confrontation"; sceneType = "climax"; }
-    else if (i === ch) { act = 3; purpose = "RESOLUTION: New normal, thematic statement"; sceneType = "resolution"; }
-    else { act = 3; purpose = "GATHERING: Final preparation, allies assemble"; sceneType = "pre_climax"; }
-
+    const sceneType = beatOf(i);
     arch.chapters.push({
       number: i,
-      act,
-      purpose,
+      act: actOf(sceneType),
+      purpose: PURPOSE[sceneType],
       sceneType,
       wordTarget: config.wordsPerChapter,
-      tensionLevel: calculateTension(i, ch),
+      tensionLevel: calculateTension(i, ch, climaxIdx),
       mustHave: getMustHaves(sceneType),
       hookType: i < ch ? pickHookType(i) : null,
     });
@@ -152,9 +172,9 @@ function buildFictionArchitecture(arch: Architecture, config: BookConfig) {
   arch.readerJourney = {
     start: "curious, unfamiliar with world",
     milestones: [
-      { after: act1End, state: "invested in protagonist" },
-      { after: act2Mid, state: "deeply concerned about outcome" },
-      { after: act2End, state: "anxious, needs resolution" },
+      { after: Math.max(1, turnIdx - 1), state: "invested in protagonist" },
+      { after: midIdx, state: "deeply concerned about outcome" },
+      { after: darkIdx, state: "anxious, needs resolution" },
       { after: ch, state: "satisfied, emotionally moved" },
     ],
     end: "transformed by the experience",

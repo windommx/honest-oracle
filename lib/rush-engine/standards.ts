@@ -3,7 +3,7 @@ import type { BookConfig, BookTypeKey } from "./types";
 export function getQualityStandards(type: BookTypeKey): string {
   const standards: Record<string, string> = {
     novel: `- Show/tell: ≥ 70% show\n- Sensory: ≥ 2 senses per scene\n- Chapter hooks: required at every chapter end\n- Character consistency: tracked via codex\n- Voice consistency: tracked across chapters\n- Pacing: vary between fast/slow scenes\n- TENSION MUST ESCALATE across acts\n- Every scene: conflict + turning point + outcome`,
-    nonfiction: `- Argument strength: ≥ 70% claims supported\n- Evidence: ≥ 2 citations per claim\n- Clarity score: ≥ 60%\n- Logic flow: no gaps between paragraphs\n- Pedagogy: objectives + takeaways + exercises\n- Counter-arguments: steelmanned then rebutted\n- THESIS MUST BE FULLY PROVEN by book end\n- All jargon defined on first use`,
+    nonfiction: `- Argument strength: most claims supported by real evidence\n- Evidence: support each claim, or mark it [VERIFY] for a real source later — NEVER invent a citation\n- Clarity score: ≥ 60%\n- Logic flow: no gaps between paragraphs\n- Pedagogy: objectives + takeaways + exercises\n- Counter-arguments: steelmanned then rebutted\n- THESIS MUST BE FULLY PROVEN by book end\n- All jargon defined on first use`,
     howto: `- Steps: complete, sequential, no gaps\n- Clarity: any reader can follow from step 1\n- Safety: all warnings clearly marked\n- Materials: complete list before steps begin\n- Troubleshooting: common mistakes addressed\n- Visual descriptions for key steps`,
     kids: `- Age-appropriate vocabulary\n- Read-aloud quality\n- Engaging rhythm and repetition\n- Positive, empowering message\n- Illustration notes for every spread\n- ≤ specified word count per page`,
     cookbook: `- Recipe format: standardized\n- Measurements: metric + imperial\n- Steps: one action per numbered step\n- Times: prep + cook + total\n- Allergens: clearly flagged\n- Substitutions offered`,
@@ -40,7 +40,7 @@ export function getCitationGuide(style: string): string {
 export function getQualityChecklist(type: BookTypeKey): string {
   const checklists: Record<string, string> = {
     novel: `  □ Show/tell ratio ≥ 70% show\n  □ ≥ 2 senses in every scene\n  □ Dialogue advances plot or reveals character\n  □ Chapter ends with hook\n  □ Character voices distinct\n  □ No clichés\n  □ Word count within target (±20%)\n  □ Tension appropriate for act position`,
-    nonfiction: `  □ All claims supported by evidence\n  □ ≥ 2 citations in chapter\n  □ Jargon defined on first use\n  □ Logic flow between paragraphs\n  □ Pedagogy elements present\n  □ Tone consistent with author voice\n  □ Word count within target (±20%)`,
+    nonfiction: `  □ All claims supported OR marked [VERIFY] (no invented sources)\n  □ Jargon defined on first use\n  □ Logic flow between paragraphs\n  □ Pedagogy elements present\n  □ Tone consistent with author voice\n  □ Word count within target (±20%)`,
     howto: `  □ All steps complete and sequential\n  □ Materials list complete\n  □ Safety notes where needed\n  □ Common mistakes addressed\n  □ Visual descriptions included\n  □ Word count within target`,
     kids: `  □ Age-appropriate vocabulary\n  □ Read-aloud quality verified\n  □ Rhythm and repetition present\n  □ Illustration notes included\n  □ Positive message\n  □ Word count within target`,
     cookbook: `  □ Recipe format standardized\n  □ Measurements in metric + imperial\n  □ Ingredients in order of use\n  □ One action per step\n  □ Times and servings specified\n  □ Chef's notes included`,

@@ -6,22 +6,48 @@ export const MODULE_GROUPS: { key: Exclude<PromptGroup, "core">; label: string; 
   { key: "nonfiction", label: "Nonfiction Credibility", desc: "Fact-check, argument map, evidence audit, pedagogy, case studies" },
   { key: "prose", label: "Prose Polish", desc: "Voice fingerprint, anti-AI-slop, readability, line edit" },
   { key: "thai", label: "Thai Language", desc: "Register/ราชาศัพท์, sentence flow, transliteration consistency" },
+  { key: "dialect", label: "Thai Dialects", desc: "Isan, Northern (คำเมือง), Southern — convert dialogue to regional voice + glossary" },
   { key: "marketing", label: "Publishing & Marketing", desc: "Title, blurb, KDP metadata, agent submission pack" },
   { key: "advanced", label: "Advanced Pipeline", desc: "Rolling recap (chain-of-density), brainstorm (verbalized sampling)" },
   { key: "agents", label: "Agent Pack", desc: "Multi-agent system prompts: orchestrator + research/bible/architect/writer/critic" },
+  { key: "nis", label: "Narrative Intelligence", desc: "Grounded audits: plot-hole/continuity, character consistency, pacing, foreshadow/payoff, dialogue fatigue" },
+  { key: "saga", label: "Saga / Multi-Season", desc: "Plan long-form 3–9 season works: macro arc, per-season design, cross-season SAGA STATE continuity, season bridges" },
 ];
 
 /** Default module groups suggested for a given book type. */
 export function defaultGroupsFor(type: BookTypeKey): Exclude<PromptGroup, "core">[] {
   const fiction = type === "novel" || type === "memoir" || type === "kids" || type === "poetry";
   const groups: Exclude<PromptGroup, "core">[] = ["prose", "marketing"];
-  if (fiction) groups.unshift("craft");
-  else groups.unshift("nonfiction");
+  if (fiction) {
+    groups.unshift("craft");
+    groups.push("nis"); // grounded narrative-intelligence audits — the differentiator, on by default for fiction
+  } else {
+    groups.unshift("nonfiction");
+  }
   return groups;
 }
 
 
 // ── CRAFT modules ──────────────────────────────────────────────
+
+function moduleGenreCore(config: BookConfig): string {
+  const genre = config.subGenre ? config.subGenre.replace(/_/g, " ") : "(set the genre)";
+  return `Before outlining, lock the READER PROMISE for this book's genre — what readers of ${genre} actually come for — so every later choice delivers it.
+
+Genre: ${genre}
+Premise: ${config.thesis || "[state your one-line premise]"}
+
+Produce:
+1. CORE PROMISE — one sentence naming the emotional experience readers of this genre pay for (romance = the yearning and its earned payoff; mystery = the itch to know + a fair, surprising solution; fantasy = a world worth living in + a hero who grows; sci-fi = one idea followed honestly to its human cost).
+2. NON-NEGOTIABLES — the conventions these readers expect; breaking them without purpose loses them.
+3. FRESH-ANGLE ZONES — where this genre rewards a new take, vs where it punishes deviation.
+4. FAILURE MODES — the top ways books in this genre disappoint, and the tell-tale early signs.
+5. DELIVERY CHECK — for MY premise above, name 3 concrete beats/scenes that MUST land to keep the promise.
+
+Rules: ground every point in this specific genre and this premise — no generic "write well" advice. If the subgenre blends genres, state which promise leads and which supports.
+
+Output: the five sections, then a one-line verdict on whether the premise is set up to deliver its genre's promise.`;
+}
 
 function moduleStructureOutline(config: BookConfig): string {
   let p = `You are a story architect. Produce a complete chapter-by-chapter OUTLINE for "${config.title}" before any prose is written.\n\n`;
@@ -320,7 +346,74 @@ function moduleThaiPack(): string {
 [ใส่ข้อความที่นี่]`;
 }
 
+// ── DIALECT modules (Thai regional voices) ─────────────────────
+
+function dialectPrompt(name: string, region: string, notes: string, glossary: string): string {
+  return `แปลง/เขียนบทสนทนาและการบรรยายให้เป็น "${name}" (${region}) อย่างเป็นธรรมชาติและถูกต้องตามวัฒนธรรม โดยคงความหมายและโครงเรื่องเดิม
+
+หลักการ:
+- โฟกัสที่ "บทพูด" ของตัวละครให้เป็นสำเนียง${name} ส่วนการบรรยายเลือกได้ว่าจะใช้ไทยกลางหรือถิ่น (ระบุให้สม่ำเสมอทั้งเรื่อง)
+- ใช้คำลงท้าย/คำสรรพนาม/คำเรียกขานแบบถิ่นให้ถูกบริบทและสถานะตัวละคร
+- รักษาน้ำเสียงและบุคลิกตัวละครเดิม ไม่ทำให้กลายเป็นตัวตลก (ไม่ล้อเลียนสำเนียง)
+- ${notes}
+- ถ้าคำถิ่นใดอาจเข้าใจยาก ให้คงคำถิ่นไว้แล้วใส่วงเล็บความหมายไทยกลางเฉพาะครั้งแรก
+
+═══ คำถิ่นที่พบบ่อย (${name}) ═══
+${glossary}
+
+ผลลัพธ์: (1) ข้อความที่แปลงแล้ว (2) glossary คำถิ่นที่ใช้ในเรื่องนี้เพื่อความสม่ำเสมอ (3) โน้ตจุดที่ปรับให้ผู้เขียนตรวจ
+
+═══ ต้นฉบับ (ไทยกลาง) ═══
+[วางข้อความที่นี่]`;
+}
+
+export function moduleDialectIsan(): string {
+  return dialectPrompt(
+    "ภาษาอีสาน",
+    "ลาว/อีสาน",
+    "ระวังความต่างของถิ่นย่อย (อุบล/ขอนแก่น/โคราชต่างกัน) — เลือกถิ่นย่อยให้ชัดและคงเส้นคงวา",
+    "- เด้อ/เนาะ (คำลงท้าย) · บ่ (ไม่) · กะ (ก็) · เฮา (เรา) · เจ้า/สู (คุณ/พวกเจ้า) · จั่งใด๋ (อย่างไร) · เบิ่ง (ดู) · แซบ (อร่อย) · ม่วน (สนุก) · คือ (เหมือน) · หลาย (มาก) · เว้า (พูด)"
+  );
+}
+
+export function moduleDialectNorth(): string {
+  return dialectPrompt(
+    "คำเมือง (ภาษาเหนือ/ล้านนา)",
+    "ล้านนา/ภาคเหนือ",
+    "ใช้คำสุภาพแบบเมืองให้เหมาะสถานะ คำลงท้าย 'เจ้า' สำหรับความสุภาพ",
+    "- เจ้า (ครับ/ค่ะ สุภาพ) · กา/ก่อ (ไหม) · บ่ (ไม่) · อู้ (พูด) · กิ๋น (กิน) · เปิ้น (เขา) · เฮา (เรา) · ตี้ (ที่) · จะใด (อย่างไร) · หละ/แหม (อีก) · งาม (สวย) · ละก่อ (ล่ะ)"
+  );
+}
+
+export function moduleDialectSouth(): string {
+  return dialectPrompt(
+    "ภาษาใต้ (ปักษ์ใต้)",
+    "ภาคใต้",
+    "สำเนียงใต้พูดเร็ว ตัดคำ ใช้เสียงสั้น — สื่อด้วยการสะกดที่อ่านออกเสียงได้ แต่ยังอ่านเข้าใจ",
+    "- หรอย (อร่อย/ดี) · แล (ดู/นะ) · ไซร้/ไหร (อะไร) · หม้าย/ม่าย (ไม่) · ตัว/เธอ→สู/มึง (ตามบริบท) · นุ้ย (เล็ก/น้อง) · เท่อ (โง่/เปิ่น) · พรือ (อย่างไร/ทำไม) · ว่าพรือ (ว่าอย่างไร)"
+  );
+}
+
 // ── MARKETING modules ──────────────────────────────────────────
+
+export function moduleCoverArt(config: BookConfig): string {
+  return `สร้าง "บรีฟปกหนังสือ + image prompt" สำหรับ "${config.title}" จำนวน 2 แบบให้เลือก (เอา prompt ไปวางในเครื่องมือสร้างภาพ เช่น Midjourney / DALL·E / Stable Diffusion)
+
+ข้อมูล: ${BOOK_TYPES[config.type].label} · ${config.subGenre.replace(/_/g, " ")} · ผู้อ่าน: ${config.reader}
+แก่นเรื่อง/โทน: ${config.thesis}
+
+สำหรับปก "แต่ละแบบ" (2 แบบ ให้ต่างกันชัด เช่น แบบ A เน้นตัวละคร / แบบ B เน้นสัญลักษณ์-บรรยากาศ) ให้ออก:
+1. คอนเซ็ปต์ 1-2 บรรทัด (อารมณ์ที่ต้องการสื่อ + ทำไมเหมาะกับแนวนี้)
+2. องค์ประกอบภาพ: subject หลัก, ฉากหลัง, มุมกล้อง/องค์ประกอบ, แสง, โทนสี, อารมณ์
+3. ที่ว่างสำหรับ "ชื่อเรื่อง" และชื่อผู้เขียน (บอกตำแหน่งและสไตล์ตัวอักษร)
+4. **MIDJOURNEY PROMPT**: บรรทัดเดียว ภาษาอังกฤษ พร้อม --ar 2:3 --style ที่เหมาะ
+5. **DALL·E / SD PROMPT**: ย่อหน้าอธิบายละเอียด (ภาษาอังกฤษ) + NEGATIVE PROMPT (สิ่งที่ไม่เอา เช่น text artifacts, extra fingers, watermark)
+
+ข้อกำหนด: ต้องเข้ากับแนว ${config.subGenre.replace(/_/g, " ")} และตลาดหนังสือ; เว้นพื้นที่ความปลอดภัยสำหรับตัวอักษร; เลี่ยงคลิเชปกที่ใช้ซ้ำเกินไป
+หมายเหตุ: เครื่องมือนี้สร้าง "prompt ปก" ให้ ไม่ได้เจนรูปเอง — นำไปเจนในเครื่องมือสร้างภาพที่คุณมี`;
+}
+
+// ── MARKETING modules (cont.) ──────────────────────────────────
 
 function moduleTitle(config: BookConfig): string {
   const fiction = isFictionType(config.type);
@@ -438,6 +531,24 @@ Output: a per-scene sense table + the targeted additions.
 [INSERT DRAFT HERE]`;
 }
 
+function moduleImmersion(): string {
+  return `Rewrite a scene to pull the reader INSIDE the POV character's experience (deep POV / "transportation"). Keep plot, facts, and dialogue meaning — change how close we are, not what happens.
+
+Do all five:
+1. GROUND FAST — within the first 2-3 sentences, anchor the reader in place/body/moment with one concrete, specific detail (not a weather-report or throat-clear opening).
+2. CUT THE FILTER — remove distancing verbs (saw / heard / felt / noticed / realized / could see) and render the perception directly. "She heard the door creak" → "The door creaked."
+3. INTERIORITY — add the POV character's in-the-moment reaction (thought / bodily sensation / judgement) so we experience the scene as they do — but SHOW it, don't name the emotion.
+4. ONE OPEN LOOP — plant or sharpen a single unanswered question the reader now wants closed (an information gap), without withholding cheaply.
+5. FORWARD PULL — end on momentum (a turn, a new question, an unfinished action), not a tidy button.
+
+Rules: no purple prose or cliché sensory filler; every added detail must do double duty (mood / character / theme). Do not add events that aren't implied by the draft.
+
+Output: the rewritten scene, then a 3-5 line changelog naming each filter word cut and each loop opened.
+
+═══ DRAFT ═══
+[INSERT SCENE HERE]`;
+}
+
 function moduleConflictMap(): string {
   return `Map the TENSION across a draft so it never goes flat.
 
@@ -472,6 +583,26 @@ Output JSON:
 
 ═══ DRAFT ═══
 [INSERT CHAPTER DRAFT HERE]`;
+}
+
+function moduleSeriesBible(config: BookConfig): string {
+  return `Build and maintain a SERIES BIBLE for "${config.title}" — the canon ledger that keeps a multi-book series consistent ACROSS volumes, not just across chapters.
+
+Maintain these sections (cite the book where each fact was established):
+- SERIES ARC — the overarching question/throughline, and where each book sits on it.
+- CHARACTER LEDGER — per character: current age/status, what changed in each book, abilities/resources (watch for unexplained POWER CREEP), key relationships, secrets, and their end-state at the close of each book.
+- WORLD CANON — rules and their LIMITS, locations, factions, tech/magic — each tagged with the book it was established in.
+- TIMELINE — absolute chronology across books; flag any date/age contradiction between volumes.
+- REVEAL TRACKER — what the READER knows vs what each CHARACTER knows, per book (so you can manage dramatic irony and avoid re-revealing).
+- OPEN THREADS — unresolved questions and planted foreshadowing, each tagged with the book it was planted in and the book it's promised to pay off in.
+- CONTINUITY RULES — canonical name spellings and established facts that must not change.
+
+Then run a SERIES CONTINUITY CHECK for the book in progress: list any new fact that contradicts the canon (cite the conflicting entries), any open thread that should pay off in this book, and any setup this book must plant for later volumes.
+
+Output the UPDATED bible, then the continuity check. Never invent canon — if a fact isn't in the source material, mark it [TBD] rather than guessing.
+
+═══ SERIES MATERIAL (prior synopses / existing bible / book in progress) ═══
+[INSERT SERIES MATERIAL HERE]`;
 }
 
 // ── AGENT PACK (multi-agent system prompts, à la Novel Studio swarm) ──
@@ -574,12 +705,206 @@ Given a draft (≥2 scenes), produce four reports. Output JSON only:
 Only report findings you can point to in the text — no fabricated issues, no fake scores.`;
 }
 
+// ── NIS — Narrative Intelligence System (audit prompts, grounded) ──
+// Every finding MUST cite evidence quotes; scores decompose from findings.
+
+const NIS_RULES = `GROUNDING RULES (mandatory):
+- Report a finding ONLY if you can quote the exact text that proves it (cite chapter + a short quote).
+- Never invent issues; if the manuscript is clean on a check, say so.
+- The 0-100 score is a SUMMARY of the findings, not a vibe: state how you derived it (e.g. -10 per high-severity, -3 per low). Show the findings; the number is secondary.`;
+
+function moduleNisPlot(): string {
+  return `You are a developmental editor running a PLOT-HOLE & CONTINUITY audit on a manuscript.
+
+Build a mental ledger as you read: timeline/order of events, who knows what and when, object/location permanence. Then flag contradictions.
+
+For each finding output: { type: timeline | causality | knowledge | object-permanence, chapter, contradiction (one line), evidence: ["quote A", "quote B that conflicts"], severity: high|med|low, fix }
+
+${NIS_RULES}
+
+End with: a 0-100 continuity score (with how you derived it) and the top 3 must-fix items.
+
+═══ MANUSCRIPT ═══
+[INSERT MANUSCRIPT / CHAPTERS HERE]`;
+}
+
+function moduleNisCharacter(): string {
+  return `Run a CHARACTER-CONSISTENCY audit. For each major character, hold their established traits, goals, relationships, and speech register.
+
+Flag any action or line that contradicts what was established earlier. Output per finding:
+{ character, chapter, what's inconsistent, evidence: ["established trait/quote", "contradicting quote"], severity, fix }
+Also note any character whose VOICE drifts (starts sounding like the others).
+
+${NIS_RULES}
+
+End with: a 0-100 consistency score per main character + overall, and the riskiest drift to fix first.
+
+═══ MANUSCRIPT (+ character bible if you have one) ═══
+[INSERT MANUSCRIPT HERE]`;
+}
+
+function moduleNisPacing(): string {
+  return `Run a PACING audit to find slow spots (the "saggy middle").
+
+For each chapter/scene, judge pace (fast / medium / slow) and justify from concrete signals: scene length, dialogue-vs-narration balance, density of action/turns, sentence-length monotony, and whether the scene has a goal + turn.
+Plot the tension/pace across the book and flag stretches that sag (low stakes + low movement + uniform rhythm) and any rushed climax.
+
+Output: a per-chapter pace table (with the signal that drove each call) + flagged stretches + concrete cuts/compressions to fix them.
+
+${NIS_RULES}
+
+End with: a 0-100 pacing score and the single chapter most in need of tightening.
+
+═══ MANUSCRIPT ═══
+[INSERT MANUSCRIPT HERE]`;
+}
+
+function moduleNisForeshadow(): string {
+  return `Run a FORESHADOWING & PAYOFF audit (Chekhov's gun).
+
+Identify SETUPS (planted hints, objects, abilities, secrets) and PAYOFFS. Pair them up.
+Flag: (a) setups that never pay off (unfired guns), (b) payoffs with no setup (deus ex machina / unearned reveals).
+
+Output a table: setup (chapter + quote) → payoff (chapter + quote) | UNPAID | UNSEEDED, with a fix for each gap (plant earlier / pay off later / cut).
+
+${NIS_RULES}
+
+End with: a 0-100 setup-payoff score and the most jarring unseeded reveal to fix.
+
+═══ MANUSCRIPT ═══
+[INSERT MANUSCRIPT HERE]`;
+}
+
+function moduleNisDialogue(): string {
+  return `Run a DIALOGUE-FATIGUE audit (pairs with the deterministic Thai Analyzer dialogue stats).
+
+Flag: long "talking-heads" stretches (many lines with no action beat / blocking), on-the-nose exposition dumps, every character sounding the same, and filler exchanges that don't advance plot or reveal character.
+
+Output per finding: { chapter, problem, evidence (quote the stretch), severity, fix (add action beat / cut / give it subtext / differentiate voice) }
+
+${NIS_RULES}
+
+End with: a 0-100 dialogue score and the worst talking-heads scene to break up.
+
+═══ DIALOGUE / CHAPTER ═══
+[INSERT TEXT HERE]`;
+}
+
+function moduleNisPov(): string {
+  return `Run a POV & TENSE CONSISTENCY audit. Lock onto each scene's point-of-view character and the book's chosen tense, then catch every slip.
+
+Flag per finding: { type: head-hop (POV jumps to another character mid-scene) | tense-slip (past↔present) | pov-distance (filter verbs — saw/felt/heard/realized — that break deep POV) | impossible-knowledge (the POV character narrates something they cannot see/know), chapter, evidence: ["the offending quote"], severity, fix }
+
+${NIS_RULES}
+
+End with: a 0-100 POV-discipline score and the single worst head-hop to fix first.
+
+═══ MANUSCRIPT ═══
+[INSERT MANUSCRIPT HERE]`;
+}
+
+function moduleNisShow(): string {
+  return `Run a SHOW-vs-TELL audit. Find places that summarize or name an emotion/conclusion where a dramatized moment would land harder.
+
+For each finding output: { chapter, told: "the telling sentence (quote)", why: "named emotion | summary instead of scene | filtering verb | stated conclusion the reader should infer", showing: "a concrete rewrite that dramatizes it via action/body/sensory detail", severity }
+
+Balance rule: telling is correct for transitions, time-skips, and compressing the unimportant — do NOT flag those. Only flag telling that steals a moment that deserved a scene.
+
+${NIS_RULES}
+
+End with: a 0-100 show/tell balance score and the one told moment most worth dramatizing.
+
+═══ MANUSCRIPT ═══
+[INSERT MANUSCRIPT HERE]`;
+}
+
+function moduleNisTheme(): string {
+  return `Run a THEME & MOTIF audit. First state the book's controlling theme in one sentence (as evidenced by the text, not as you'd wish it).
+
+Then build a MOTIF TABLE: each recurring image/symbol/motif → every instance (chapter + quote) → whether it pays into the theme or is decorative.
+Flag: (a) motifs introduced once and dropped, (b) on-the-nose thematic statements (a character or narrator stating the theme outright), (c) an ending that doesn't earn the theme.
+
+${NIS_RULES}
+
+End with: a 0-100 thematic-coherence score and the single change that would sharpen the theme most.
+
+═══ MANUSCRIPT ═══
+[INSERT MANUSCRIPT HERE]`;
+}
+
+// ── SAGA — long-form multi-season (3–9 seasons/parts) ──────────
+
+export function moduleSagaArchitect(config: BookConfig): string {
+  return `Design a SAGA ARCHITECTURE — a long-form work spanning 3–9 seasons (each season is itself a multi-part book) — for "${config.title}".
+
+First state how many seasons (3–9) fit this premise and why.
+Premise: ${config.thesis}
+
+Output:
+1. SAGA QUESTION — the single dramatic question the WHOLE saga answers.
+2. GLOBAL ARC across seasons — map the macro beats to specific seasons: Setup season → escalation seasons → midpoint-reversal season → all-is-lost season → climax season → resolution. Name which season each beat lands in.
+3. PER-SEASON TABLE — for each season N: logline · role (setup/escalation/turn/descent/climax/resolution) · protagonist state entering vs leaving · what it must PLANT and what it PAYS OFF · the season-ending cliffhanger that hooks the next.
+4. POWER/SCALE LADDER — one line per season showing rising scope (personal → local → … → world/cosmic) so power-creep stays intentional, not accidental.
+5. ESCALATION CHECK — confirm stakes rise every season and the FINALE season pays off the saga question.
+
+FORMAT: also output one line per season as "Season N: <logline> | <role> | ends-on: <hook>" so it pastes into a planner.
+
+═══ SEASON COUNT & NOTES ═══
+[ระบุจำนวน season 3–9 + โน้ต/ตัวละคร/โลก]`;
+}
+
+export function moduleSagaSeason(config: BookConfig): string {
+  return `Design ONE SEASON in depth for "${config.title}" — a season is itself a 3–9 part mini-arc with its own setup→climax, while serving the whole saga.
+
+Given the saga architecture + which season this is, output:
+- SEASON ARC: its own opening → midpoint → climax → turn, and how it advances the SAGA QUESTION.
+- PART BREAKDOWN: for each part 1..N, a one-line beat + its end hook.
+- PLANTS & PAYOFFS: what this season pays off (set up earlier) and what it plants for FUTURE seasons (tag the target season).
+- SEASON CLIFFHANGER into the next season.
+Keep consistent with the saga's power/scale ladder (no unearned jumps).
+
+═══ SAGA PLAN + WHICH SEASON ═══
+[วาง SAGA ARCHITECTURE + ระบุ "นี่คือ Season N จาก M"]`;
+}
+
+export function moduleSagaContinuity(): string {
+  return `Maintain a <<<SAGA STATE>>> ledger that keeps a multi-season saga consistent ACROSS seasons (this extends the per-chapter STATE to season scale).
+
+Sections:
+- CANON: world rules & their LIMITS, tagged with the season each was established.
+- CHARACTER LEDGER: per character — power/level, relationships, secrets, and state at each season's end. Watch for unexplained POWER CREEP.
+- TIMELINE: absolute chronology across seasons; flag any date/age contradiction.
+- REVEAL TRACKER: what the READER knows vs each CHARACTER, per season.
+- OPEN THREADS: each tagged "planted S# → pays off S#".
+- NAMING / CANON RULES: spellings & facts that must not change.
+
+At the END of each season, output an updated <<<SAGA STATE>>> block. BEFORE writing a season, read it and flag anything that contradicts canon (cite the conflicting entries). Never invent canon — mark unknowns [TBD].
+
+═══ SAGA MATERIAL (prior season bibles / latest SAGA STATE) ═══
+[วางวัตถุดิบที่นี่]`;
+}
+
+export function moduleSagaBridge(): string {
+  return `Write a SEASON BRIDGE from one season to the next — the opener that carries momentum across the season gap.
+
+Produce:
+1. PREVIOUSLY (recap): entity-dense, ≤ 200 words, newest/most load-bearing facts first.
+2. CARRIED HOOK: the unresolved cliffhanger the new season must answer.
+3. ESCALATION: why the stakes/scale are bigger now than last season (tie to the power/scale ladder).
+4. OPENING HOOK: how the new season opens so a returning reader is gripped and a lapsed one is re-oriented.
+Stay consistent with the latest <<<SAGA STATE>>>.
+
+═══ PRIOR SEASON SUMMARY + SAGA STATE ═══
+[วางสรุป season ก่อน + STATE]`;
+}
+
 // ── Catalog assembly ───────────────────────────────────────────
 
 type ModuleDef = { id: string; group: PromptGroup; name: string; description: string; usage: string; build: (c: BookConfig) => string };
 
 export const MODULE_CATALOG: ModuleDef[] = [
   // craft
+  { id: "GENRE_CORE", group: "craft", name: "Genre Reader-Promise", description: "Locks the core promise, conventions & failure modes of the book's genre before outlining.", usage: "Run first — before the outline — to nail what readers of this genre expect.", build: moduleGenreCore },
   { id: "STRUCTURE", group: "craft", name: "Structure Outline", description: "Beat-by-beat outline (Save the Cat / Hero's Journey / Story Circle / Kishōtenketsu / Seven-Point).", usage: "Run before writing, to plan the whole book.", build: moduleStructureOutline },
   { id: "VOICE_SHEET", group: "craft", name: "Character Voice Sheet", description: "Distinct voice per character; inject into every chapter prompt.", usage: "Fill in characters; paste output into chapter prompts.", build: moduleCharacterVoice },
   { id: "CHAR_ARC", group: "craft", name: "Character Arc Sheet", description: "Lie-vs-Truth arcs (positive/negative/flat) keyed to plot beats.", usage: "Run after the outline, before drafting.", build: moduleCharacterArc },
@@ -588,6 +913,7 @@ export const MODULE_CATALOG: ModuleDef[] = [
   { id: "DIALOGUE", group: "craft", name: "Dialogue Polish", description: "Action beats, subtext, trimmed tags.", usage: "Send a dialogue passage to revise.", build: moduleDialoguePolish },
   { id: "ANTI_SAFE", group: "craft", name: "Anti-Safe Pass", description: "Break safe/tidy AI defaults; raise real stakes; ban Thai AI-tell clichés.", usage: "Send a draft to make it riskier.", build: moduleAntiSafe },
   { id: "SENSORY", group: "craft", name: "Sensory Audit", description: "Per-scene 5-sense check (≥3) + targeted concrete additions.", usage: "Send a draft to ground it in the senses.", build: moduleSensoryAudit },
+  { id: "IMMERSION", group: "craft", name: "Immersion / Deep-POV Pass", description: "Deep-POV rewrite: ground fast, cut filter verbs, add interiority, open one loop, end on momentum.", usage: "Send a scene to pull the reader inside it.", build: moduleImmersion },
   { id: "CONFLICT_MAP", group: "craft", name: "Conflict / Tension Map", description: "Per-scene tension curve + flat-spot fixes.", usage: "Send a draft to map and raise tension.", build: moduleConflictMap },
   // nonfiction
   { id: "FACT_CHECK", group: "nonfiction", name: "Citation / Fact-Check", description: "Verify every claim; forbid invented citations.", usage: "Send each nonfiction chapter draft.", build: moduleFactCheck },
@@ -602,7 +928,12 @@ export const MODULE_CATALOG: ModuleDef[] = [
   { id: "LINE_EDIT", group: "prose", name: "Line Edit", description: "Filter words, adverbs, passive, clichés, repetition.", usage: "Send a draft for a sentence-level edit.", build: moduleLineEdit },
   // thai
   { id: "THAI_QA", group: "thai", name: "Thai Language QA", description: "Register/ราชาศัพท์, sentence segmentation, transliteration consistency.", usage: "Send Thai-language drafts.", build: moduleThaiPack },
+  // dialect
+  { id: "DIALECT_ISAN", group: "dialect", name: "Isan Voice (อีสาน)", description: "Convert dialogue to Isan/Lao voice + glossary; keeps character & plot.", usage: "Paste a Thai draft to convert.", build: moduleDialectIsan },
+  { id: "DIALECT_NORTH", group: "dialect", name: "Northern / คำเมือง", description: "Convert dialogue to Lanna/Northern voice + glossary.", usage: "Paste a Thai draft to convert.", build: moduleDialectNorth },
+  { id: "DIALECT_SOUTH", group: "dialect", name: "Southern (ปักษ์ใต้)", description: "Convert dialogue to Southern voice + glossary.", usage: "Paste a Thai draft to convert.", build: moduleDialectSouth },
   // marketing
+  { id: "COVER_ART", group: "marketing", name: "Cover Art Prompt (×2)", description: "Two cover concepts + ready Midjourney / DALL·E·SD prompts (you generate the image).", usage: "Run for book-cover image prompts.", build: moduleCoverArt },
   { id: "TITLE", group: "marketing", name: "Title + Subtitle", description: "10 title (and subtitle) options, keyword-aware for nonfiction.", usage: "Run anytime; iterate on positioning.", build: moduleTitle },
   { id: "BLURB", group: "marketing", name: "Blurb / Description", description: "Back-cover copy + Amazon-safe HTML.", usage: "Run for the sales description.", build: moduleBlurb },
   { id: "KDP_META", group: "marketing", name: "KDP Metadata", description: "7 keywords + 3 categories + A+ hook.", usage: "Run before publishing on KDP.", build: moduleKdpMeta },
@@ -611,6 +942,7 @@ export const MODULE_CATALOG: ModuleDef[] = [
   { id: "RECAP", group: "advanced", name: "Rolling Recap", description: "Chain-of-density carry-forward summary for continuity.", usage: "Update after each chapter; prepend to the next.", build: moduleRollingRecap },
   { id: "BRAINSTORM", group: "advanced", name: "Brainstorm (Verbalized Sampling)", description: "Diverse option spread to beat repetitive output.", usage: "Use for titles, twists, names, hooks.", build: moduleBrainstorm },
   { id: "QUALITY_GATE", group: "advanced", name: "Quality Gate", description: "Pass/fail pre-publish gate: continuity, sensory, anti-safe, voice, (Thai).", usage: "Run on a finished chapter before moving on.", build: moduleQualityGate },
+  { id: "SERIES_BIBLE", group: "advanced", name: "Series Bible", description: "Cross-book canon ledger: character/world/timeline/reveal/threads + per-book continuity check.", usage: "Maintain across a multi-book series; rerun per new book.", build: moduleSeriesBible },
   // agents (multi-agent swarm system prompts)
   { id: "AGENT_ORCHESTRATOR", group: "agents", name: "Orchestrator", description: "Delegates to and verifies the agent swarm; wave schedule + gates.", usage: "Use as the coordinator agent's system prompt.", build: moduleAgentOrchestrator },
   { id: "AGENT_RESEARCH", group: "agents", name: "Research Agent", description: "Niche, USP, comps, keywords (JSON).", usage: "Phase 1 agent system prompt.", build: moduleAgentResearch },
@@ -618,4 +950,18 @@ export const MODULE_CATALOG: ModuleDef[] = [
   { id: "AGENT_ARCHITECT", group: "agents", name: "Architect Agent", description: "Arc map + chapters/scenes outline (JSON).", usage: "Phase 3 agent system prompt.", build: moduleAgentArchitect },
   { id: "AGENT_WRITER", group: "agents", name: "Writer Agent", description: "Writes one scene from spec + bible (JSON).", usage: "Phase 4 agent system prompt.", build: moduleAgentWriter },
   { id: "AGENT_CRITIC", group: "agents", name: "Critic Swarm", description: "Continuity / emotion / proof / marketing reports (JSON).", usage: "Phase 5 agent system prompt.", build: moduleAgentCritic },
+  // nis (grounded narrative-intelligence audits — every finding cites evidence)
+  { id: "NIS_PLOT", group: "nis", name: "Plot-Hole & Continuity Audit", description: "Timeline/causality/knowledge/object-permanence contradictions, each with conflicting quotes.", usage: "Run on a full draft or batch of chapters.", build: moduleNisPlot },
+  { id: "NIS_CHARACTER", group: "nis", name: "Character Consistency Audit", description: "Trait/goal/voice drift per character, with established-vs-contradicting quotes.", usage: "Run on a full draft (+ character bible).", build: moduleNisCharacter },
+  { id: "NIS_PACING", group: "nis", name: "Pacing Audit", description: "Per-chapter pace from concrete signals; finds the saggy middle + rushed climax.", usage: "Run on the assembled manuscript.", build: moduleNisPacing },
+  { id: "NIS_FORESHADOW", group: "nis", name: "Foreshadow & Payoff Audit", description: "Pairs setups to payoffs; flags unfired guns and unseeded reveals.", usage: "Run on a full draft to check planting.", build: moduleNisForeshadow },
+  { id: "NIS_DIALOGUE", group: "nis", name: "Dialogue-Fatigue Audit", description: "Talking-heads runs, on-the-nose exposition, samey voices (pairs with Thai Analyzer).", usage: "Run on dialogue-heavy chapters.", build: moduleNisDialogue },
+  { id: "NIS_POV", group: "nis", name: "POV & Tense Audit", description: "Head-hopping, tense slips, deep-POV distance, impossible knowledge — each quoted.", usage: "Run on a full draft to lock POV/tense.", build: moduleNisPov },
+  { id: "NIS_SHOW", group: "nis", name: "Show-vs-Tell Audit", description: "Flags told emotions/summaries with a concrete showing rewrite; spares legit transitions.", usage: "Run on draft scenes that feel flat.", build: moduleNisShow },
+  { id: "NIS_THEME", group: "nis", name: "Theme & Motif Audit", description: "Tracks every motif instance with quotes; flags dropped motifs and on-the-nose theme.", usage: "Run on the assembled manuscript.", build: moduleNisTheme },
+  // saga (long-form 3–9 season planning + cross-season continuity)
+  { id: "SAGA_ARCHITECT", group: "saga", name: "Saga Architect (3–9 seasons)", description: "Macro arc across 3–9 seasons: saga question, per-season role/cliffhanger, power-scale ladder.", usage: "Run first to plan a multi-season work.", build: moduleSagaArchitect },
+  { id: "SAGA_SEASON", group: "saga", name: "Season Designer", description: "Designs one season in depth (its parts, plants/payoffs, cliffhanger) within the saga.", usage: "Run per season after the architect.", build: moduleSagaSeason },
+  { id: "SAGA_CONTINUITY", group: "saga", name: "Saga Continuity (SAGA STATE)", description: "Cross-season canon/character/timeline/reveal ledger; watches power-creep.", usage: "Maintain across all seasons.", build: moduleSagaContinuity },
+  { id: "SAGA_BRIDGE", group: "saga", name: "Season Bridge", description: "Season-to-season opener: recap + carried hook + escalation + opening hook.", usage: "Run between seasons.", build: moduleSagaBridge },
 ];

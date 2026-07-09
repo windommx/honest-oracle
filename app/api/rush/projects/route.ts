@@ -15,7 +15,7 @@ export async function GET() {
     where: { userId: user.id },
     orderBy: { updatedAt: "desc" },
     take: 100,
-    select: { id: true, title: true, type: true, subGenre: true, updatedAt: true },
+    select: { id: true, title: true, type: true, subGenre: true, visibility: true, config: true, updatedAt: true },
   });
 
   return NextResponse.json({ projects });

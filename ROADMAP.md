@@ -16,11 +16,21 @@ This keeps the product:
 
 ### What it is
 
-- 8 book types · 8 core prompts + 32 optional modules in 7 groups.
+- 8 book types · 8 core prompts + 41 optional modules in 8 groups.
+- **Narrative Intelligence (NIS)** — 8 grounded developmental-edit audits
+  (plot-hole/continuity, character, pacing, foreshadow, dialogue, POV,
+  show-vs-tell, theme) where every finding must cite an evidence quote and
+  the score decomposes from findings (no vibe scores). On by default for fiction.
+- **Series Bible** — cross-book canon ledger for multi-volume series.
 - Automatic continuity (`<<<STATE>>>` protocol + editable Story Bible).
-- Native Thai prompt mode + **Thai Analyzer** (real in-browser tokenizer:
-  word/echo/near-repeat/AI-tell checks — no LLM).
-- Save / share / version projects (account-gated).
+- **Deterministic analyzers** (client-side, no LLM, fully measurable):
+  - **Thai Analyzer** — real tokenizer: word/echo/near-repeat/AI-tell, dialogue,
+    telling, sentence rhythm.
+  - **English Prose Analyzer** — AI-slop, filter words, -ly adverbs, told
+    emotions, rhythm, passive (heuristic), Flesch readability.
+  - Both: before→after revision compare, per-chapter heatmap, Markdown export,
+    and one-click hand-off to the matching NIS/prose audit (signal → audit).
+- Save / share / version projects (account-gated) + projects dashboard.
 
 ### What it is NOT (on purpose)
 
@@ -34,7 +44,21 @@ separate track below.
 
 ---
 
-## Rush Studio — the runtime track (future, separate product)
+## Rush Studio — the runtime track (Phase 1 shipped)
+
+**Phase 1 (BYO-key proxy) is live** at `/rush/studio`: run any prompt against
+your OWN provider key (Anthropic / OpenAI). The key is passed through a
+login-gated server proxy per request and is **never stored or logged** — so
+platform token cost stays zero, consistent with the prompt-platform ethos.
+Output can be saved straight into the client manuscript store, then analysed /
+NIS-audited. Pure request builders (`lib/rush-engine/llm-provider.ts`) are
+unit-tested; the proxy lives at `app/api/rush/studio/run`.
+
+Remaining phases (swarm executor, enforcing hooks, plugins) are below.
+
+---
+
+## Rush Studio — the runtime track (future phases)
 
 The "Novel Studio" fusion architecture (5-layer agent system + swarm + runtime)
 is a genuinely different product: a **hosted writing system** that *executes* the
@@ -52,7 +76,7 @@ Capturing it here so the vision is a deliberate roadmap, not scope-creep.
 | Hooks | quality gates that **block** actions | ⛔ Runtime — needs an execution layer |
 | Subagents | orchestrator + swarm **execution** | ⛔ Runtime — Rush Engine ships the *prompts*, not the loop |
 | Plugins | MCP servers (storage/export/reader) | ⛔ Runtime |
-| Thai NLP | tokenizer / echoes / proofread | ✅ Shipped as the Thai Analyzer tool |
+| Thai NLP | tokenizer / echoes / proofread | ✅ Shipped — Thai + English analyzers (compare / per-chapter scan / export) |
 
 ### Phased plan (only if/when Rush Studio is greenlit)
 
@@ -77,7 +101,8 @@ prompt/knowledge layer Rush Studio would orchestrate.
 ## Near-term backlog (Rush Engine, in-scope)
 
 - Split `page.tsx` further (sidebar/output) + more component tests.
-- Expand the Thai Analyzer (proximity windows, sentence-length, readability).
+- ~~Expand the Thai Analyzer (proximity windows, sentence-length, readability).~~
+  ✅ Done — plus an English Prose Analyzer, compare, per-chapter scan, export.
 - Consolidate the module definition into one source of truth (EN + TH + meta)
   to remove the 3-file edit footprint (guarded by tests today).
 - `npm run db:push` is required on deploy for the project/share/version tables.

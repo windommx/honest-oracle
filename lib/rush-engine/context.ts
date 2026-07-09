@@ -40,7 +40,7 @@ function buildNonFictionContext(c: BookConfig): string {
   ctx += `ARGUMENT REQUIREMENTS:\n`;
   ctx += `- Every claim must have supporting evidence\n`;
   ctx += `- Evidence hierarchy: meta-analysis > RCT > cohort > case study > expert quote > anecdote\n`;
-  ctx += `- Minimum 2 citations per claim\n`;
+  ctx += `- Support each claim with a real source, or mark it [VERIFY] for citation later — NEVER invent a citation\n`;
   ctx += `- Counter-arguments must be steelmanned then rebutted\n\n`;
   ctx += `PEDAGOGY REQUIREMENTS:\n`;
   ctx += `- Learning objectives at start of each chapter\n`;

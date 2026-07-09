@@ -749,9 +749,9 @@ A premise worth testing
 
 ═══ โครงสร้างองก์ ═══
 Act 1: Setup: บท 1-1 — Introduce world, characters, stakes
-Act 2A: Rising Action: บท 2-3 — Escalate conflict, deepen relationships
-Act 2B: Complications: บท 4-4 — Raise stakes, dark moment
-Act 3: Resolution: บท 5-6 — Climax, resolution, denouement
+Act 2A: Rising Action: บท 2-2 — Escalate conflict, deepen relationships
+Act 2B: Complications: บท 3-3 — Raise stakes toward the dark moment
+Act 3: Climax & Resolution: บท 4-6 — Dark night, climax, resolution
 
 ═══ ระบบรักษาความต่อเนื่องอัตโนมัติ (story bible ในแชทเดียว) ═══
 คุณดูแลบล็อก STATE เพื่อให้หนังสือสอดคล้องกันโดยไม่ต้องให้ผู้ใช้วางโน้ตซ้ำ
@@ -795,16 +795,16 @@ Act 3: Resolution: บท 5-6 — Climax, resolution, denouement
 
 ═══ ส่วน (Parts) ═══
 • Act 1: Setup — บท 1-1 — Introduce world, characters, stakes
-• Act 2A: Rising Action — บท 2-3 — Escalate conflict, deepen relationships
-• Act 2B: Complications — บท 4-4 — Raise stakes, dark moment
-• Act 3: Resolution — บท 5-6 — Climax, resolution, denouement
+• Act 2A: Rising Action — บท 2-2 — Escalate conflict, deepen relationships
+• Act 2B: Complications — บท 3-3 — Raise stakes toward the dark moment
+• Act 3: Climax & Resolution — บท 4-6 — Dark night, climax, resolution
 
 ═══ แผนผังบท ═══
 บท 1 [เปิดเรื่อง] — HOOK: พาผู้อ่านเข้าสู่ฉากที่น่าติดตามทันที
 บท 2 [จุดพลิก] — จุดไม่หวนกลับ: ตัวเอกตัดสินใจลงมือ
 บท 3 [จุดกึ่งกลาง] — จุดกึ่งกลาง: การเปิดเผยหรือการพลิกผัน
-บท 4 [ปมซับซ้อน] — ปมซับซ้อน: เดิมพันสูงสุด ช่วงมืดใกล้เข้ามา
-บท 5 [ช่วงมืด] — ค่ำคืนมืดมิด: ตัวเอกตกต่ำที่สุด
+บท 4 [ช่วงมืด] — ค่ำคืนมืดมิด: ตัวเอกตกต่ำที่สุด
+บท 5 [ไคลแมกซ์] — ไคลแมกซ์: การเผชิญหน้าครั้งสุดท้าย
 บท 6 [บทสรุป] — บทสรุป: ภาวะปกติใหม่ และถ้อยแถลงแก่นเรื่อง
 
 ═══ เริ่มต้นความต่อเนื่อง ═══
@@ -830,7 +830,7 @@ Act 3: Resolution: บท 5-6 — Climax, resolution, denouement
 ═══ คำสั่งฉาก ═══
 ประเภทฉาก: opening
 องก์: 1
-ระดับความตึงเครียด: 50%
+ระดับความตึงเครียด: 30%
 
 ═══ โครงสร้าง ═══
 1. เปิดกลางเหตุการณ์ที่น่าสนใจ (in medias res)
@@ -879,7 +879,7 @@ Act 3: Resolution: บท 5-6 — Climax, resolution, denouement
 ═══ คำสั่งฉาก ═══
 ประเภทฉาก: turning_point
 องก์: 2
-ระดับความตึงเครียด: 67%
+ระดับความตึงเครียด: 46%
 
 ═══ โครงสร้าง ═══
 1. ตัวเอกเผชิญจุดตัดสินใจ
@@ -929,7 +929,7 @@ Act 3: Resolution: บท 5-6 — Climax, resolution, denouement
 ═══ คำสั่งฉาก ═══
 ประเภทฉาก: midpoint
 องก์: 2
-ระดับความตึงเครียด: 80%
+ระดับความตึงเครียด: 63%
 
 ═══ โครงสร้าง ═══
 1. การเปิดเผยครั้งใหญ่ (เปลี่ยนทุกอย่าง)
@@ -937,14 +937,8 @@ Act 3: Resolution: บท 5-6 — Climax, resolution, denouement
 3. เดิมพันกลายเป็นเรื่องส่วนตัว
 4. hook: ไปต่อสู่อันตรายเท่านั้น
 
-⚠ บทตึงเครียดสูง — รักษาจังหวะ:
-- ประโยค/ย่อหน้าสั้นลง
-- ตัดฉากเร็วขึ้น
-- บรรยายเท่าที่จำเป็น
-- ความคิดในใจเฉพาะจุดสำคัญ
-
 ═══ เชื่อมไปบทที่ 4 ═══
-บทถัดไป: ปมซับซ้อน — ปมซับซ้อน: เดิมพันสูงสุด ช่วงมืดใกล้เข้ามา
+บทถัดไป: ช่วงมืด — ค่ำคืนมืดมิด: ตัวเอกตกต่ำที่สุด
 → จบบทนี้ในแบบที่นำไปสู่บทถัดไปอย่างเป็นธรรมชาติ
 
 ═══ เช็คลิสต์คุณภาพ (ตรวจก่อนจบ) ═══
@@ -960,7 +954,7 @@ Act 3: Resolution: บท 5-6 — Climax, resolution, denouement
     "usage": "ส่งเพื่อเขียนบทที่ 3 (จุดกึ่งกลาง)",
   },
   {
-    "description": "ปมซับซ้อน: เดิมพันสูงสุด ช่วงมืดใกล้เข้ามา",
+    "description": "ค่ำคืนมืดมิด: ตัวเอกตกต่ำที่สุด",
     "group": "core",
     "id": "CH_4",
     "name": "Chapter 4",
@@ -969,8 +963,8 @@ Act 3: Resolution: บท 5-6 — Climax, resolution, denouement
 หนังสือ: "The Test Book" — thriller
 แก่นเรื่อง: A premise worth testing
 บทที่: 4 จาก 6
-ประเภท: ปมซับซ้อน
-วัตถุประสงค์: ปมซับซ้อน: เดิมพันสูงสุด ช่วงมืดใกล้เข้ามา
+ประเภท: ช่วงมืด
+วัตถุประสงค์: ค่ำคืนมืดมิด: ตัวเอกตกต่ำที่สุด
 เป้าหมายความยาว: ~3000 คำ (±20% ให้เนื้อหากำหนดความยาวจริง)
 
 ═══ ความต่อเนื่อง ═══
@@ -983,15 +977,15 @@ Act 3: Resolution: บท 5-6 — Climax, resolution, denouement
 → ต่อยอดสิ่งที่ตั้งไว้ อย่าเล่าซ้ำ คงโทน สถานะตัวละคร และเส้นเวลา
 
 ═══ คำสั่งฉาก ═══
-ประเภทฉาก: complication
-องก์: 2
-ระดับความตึงเครียด: 80%
+ประเภทฉาก: dark_moment
+องก์: 3
+ระดับความตึงเครียด: 79%
 
 ═══ โครงสร้าง ═══
-1. ทุกแผนล้มเหลว พันธมิตรตึงเครียด
-2. ช่วงมืดใกล้เข้ามา ตัวเอกถูกบีบถึงขีดสุด
-3. ความขัดแย้งภายใน: ข้อบกพร่อง vs การเติบโต
-4. hook: กำลังจะเลวร้ายลงอีก
+1. จุดต่ำสุด เสียทุกอย่าง (หรือดูเหมือนเสีย)
+2. เผชิญปีศาจในใจ/ข้อบกพร่องลึกสุด
+3. เมล็ดพันธุ์ทางออกที่ปลูกไว้ก่อนหน้าออกดอก
+4. hook: ทางเลือก — ยอมแพ้หรือหาทางอื่น
 
 ⚠ บทตึงเครียดสูง — รักษาจังหวะ:
 - ประโยค/ย่อหน้าสั้นลง
@@ -1000,7 +994,7 @@ Act 3: Resolution: บท 5-6 — Climax, resolution, denouement
 - ความคิดในใจเฉพาะจุดสำคัญ
 
 ═══ เชื่อมไปบทที่ 5 ═══
-บทถัดไป: ช่วงมืด — ค่ำคืนมืดมิด: ตัวเอกตกต่ำที่สุด
+บทถัดไป: ไคลแมกซ์ — ไคลแมกซ์: การเผชิญหน้าครั้งสุดท้าย
 → จบบทนี้ในแบบที่นำไปสู่บทถัดไปอย่างเป็นธรรมชาติ
 
 ═══ เช็คลิสต์คุณภาพ (ตรวจก่อนจบ) ═══
@@ -1013,10 +1007,10 @@ Act 3: Resolution: บท 5-6 — Climax, resolution, denouement
   □ ความยาวใกล้เป้าหมาย (±20%)
 
 เขียนบทที่ 4 ให้สมบูรณ์เป็นภาษาไทย จากนั้น output บล็อก <<<STATE>>> ที่อัปเดต ไม่ต้องมีคำอธิบายอื่น",
-    "usage": "ส่งเพื่อเขียนบทที่ 4 (ปมซับซ้อน)",
+    "usage": "ส่งเพื่อเขียนบทที่ 4 (ช่วงมืด)",
   },
   {
-    "description": "ค่ำคืนมืดมิด: ตัวเอกตกต่ำที่สุด",
+    "description": "ไคลแมกซ์: การเผชิญหน้าครั้งสุดท้าย",
     "group": "core",
     "id": "CH_5",
     "name": "Chapter 5",
@@ -1025,8 +1019,8 @@ Act 3: Resolution: บท 5-6 — Climax, resolution, denouement
 หนังสือ: "The Test Book" — thriller
 แก่นเรื่อง: A premise worth testing
 บทที่: 5 จาก 6
-ประเภท: ช่วงมืด
-วัตถุประสงค์: ค่ำคืนมืดมิด: ตัวเอกตกต่ำที่สุด
+ประเภท: ไคลแมกซ์
+วัตถุประสงค์: ไคลแมกซ์: การเผชิญหน้าครั้งสุดท้าย
 เป้าหมายความยาว: ~3000 คำ (±20% ให้เนื้อหากำหนดความยาวจริง)
 
 ═══ ความต่อเนื่อง ═══
@@ -1034,20 +1028,20 @@ Act 3: Resolution: บท 5-6 — Climax, resolution, denouement
 → ถ้ายังไม่มี STATE ให้สร้างขึ้นจากบทที่เขียนไปแล้ว
 
 ═══ บริบทบทก่อนหน้า (บท 4) ═══
-ประเภท: ปมซับซ้อน
-วัตถุประสงค์: ปมซับซ้อน: เดิมพันสูงสุด ช่วงมืดใกล้เข้ามา
+ประเภท: ช่วงมืด
+วัตถุประสงค์: ค่ำคืนมืดมิด: ตัวเอกตกต่ำที่สุด
 → ต่อยอดสิ่งที่ตั้งไว้ อย่าเล่าซ้ำ คงโทน สถานะตัวละคร และเส้นเวลา
 
 ═══ คำสั่งฉาก ═══
-ประเภทฉาก: dark_moment
+ประเภทฉาก: climax
 องก์: 3
-ระดับความตึงเครียด: 91%
+ระดับความตึงเครียด: 100%
 
 ═══ โครงสร้าง ═══
-1. จุดต่ำสุด เสียทุกอย่าง (หรือดูเหมือนเสีย)
-2. เผชิญปีศาจในใจ/ข้อบกพร่องลึกสุด
-3. เมล็ดพันธุ์ทางออกที่ปลูกไว้ก่อนหน้าออกดอก
-4. hook: ทางเลือก — ยอมแพ้หรือหาทางอื่น
+1. การเผชิญหน้าครั้งสุดท้าย
+2. บททดสอบภายใน: ต้องเอาชนะข้อบกพร่องจึงสำเร็จ
+3. การกระทำชี้ขาดที่นิยามตัวละคร
+4. คลี่คลายความขัดแย้ง (ชนะ/แพ้/ขมหวาน)
 
 ⚠ บทตึงเครียดสูง — รักษาจังหวะ:
 - ประโยค/ย่อหน้าสั้นลง
@@ -1069,7 +1063,7 @@ Act 3: Resolution: บท 5-6 — Climax, resolution, denouement
   □ ความยาวใกล้เป้าหมาย (±20%)
 
 เขียนบทที่ 5 ให้สมบูรณ์เป็นภาษาไทย จากนั้น output บล็อก <<<STATE>>> ที่อัปเดต ไม่ต้องมีคำอธิบายอื่น",
-    "usage": "ส่งเพื่อเขียนบทที่ 5 (ช่วงมืด)",
+    "usage": "ส่งเพื่อเขียนบทที่ 5 (ไคลแมกซ์)",
   },
   {
     "description": "บทสรุป: ภาวะปกติใหม่ และถ้อยแถลงแก่นเรื่อง",
@@ -1090,26 +1084,20 @@ Act 3: Resolution: บท 5-6 — Climax, resolution, denouement
 → ถ้ายังไม่มี STATE ให้สร้างขึ้นจากบทที่เขียนไปแล้ว
 
 ═══ บริบทบทก่อนหน้า (บท 5) ═══
-ประเภท: ช่วงมืด
-วัตถุประสงค์: ค่ำคืนมืดมิด: ตัวเอกตกต่ำที่สุด
+ประเภท: ไคลแมกซ์
+วัตถุประสงค์: ไคลแมกซ์: การเผชิญหน้าครั้งสุดท้าย
 → ต่อยอดสิ่งที่ตั้งไว้ อย่าเล่าซ้ำ คงโทน สถานะตัวละคร และเส้นเวลา
 
 ═══ คำสั่งฉาก ═══
 ประเภทฉาก: resolution
 องก์: 3
-ระดับความตึงเครียด: 80%
+ระดับความตึงเครียด: 50%
 
 ═══ โครงสร้าง ═══
 1. โลกหลังความขัดแย้ง (ภาวะปกติใหม่)
 2. แสดง (ไม่ใช่บอก) ว่าตัวเอกเปลี่ยนไปอย่างไร
 3. ถ้อยแถลงแก่นเรื่องผ่านการกระทำ
 4. ภาพสุดท้ายที่กังวาน
-
-⚠ บทตึงเครียดสูง — รักษาจังหวะ:
-- ประโยค/ย่อหน้าสั้นลง
-- ตัดฉากเร็วขึ้น
-- บรรยายเท่าที่จำเป็น
-- ความคิดในใจเฉพาะจุดสำคัญ
 
 ═══ เช็คลิสต์คุณภาพ (ตรวจก่อนจบ) ═══
   □ โชว์มากกว่าเล่า
@@ -1232,6 +1220,28 @@ Act 3: Resolution: บท 5-6 — Climax, resolution, denouement
 ═══ ดราฟต์บทที่จะวิเคราะห์ ═══
 [วางบทที่เขียนเสร็จที่นี่]",
     "usage": "ส่งหลังจบแต่ละบท",
+  },
+  {
+    "description": "ล็อกคำสัญญาต่อคนอ่าน ขนบ และกับดักของแนวเรื่อง ก่อนวางโครง",
+    "group": "craft",
+    "id": "GENRE_CORE",
+    "name": "Genre Reader-Promise",
+    "prompt": "ก่อนวางโครงเรื่อง ล็อก "คำสัญญาต่อคนอ่าน" ของแนวเรื่องนี้ก่อน — คนอ่านแนว thriller มาหาอะไร — เพื่อให้ทุกการตัดสินใจตอบสิ่งนั้น
+
+แนว: thriller
+แก่นเรื่อง: A premise worth testing
+
+จัดทำ:
+1. คำสัญญาหลัก — ประโยคเดียว ระบุประสบการณ์ทางอารมณ์ที่คนอ่านแนวนี้ "จ่ายเพื่อได้" (โรแมนซ์ = ความลุ้นในความสัมพันธ์และการสมหวังที่คู่ควร · สืบสวน = ความอยากรู้คำตอบ + เฉลยที่แฟร์และคาดไม่ถึง · แฟนตาซี = โลกที่อยากอยู่ + ตัวเอกที่เติบโต · ไซไฟ = ไอเดียเดียวที่ตามไปจนเห็นราคาที่มนุษย์ต้องจ่าย)
+2. สิ่งที่ห้ามพลาด — ขนบที่คนอ่านแนวนี้คาดหวัง หักโดยไม่มีเหตุผล = เสียคนอ่าน
+3. จุดที่เล่นมุมใหม่ได้ — แนวนี้ให้รางวัลกับความสดตรงไหน และลงโทษการนอกลู่ตรงไหน
+4. กับดักที่ทำคนอ่านผิดหวัง — วิธีที่เรื่องแนวนี้มักพลาด + สัญญาณเตือนตั้งแต่ต้น
+5. ตรวจการส่งมอบ — สำหรับ premise ข้างบน ระบุ 3 ฉาก/beat ที่ "ต้อง" ทำให้ได้เพื่อรักษาคำสัญญา
+
+กฎ: อ้างอิงแนวนี้และ premise นี้เฉพาะเจาะจง ห้ามให้คำแนะนำกลาง ๆ แบบ "เขียนให้ดี" ถ้าแนวผสมหลายหมวด ให้บอกว่าคำสัญญาไหนนำ ไหนเสริม
+
+ผลลัพธ์: ห้าหัวข้อ ตามด้วยคำตัดสินหนึ่งบรรทัดว่า premise นี้ถูกวางมาให้ส่งมอบคำสัญญาของแนวหรือยัง",
+    "usage": "รันก่อนสุด — ก่อน Outline — เพื่อจับสิ่งที่คนอ่านแนวนี้คาดหวัง",
   },
   {
     "description": "โครงเรื่องรายบท (Save the Cat / Hero's Journey / Kishōtenketsu ฯลฯ)",
@@ -1414,6 +1424,28 @@ POV: [ ] · เป้าหมาย: [ ] · อุปสรรค: [ ] · ต�
     "usage": "ส่งดราฟต์เพื่อลงประสาทสัมผัส",
   },
   {
+    "description": "เขียนฉากใหม่แบบ deep POV: ปักหมุดเร็ว ตัดกริยากรอง เติมความคิดภายใน เปิดปมค้าง จบด้วยแรงส่ง",
+    "group": "craft",
+    "id": "IMMERSION",
+    "name": "Immersion / Deep-POV Pass",
+    "prompt": "เขียนฉากใหม่เพื่อดึงผู้อ่านเข้าไป "ข้างใน" ประสบการณ์ของตัวละคร POV (deep POV / การขนส่งผู้อ่าน) คงพล็อต ข้อเท็จจริง และความหมายบทสนทนาไว้ — เปลี่ยนแค่ระยะใกล้ ไม่ใช่เปลี่ยนเหตุการณ์
+
+ทำครบทั้งห้า:
+1. ปักหมุดเร็ว — ภายใน 2-3 ประโยคแรก ตรึงผู้อ่านไว้กับสถานที่/ร่างกาย/ขณะนั้น ด้วยรายละเอียดรูปธรรมหนึ่งอย่าง (ไม่ใช่เปิดด้วยพยากรณ์อากาศหรือเกริ่นลอย ๆ)
+2. ตัดกริยากรอง — เอากริยาที่ถอยระยะออก (เห็น / ได้ยิน / รู้สึก / สังเกต / ตระหนัก / มองเห็น) แล้วเล่าการรับรู้ตรง ๆ "เธอได้ยินเสียงประตูลั่นเอี๊ยด" → "ประตูลั่นเอี๊ยด"
+3. ความคิดภายใน — เติมปฏิกิริยา ณ ขณะนั้นของตัวละคร POV (ความคิด / ความรู้สึกทางกาย / การตัดสิน) ให้เราสัมผัสฉากอย่างที่เขาสัมผัส — แต่ "แสดง" ไม่ใช่ตั้งชื่ออารมณ์ตรง ๆ
+4. เปิดปมค้างหนึ่งปม — ปลูกหรือทำให้คมขึ้นซึ่งคำถามค้างหนึ่งข้อที่ผู้อ่านอยากรู้คำตอบ (ช่องว่างข้อมูล) โดยไม่กั๊กแบบถูก ๆ
+5. แรงส่งไปข้างหน้า — จบด้วยแรงส่ง (จุดพลิก คำถามใหม่ การกระทำที่ค้าง) ไม่ใช่ปิดเรียบร้อยเกินไป
+
+กฎ: ไม่พรรณนาเว่อร์หรือสัมผัสคลิเช รายละเอียดที่เติมต้องทำหน้าที่คู่ (อารมณ์/ตัวละคร/แก่นเรื่อง) ห้ามเพิ่มเหตุการณ์ที่ดราฟต์ไม่ได้บอกใบ้ไว้
+
+ผลลัพธ์: ฉากที่เขียนใหม่ ตามด้วยบันทึกการแก้ 3-5 บรรทัด ระบุกริยากรองที่ตัดและปมที่เปิด
+
+═══ ดราฟต์ ═══
+[วางฉากที่นี่]",
+    "usage": "ส่งฉากเพื่อดึงผู้อ่านเข้าไปข้างใน",
+  },
+  {
     "description": "เส้นความตึงรายฉาก + แก้จุดราบ",
     "group": "craft",
     "id": "CONFLICT_MAP",
@@ -1466,8 +1498,8 @@ Your target reader: QA engineers.
 A premise worth testing
 
 ═══ QUALITY STANDARDS (aim for these; use judgment over rigid ratios) ═══
-- Argument strength: ≥ 70% claims supported
-- Evidence: ≥ 2 citations per claim
+- Argument strength: most claims supported by real evidence
+- Evidence: support each claim, or mark it [VERIFY] for a real source later — NEVER invent a citation
 - Clarity score: ≥ 60%
 - Logic flow: no gaps between paragraphs
 - Pedagogy: objectives + takeaways + exercises
@@ -1587,8 +1619,7 @@ Next chapter: story — ILLUSTRATE: Make the problem real through narrative
 → End this chapter in a way that naturally leads to the next.
 
 ═══ QUALITY CHECKLIST (verify before finalizing) ═══
-  □ All claims supported by evidence
-  □ ≥ 2 citations in chapter
+  □ All claims supported OR marked [VERIFY] (no invented sources)
   □ Jargon defined on first use
   □ Logic flow between paragraphs
   □ Pedagogy elements present
@@ -1644,8 +1675,7 @@ Next chapter: evidence — PROVE: Present research and data supporting a claim
 → End this chapter in a way that naturally leads to the next.
 
 ═══ QUALITY CHECKLIST (verify before finalizing) ═══
-  □ All claims supported by evidence
-  □ ≥ 2 citations in chapter
+  □ All claims supported OR marked [VERIFY] (no invented sources)
   □ Jargon defined on first use
   □ Logic flow between paragraphs
   □ Pedagogy elements present
@@ -1701,8 +1731,7 @@ Next chapter: theory — EXPLAIN: Introduce a framework component with mechanism
 → End this chapter in a way that naturally leads to the next.
 
 ═══ QUALITY CHECKLIST (verify before finalizing) ═══
-  □ All claims supported by evidence
-  □ ≥ 2 citations in chapter
+  □ All claims supported OR marked [VERIFY] (no invented sources)
   □ Jargon defined on first use
   □ Logic flow between paragraphs
   □ Pedagogy elements present
@@ -1759,8 +1788,7 @@ Next chapter: practice — APPLY: Give reader hands-on exercise
 → End this chapter in a way that naturally leads to the next.
 
 ═══ QUALITY CHECKLIST (verify before finalizing) ═══
-  □ All claims supported by evidence
-  □ ≥ 2 citations in chapter
+  □ All claims supported OR marked [VERIFY] (no invented sources)
   □ Jargon defined on first use
   □ Logic flow between paragraphs
   □ Pedagogy elements present
@@ -1816,8 +1844,7 @@ Next chapter: case_study — CLOSE: Restate thesis, call to action, final story
 → End this chapter in a way that naturally leads to the next.
 
 ═══ QUALITY CHECKLIST (verify before finalizing) ═══
-  □ All claims supported by evidence
-  □ ≥ 2 citations in chapter
+  □ All claims supported OR marked [VERIFY] (no invented sources)
   □ Jargon defined on first use
   □ Logic flow between paragraphs
   □ Pedagogy elements present
@@ -1871,8 +1898,7 @@ MUST INCLUDE:
   ✓ lessons
 
 ═══ QUALITY CHECKLIST (verify before finalizing) ═══
-  □ All claims supported by evidence
-  □ ≥ 2 citations in chapter
+  □ All claims supported OR marked [VERIFY] (no invented sources)
   □ Jargon defined on first use
   □ Logic flow between paragraphs
   □ Pedagogy elements present
@@ -2249,9 +2275,9 @@ A premise worth testing
 
 ═══ ACT STRUCTURE ═══
 Act 1: Setup: Chapters 1-1 — Introduce world, characters, stakes
-Act 2A: Rising Action: Chapters 2-3 — Escalate conflict, deepen relationships
-Act 2B: Complications: Chapters 4-4 — Raise stakes, dark moment
-Act 3: Resolution: Chapters 5-6 — Climax, resolution, denouement
+Act 2A: Rising Action: Chapters 2-2 — Escalate conflict, deepen relationships
+Act 2B: Complications: Chapters 3-3 — Raise stakes toward the dark moment
+Act 3: Climax & Resolution: Chapters 4-6 — Dark night, climax, resolution
 
 ═══ CHARACTER ARC ═══
 Protagonist transforms from: flawed → transformed
@@ -2297,16 +2323,16 @@ STRUCTURE: 6 chapters × ~3000 words
 
 ═══ PARTS ═══
 • Act 1: Setup — Chapters 1-1 — Introduce world, characters, stakes
-• Act 2A: Rising Action — Chapters 2-3 — Escalate conflict, deepen relationships
-• Act 2B: Complications — Chapters 4-4 — Raise stakes, dark moment
-• Act 3: Resolution — Chapters 5-6 — Climax, resolution, denouement
+• Act 2A: Rising Action — Chapters 2-2 — Escalate conflict, deepen relationships
+• Act 2B: Complications — Chapters 3-3 — Raise stakes toward the dark moment
+• Act 3: Climax & Resolution — Chapters 4-6 — Dark night, climax, resolution
 
 ═══ CHAPTER MAP ═══
 Ch.1 [opening] — HOOK: Drop reader into compelling scene
 Ch.2 [turning_point] — POINT OF NO RETURN: Protagonist commits
 Ch.3 [midpoint] — MIDPOINT: Revelation or reversal
-Ch.4 [complication] — COMPLICATE: Stakes highest, dark moment approaches
-Ch.5 [dark_moment] — DARK NIGHT: Protagonist at lowest
+Ch.4 [dark_moment] — DARK NIGHT: Protagonist at lowest
+Ch.5 [climax] — CLIMAX: Final confrontation
 Ch.6 [resolution] — RESOLUTION: New normal, thematic statement
 
 ═══ INITIALIZE CONTINUITY ═══
@@ -2332,7 +2358,7 @@ WORD TARGET: ~3000 words (±20%; let the content set the exact length)
 ═══ SCENE INSTRUCTIONS ═══
 Scene type: opening
 Act: 1
-Tension level: 50%
+Tension level: 30%
 
 MUST INCLUDE:
   ✓ compelling first line
@@ -2389,7 +2415,7 @@ Purpose: HOOK: Drop reader into compelling scene
 ═══ SCENE INSTRUCTIONS ═══
 Scene type: turning_point
 Act: 2
-Tension level: 67%
+Tension level: 46%
 
 MUST INCLUDE:
   ✓ decision point
@@ -2447,7 +2473,7 @@ Purpose: POINT OF NO RETURN: Protagonist commits
 ═══ SCENE INSTRUCTIONS ═══
 Scene type: midpoint
 Act: 2
-Tension level: 80%
+Tension level: 63%
 
 MUST INCLUDE:
   ✓ revelation
@@ -2461,14 +2487,8 @@ MUST INCLUDE:
 3. RAISED STAKES: Now it's personal
 4. HOOK: No going back — only forward into danger
 
-⚠ HIGH TENSION CHAPTER — maintain pace:
-- Shorter sentences and paragraphs
-- Faster scene cuts
-- Minimal description (only what's essential)
-- Internal monologue at key moments only
-
 ═══ TRANSITION TO CHAPTER 4 ═══
-Next chapter: complication — COMPLICATE: Stakes highest, dark moment approaches
+Next chapter: dark_moment — DARK NIGHT: Protagonist at lowest
 → End this chapter in a way that naturally leads to the next.
 
 ═══ QUALITY CHECKLIST (verify before finalizing) ═══
@@ -2485,7 +2505,7 @@ Now write Chapter 3 in full. Output the chapter prose (Markdown), then the updat
     "usage": "Send to write Chapter 3 (midpoint).",
   },
   {
-    "description": "COMPLICATE: Stakes highest, dark moment approaches",
+    "description": "DARK NIGHT: Protagonist at lowest",
     "group": "core",
     "id": "CH_4",
     "name": "Chapter 4",
@@ -2494,8 +2514,8 @@ Now write Chapter 3 in full. Output the chapter prose (Markdown), then the updat
 BOOK: "The Test Book" — thriller
 PREMISE: A premise worth testing
 CHAPTER: 4 of 6
-TYPE: complication
-PURPOSE: COMPLICATE: Stakes highest, dark moment approaches
+TYPE: dark_moment
+PURPOSE: DARK NIGHT: Protagonist at lowest
 WORD TARGET: ~3000 words (±20%; let the content set the exact length)
 
 ═══ CONTINUITY ═══
@@ -2509,21 +2529,21 @@ Purpose: MIDPOINT: Revelation or reversal
 → Maintain continuity of tone, character state, and timeline.
 
 ═══ SCENE INSTRUCTIONS ═══
-Scene type: complication
-Act: 2
-Tension level: 80%
+Scene type: dark_moment
+Act: 3
+Tension level: 79%
 
 MUST INCLUDE:
-  ✓ plan failure
-  ✓ ally strain
-  ✓ internal conflict
-  ✓ dark approach
+  ✓ lowest point
+  ✓ inner demon
+  ✓ seed of resolution
+  ✓ choice
 
 ═══ STRUCTURE ═══
-1. ESCALATION: Every plan fails, every ally strained
-2. DARK MOMENT APPROACHES: Protagonist pushed to limit
-3. INTERNAL CONFLICT: Flaw vs growth
-4. HOOK: Things are about to get much worse
+1. LOWEST POINT: Everything lost (or seems lost)
+2. INNER DEMON: Protagonist faces their deepest flaw
+3. SEED OF RESOLUTION: Small detail planted earlier pays off
+4. HOOK: A choice — give up or find another way
 
 ⚠ HIGH TENSION CHAPTER — maintain pace:
 - Shorter sentences and paragraphs
@@ -2532,7 +2552,7 @@ MUST INCLUDE:
 - Internal monologue at key moments only
 
 ═══ TRANSITION TO CHAPTER 5 ═══
-Next chapter: dark_moment — DARK NIGHT: Protagonist at lowest
+Next chapter: climax — CLIMAX: Final confrontation
 → End this chapter in a way that naturally leads to the next.
 
 ═══ QUALITY CHECKLIST (verify before finalizing) ═══
@@ -2546,10 +2566,10 @@ Next chapter: dark_moment — DARK NIGHT: Protagonist at lowest
   □ Tension appropriate for act position
 
 Now write Chapter 4 in full. Output the chapter prose (Markdown), then the updated <<<STATE>>> block. No other commentary.",
-    "usage": "Send to write Chapter 4 (complication).",
+    "usage": "Send to write Chapter 4 (dark_moment).",
   },
   {
-    "description": "DARK NIGHT: Protagonist at lowest",
+    "description": "CLIMAX: Final confrontation",
     "group": "core",
     "id": "CH_5",
     "name": "Chapter 5",
@@ -2558,8 +2578,8 @@ Now write Chapter 4 in full. Output the chapter prose (Markdown), then the updat
 BOOK: "The Test Book" — thriller
 PREMISE: A premise worth testing
 CHAPTER: 5 of 6
-TYPE: dark_moment
-PURPOSE: DARK NIGHT: Protagonist at lowest
+TYPE: climax
+PURPOSE: CLIMAX: Final confrontation
 WORD TARGET: ~3000 words (±20%; let the content set the exact length)
 
 ═══ CONTINUITY ═══
@@ -2567,27 +2587,27 @@ WORD TARGET: ~3000 words (±20%; let the content set the exact length)
 → If no STATE exists yet, reconstruct it from the chapters written so far.
 
 ═══ PREVIOUS CHAPTER (Ch.4) CONTEXT ═══
-Type: complication
-Purpose: COMPLICATE: Stakes highest, dark moment approaches
+Type: dark_moment
+Purpose: DARK NIGHT: Protagonist at lowest
 → Build on what was established. Don't repeat information.
 → Maintain continuity of tone, character state, and timeline.
 
 ═══ SCENE INSTRUCTIONS ═══
-Scene type: dark_moment
+Scene type: climax
 Act: 3
-Tension level: 91%
+Tension level: 100%
 
 MUST INCLUDE:
-  ✓ lowest point
-  ✓ inner demon
-  ✓ seed of resolution
-  ✓ choice
+  ✓ final conflict
+  ✓ internal test
+  ✓ decisive action
+  ✓ conflict resolution
 
 ═══ STRUCTURE ═══
-1. LOWEST POINT: Everything lost (or seems lost)
-2. INNER DEMON: Protagonist faces their deepest flaw
-3. SEED OF RESOLUTION: Small detail planted earlier pays off
-4. HOOK: A choice — give up or find another way
+1. CONFRONTATION: Final conflict
+2. INTERNAL TEST: Protagonist must overcome flaw to succeed
+3. DECISIVE ACTION: The choice that defines the character
+4. RESOLUTION OF CONFLICT: Victory, defeat, or bittersweet
 
 ⚠ HIGH TENSION CHAPTER — maintain pace:
 - Shorter sentences and paragraphs
@@ -2610,7 +2630,7 @@ Next chapter: resolution — RESOLUTION: New normal, thematic statement
   □ Tension appropriate for act position
 
 Now write Chapter 5 in full. Output the chapter prose (Markdown), then the updated <<<STATE>>> block. No other commentary.",
-    "usage": "Send to write Chapter 5 (dark_moment).",
+    "usage": "Send to write Chapter 5 (climax).",
   },
   {
     "description": "RESOLUTION: New normal, thematic statement",
@@ -2631,15 +2651,15 @@ WORD TARGET: ~3000 words (±20%; let the content set the exact length)
 → If no STATE exists yet, reconstruct it from the chapters written so far.
 
 ═══ PREVIOUS CHAPTER (Ch.5) CONTEXT ═══
-Type: dark_moment
-Purpose: DARK NIGHT: Protagonist at lowest
+Type: climax
+Purpose: CLIMAX: Final confrontation
 → Build on what was established. Don't repeat information.
 → Maintain continuity of tone, character state, and timeline.
 
 ═══ SCENE INSTRUCTIONS ═══
 Scene type: resolution
 Act: 3
-Tension level: 80%
+Tension level: 50%
 
 MUST INCLUDE:
   ✓ new normal
@@ -2652,12 +2672,6 @@ MUST INCLUDE:
 2. CHARACTER TRANSFORMATION: Show (don't tell) how protagonist changed
 3. THEMATIC STATEMENT: The book's message, embodied in action
 4. FINAL IMAGE: Last line that resonates
-
-⚠ HIGH TENSION CHAPTER — maintain pace:
-- Shorter sentences and paragraphs
-- Faster scene cuts
-- Minimal description (only what's essential)
-- Internal monologue at key moments only
 
 ═══ QUALITY CHECKLIST (verify before finalizing) ═══
   □ Show/tell ratio ≥ 70% show
@@ -2794,6 +2808,28 @@ Output the complete revised chapter (no commentary).",
 ═══ CHAPTER DRAFT TO ANALYZE ═══
 [INSERT COMPLETED CHAPTER HERE]",
     "usage": "Send after each chapter to generate feedback for the next.",
+  },
+  {
+    "description": "Locks the core promise, conventions & failure modes of the book's genre before outlining.",
+    "group": "craft",
+    "id": "GENRE_CORE",
+    "name": "Genre Reader-Promise",
+    "prompt": "Before outlining, lock the READER PROMISE for this book's genre — what readers of thriller actually come for — so every later choice delivers it.
+
+Genre: thriller
+Premise: A premise worth testing
+
+Produce:
+1. CORE PROMISE — one sentence naming the emotional experience readers of this genre pay for (romance = the yearning and its earned payoff; mystery = the itch to know + a fair, surprising solution; fantasy = a world worth living in + a hero who grows; sci-fi = one idea followed honestly to its human cost).
+2. NON-NEGOTIABLES — the conventions these readers expect; breaking them without purpose loses them.
+3. FRESH-ANGLE ZONES — where this genre rewards a new take, vs where it punishes deviation.
+4. FAILURE MODES — the top ways books in this genre disappoint, and the tell-tale early signs.
+5. DELIVERY CHECK — for MY premise above, name 3 concrete beats/scenes that MUST land to keep the promise.
+
+Rules: ground every point in this specific genre and this premise — no generic "write well" advice. If the subgenre blends genres, state which promise leads and which supports.
+
+Output: the five sections, then a one-line verdict on whether the premise is set up to deliver its genre's promise.",
+    "usage": "Run first — before the outline — to nail what readers of this genre expect.",
   },
   {
     "description": "Beat-by-beat outline (Save the Cat / Hero's Journey / Story Circle / Kishōtenketsu / Seven-Point).",
@@ -2983,6 +3019,28 @@ Output: a per-scene sense table + the targeted additions.
     "usage": "Send a draft to ground it in the senses.",
   },
   {
+    "description": "Deep-POV rewrite: ground fast, cut filter verbs, add interiority, open one loop, end on momentum.",
+    "group": "craft",
+    "id": "IMMERSION",
+    "name": "Immersion / Deep-POV Pass",
+    "prompt": "Rewrite a scene to pull the reader INSIDE the POV character's experience (deep POV / "transportation"). Keep plot, facts, and dialogue meaning — change how close we are, not what happens.
+
+Do all five:
+1. GROUND FAST — within the first 2-3 sentences, anchor the reader in place/body/moment with one concrete, specific detail (not a weather-report or throat-clear opening).
+2. CUT THE FILTER — remove distancing verbs (saw / heard / felt / noticed / realized / could see) and render the perception directly. "She heard the door creak" → "The door creaked."
+3. INTERIORITY — add the POV character's in-the-moment reaction (thought / bodily sensation / judgement) so we experience the scene as they do — but SHOW it, don't name the emotion.
+4. ONE OPEN LOOP — plant or sharpen a single unanswered question the reader now wants closed (an information gap), without withholding cheaply.
+5. FORWARD PULL — end on momentum (a turn, a new question, an unfinished action), not a tidy button.
+
+Rules: no purple prose or cliché sensory filler; every added detail must do double duty (mood / character / theme). Do not add events that aren't implied by the draft.
+
+Output: the rewritten scene, then a 3-5 line changelog naming each filter word cut and each loop opened.
+
+═══ DRAFT ═══
+[INSERT SCENE HERE]",
+    "usage": "Send a scene to pull the reader inside it.",
+  },
+  {
     "description": "Per-scene tension curve + flat-spot fixes.",
     "group": "craft",
     "id": "CONFLICT_MAP",
@@ -3003,6 +3061,27 @@ Output: the per-scene tension table + a short list of fixes.
 ═══ DRAFT ═══
 [INSERT DRAFT HERE]",
     "usage": "Send a draft to map and raise tension.",
+  },
+  {
+    "description": "Two cover concepts + ready Midjourney / DALL·E·SD prompts (you generate the image).",
+    "group": "marketing",
+    "id": "COVER_ART",
+    "name": "Cover Art Prompt (×2)",
+    "prompt": "สร้าง "บรีฟปกหนังสือ + image prompt" สำหรับ "The Test Book" จำนวน 2 แบบให้เลือก (เอา prompt ไปวางในเครื่องมือสร้างภาพ เช่น Midjourney / DALL·E / Stable Diffusion)
+
+ข้อมูล: Novel / Fiction · thriller · ผู้อ่าน: QA engineers
+แก่นเรื่อง/โทน: A premise worth testing
+
+สำหรับปก "แต่ละแบบ" (2 แบบ ให้ต่างกันชัด เช่น แบบ A เน้นตัวละคร / แบบ B เน้นสัญลักษณ์-บรรยากาศ) ให้ออก:
+1. คอนเซ็ปต์ 1-2 บรรทัด (อารมณ์ที่ต้องการสื่อ + ทำไมเหมาะกับแนวนี้)
+2. องค์ประกอบภาพ: subject หลัก, ฉากหลัง, มุมกล้อง/องค์ประกอบ, แสง, โทนสี, อารมณ์
+3. ที่ว่างสำหรับ "ชื่อเรื่อง" และชื่อผู้เขียน (บอกตำแหน่งและสไตล์ตัวอักษร)
+4. **MIDJOURNEY PROMPT**: บรรทัดเดียว ภาษาอังกฤษ พร้อม --ar 2:3 --style ที่เหมาะ
+5. **DALL·E / SD PROMPT**: ย่อหน้าอธิบายละเอียด (ภาษาอังกฤษ) + NEGATIVE PROMPT (สิ่งที่ไม่เอา เช่น text artifacts, extra fingers, watermark)
+
+ข้อกำหนด: ต้องเข้ากับแนว thriller และตลาดหนังสือ; เว้นพื้นที่ความปลอดภัยสำหรับตัวอักษร; เลี่ยงคลิเชปกที่ใช้ซ้ำเกินไป
+หมายเหตุ: เครื่องมือนี้สร้าง "prompt ปก" ให้ ไม่ได้เจนรูปเอง — นำไปเจนในเครื่องมือสร้างภาพที่คุณมี",
+    "usage": "Run for book-cover image prompts.",
   },
   {
     "description": "10 title (and subtitle) options, keyword-aware for nonfiction.",

@@ -11,6 +11,11 @@ export * from "./context";
 export * from "./architecture";
 export * from "./core-prompts";
 export * from "./modules";
+export * from "./kdp";
+export * from "./epub";
+export * from "./consistency";
+export * from "./sensory";
+export * from "./starter";
 export { TH_GROUP_LABEL } from "./th";
 
 import { buildArchitecture } from "./architecture";
