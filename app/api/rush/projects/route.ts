@@ -18,7 +18,7 @@ export async function GET() {
     select: { id: true, title: true, type: true, subGenre: true, visibility: true, config: true, updatedAt: true },
   });
 
-  return NextResponse.json({ projects });
+  return NextResponse.json({ projects, plan: (user as { plan?: string }).plan ?? "free" });
 }
 
 export async function POST(request: NextRequest) {

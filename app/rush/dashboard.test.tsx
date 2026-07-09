@@ -48,6 +48,18 @@ describe("Dashboard", () => {
     expect(screen.getAllByText("วิเคราะห์ร้อยแก้ว").length).toBeGreaterThan(0);
   });
 
+  it("shows an upgrade button on the free plan and the Pro badge when paid", async () => {
+    mockFetch(200, { projects: [], plan: "free" });
+    const { unmount } = render(<DashboardPage />);
+    expect(await screen.findByText("อัปเกรด Pro")).toBeTruthy();
+    unmount();
+
+    mockFetch(200, { projects: [], plan: "pro" });
+    render(<DashboardPage />);
+    expect(await screen.findByText("Pro")).toBeTruthy();
+    expect(screen.queryByText("อัปเกรด Pro")).toBeNull();
+  });
+
   it("lists locally-saved manuscripts even without login", async () => {
     mockFetch(401, {});
     saveManuscript({ title: "ร่างบทที่หนึ่ง", lang: "th", text: "เนื้อเรื่อง" });

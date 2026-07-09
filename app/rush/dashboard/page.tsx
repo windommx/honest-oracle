@@ -50,6 +50,32 @@ export default function DashboardPage() {
   const [sort, setSort] = useState<Sort>("recent");
   const [view, setView] = useState<View>("grid");
   const [manuscripts, setManuscripts] = useState<StoredManuscript[]>([]);
+  const [plan, setPlan] = useState<string>("free");
+  const [upgrading, setUpgrading] = useState(false);
+
+  const isPaid = plan === "pro" || plan === "team";
+  async function upgrade() {
+    setUpgrading(true);
+    try {
+      const res = await fetch("/api/billing/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ returnTo: "rush" }),
+      });
+      if (res.ok) {
+        const { url } = await res.json();
+        if (url) { window.location.href = url; return; }
+      } else if (res.status === 501) {
+        alert("ระบบบิลยังไม่ได้ตั้งค่า (ต้องใส่ STRIPE_PRICE_ID_PRO) — ดูขั้นตอนใน README");
+      } else if (res.status === 401) {
+        setNeedLogin(true);
+      }
+    } catch {
+      /* offline */
+    } finally {
+      setUpgrading(false);
+    }
+  }
 
   async function loadProjects() {
     setLoading(true);
@@ -58,7 +84,9 @@ export default function DashboardPage() {
       if (res.status === 401) setNeedLogin(true);
       else if (res.ok) {
         setNeedLogin(false);
-        setProjects((await res.json()).projects ?? []);
+        const data = await res.json();
+        setProjects(data.projects ?? []);
+        setPlan(data.plan ?? "free");
       }
     } catch {
       /* offline */
@@ -148,9 +176,21 @@ export default function DashboardPage() {
               <span className="text-emerald-500/50">•</span>
               <span className="text-emerald-400/80 text-[10px]">deterministic</span>
             </div>
-            <Link href="/" className="w-9 h-9 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-[#c9a84c]">
-              <Crown className="w-4 h-4" />
-            </Link>
+            {isPaid ? (
+              <span className="flex items-center gap-x-1.5 px-3 py-1.5 rounded-2xl bg-[#c9a84c]/15 border border-[#c9a84c]/40 text-xs font-semibold text-[#c9a84c]" title="แผนปัจจุบัน">
+                <Crown className="w-3.5 h-3.5" /> {plan === "team" ? "Team" : "Pro"}
+              </span>
+            ) : (
+              <button
+                onClick={upgrade}
+                disabled={upgrading || needLogin}
+                className="flex items-center gap-x-1.5 px-3.5 py-1.5 rounded-2xl bg-[#c9a84c] text-[#0a0a0f] text-xs font-semibold hover:bg-amber-300 disabled:opacity-50 transition-colors"
+                title="อัปเกรดเป็น Pro — cloud sync, version history, saga เต็มระบบ"
+              >
+                {upgrading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Crown className="w-3.5 h-3.5" />}
+                อัปเกรด Pro
+              </button>
+            )}
           </div>
         </div>
       </nav>
