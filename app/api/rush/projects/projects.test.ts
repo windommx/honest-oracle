@@ -63,6 +63,26 @@ describe("POST /api/rush/projects", () => {
     db.rushProject.count.mockResolvedValue(50);
     expect((await listPOST(req({ config: cfg }))).status).toBe(403);
   });
+  it("Free plan caps at 3 cloud projects with an upgrade prompt", async () => {
+    mUser.mockResolvedValue({ ...USER, plan: "free" });
+    db.rushProject.count.mockResolvedValue(3);
+    const res = await listPOST(req({ config: cfg }));
+    expect(res.status).toBe(403);
+    expect((await res.json()).code).toBe("upgrade_required");
+  });
+  it("Pro plan can save past the free cap", async () => {
+    mUser.mockResolvedValue({ ...USER, plan: "pro" });
+    db.rushProject.count.mockResolvedValue(3);
+    db.rushProject.create.mockResolvedValue({ id: "pX" });
+    expect((await listPOST(req({ config: cfg }))).status).toBe(200);
+  });
+  it("Pro plan still hits the hard cap at 50", async () => {
+    mUser.mockResolvedValue({ ...USER, plan: "pro" });
+    db.rushProject.count.mockResolvedValue(50);
+    const res = await listPOST(req({ config: cfg }));
+    expect(res.status).toBe(403);
+    expect((await res.json()).code).toBe("limit_reached");
+  });
   it("creates a project (with an initial version) and returns its id", async () => {
     mUser.mockResolvedValue(USER);
     db.rushProject.count.mockResolvedValue(2);

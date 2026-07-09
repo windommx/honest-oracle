@@ -308,6 +308,11 @@ export default function RushPage() {
         setError("กรุณาเข้าสู่ระบบก่อนบันทึก project");
         return;
       }
+      if (res.status === 403) {
+        const body = await res.json().catch(() => ({}));
+        setError(body?.error ?? "ถึงขีดจำกัดโปรเจกต์");
+        return;
+      }
       if (!res.ok) throw new Error("บันทึกไม่สำเร็จ");
       let id = projectId;
       if (!id) {
