@@ -29,6 +29,8 @@ import {
   BOOK_TYPES,
   MODULE_GROUPS,
   TH_GROUP_LABEL,
+  STARTER_SEQUENCE,
+  STARTER_GROUPS,
   defaultGroupsFor,
   generateAllPrompts,
   type BookConfig,
@@ -76,6 +78,7 @@ export default function RushPage() {
   const [openId, setOpenId] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [filter, setFilter] = useState<PromptGroup | "all">("all");
+  const [showStarter, setShowStarter] = useState(false);
 
   const [projectId, setProjectId] = useState<string | null>(null);
   const [projects, setProjects] = useState<SavedProject[]>([]);
@@ -582,6 +585,9 @@ export default function RushPage() {
                 <div className="flex items-center justify-between mb-2">
                   <h2 className="text-xs font-semibold tracking-widest text-gray-400 uppercase">Extra Modules</h2>
                   <div className="flex gap-1">
+                    <button onClick={() => { setGroups(STARTER_GROUPS as OptionalGroup[]); setShowStarter(true); }} className="text-[0.6rem] px-1.5 py-0.5 rounded border border-[#c9a84c]/40 text-[#c9a84c] hover:bg-[#c9a84c]/10" title="เปิดโมดูลสำหรับเริ่มนิยายจากไอเดีย + ดูลำดับ 7 ขั้น">
+                      เริ่มจากไอเดีย
+                    </button>
                     <button onClick={() => setGroups(defaultGroupsFor(type))} className="text-[0.6rem] px-1.5 py-0.5 rounded border border-white/10 text-gray-400 hover:border-[#c9a84c]/40 hover:text-[#c9a84c]" title="กลุ่มที่แนะนำตามประเภทหนังสือ">
                       แนะนำ
                     </button>
@@ -613,6 +619,25 @@ export default function RushPage() {
                   <p className="mt-2 text-[0.62rem] text-emerald-300/80 leading-snug">
                     ℹ️ Agent Pack สร้าง “system prompt” สำหรับ multi-agent ที่คุณรันเอง (เช่น Claude Projects) — ไม่ได้รันในแอปนี้
                   </p>
+                )}
+                <button onClick={() => setShowStarter((v) => !v)} className="mt-2 text-[0.65rem] text-[#c9a84c] hover:underline">
+                  {showStarter ? "− ซ่อนลำดับเริ่มจากไอเดีย" : "+ ลำดับเริ่มจากไอเดีย (7 ขั้น)"}
+                </button>
+                {showStarter && (
+                  <ol className="mt-2 space-y-1.5 border-l border-[#c9a84c]/25 pl-3">
+                    {STARTER_SEQUENCE.map((s) => (
+                      <li key={s.key} className="text-[0.7rem] leading-snug">
+                        <span className="text-[#c9a84c] font-semibold tabular-nums">{s.n}.</span>{" "}
+                        <span className="text-gray-200">{s.titleTh}</span>
+                        <span className="block text-[0.62rem] text-gray-500">
+                          {s.whyTh} · <span className="text-gray-400">{s.promptIds.join(" + ")}</span>
+                        </span>
+                      </li>
+                    ))}
+                    <li className="text-[0.6rem] text-gray-600 pt-1">
+                      กด “Generate” แล้วรัน prompt ตามลำดับนี้ — ใส่ไอเดีย → อนุมัติ → ทำต่อ · คุณคุมทิศทางทั้งหมด
+                    </li>
+                  </ol>
                 )}
               </div>
 
