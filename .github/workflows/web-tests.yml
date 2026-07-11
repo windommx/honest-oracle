@@ -10,6 +10,7 @@ on:
       - 'package-lock.json'
       - 'tsconfig.json'
       - 'vitest.config.ts'
+      - '.eslintrc.json'
       - '.github/workflows/web-tests.yml'
   pull_request:
     paths:
@@ -19,6 +20,7 @@ on:
       - 'package.json'
       - 'tsconfig.json'
       - 'vitest.config.ts'
+      - '.eslintrc.json'
 
 jobs:
   test:
@@ -32,7 +34,9 @@ jobs:
           cache: 'npm'
       - name: Install dependencies
         run: npm ci
+      - name: Lint
+        run: npm run lint
       - name: Unit tests (Rush Engine)
         run: npm test
       - name: Type check
-        run: npx tsc --noEmit
+        run: npm run typecheck
