@@ -73,15 +73,19 @@ export interface SensoryLedger {
 }
 
 /** Count sensory-detail words per sense. Deterministic; counts + density only,
- *  no quality verdict. `lang` picks the lexicon + tokenizer. */
-export function sensoryDensity(text: string, lang: "en" | "th"): SensoryLedger {
+ *  no quality verdict. `lang` picks the lexicon + tokenizer. `extra` merges caller-
+ *  supplied terms per sense (e.g. from a plugin lexicon or a genre word list) — the
+ *  lexicon becomes extensible without editing the module. */
+export function sensoryDensity(text: string, lang: "en" | "th", extra?: Partial<Record<Sense, string[]>>): SensoryLedger {
   const tokens = lang === "th" ? tokenizeThai(text) : tokenizeProse(text);
   const words = tokens.length;
-  const lex = lang === "th" ? TH_LEXICON : EN_LEXICON;
+  const base = lang === "th" ? TH_LEXICON : EN_LEXICON;
   const per1k = (n: number) => (words ? Math.round((n / words) * 1000 * 10) / 10 : 0);
 
   const senses: SenseStat[] = SENSES.map((sense) => {
-    const hits = countPhrases(text, lex[sense], { tokens }).sort((a, b) => b.count - a.count);
+    // De-duplicate so an extra term already in the base lexicon isn't double-listed.
+    const patterns = Array.from(new Set([...base[sense], ...(extra?.[sense] ?? [])]));
+    const hits = countPhrases(text, patterns, { tokens }).sort((a, b) => b.count - a.count);
     const count = hits.reduce((s, h) => s + h.count, 0);
     return {
       sense,
