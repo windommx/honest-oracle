@@ -549,6 +549,31 @@ Output: the rewritten scene, then a 3-5 line changelog naming each filter word c
 [INSERT SCENE HERE]`;
 }
 
+function moduleTranslate(): string {
+  return `Translate the SOURCE passage faithfully into the target language. You are a translator, not a co-author — render what is on the page, and nothing that isn't.
+
+═══ CANON (master lorebook — obey before translating) ═══
+[PASTE your world's fixed rules: setting, power system, factions, tone. Examples:]
+- The power system is called "Taba" — NEVER render it as magic / mana / qi / chi.
+- Keep the technology grounded sci-fi, not fantasy magic.
+- Coined terms and proper nouns keep their exact spelling AND capitalisation.
+
+═══ TERMINOLOGY MAP (lock these — do not substitute a synonym) ═══
+[source term] → [required rendering]   e.g.  ตบะ → Taba (always capitalised) · ฤๅษี → Hermit (operative, not monk)
+
+═══ HARD CONSTRAINTS (negative prompting — obey literally) ═══
+- DO NOT add actions, feelings, or inner monologue that are not in the source.
+- DO NOT hallucinate or fill blanks — if the source is terse, the translation stays terse.
+- DO NOT summarise or expand — keep the exact pacing and every paragraph break 1:1.
+- DO NOT reach for generic Western-fantasy phrasing.
+
+═══ METHOD ═══
+Work 2-3 short paragraphs at a time (micro-chunking) so nothing drifts to the "average". Output ONLY the translation — no notes, no summary.
+
+═══ SOURCE PASSAGE ═══
+[INSERT SOURCE TEXT HERE]`;
+}
+
 function moduleConflictMap(): string {
   return `Map the TENSION across a draft so it never goes flat.
 
@@ -914,6 +939,7 @@ export const MODULE_CATALOG: ModuleDef[] = [
   { id: "ANTI_SAFE", group: "craft", name: "Anti-Safe Pass", description: "Break safe/tidy AI defaults; raise real stakes; ban Thai AI-tell clichés.", usage: "Send a draft to make it riskier.", build: moduleAntiSafe },
   { id: "SENSORY", group: "craft", name: "Sensory Audit", description: "Per-scene 5-sense check (≥3) + targeted concrete additions.", usage: "Send a draft to ground it in the senses.", build: moduleSensoryAudit },
   { id: "IMMERSION", group: "craft", name: "Immersion / Deep-POV Pass", description: "Deep-POV rewrite: ground fast, cut filter verbs, add interiority, open one loop, end on momentum.", usage: "Send a scene to pull the reader inside it.", build: moduleImmersion },
+  { id: "TRANSLATE", group: "craft", name: "Faithful Translation", description: "Canon lorebook + terminology lock + negative prompts + micro-chunking — translate without AI drift/hallucination.", usage: "Use to translate a passage (e.g. Thai→English for Royal Road) faithfully.", build: moduleTranslate },
   { id: "CONFLICT_MAP", group: "craft", name: "Conflict / Tension Map", description: "Per-scene tension curve + flat-spot fixes.", usage: "Send a draft to map and raise tension.", build: moduleConflictMap },
   // nonfiction
   { id: "FACT_CHECK", group: "nonfiction", name: "Citation / Fact-Check", description: "Verify every claim; forbid invented citations.", usage: "Send each nonfiction chapter draft.", build: moduleFactCheck },

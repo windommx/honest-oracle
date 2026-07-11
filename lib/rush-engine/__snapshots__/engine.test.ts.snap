@@ -1446,6 +1446,35 @@ POV: [ ] · เป้าหมาย: [ ] · อุปสรรค: [ ] · ต�
     "usage": "ส่งฉากเพื่อดึงผู้อ่านเข้าไปข้างใน",
   },
   {
+    "description": "แปลซื่อสัตย์: คัมภีร์ canon + ล็อกศัพท์ + ข้อห้าม + micro-chunking กัน AI มโน/ไหลค่าเฉลี่ย",
+    "group": "craft",
+    "id": "TRANSLATE",
+    "name": "Faithful Translation",
+    "prompt": "แปลข้อความต้นฉบับอย่างซื่อสัตย์ไปยังภาษาปลายทาง คุณคือ "ผู้แปล" ไม่ใช่ผู้ร่วมแต่ง — ถ่ายทอดสิ่งที่อยู่บนหน้ากระดาษ ไม่เติมสิ่งที่ไม่มี
+
+═══ CANON (คัมภีร์กฎของจักรวาล — อ่านก่อนแปลเสมอ) ═══
+[วางกฎตายตัวของโลกคุณ: ฉาก ระบบพลัง ฝ่าย โทน เช่น]
+- ระบบพลังเรียกว่า "Taba" — ห้ามแปลเป็น magic / mana / qi / chi เด็ดขาด
+- เทคโนโลยีต้องเป็นไซไฟที่จับต้องได้ ไม่ใช่เวทมนตร์แฟนตาซี
+- คำเฉพาะและชื่อเฉพาะ คงตัวสะกดและตัวพิมพ์ใหญ่-เล็กเป๊ะ
+
+═══ บัญชีคำศัพท์ (ล็อกไว้ — ห้ามหาคำอื่นแทน) ═══
+[คำต้นฉบับ] → [คำแปลที่กำหนด]   เช่น  ตบะ → Taba (พิมพ์ใหญ่เสมอ) · ฤๅษี → Hermit (operative ไม่ใช่พระ)
+
+═══ ข้อห้ามเด็ดขาด (negative prompting — ทำตามตรงตัว) ═══
+- ห้ามเติมการกระทำ ความรู้สึก หรือความคิดภายในที่ไม่มีในต้นฉบับ
+- ห้ามมโนหรือเติมช่องว่างเอง — ต้นฉบับสั้น คำแปลก็สั้น
+- ห้ามสรุปย่อหรือขยายความ — รักษาจังหวะและการเว้นย่อหน้า 1:1
+- ห้ามใช้สำนวนแฟนตาซีตะวันตกกลาง ๆ
+
+═══ วิธี ═══
+แปลทีละ 2-3 ย่อหน้าสั้น ๆ (micro-chunking) เพื่อไม่ให้ AI ไหลไปหา "ค่าเฉลี่ย" ส่งออกเฉพาะคำแปล ไม่มีหมายเหตุ ไม่มีสรุป
+
+═══ ข้อความต้นฉบับ ═══
+[วางข้อความต้นฉบับที่นี่]",
+    "usage": "ใช้แปลข้อความ (เช่น ไทย→อังกฤษ ลง Royal Road) อย่างตรงต้นฉบับ",
+  },
+  {
     "description": "เส้นความตึงรายฉาก + แก้จุดราบ",
     "group": "craft",
     "id": "CONFLICT_MAP",
@@ -3039,6 +3068,35 @@ Output: the rewritten scene, then a 3-5 line changelog naming each filter word c
 ═══ DRAFT ═══
 [INSERT SCENE HERE]",
     "usage": "Send a scene to pull the reader inside it.",
+  },
+  {
+    "description": "Canon lorebook + terminology lock + negative prompts + micro-chunking — translate without AI drift/hallucination.",
+    "group": "craft",
+    "id": "TRANSLATE",
+    "name": "Faithful Translation",
+    "prompt": "Translate the SOURCE passage faithfully into the target language. You are a translator, not a co-author — render what is on the page, and nothing that isn't.
+
+═══ CANON (master lorebook — obey before translating) ═══
+[PASTE your world's fixed rules: setting, power system, factions, tone. Examples:]
+- The power system is called "Taba" — NEVER render it as magic / mana / qi / chi.
+- Keep the technology grounded sci-fi, not fantasy magic.
+- Coined terms and proper nouns keep their exact spelling AND capitalisation.
+
+═══ TERMINOLOGY MAP (lock these — do not substitute a synonym) ═══
+[source term] → [required rendering]   e.g.  ตบะ → Taba (always capitalised) · ฤๅษี → Hermit (operative, not monk)
+
+═══ HARD CONSTRAINTS (negative prompting — obey literally) ═══
+- DO NOT add actions, feelings, or inner monologue that are not in the source.
+- DO NOT hallucinate or fill blanks — if the source is terse, the translation stays terse.
+- DO NOT summarise or expand — keep the exact pacing and every paragraph break 1:1.
+- DO NOT reach for generic Western-fantasy phrasing.
+
+═══ METHOD ═══
+Work 2-3 short paragraphs at a time (micro-chunking) so nothing drifts to the "average". Output ONLY the translation — no notes, no summary.
+
+═══ SOURCE PASSAGE ═══
+[INSERT SOURCE TEXT HERE]",
+    "usage": "Use to translate a passage (e.g. Thai→English for Royal Road) faithfully.",
   },
   {
     "description": "Per-scene tension curve + flat-spot fixes.",
