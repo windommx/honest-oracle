@@ -1,3 +1,5 @@
+import { countNonOverlapping } from "./aho-corasick";
+
 // Count phrase occurrences with substring-overlap correction. When a longer
 // phrase matches (e.g. "หัวใจสลาย" or "a testament to"), its shorter substring
 // phrases ("ใจสลาย", "testament") would otherwise double-count the same span, so
@@ -19,9 +21,13 @@ export function countPhrases(
     tokenFreq = new Map();
     for (const t of opts.tokens) tokenFreq.set(t, (tokenFreq.get(t) ?? 0) + 1);
   }
+  // Substring-counted phrases (multi-word, or Thai with no token boundaries) are matched
+  // in ONE pass via Aho-Corasick; countNonOverlapping reproduces `split().length - 1` exactly.
+  const substringPhrases = phrases.filter((p) => !(tokenFreq && !p.includes(" ")));
+  const acCounts = substringPhrases.length ? countNonOverlapping(text, substringPhrases) : null;
   const raw = phrases.map((phrase) => {
     const single = tokenFreq && !phrase.includes(" ");
-    const count = single ? (tokenFreq!.get(phrase) ?? 0) : text.split(phrase).length - 1;
+    const count = single ? (tokenFreq!.get(phrase) ?? 0) : (acCounts?.get(phrase) ?? 0);
     return { phrase, count };
   });
   return raw
