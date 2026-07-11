@@ -44,4 +44,35 @@ describe("runCli", () => {
     expect(r.code).toBe(2);
     expect(r.stderr).toContain("unknown command");
   });
+
+  it("renames a character and prints a per-chapter audit", () => {
+    const text = "## บทที่ 1\nวิกกี้เดินมา วิกกี้ยิ้ม\n## บทที่ 2\nเธอเรียกวิกกี้";
+    const r = runCli(["rename", "b.md", "--from", "วิกกี้", "--to", "อาโน่"], { read: () => text });
+    expect(r.code).toBe(0);
+    expect(r.stdout).toContain("3 hit");
+    expect(r.stdout).toContain("chapter 1: 2");
+  });
+
+  it("rename --write outputs the rewritten manuscript", () => {
+    const r = runCli(["rename", "b.md", "--from", "วิกกี้", "--to", "อาโน่", "--write"], { read: () => "วิกกี้" });
+    expect(r.stdout).toBe("อาโน่");
+  });
+
+  it("errors when rename lacks --from/--to", () => {
+    expect(runCli(["rename", "b.md"], { read: () => "x" }).code).toBe(2);
+  });
+
+  it("prints a relationship graph from --names", () => {
+    const text = "## 1\nเอิ่มกับลีอาห์เดินทาง\n## 2\nเอิ่มกับลีอาห์พัก";
+    const r = runCli(["relations", "b.md", "--names", "เอิ่ม,ลีอาห์"], { read: () => text });
+    expect(r.code).toBe(0);
+    expect(r.stdout).toContain("เอิ่ม ↔ ลีอาห์");
+  });
+
+  it("register suggestions appear in a Thai analyze", () => {
+    const text = "## บท 1\n" + "เขาจะอัพเดทข้อมูลแล้วเช็คอีเมล์ทุกวัน ".repeat(3);
+    const r = runCli(["analyze", "b.md"], { read: () => text });
+    expect(r.stdout).toContain("word/spelling suggestions");
+    expect(r.stdout).toContain("อัปเดต");
+  });
 });

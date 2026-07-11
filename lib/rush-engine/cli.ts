@@ -10,6 +10,9 @@ import { analyzeThai } from "./thai-analyzer";
 import { analyzeProse } from "./prose-analyzer";
 import { sensoryDensity, SENSE_LABEL, type Sense } from "./sensory";
 import { consistencyLedger, storyBible } from "./consistency";
+import { checkThaiRegister } from "./register";
+import { renameTerm } from "./rename";
+import { characterGraph } from "./relationships";
 
 export interface CliResult { stdout: string; stderr: string; code: number }
 
@@ -32,15 +35,21 @@ function parseFlags(args: string[]): { positional: string[]; flags: Record<strin
 const HELP = `rush — deterministic novel-writing engine (no LLM, no network)
 
 USAGE
-  rush prompts --type <t> --genre <g> [--chapters n] [--words n] [--lang th|en] [--full]
-  rush analyze <file.md> [--lang th|en]
+  rush prompts  --type <t> --genre <g> [--chapters n] [--words n] [--lang th|en] [--full]
+  rush analyze  <file.md> [--lang th|en]
+  rush rename   <file.md> --from <name> --to <name> [--lang th|en] [--write]
+  rush relations <file.md> --names "A,B,C" [--lang th|en]
   rush help
 
 COMMANDS
   prompts   Generate the prompt pack for a book config (lists prompt ids + names).
             --full also prints each prompt body.
   analyze   Run the deterministic analyzers on a manuscript file (word/clause stats,
-            sensory density, cross-chapter consistency, story bible, AI-tell clichés).
+            sensory density, cross-chapter consistency, story bible, AI-tell clichés,
+            and — for Thai — non-standard word/spelling suggestions).
+  rename    Rename a character/term across every chapter; prints a per-chapter audit
+            and a collision warning. --write outputs the rewritten manuscript.
+  relations Character co-occurrence graph: who shares scenes with whom (needs --names).
 
 TYPES     ${Object.keys(BOOK_TYPES).join(", ")}
 `;
@@ -114,7 +123,58 @@ function cmdAnalyze(file: string | undefined, flags: Record<string, string | tru
     L.push("", "story bible (top recurring entities):");
     for (const e of bible.entries.slice(0, 10)) L.push(`  ${e.term} ×${e.count} · ch ${e.firstChapter}–${e.lastChapter}`);
   }
+
+  if (lang === "th") {
+    const reg = checkThaiRegister(text);
+    if (reg.length) {
+      L.push("", "word/spelling suggestions (standard Thai — not errors):");
+      for (const r of reg.slice(0, 10)) L.push(`  ${r.term} ×${r.count} → ${r.suggest}${r.note ? ` (${r.note})` : ""}`);
+    }
+  }
+
   L.push("", "counts, not a verdict · deterministic · Thai bounded by segmentation");
+  return { stdout: L.join("\n") + "\n", stderr: "", code: 0 };
+}
+
+function readFile(file: string | undefined, read?: (p: string) => string): { text: string } | CliResult {
+  if (!file) return { stdout: "", stderr: "needs a file argument\n", code: 2 };
+  if (!read) return { stdout: "", stderr: "no file reader available\n", code: 1 };
+  try {
+    return { text: read(file) };
+  } catch {
+    return { stdout: "", stderr: `cannot read "${file}"\n`, code: 1 };
+  }
+}
+
+function cmdRename(file: string | undefined, flags: Record<string, string | true>, read?: (p: string) => string): CliResult {
+  const from = typeof flags.from === "string" ? flags.from : "";
+  const to = typeof flags.to === "string" ? flags.to : "";
+  if (!from || !to) return { stdout: "", stderr: "rename needs --from <name> --to <name>\n", code: 2 };
+  const r = readFile(file, read);
+  if ("code" in r) return r;
+  const lang: "th" | "en" = flags.lang === "en" ? "en" : /[฀-๿]/.test(r.text) ? "th" : "en";
+  const res = renameTerm(r.text, from, to, lang);
+  if (flags.write) return { stdout: res.text, stderr: "", code: 0 };
+  const L = [`# rename "${from}" → "${to}" — ${res.total} hit(s)`];
+  for (const p of res.perChapter) L.push(`  chapter ${p.chapter}: ${p.count}`);
+  if (res.targetPreexisting > 0) L.push(`  ⚠ "${to}" already appears ${res.targetPreexisting}× (possible collision)`);
+  L.push("", "run again with --write to output the rewritten manuscript.");
+  return { stdout: L.join("\n") + "\n", stderr: "", code: 0 };
+}
+
+function cmdRelations(file: string | undefined, flags: Record<string, string | true>, read?: (p: string) => string): CliResult {
+  const names = (typeof flags.names === "string" ? flags.names : "").split(",").map((n) => n.trim()).filter(Boolean);
+  if (!names.length) return { stdout: "", stderr: 'relations needs --names "A,B,C"\n', code: 2 };
+  const r = readFile(file, read);
+  if ("code" in r) return r;
+  const lang: "th" | "en" = flags.lang === "en" ? "en" : /[฀-๿]/.test(r.text) ? "th" : "en";
+  const g = characterGraph(r.text, names, lang);
+  const L = [`# relationship graph — ${g.chapters} chapters`, "", "characters (by mentions):"];
+  for (const n of g.nodes) L.push(`  ${n.name} ×${n.mentions} · ch ${n.chapters.join(",")}`);
+  L.push("", "shares scenes (edge = shared chapters):");
+  if (!g.edges.length) L.push("  (no shared-chapter connections)");
+  for (const e of g.edges.slice(0, 20)) L.push(`  ${e.a} ↔ ${e.b} · ${e.weight}× (ch ${e.chapters.join(",")})`);
+  L.push("", "structure is a real count · labels (mentor/rival) are the writer's call");
   return { stdout: L.join("\n") + "\n", stderr: "", code: 0 };
 }
 
@@ -124,5 +184,7 @@ export function runCli(argv: string[], io?: { read?: (path: string) => string })
   if (!cmd || cmd === "help" || flags.help || flags.h) return { stdout: HELP, stderr: "", code: 0 };
   if (cmd === "prompts") return cmdPrompts(flags);
   if (cmd === "analyze") return cmdAnalyze(positional[1], flags, io?.read);
+  if (cmd === "rename") return cmdRename(positional[1], flags, io?.read);
+  if (cmd === "relations") return cmdRelations(positional[1], flags, io?.read);
   return { stdout: "", stderr: `unknown command "${cmd}". try: rush help\n`, code: 2 };
 }
