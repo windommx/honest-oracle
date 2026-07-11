@@ -19,6 +19,7 @@ export * from "./starter";
 export * from "./translation";
 export * from "./register";
 export * from "./rename";
+export * from "./relationships";
 export { TH_GROUP_LABEL } from "./th";
 
 import { buildArchitecture } from "./architecture";
