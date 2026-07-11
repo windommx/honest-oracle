@@ -17,6 +17,7 @@ export * from "./consistency";
 export * from "./sensory";
 export * from "./starter";
 export * from "./translation";
+export * from "./register";
 export { TH_GROUP_LABEL } from "./th";
 
 import { buildArchitecture } from "./architecture";
