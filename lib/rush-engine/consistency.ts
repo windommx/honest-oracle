@@ -9,6 +9,7 @@
 
 import { splitChapters } from "./chapters";
 import { tokenizeThai, THAI_STOPWORDS } from "./thai-analyzer";
+import { buildSymIndex, neighbors } from "./symspell";
 
 // Capitalized words that are usually sentence-initial, not proper nouns.
 const EN_SKIP = new Set([
@@ -119,19 +120,18 @@ export function consistencyLedger(text: string, lang: "en" | "th", protect?: str
   const { total, stats } = collectStats(text, lang, protect);
   const toStat = (term: string): TermStat => statToTerm(stats, term);
 
-  // Candidates: terms used ≥2×, capped to the 400 most frequent (bounds the O(n²) clustering).
-  // Min length guards against garbage clusters: Thai is full of unrelated 3-char
-  // monosyllables one edit apart (แสง/แรง, เย็น/เป็น), so require ≥4 chars there;
-  // English proper nouns are already ≥3. (Dogfood: this removes the false positives
-  // while a real 4-char name like มะลิ still qualifies.)
+  // Candidates: terms used ≥2×. Min length guards against garbage clusters: Thai is
+  // full of unrelated 3-char monosyllables one edit apart (แสง/แรง, เย็น/เป็น), so
+  // require ≥4 chars there; English proper nouns are already ≥3. The cap now bounds a
+  // near-linear pass (SymSpell / skeleton grouping), not an O(n²) loop, so it can be
+  // generous — long manuscripts keep their variant recall.
   const minLen = lang === "th" ? 4 : 3;
   const candidates = Array.from(stats.entries())
     .filter(([t, s]) => s.count >= 2 && t.length >= minLen)
     .sort((a, b) => b[1].count - a[1].count)
-    .slice(0, 400)
+    .slice(0, 5000)
     .map(([t]) => t);
 
-  // Union-find over near-spelling pairs (same first char, len diff ≤ 1).
   const parent = new Map<string, string>(candidates.map((t) => [t, t]));
   const find = (x: string): string => {
     let r = x;
@@ -143,15 +143,25 @@ export function consistencyLedger(text: string, lang: "en" | "th", protect?: str
     }
     return r;
   };
-  // English: edit-distance ≤ 1. Thai: mark-only variants (see thaiMarkVariant) —
-  // the generic edit-distance produces garbage on Thai monosyllables.
-  const near = lang === "th" ? thaiMarkVariant : withinOneEdit;
-  for (let a = 0; a < candidates.length; a++) {
-    for (let b = a + 1; b < candidates.length; b++) {
-      const x = candidates[a];
-      const y = candidates[b];
-      if (x[0] !== y[0]) continue;
-      if (near(x, y)) parent.set(find(x), find(y));
+  if (lang === "th") {
+    // Thai: mark-only variants ⇒ identical consonant skeleton. Group by skeleton in
+    // O(n) instead of comparing every pair (same result as pairwise thaiMarkVariant).
+    const skelRep = new Map<string, string>();
+    for (const t of candidates) {
+      const skel = t.replace(TH_MARKS, "");
+      if (skel.length < 2) continue;
+      const rep = skelRep.get(skel);
+      if (rep) parent.set(find(t), find(rep));
+      else skelRep.set(skel, t);
+    }
+  } else {
+    // English: edit-distance ≤ 1 via SymSpell (verified). Keep the same-first-char guard
+    // so behaviour matches the old pairwise pass exactly, just near-linear.
+    const idx = buildSymIndex(candidates);
+    for (const t of candidates) {
+      for (const n of neighbors(t, idx, withinOneEdit)) {
+        if (t[0] === n[0]) parent.set(find(t), find(n));
+      }
     }
   }
   const groups = new Map<string, string[]>();
