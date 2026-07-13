@@ -10,8 +10,10 @@ import { splitChapters } from "@/lib/rush-engine/chapters";
 import { buildEpub } from "@/lib/rush-engine/epub";
 import { consistencyLedger, storyBible, formatStoryBible, suggestThaiNames } from "@/lib/rush-engine/consistency";
 import { sensoryDensity, SENSE_LABEL, type Sense } from "@/lib/rush-engine/sensory";
-import { continuityRadar } from "@/lib/rush-engine/radar";
+import { continuityRadar, sceneReadout } from "@/lib/rush-engine/radar";
 import { characterGraph } from "@/lib/rush-engine/relationships";
+import { renameTerm } from "@/lib/rush-engine/rename";
+import { downloadBlob } from "./_utils";
 import { wordDiff, diffTokens, type DiffOp } from "@/lib/rush-engine/text-util";
 import { listManuscripts, getManuscript, saveManuscript, deleteManuscript, type StoredManuscript } from "./_manuscript-store";
 
@@ -326,6 +328,109 @@ function RelationshipView({ text, lang, names }: { text: string; lang: "th" | "e
       )}
       <p className="text-[0.6rem] text-gray-500 mt-1">
         {th ? "โครงสร้างเป็นการนับจริง · ป้ายความสัมพันธ์ (พี่เลี้ยง/คู่แข่ง) เป็นการตีความของคุณ" : "The structure is a real count · the relationship label (mentor/rival) is your call."}
+      </p>
+    </div>
+  );
+}
+
+/** The honest "Scene Intelligence" card — the panel competitors render with an LLM as
+ *  Momentum/Clarity/Tension 0–100 dials. Here every field is a real, re-derivable count.
+ *  Thai only (the analyzers it reuses are deterministic Thai). */
+function SceneReadoutView({ text }: { text: string }) {
+  const r = useMemo(() => {
+    if (!text.trim()) return null;
+    const sens = sensoryDensity(text, "th");
+    return sceneReadout(text, analyzeThai, sens.per1k);
+  }, [text]);
+  if (!r || r.words < 12) return null;
+  const cells: { label: string; value: string; hint: string }[] = [
+    { label: "คำ", value: String(r.words), hint: "ความยาวฉาก" },
+    { label: "อนุประโยค", value: String(r.clauses), hint: "จำนวนท่อน" },
+    { label: "จังหวะ (CV)", value: `${r.rhythmCv}%`, hint: "ยิ่งต่ำ = ยาวพอกัน อ่านแบน" },
+    { label: "บทพูด", value: `${r.dialogueRatio}%`, hint: "สัดส่วนคำในเครื่องหมายพูด" },
+    { label: "บอกอารมณ์ /100", value: String(r.tellingPer100), hint: "ความหนาแน่นคำบอก/กริยากรอง" },
+    { label: "ประสาทสัมผัส /1k", value: String(r.sensoryPer1k), hint: "คำผัสสะต่อพันคำ" },
+    { label: "คลิเช AI", value: String(r.aiTells), hint: "วลีคลิเชที่ตรวจพบ" },
+  ];
+  return (
+    <div className="rounded-xl border border-[#c9a84c]/25 bg-[#c9a84c]/[0.04] p-3">
+      <h3 className="text-xs font-semibold tracking-widest text-[#c9a84c] uppercase mb-2">
+        อ่านค่าฉากนี้ — สัญญาณที่วัดได้ (ไม่ใช่คะแนน 0–100)
+      </h3>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+        {cells.map((c) => (
+          <div key={c.label} className="rounded-lg border border-white/10 bg-white/[0.03] px-2.5 py-1.5" title={c.hint}>
+            <div className="tabular-nums text-base font-semibold text-gray-100">{c.value}</div>
+            <div className="text-[0.6rem] text-gray-500 leading-tight">{c.label}</div>
+          </div>
+        ))}
+      </div>
+      <p className="text-[0.6rem] text-gray-500 mt-2">
+        ทุกตัวเลขคือการนับที่คุณตรวจซ้ำเองได้ — ไม่มี momentum/clarity/tension แบบเดา
+      </p>
+    </div>
+  );
+}
+
+/** In-browser character/term rename across the whole manuscript, with a per-chapter
+ *  audit and a collision warning. The rewrite happens locally; the writer downloads it. */
+function RenameView({ text, lang }: { text: string; lang: "th" | "en" }) {
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
+  const th = lang === "th";
+  const res = useMemo(() => (from.trim() && to.trim() ? renameTerm(text, from.trim(), to.trim(), lang) : null), [text, from, to, lang]);
+  return (
+    <div>
+      <h3 className="text-xs font-semibold tracking-widest text-gray-400 uppercase mb-2">
+        {th ? "เปลี่ยนชื่อทั้งเล่ม (ในเบราว์เซอร์)" : "Rename across the manuscript (in-browser)"}
+      </h3>
+      <div className="flex items-center gap-2 mb-2">
+        <input
+          value={from}
+          onChange={(e) => setFrom(e.target.value)}
+          placeholder={th ? "ชื่อเดิม" : "old name"}
+          aria-label={th ? "ชื่อเดิม" : "old name"}
+          className="flex-1 text-xs px-2.5 py-1.5 rounded border border-white/10 bg-white/5 text-gray-200 placeholder:text-gray-600 focus:border-[#c9a84c]/50 focus:outline-none"
+        />
+        <span className="text-gray-500 text-xs">→</span>
+        <input
+          value={to}
+          onChange={(e) => setTo(e.target.value)}
+          placeholder={th ? "ชื่อใหม่" : "new name"}
+          aria-label={th ? "ชื่อใหม่" : "new name"}
+          className="flex-1 text-xs px-2.5 py-1.5 rounded border border-white/10 bg-white/5 text-gray-200 placeholder:text-gray-600 focus:border-[#c9a84c]/50 focus:outline-none"
+        />
+      </div>
+      {res && (
+        <div className="space-y-2">
+          <div className="flex items-center gap-2 flex-wrap text-xs">
+            <span className="text-gray-300">{res.total} {th ? "จุดที่พบ" : "hit(s)"}</span>
+            {res.perChapter.map((p) => (
+              <span key={p.chapter} className="px-2 py-0.5 rounded border border-white/10 text-gray-400">
+                {th ? "บท" : "ch"} {p.chapter}: {p.count}
+              </span>
+            ))}
+          </div>
+          {res.targetPreexisting > 0 && (
+            <p className="text-[0.65rem] text-amber-300/90">
+              ⚠ {th ? `"${to}" มีอยู่แล้ว ${res.targetPreexisting} ครั้ง (อาจชนกัน)` : `"${to}" already appears ${res.targetPreexisting}× (possible collision)`}
+            </p>
+          )}
+          {res.total > 0 && (
+            <button
+              onClick={() => downloadBlob(`renamed-${to.trim() || "manuscript"}.md`, res.text, "text/markdown")}
+              className="inline-flex items-center gap-1.5 text-[0.7rem] px-2.5 py-1 rounded border border-[#c9a84c]/40 text-[#c9a84c] hover:bg-[#c9a84c]/10"
+            >
+              <Download className="w-3 h-3" />
+              {th ? "ดาวน์โหลดฉบับที่เปลี่ยนชื่อแล้ว" : "Download the rewritten manuscript"}
+            </button>
+          )}
+        </div>
+      )}
+      <p className="text-[0.6rem] text-gray-500 mt-1">
+        {th
+          ? "แทนที่แบบตรงตัวทุกบท · ตรวจการชนชื่อให้ก่อน · ไฟล์ถูกเขียนใหม่ในเครื่องคุณ ไม่ส่งขึ้นเซิร์ฟเวอร์"
+          : "Literal substitution across every chapter · checks for collisions first · rewritten locally, never uploaded."}
       </p>
     </div>
   );
@@ -653,7 +758,9 @@ export function ThaiAnalyzerModal({ onClose, initialText }: { onClose: () => voi
             }}
           />
         )}
+        {a && <div className="mt-4"><SceneReadoutView text={dtext} /></div>}
         {a && <div className="mt-4"><SensoryView text={dtext} lang="th" /></div>}
+        {a && <div className="mt-4"><RenameView text={dtext} lang="th" /></div>}
         {scan.length > 1 && (
           <div className="mt-4">
             <GlossaryInput value={glossary} onChange={setGlossary} suggestions={nameSuggestions} />
@@ -1043,6 +1150,7 @@ export function ProseAnalyzerModal({ onClose, initialText }: { onClose: () => vo
           />
         )}
         {a && <div className="mt-4"><SensoryView text={dtext} lang="en" /></div>}
+        {a && <div className="mt-4"><RenameView text={dtext} lang="en" /></div>}
         {scan.length > 1 && <ConsistencyView text={dtext} lang="en" />}
         {a && (
           <div className="mt-4 space-y-4 text-sm">

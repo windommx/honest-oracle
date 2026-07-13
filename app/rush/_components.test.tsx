@@ -51,6 +51,30 @@ describe("ThaiAnalyzerModal", () => {
     expect(arg).not.toContain("[วางข้อความที่นี่]"); // placeholder was replaced
   });
 
+  it("shows the honest scene-readout card with measured signals, no 0–100 vibe score", () => {
+    render(<ThaiAnalyzerModal onClose={() => {}} />);
+    fireEvent.change(screen.getByPlaceholderText(/วางข้อความภาษาไทย/), {
+      target: {
+        value:
+          "แสงอาทิตย์สาดจ้าเป็นประกาย เสียงลมหวีดดังก้อง กลิ่นดินหอมกรุ่นอบอวล " +
+          '"เธอมาทำไม" เขาถาม เธอเงียบ รู้สึกกลัวจับใจ ผิวหินเย็นเฉียบใต้ฝ่ามือ',
+      },
+    });
+    expect(screen.getByText(/อ่านค่าฉากนี้/)).toBeTruthy();
+    expect(screen.getByText(/ไม่มี momentum\/clarity\/tension/)).toBeTruthy();
+  });
+
+  it("renames a character across chapters and offers the rewritten download", () => {
+    render(<ThaiAnalyzerModal onClose={() => {}} />);
+    fireEvent.change(screen.getByPlaceholderText(/วางข้อความภาษาไทย/), {
+      target: { value: "## บทที่ 1\nวิกกี้เดินมา วิกกี้ยิ้ม\n## บทที่ 2\nเธอเรียกวิกกี้" },
+    });
+    fireEvent.change(screen.getByLabelText("ชื่อเดิม"), { target: { value: "วิกกี้" } });
+    fireEvent.change(screen.getByLabelText("ชื่อใหม่"), { target: { value: "อาโน่" } });
+    expect(screen.getByText(/3 จุดที่พบ/)).toBeTruthy();
+    expect(screen.getByText(/ดาวน์โหลดฉบับที่เปลี่ยนชื่อแล้ว/)).toBeTruthy();
+  });
+
   it("surfaces the continuity radar and relationship graph once the glossary is filled", () => {
     render(<ThaiAnalyzerModal onClose={() => {}} />);
     // Multi-chapter draft: เดนโอ/ริน are canon; กรรณ recurs but isn't declared.
