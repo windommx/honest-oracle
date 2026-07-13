@@ -75,6 +75,20 @@ describe("ThaiAnalyzerModal", () => {
     expect(screen.getByText(/ดาวน์โหลดฉบับที่เปลี่ยนชื่อแล้ว/)).toBeTruthy();
   });
 
+  it("shows the epistemic panel: tiers of knowing and the refused constructs", () => {
+    render(<ThaiAnalyzerModal onClose={() => {}} />);
+    fireEvent.change(screen.getByPlaceholderText(/วางข้อความภาษาไทย/), {
+      target: { value: "แสงจ้าเป็นประกาย เสียงดังก้อง เธอเงียบ รู้สึกกลัวจับใจ เดินจากไป" },
+    });
+    // The honesty panel is present with the yathābhūta banner…
+    expect(screen.getByText(/ญาณวิทยา/)).toBeTruthy();
+    expect(screen.getByText(/ยถาภูต/)).toBeTruthy();
+    // …and expands to reveal the refused 0–100 constructs by name.
+    fireEvent.click(screen.getByText(/ญาณวิทยา/));
+    expect(screen.getByText(/โมเมนตัม/)).toBeTruthy();
+    expect(screen.getByText(/เกินวิสัยของเครื่องนี้/)).toBeTruthy();
+  });
+
   it("suggests standard Thai spellings for informal loanwords", () => {
     render(<ThaiAnalyzerModal onClose={() => {}} />);
     fireEvent.change(screen.getByPlaceholderText(/วางข้อความภาษาไทย/), {

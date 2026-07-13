@@ -15,6 +15,7 @@ import { characterGraph } from "@/lib/rush-engine/relationships";
 import { renameTerm } from "@/lib/rush-engine/rename";
 import { checkThaiRegister } from "@/lib/rush-engine/register";
 import { checkTranslation, expansionReport, type TermRule } from "@/lib/rush-engine/translation";
+import { groupByTier, REFUSED_CONSTRUCTS, llmKalamaViolations, YATHABHUTA, warrant } from "@/lib/rush-engine/epistemics";
 import { downloadBlob } from "./_utils";
 import { wordDiff, diffTokens, type DiffOp } from "@/lib/rush-engine/text-util";
 import { listManuscripts, getManuscript, saveManuscript, deleteManuscript, type StoredManuscript } from "./_manuscript-store";
@@ -537,6 +538,75 @@ function TranslationView({ source }: { source: string }) {
   );
 }
 
+/** The epistemic panel — the honesty engine made visible. It badges the analyzer's own
+ *  outputs by WHAT KIND OF KNOWING each is (ประจักษ์ direct count → อนุมาน derived → สัญญา
+ *  heuristic label), then shows the constructs Rush REFUSES to score and why. Foldable;
+ *  it's the "why you can trust this number — and where its limit is" layer. */
+const TIER_TONE: Record<string, string> = {
+  paccakkha: "var(--tier-1, #34d399)",
+  anumana: "var(--tier-2, #38bdf8)",
+  sanna: "var(--tier-3, #fbbf24)",
+};
+function EpistemicPanel({ ids }: { ids: string[] }) {
+  const [open, setOpen] = useState(false);
+  const groups = useMemo(() => groupByTier(ids), [ids]);
+  const kalama = useMemo(() => llmKalamaViolations(), []);
+  if (!groups.length) return null;
+  return (
+    <div className="rounded-xl border border-[#c9a84c]/25 bg-[#c9a84c]/[0.04] p-3">
+      <button onClick={() => setOpen((v) => !v)} className="w-full text-left">
+        <h3 className="text-xs font-semibold tracking-widest text-[#c9a84c] uppercase">
+          ญาณวิทยา · ทำไมเชื่อตัวเลขนี้ได้ (และเส้นที่เราไม่ข้าม) {open ? "−" : "+"}
+        </h3>
+      </button>
+      <p className="text-[0.62rem] text-gray-500 mt-1">{YATHABHUTA}</p>
+      {open && (
+        <div className="mt-3 space-y-3">
+          {groups.map((g) => (
+            <div key={g.tier.id}>
+              <div className="flex items-center gap-2 mb-1">
+                <span className="inline-block w-2 h-2 rounded-full" style={{ background: TIER_TONE[g.tier.id] ?? "#9ca3af" }} />
+                <span className="text-xs font-semibold text-gray-200">{g.tier.thai}</span>
+                <span className="text-[0.6rem] text-gray-500 italic">{g.tier.pali}</span>
+              </div>
+              <p className="text-[0.62rem] text-gray-500 mb-1.5 pl-4">{g.tier.gloss}</p>
+              <div className="flex flex-wrap gap-1.5 pl-4">
+                {g.signals.map((s) => (
+                  <span
+                    key={s.id}
+                    title={warrant(s.id) ?? ""}
+                    className="text-[0.68rem] px-2 py-0.5 rounded border cursor-help"
+                    style={{ borderColor: (TIER_TONE[g.tier.id] ?? "#9ca3af") + "66", color: TIER_TONE[g.tier.id] ?? "#9ca3af" }}
+                  >
+                    {s.thai} · {s.level}
+                  </span>
+                ))}
+              </div>
+            </div>
+          ))}
+          <div className="pt-1 border-t border-white/10">
+            <div className="flex items-center gap-2 mb-1">
+              <span className="inline-block w-2 h-2 rounded-full bg-rose-400/70" />
+              <span className="text-xs font-semibold text-rose-300">อวิสัย · เกินวิสัยของเครื่องนี้ — เราปฏิเสธที่จะให้คะแนน</span>
+            </div>
+            <div className="flex flex-col gap-1 pl-4">
+              {REFUSED_CONSTRUCTS.map((c) => (
+                <div key={c.id} className="text-[0.66rem] text-gray-400">
+                  <span className="text-rose-300/90 line-through">{c.thai}</span> — {c.why}
+                </div>
+              ))}
+            </div>
+          </div>
+          <p className="text-[0.62rem] text-gray-500 pl-4 pt-1 border-t border-white/10">
+            กาลามสูตรระบุ {kalama.length} ใน 10 ฐานที่คะแนน LLM พึ่งพา — รวมข้อ 6 “เพราะการอนุมาน” และข้อ 9 “เพราะดูน่าเชื่อถือ”.
+            ตัวเลขทุกตัวข้างบนตรวจซ้ำเองได้ (paccakkha/anumāna) — เราเปิดเผยเครื่องมือเสมอ (ชี้ที่ป้ายเพื่อดู warrant)
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 type Delta = { label: string; before: number; after: number; delta: number; good: "lower" | "higher" | "neutral" };
 
 function DeltaTable({ title, deltas, note }: { title: string; deltas: Delta[]; note: string }) {
@@ -861,6 +931,11 @@ export function ThaiAnalyzerModal({ onClose, initialText }: { onClose: () => voi
           />
         )}
         {a && <div className="mt-4"><SceneReadoutView text={dtext} /></div>}
+        {a && (
+          <div className="mt-4">
+            <EpistemicPanel ids={["wordCount", "sentenceCount", "rhythmCv", "dialogueRatio", "tellingPer100", "sensoryPer1k", "aiTells", "echoes", ...(scan.length > 1 ? ["variantClusters", "droppedTerms", "storyBibleEntries"] : []), ...(protect.length > 0 ? ["offCanon", "coEdgeWeight"] : []), "registerSuggestions"]} />
+          </div>
+        )}
         {a && <div className="mt-4"><SensoryView text={dtext} lang="th" /></div>}
         {a && <div className="mt-4"><RegisterView text={dtext} protect={protect} /></div>}
         {a && <div className="mt-4"><RenameView text={dtext} lang="th" /></div>}
@@ -1254,6 +1329,11 @@ export function ProseAnalyzerModal({ onClose, initialText }: { onClose: () => vo
           />
         )}
         {a && <div className="mt-4"><SensoryView text={dtext} lang="en" /></div>}
+        {a && (
+          <div className="mt-4">
+            <EpistemicPanel ids={["wordCount", "sentenceCount", "rhythmCv", "dialogueRatio", "tellingPer100", "sensoryPer1k", "aiTells", "echoes", ...(scan.length > 1 ? ["variantClusters", "droppedTerms", "storyBibleEntries"] : [])]} />
+          </div>
+        )}
         {a && <div className="mt-4"><RenameView text={dtext} lang="en" /></div>}
         {scan.length > 1 && <ConsistencyView text={dtext} lang="en" />}
         {a && (

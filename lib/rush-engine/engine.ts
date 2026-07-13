@@ -21,6 +21,7 @@ export * from "./register";
 export * from "./rename";
 export * from "./relationships";
 export * from "./radar";
+export * from "./epistemics";
 export { TH_GROUP_LABEL } from "./th";
 
 import { buildArchitecture } from "./architecture";
