@@ -13,7 +13,7 @@ import { consistencyLedger, storyBible } from "./consistency";
 import { checkThaiRegister } from "./register";
 import { renameTerm } from "./rename";
 import { characterGraph } from "./relationships";
-import { continuityRadar } from "./radar";
+import { continuityRadar, sceneReadout } from "./radar";
 
 export interface CliResult { stdout: string; stderr: string; code: number }
 
@@ -41,6 +41,7 @@ USAGE
   rush rename   <file.md> --from <name> --to <name> [--lang th|en] [--write]
   rush relations <file.md> --names "A,B,C" [--lang th|en]
   rush radar    <file.md> --canon "A,B,C" [--lang th|en]
+  rush scene    <file.md>   (Thai: real per-scene signals — no fake 0–100 scores)
   rush help
 
 COMMANDS
@@ -52,6 +53,10 @@ COMMANDS
   rename    Rename a character/term across every chapter; prints a per-chapter audit
             and a collision warning. --write outputs the rewritten manuscript.
   relations Character co-occurrence graph: who shares scenes with whom (needs --names).
+  radar     Continuity radar: canon names never used + off-canon names that recur
+            (drift/rename/typo). Counts vs. your glossary — not a verdict (needs --canon).
+  scene     Per-scene readout (Thai): words, clauses, rhythm cv, dialogue ratio, telling
+            density, sensory/1k, AI-tells — real signals, never a fake 0–100 vibe score.
 
 TYPES     ${Object.keys(BOOK_TYPES).join(", ")}
 `;
@@ -197,6 +202,28 @@ function cmdRadar(file: string | undefined, flags: Record<string, string | true>
   return { stdout: L.join("\n") + "\n", stderr: "", code: 0 };
 }
 
+function cmdScene(file: string | undefined, flags: Record<string, string | true>, read?: (p: string) => string): CliResult {
+  const r = readFile(file, read);
+  if ("code" in r) return r;
+  if (!/[฀-๿]/.test(r.text) && flags.lang !== "th") return { stdout: "", stderr: "scene readout is Thai-only for now\n", code: 2 };
+  const sens = sensoryDensity(r.text, "th");
+  const s = sceneReadout(r.text, analyzeThai, sens.per1k);
+  const L = [
+    "# scene readout — measured signals (NOT 0–100 vibe scores)",
+    "",
+    `  words            ${s.words}`,
+    `  clauses          ${s.clauses}`,
+    `  rhythm cv        ${s.rhythmCv}   (variation in clause length — flat prose reads low)`,
+    `  dialogue ratio   ${s.dialogueRatio}%`,
+    `  telling /100     ${s.tellingPer100}   (named-emotion / filter-verb density)`,
+    `  sensory /1k      ${s.sensoryPer1k}`,
+    `  AI-tell clichés  ${s.aiTells}`,
+    "",
+    "every number is a real count you can re-derive — no subjective momentum/clarity/tension.",
+  ];
+  return { stdout: L.join("\n") + "\n", stderr: "", code: 0 };
+}
+
 export function runCli(argv: string[], io?: { read?: (path: string) => string }): CliResult {
   const { positional, flags } = parseFlags(argv);
   const cmd = positional[0];
@@ -206,5 +233,6 @@ export function runCli(argv: string[], io?: { read?: (path: string) => string })
   if (cmd === "rename") return cmdRename(positional[1], flags, io?.read);
   if (cmd === "relations") return cmdRelations(positional[1], flags, io?.read);
   if (cmd === "radar") return cmdRadar(positional[1], flags, io?.read);
+  if (cmd === "scene") return cmdScene(positional[1], flags, io?.read);
   return { stdout: "", stderr: `unknown command "${cmd}". try: rush help\n`, code: 2 };
 }

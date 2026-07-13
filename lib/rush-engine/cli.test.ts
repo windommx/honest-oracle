@@ -78,6 +78,27 @@ describe("runCli", () => {
     expect(r.stdout).toContain("เดนโอ"); // unused canon name
   });
 
+  it("scene readout prints measured signals and no fake 0–100 vibe score", () => {
+    const text =
+      "แสงอาทิตย์สาดจ้าเป็นประกาย เสียงลมหวีดดังก้อง กลิ่นดินหอมกรุ่นอบอวล " +
+      '"เธอมาทำไม" เขาถาม เธอเงียบ รู้สึกกลัวจับใจ ผิวหินเย็นเฉียบใต้ฝ่ามือ';
+    const r = runCli(["scene", "b.md"], { read: () => text });
+    expect(r.code).toBe(0);
+    expect(r.stdout).toContain("scene readout");
+    expect(r.stdout).toContain("words");
+    expect(r.stdout).toContain("rhythm cv");
+    // no invented panel scores — the readout disclaims them by name
+    expect(r.stdout).not.toMatch(/momentum\s+\d/i);
+    expect(r.stdout).not.toMatch(/\bclarity\s+\d/i);
+    expect(r.stdout).toContain("no subjective momentum/clarity/tension");
+  });
+
+  it("scene readout refuses a non-Thai manuscript", () => {
+    const r = runCli(["scene", "b.md"], { read: () => "The sun rose over the hills." });
+    expect(r.code).toBe(2);
+    expect(r.stderr).toContain("Thai-only");
+  });
+
   it("register suggestions appear in a Thai analyze", () => {
     const text = "## บท 1\n" + "เขาจะอัพเดทข้อมูลแล้วเช็คอีเมล์ทุกวัน ".repeat(3);
     const r = runCli(["analyze", "b.md"], { read: () => text });
