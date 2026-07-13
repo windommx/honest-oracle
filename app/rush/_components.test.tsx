@@ -51,6 +51,22 @@ describe("ThaiAnalyzerModal", () => {
     expect(arg).not.toContain("[วางข้อความที่นี่]"); // placeholder was replaced
   });
 
+  it("surfaces the continuity radar and relationship graph once the glossary is filled", () => {
+    render(<ThaiAnalyzerModal onClose={() => {}} />);
+    // Multi-chapter draft: เดนโอ/ริน are canon; กรรณ recurs but isn't declared.
+    fireEvent.change(screen.getByPlaceholderText(/วางข้อความภาษาไทย/), {
+      target: { value: "## บทที่ 1\nเดนโอเดินทางกับริน กรรณตามมา\n## บทที่ 2\nกรรณพบเดนโอ กรรณยิ้ม กรรณพูดกับเดนโอ" },
+    });
+    // Declare the canon in the glossary → radar has something to compare against.
+    fireEvent.change(screen.getByPlaceholderText(/ชื่อตัวละคร\/สถานที่/), {
+      target: { value: "เดนโอ, ริน" },
+    });
+    expect(screen.getByText(/เรดาร์ความต่อเนื่อง/)).toBeTruthy();
+    expect(screen.getAllByText(/กรรณ/).length).toBeGreaterThan(0); // off-canon name flagged
+    expect(screen.getByText(/ความสัมพันธ์ตัวละคร/)).toBeTruthy();
+    expect(screen.getByText(/เดนโอ ↔ ริน/)).toBeTruthy(); // shared-chapter edge
+  });
+
   it("shows a before→after delta table when comparing a Thai revision", () => {
     render(<ThaiAnalyzerModal onClose={() => {}} />);
     fireEvent.change(screen.getByPlaceholderText(/วางข้อความภาษาไทย/), {
