@@ -13,6 +13,7 @@ import { consistencyLedger, storyBible } from "./consistency";
 import { checkThaiRegister } from "./register";
 import { renameTerm } from "./rename";
 import { characterGraph } from "./relationships";
+import { continuityRadar } from "./radar";
 
 export interface CliResult { stdout: string; stderr: string; code: number }
 
@@ -39,6 +40,7 @@ USAGE
   rush analyze  <file.md> [--lang th|en]
   rush rename   <file.md> --from <name> --to <name> [--lang th|en] [--write]
   rush relations <file.md> --names "A,B,C" [--lang th|en]
+  rush radar    <file.md> --canon "A,B,C" [--lang th|en]
   rush help
 
 COMMANDS
@@ -178,6 +180,23 @@ function cmdRelations(file: string | undefined, flags: Record<string, string | t
   return { stdout: L.join("\n") + "\n", stderr: "", code: 0 };
 }
 
+function cmdRadar(file: string | undefined, flags: Record<string, string | true>, read?: (p: string) => string): CliResult {
+  const canon = (typeof flags.canon === "string" ? flags.canon : "").split(",").map((n) => n.trim()).filter(Boolean);
+  if (!canon.length) return { stdout: "", stderr: 'radar needs --canon "A,B,C" (the declared cast)\n', code: 2 };
+  const r = readFile(file, read);
+  if ("code" in r) return r;
+  const lang: "th" | "en" = flags.lang === "en" ? "en" : /[฀-๿]/.test(r.text) ? "th" : "en";
+  const findings = continuityRadar(r.text, canon, lang);
+  const L = [`# continuity radar — canon of ${canon.length}`];
+  const unused = findings.filter((f) => f.kind === "unused-canon");
+  const off = findings.filter((f) => f.kind === "off-canon");
+  if (unused.length) { L.push("", "canon names not used:"); for (const f of unused) L.push(`  ${f.term}`); }
+  if (off.length) { L.push("", "off-canon (used but not declared — drift/typo?):"); for (const f of off) L.push(`  ${f.term} ×${f.count}`); }
+  if (!findings.length) L.push("", "no drift — every canon name is used and no undeclared name recurs.");
+  L.push("", "counts, not a verdict · declare renames in your glossary to clear them");
+  return { stdout: L.join("\n") + "\n", stderr: "", code: 0 };
+}
+
 export function runCli(argv: string[], io?: { read?: (path: string) => string }): CliResult {
   const { positional, flags } = parseFlags(argv);
   const cmd = positional[0];
@@ -186,5 +205,6 @@ export function runCli(argv: string[], io?: { read?: (path: string) => string })
   if (cmd === "analyze") return cmdAnalyze(positional[1], flags, io?.read);
   if (cmd === "rename") return cmdRename(positional[1], flags, io?.read);
   if (cmd === "relations") return cmdRelations(positional[1], flags, io?.read);
+  if (cmd === "radar") return cmdRadar(positional[1], flags, io?.read);
   return { stdout: "", stderr: `unknown command "${cmd}". try: rush help\n`, code: 2 };
 }

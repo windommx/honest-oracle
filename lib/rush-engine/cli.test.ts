@@ -69,6 +69,15 @@ describe("runCli", () => {
     expect(r.stdout).toContain("เอิ่ม ↔ ลีอาห์");
   });
 
+  it("radar flags an off-canon name against the declared cast", () => {
+    const text = "## บทที่ 1\nกรรณเดินมา กรรณยิ้ม กรรณพูดกับริน";
+    const r = runCli(["radar", "b.md", "--canon", "เดนโอ,ริน"], { read: () => text });
+    expect(r.code).toBe(0);
+    expect(r.stdout).toContain("off-canon");
+    expect(r.stdout).toContain("กรรณ");
+    expect(r.stdout).toContain("เดนโอ"); // unused canon name
+  });
+
   it("register suggestions appear in a Thai analyze", () => {
     const text = "## บท 1\n" + "เขาจะอัพเดทข้อมูลแล้วเช็คอีเมล์ทุกวัน ".repeat(3);
     const r = runCli(["analyze", "b.md"], { read: () => text });
