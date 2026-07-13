@@ -75,6 +75,40 @@ describe("ThaiAnalyzerModal", () => {
     expect(screen.getByText(/ดาวน์โหลดฉบับที่เปลี่ยนชื่อแล้ว/)).toBeTruthy();
   });
 
+  it("suggests standard Thai spellings for informal loanwords", () => {
+    render(<ThaiAnalyzerModal onClose={() => {}} />);
+    fireEvent.change(screen.getByPlaceholderText(/วางข้อความภาษาไทย/), {
+      target: { value: "เขาจะอัพเดทข้อมูลแล้วเช็คอีเมล์ทุกวัน เขาจะอัพเดทข้อมูลอีกครั้ง" },
+    });
+    expect(screen.getByText(/คำ\/การสะกด/)).toBeTruthy();
+    expect(screen.getByText(/อัปเดต/)).toBeTruthy(); // อัพเดท → อัปเดต
+  });
+
+  it("adds a sensory column to the per-chapter heatmap", () => {
+    render(<ThaiAnalyzerModal onClose={() => {}} />);
+    fireEvent.change(screen.getByPlaceholderText(/วางข้อความภาษาไทย/), {
+      target: {
+        value:
+          "## บทที่ 1\nแสงจ้าเป็นประกาย กลิ่นดินหอมกรุ่น เสียงลมหวีดดังก้อง\n" +
+          "## บทที่ 2\nรุ่งเช้าเธอเดินเข้าเมือง ผู้คนพลุกพล่านเนืองแน่น",
+      },
+    });
+    fireEvent.click(screen.getByText(/สแกนรายบท/));
+    expect(screen.getByText(/ผัสสะ\/1k/)).toBeTruthy();
+  });
+
+  it("checks a Thai→English translation for per-chapter length drift", () => {
+    render(<ThaiAnalyzerModal onClose={() => {}} />);
+    fireEvent.change(screen.getByPlaceholderText(/วางข้อความภาษาไทย/), {
+      target: { value: "## บทที่ 1\nเธอเดินไป\n## บทที่ 2\nเขายืนรอ" },
+    });
+    fireEvent.click(screen.getByText(/ตรวจการแปล/));
+    fireEvent.change(screen.getByPlaceholderText(/วางคำแปลภาษาอังกฤษ/), {
+      target: { value: "## 1\nShe walked away slowly.\n## 2\nHe stood waiting." },
+    });
+    expect(screen.getByText(/ความยาวรายบท/)).toBeTruthy();
+  });
+
   it("surfaces the continuity radar and relationship graph once the glossary is filled", () => {
     render(<ThaiAnalyzerModal onClose={() => {}} />);
     // Multi-chapter draft: เดนโอ/ริน are canon; กรรณ recurs but isn't declared.

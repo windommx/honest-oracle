@@ -13,6 +13,8 @@ import { sensoryDensity, SENSE_LABEL, type Sense } from "@/lib/rush-engine/senso
 import { continuityRadar, sceneReadout } from "@/lib/rush-engine/radar";
 import { characterGraph } from "@/lib/rush-engine/relationships";
 import { renameTerm } from "@/lib/rush-engine/rename";
+import { checkThaiRegister } from "@/lib/rush-engine/register";
+import { checkTranslation, expansionReport, type TermRule } from "@/lib/rush-engine/translation";
 import { downloadBlob } from "./_utils";
 import { wordDiff, diffTokens, type DiffOp } from "@/lib/rush-engine/text-util";
 import { listManuscripts, getManuscript, saveManuscript, deleteManuscript, type StoredManuscript } from "./_manuscript-store";
@@ -436,6 +438,105 @@ function RenameView({ text, lang }: { text: string; lang: "th" | "en" }) {
   );
 }
 
+/** Thai register/spelling suggestions — loanwords & informal spellings with their
+ *  Royal-Institute-standard equivalents. Skips glossary proper nouns (a coined name is
+ *  never "wrong"). Suggestions, not errors. */
+function RegisterView({ text, protect }: { text: string; protect?: string[] }) {
+  const findings = useMemo(() => (text.trim() ? checkThaiRegister(text, { skip: protect }) : []), [text, protect]);
+  if (findings.length === 0) return null;
+  return (
+    <div>
+      <h3 className="text-xs font-semibold tracking-widest text-gray-400 uppercase mb-2">คำ/การสะกด (ภาษาไทยมาตรฐาน — ไม่ใช่ข้อผิด)</h3>
+      <div className="space-y-1">
+        {findings.slice(0, 20).map((r) => (
+          <div key={r.term} className="flex items-center gap-2 text-xs">
+            <span className="px-2 py-0.5 rounded border border-teal-400/40 text-teal-300">{r.term} ×{r.count}</span>
+            <span className="text-gray-500">→</span>
+            <span className="text-gray-200">{r.suggest}</span>
+            {r.note && <span className="text-[0.6rem] text-gray-500">({r.note})</span>}
+          </div>
+        ))}
+      </div>
+      <p className="text-[0.6rem] text-gray-500 mt-1">คำยืม/สะกดไม่เป็นทางการ พร้อมคำมาตรฐาน · เว้นชื่อเฉพาะใน glossary · เป็นคำแนะนำ ไม่ใช่คำตัดสิน</p>
+    </div>
+  );
+}
+
+/** Parse a "ไทย=English" term map (one per line) into TermRule[] for the translation check. */
+function parseTermMap(raw: string): TermRule[] {
+  return raw
+    .split(/\n+/)
+    .map((line) => line.split(/[=:]/).map((s) => s.trim()))
+    .filter((p) => p.length >= 2 && p[0] && p[1])
+    .map(([source, target]) => ({ source, target, caseSensitive: /^[A-Z]/.test(target) }));
+}
+
+/** Translation faithfulness (Thai source → English target). Two deterministic signals:
+ *  per-chapter length-ratio drift (added/summarised content) and a term-map check
+ *  (dropped canon terms / wrong case). Collapsible — the writer pastes the translation. */
+function TranslationView({ source }: { source: string }) {
+  const [open, setOpen] = useState(false);
+  const [target, setTarget] = useState("");
+  const [map, setMap] = useState("");
+  const dtarget = useDebounced(target);
+  const rules = useMemo(() => parseTermMap(map), [map]);
+  const exp = useMemo(() => (source.trim() && dtarget.trim() ? expansionReport(source, dtarget) : null), [source, dtarget]);
+  const terms = useMemo(() => (source.trim() && dtarget.trim() && rules.length ? checkTranslation(source, dtarget, rules) : []), [source, dtarget, rules]);
+  return (
+    <div>
+      <button onClick={() => setOpen((v) => !v)} className="text-[0.7rem] text-[#c9a84c] hover:underline">
+        {open ? "− ซ่อนการตรวจการแปล" : "+ ตรวจการแปล (ไทย → อังกฤษ)"}
+      </button>
+      {open && (
+        <div className="mt-2 space-y-2">
+          <textarea
+            value={target}
+            onChange={(e) => setTarget(e.target.value)}
+            placeholder="วางคำแปลภาษาอังกฤษที่นี่ (แบ่งบทด้วย ## เหมือนต้นฉบับ เพื่อเทียบความยาวรายบท)…"
+            className="input min-h-[110px] resize-y"
+          />
+          <textarea
+            value={map}
+            onChange={(e) => setMap(e.target.value)}
+            placeholder="ศัพท์เฉพาะ (ไม่บังคับ) บรรทัดละคู่ เช่น&#10;ธนกร=Thanakorn&#10;ดาบเทวะ=Deva Blade"
+            className="input min-h-[64px] resize-y text-xs"
+          />
+          {exp && exp.chunks.length > 0 && (
+            <Heatmap
+              title={`ความยาวรายบท (มัธยฐาน ${exp.medianRatio}× อังกฤษ÷ไทย)`}
+              headers={["ต้นฉบับ (ตัวอักษร)", "คำแปล (ตัวอักษร)", "อัตราส่วน"]}
+              rows={exp.chunks.map((c) => ({
+                title: `${c.flag === "expanded" ? "▲ " : c.flag === "shrunk" ? "▼ " : ""}บท ${c.chapter}`,
+                cells: [{ value: c.sourceChars }, { value: c.targetChars }, { value: c.ratio, bad: c.flag !== null }],
+              }))}
+              note="▲ ยาวกว่ามัธยฐานมาก = อาจเติมเนื้อหา · ▼ สั้นกว่ามาก = อาจสรุปตัด · เป็นสัญญาณ ไม่ใช่คำตัดสิน"
+            />
+          )}
+          {terms.length > 0 && (
+            <div>
+              <p className="text-[0.65rem] text-gray-500 mb-1">ศัพท์เฉพาะ:</p>
+              <div className="space-y-1">
+                {terms.map((t, i) => (
+                  <div key={`${t.rule}-${i}`} className="flex items-center gap-2 text-xs">
+                    <span className="px-2 py-0.5 rounded border border-rose-400/40 text-rose-300">
+                      {t.kind === "dropped-term" ? "หาย" : t.kind === "wrong-case" ? "ตัวพิมพ์" : "คำต้องห้าม"} ×{t.count}
+                    </span>
+                    <span className="text-gray-300">{t.detail}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          {exp && terms.length === 0 && rules.length > 0 && (
+            <p className="text-xs text-green-400">✓ ศัพท์เฉพาะครบตามที่ประกาศไว้</p>
+          )}
+          <p className="text-[0.6rem] text-gray-500">ทุกอย่างทำงานในเบราว์เซอร์ ไม่เรียก AI · อัตราส่วนความยาวและการนับศัพท์เป็นสัญญาณ ไม่ใช่คำตัดสินคุณภาพการแปล</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 type Delta = { label: string; before: number; after: number; delta: number; good: "lower" | "higher" | "neutral" };
 
 function DeltaTable({ title, deltas, note }: { title: string; deltas: Delta[]; note: string }) {
@@ -738,8 +839,8 @@ export function ThaiAnalyzerModal({ onClose, initialText }: { onClose: () => voi
         )}
         {showScan && scan.length > 1 && (
           <Heatmap
-            title="heatmap รายบท"
-            headers={["คำ", "CV%", "บทพูด%", "บอกอารมณ์", "คลิเช", "echoes"]}
+            title="heatmap รายบท — อ่านค่าฉากทุกบท (สัญญาณที่วัดได้ ไม่ใช่คะแนน 0–100)"
+            headers={["คำ", "CV%", "บทพูด%", "บอกอารมณ์", "ผัสสะ/1k", "คลิเช", "echoes"]}
             rows={scan.map((c, i) => ({
               title: c.title,
               cells: [
@@ -747,6 +848,7 @@ export function ThaiAnalyzerModal({ onClose, initialText }: { onClose: () => voi
                 { value: c.cv, bad: worst.cv === i },
                 { value: c.dialogueRatio },
                 { value: c.telling },
+                { value: sensoryDensity(c.body, "th").per1k },
                 { value: c.aiTells, bad: worst.aiTells === i },
                 { value: c.echoes },
               ],
@@ -760,7 +862,9 @@ export function ThaiAnalyzerModal({ onClose, initialText }: { onClose: () => voi
         )}
         {a && <div className="mt-4"><SceneReadoutView text={dtext} /></div>}
         {a && <div className="mt-4"><SensoryView text={dtext} lang="th" /></div>}
+        {a && <div className="mt-4"><RegisterView text={dtext} protect={protect} /></div>}
         {a && <div className="mt-4"><RenameView text={dtext} lang="th" /></div>}
+        {a && <div className="mt-4"><TranslationView source={dtext} /></div>}
         {scan.length > 1 && (
           <div className="mt-4">
             <GlossaryInput value={glossary} onChange={setGlossary} suggestions={nameSuggestions} />
