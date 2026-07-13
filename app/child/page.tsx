@@ -282,7 +282,7 @@ export default function ChildPage() {
 
         <div className="mt-12 p-6 rounded-2xl bg-[#12121a]/50 border border-white/5">
           <p className="text-center text-gray-500 text-sm">
-            ⚠️ ชื่อที่ดีสำหรับเด็กไม่ใช่เพียงการ "กำหนดชะตา" แต่คือการออกแบบพลังงานเริ่มต้น 
+            ⚠️ ชื่อที่ดีสำหรับเด็กไม่ใช่เพียงการ &ldquo;กำหนดชะตา&rdquo; แต่คือการออกแบบพลังงานเริ่มต้น
             ที่จะทำงานร่วมกับการเลี้ยงดู สภาพแวดล้อม และเจตจำนงของครอบครัว
           </p>
         </div>

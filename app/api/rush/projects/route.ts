@@ -7,6 +7,11 @@ interface CreateBody {
   config: BookConfig;
 }
 
+// Cloud-project caps by plan. Free is limited on purpose (the upgrade reason);
+// paid plans get the full DB-safety cap.
+const FREE_PROJECT_LIMIT = 3;
+const PAID_PROJECT_LIMIT = 50;
+
 export async function GET() {
   const user = await requireUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -18,7 +23,7 @@ export async function GET() {
     select: { id: true, title: true, type: true, subGenre: true, visibility: true, config: true, updatedAt: true },
   });
 
-  return NextResponse.json({ projects });
+  return NextResponse.json({ projects, plan: (user as { plan?: string }).plan ?? "free" });
 }
 
 export async function POST(request: NextRequest) {
@@ -38,10 +43,22 @@ export async function POST(request: NextRequest) {
   }
 
   // Cap projects per user to prevent runaway DB growth.
+  // Plan-based cloud-project cap: Free is limited (the reason to upgrade); paid plans
+  // get the full cap. Manuscripts stay unlimited locally either way.
+  const plan = (user as { plan?: string }).plan ?? "free";
+  const isPaid = plan === "pro" || plan === "team";
+  const limit = isPaid ? PAID_PROJECT_LIMIT : FREE_PROJECT_LIMIT;
   const count = await prisma.rushProject.count({ where: { userId: user.id } });
-  if (count >= 50) {
+  if (count >= limit) {
     return NextResponse.json(
-      { error: "Project limit reached (50). Delete an old project to save a new one." },
+      {
+        error: isPaid
+          ? `ถึงขีดจำกัดโปรเจกต์ (${limit}) — ลบโปรเจกต์เก่าเพื่อบันทึกใหม่`
+          : `แผน Free เก็บ cloud ได้ ${FREE_PROJECT_LIMIT} โปรเจกต์ — อัปเกรด Pro เพื่อ sync ไม่จำกัด (ต้นฉบับในเครื่องไม่จำกัด)`,
+        code: isPaid ? "limit_reached" : "upgrade_required",
+        limit,
+        plan,
+      },
       { status: 403 }
     );
   }

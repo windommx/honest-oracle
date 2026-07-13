@@ -179,7 +179,7 @@ describe("generateAllPrompts — core", () => {
 
 describe("generateAllPrompts — module groups", () => {
   const counts: Record<Exclude<PromptGroup, "core">, number> = {
-    craft: 11,
+    craft: 14,
     nonfiction: 5,
     prose: 4,
     thai: 1,
@@ -200,10 +200,10 @@ describe("generateAllPrompts — module groups", () => {
     }
   });
 
-  it("includes all 51 optional modules when every group is on", () => {
+  it("includes all 54 optional modules when every group is on", () => {
     const all = MODULE_GROUPS.map((m) => m.key);
     const pack = generateAllPrompts(cfg(), all);
-    expect(pack.filter((p) => p.group !== "core").length).toBe(51);
+    expect(pack.filter((p) => p.group !== "core").length).toBe(54);
   });
 
   it("saga group plans long-form 3–9 seasons with cross-season continuity", () => {

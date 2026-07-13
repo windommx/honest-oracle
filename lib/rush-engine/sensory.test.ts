@@ -45,6 +45,14 @@ describe("sensoryDensity (Thai)", () => {
     expect(led.senses.map((s) => s.sense)).toEqual(["sight", "sound", "smell", "taste", "touch"]);
   });
 
+  it("merges caller-supplied extra terms (plugin-extensible lexicon)", () => {
+    // "ระริก" is not in the base touch lexicon; a plugin can add it.
+    const base = sensoryDensity("ผิวเธอสั่นระริก ระริกไปทั้งกาย ระริกอีกครั้ง", "th");
+    const withExtra = sensoryDensity("ผิวเธอสั่นระริก ระริกไปทั้งกาย ระริกอีกครั้ง", "th", { touch: ["ระริก"] });
+    const t = (led: typeof base) => led.senses.find((s) => s.sense === "touch")!.count;
+    expect(t(withExtra)).toBeGreaterThan(t(base));
+  });
+
   it("catches expanded Thai vocabulary in the right sense (recall regression)", () => {
     const led = sensoryDensity("ท้องฟ้า ทึบ มืด ฟ้าร้อง สนั่น ดัง รส เฝื่อน ขม หิน สาก เหนอะหนะ", "th");
     const by = (s: string) => led.senses.find((x) => x.sense === s)!;

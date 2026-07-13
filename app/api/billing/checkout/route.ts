@@ -4,10 +4,21 @@ import { requireUser } from "@/lib/server/session";
 import { getEnv } from "@/lib/server/env";
 import { getStripe } from "@/lib/server/stripe";
 
-export async function POST(_request: NextRequest) {
+const RETURN_PATHS: Record<string, string> = { rush: "/rush/dashboard", oracle: "/oracle/pricing" };
+
+export async function POST(request: NextRequest) {
   const user = await requireUser();
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  // Optional { returnTo: "rush" | "oracle" } so each product returns to its own page.
+  let returnTo = "/oracle/pricing";
+  try {
+    const body = (await request.json()) as { returnTo?: string };
+    if (body?.returnTo && body.returnTo in RETURN_PATHS) returnTo = RETURN_PATHS[body.returnTo];
+  } catch {
+    /* no body — keep default */
   }
 
   const env = getEnv();
@@ -50,8 +61,8 @@ export async function POST(_request: NextRequest) {
     customer: customerId,
     line_items: [{ price: env.STRIPE_PRICE_ID_PRO, quantity: 1 }],
     allow_promotion_codes: true,
-    success_url: `${env.NEXTAUTH_URL}/oracle/pricing?success=1`,
-    cancel_url: `${env.NEXTAUTH_URL}/oracle/pricing?canceled=1`,
+    success_url: `${env.NEXTAUTH_URL}${returnTo}?success=1`,
+    cancel_url: `${env.NEXTAUTH_URL}${returnTo}?canceled=1`,
     client_reference_id: user.id,
     metadata: { userId: user.id, plan: "pro" },
   });

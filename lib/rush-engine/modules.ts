@@ -549,6 +549,66 @@ Output: the rewritten scene, then a 3-5 line changelog naming each filter word c
 [INSERT SCENE HERE]`;
 }
 
+function moduleTranslate(): string {
+  return `Translate the SOURCE passage faithfully into the target language. You are a translator, not a co-author — render what is on the page, and nothing that isn't.
+
+═══ CANON (master lorebook — obey before translating) ═══
+[PASTE your world's fixed rules: setting, power system, factions, tone. Examples:]
+- The power system is called "Taba" — NEVER render it as magic / mana / qi / chi.
+- Keep the technology grounded sci-fi, not fantasy magic.
+- Coined terms and proper nouns keep their exact spelling AND capitalisation.
+
+═══ TERMINOLOGY MAP (lock these — do not substitute a synonym) ═══
+[source term] → [required rendering]   e.g.  ตบะ → Taba (always capitalised) · ฤๅษี → Hermit (operative, not monk)
+
+═══ HARD CONSTRAINTS (negative prompting — obey literally) ═══
+- DO NOT add actions, feelings, or inner monologue that are not in the source.
+- DO NOT hallucinate or fill blanks — if the source is terse, the translation stays terse.
+- DO NOT summarise or expand — keep the exact pacing and every paragraph break 1:1.
+- DO NOT reach for generic Western-fantasy phrasing.
+
+═══ METHOD ═══
+Work 2-3 short paragraphs at a time (micro-chunking) so nothing drifts to the "average". Output ONLY the translation — no notes, no summary.
+
+═══ SOURCE PASSAGE ═══
+[INSERT SOURCE TEXT HERE]`;
+}
+
+function moduleSceneArt(config: BookConfig): string {
+  return `Turn a scene into a ready-to-paste IMAGE PROMPT (for Midjourney / SD / DALL·E — you run the image tool). Draw only from what the scene states; do not invent characters or objects that aren't there.
+
+Genre/tone: ${config.subGenre ? config.subGenre.replace(/_/g, " ") : "(set the genre)"}
+
+Produce, for the scene below:
+1. STYLE — one line (e.g. "anime key visual", "cinematic concept art"), fixed for the book so every illustration matches.
+2. SUBJECT — the character(s) present, their exact look from the story bible (hair, clothes, signature item), and their action in this moment.
+3. SETTING — place, time of day, weather, key props — grounded in the scene.
+4. MOOD & LIGHT — the emotional colour + light source (matches the scene's tone).
+5. COMPOSITION — shot type + framing (close-up / wide / over-shoulder).
+6. NEGATIVE PROMPT — what to exclude (extra characters, text, watermark, wrong era).
+
+Output one paragraph prompt + a separate negative line. Keep character looks consistent with earlier scenes — reuse the same descriptors.
+
+═══ SCENE ═══
+[INSERT SCENE TEXT HERE]`;
+}
+
+function moduleCharChat(): string {
+  return `Build a SYSTEM PROMPT that lets a reader chat with one character IN-WORLD — staying on canon, in voice, without breaking the story. Use ONLY established facts; never invent backstory that contradicts the book.
+
+Fill from the character bible:
+- IDENTITY — name, role, age/status at the current point in the story.
+- VOICE — how they speak (register, verbal tics, what they never say). Match their dialogue in the book.
+- KNOWLEDGE BOUNDARY — what they know NOW vs. later reveals they must NOT spoil.
+- GOALS & WOUND — what drives them; what they hide.
+- GUARDRAILS — stay in character and in-world; deflect out-of-world questions in character; never dump plot spoilers; if asked something the character couldn't know, react as the character would.
+
+Output the system prompt as a single block the writer can paste into their own LLM (BYO-key) to run the chat.
+
+═══ CHARACTER BIBLE ═══
+[PASTE the character's sheet — or run VOICE_SHEET / CHAR_ARC first]`;
+}
+
 function moduleConflictMap(): string {
   return `Map the TENSION across a draft so it never goes flat.
 
@@ -914,6 +974,9 @@ export const MODULE_CATALOG: ModuleDef[] = [
   { id: "ANTI_SAFE", group: "craft", name: "Anti-Safe Pass", description: "Break safe/tidy AI defaults; raise real stakes; ban Thai AI-tell clichés.", usage: "Send a draft to make it riskier.", build: moduleAntiSafe },
   { id: "SENSORY", group: "craft", name: "Sensory Audit", description: "Per-scene 5-sense check (≥3) + targeted concrete additions.", usage: "Send a draft to ground it in the senses.", build: moduleSensoryAudit },
   { id: "IMMERSION", group: "craft", name: "Immersion / Deep-POV Pass", description: "Deep-POV rewrite: ground fast, cut filter verbs, add interiority, open one loop, end on momentum.", usage: "Send a scene to pull the reader inside it.", build: moduleImmersion },
+  { id: "TRANSLATE", group: "craft", name: "Faithful Translation", description: "Canon lorebook + terminology lock + negative prompts + micro-chunking — translate without AI drift/hallucination.", usage: "Use to translate a passage (e.g. Thai→English for Royal Road) faithfully.", build: moduleTranslate },
+  { id: "SCENE_ART", group: "craft", name: "Scene Illustration Prompt", description: "Turns a scene into a consistent image prompt (style/subject/setting/mood/composition + negative).", usage: "Send a scene to get a ready image prompt (you run Midjourney/SD).", build: moduleSceneArt },
+  { id: "CHAR_CHAT", group: "craft", name: "Character Chat System Prompt", description: "Build a canon-safe, in-voice system prompt to chat with a character (spoiler + knowledge guardrails).", usage: "Fill from the character bible; run in your own LLM to chat in-world.", build: moduleCharChat },
   { id: "CONFLICT_MAP", group: "craft", name: "Conflict / Tension Map", description: "Per-scene tension curve + flat-spot fixes.", usage: "Send a draft to map and raise tension.", build: moduleConflictMap },
   // nonfiction
   { id: "FACT_CHECK", group: "nonfiction", name: "Citation / Fact-Check", description: "Verify every claim; forbid invented citations.", usage: "Send each nonfiction chapter draft.", build: moduleFactCheck },
