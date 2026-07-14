@@ -123,6 +123,23 @@ describe("ThaiAnalyzerModal", () => {
     expect(screen.getByText(/ความยาวรายบท/)).toBeTruthy();
   });
 
+  it("shows deterministic narrative intelligence — presence, pacing, motifs — never a 0–100 score", () => {
+    render(<ThaiAnalyzerModal onClose={() => {}} />);
+    fireEvent.change(screen.getByPlaceholderText(/วางข้อความภาษาไทย/), {
+      target: {
+        value:
+          "## บทที่ 1\nเดนโอเดินทางกับริน แสงจ้าเป็นประกาย กลิ่นดินหอมกรุ่น\n" +
+          "## บทที่ 2\nรินอยู่คนเดียว เธอคิดถึงบ้าน ลมพัดเย็น\n" +
+          "## บทที่ 3\nเดนโอกลับมา ทั้งคู่เดินต่อ เสียงน้ำไหลริน",
+      },
+    });
+    fireEvent.change(screen.getByPlaceholderText(/ชื่อตัวละคร\/สถานที่/), { target: { value: "เดนโอ, ริน" } });
+    expect(screen.getByText(/ปัญญาการเล่าเรื่อง/)).toBeTruthy();
+    expect(screen.getByText(/จังหวะรายองก์/)).toBeTruthy();
+    // the honesty disclaimer is present; no invented score label
+    expect(screen.getByText(/ไม่มีคะแนน consistency\/arc\/resonance แบบเดา/)).toBeTruthy();
+  });
+
   it("surfaces the continuity radar and relationship graph once the glossary is filled", () => {
     render(<ThaiAnalyzerModal onClose={() => {}} />);
     // Multi-chapter draft: เดนโอ/ริน are canon; กรรณ recurs but isn't declared.

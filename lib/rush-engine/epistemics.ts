@@ -142,6 +142,13 @@ export const SIGNAL_REGISTRY: SignalClass[] = [
   { id: "registerSuggestions", tier: "sanna", level: "nominal", instrument: "loanword→standard seed map", reproducible: true, thai: "คำ/การสะกดมาตรฐาน" },
   { id: "nameSuggestions", tier: "sanna", level: "nominal", instrument: "capitalisation / recurrence heuristic", reproducible: true, thai: "น่าจะเป็นชื่อ" },
   { id: "translationTerms", tier: "sanna", level: "nominal", instrument: "term-map presence/case check", reproducible: true, thai: "ศัพท์เฉพาะในคำแปล" },
+
+  // ── Narrative intelligence — deterministic, NOT a 0–100 arc/pacing/theme score ──
+  { id: "charArcSeries", tier: "paccakkha", level: "ratio", instrument: "name occurrences per chapter", reproducible: true, thai: "เส้นการปรากฏของตัวละคร" },
+  { id: "charArcGap", tier: "sanna", level: "nominal", instrument: "zero-run between first & last mention", reproducible: true, thai: "ช่วงที่ตัวละครหายไป" },
+  { id: "pacingActAvg", tier: "anumana", level: "ratio", instrument: "mean of per-chapter signals within an act third", reproducible: true, thai: "ค่าเฉลี่ยสัญญาณต่อองก์" },
+  { id: "pacingFlag", tier: "sanna", level: "ordinal", instrument: "act deviates from book mean beyond a stated ratio", reproducible: true, thai: "ธงเตือน pacing รายองก์" },
+  { id: "motifDistribution", tier: "paccakkha", level: "ratio", instrument: "theme-term occurrences per chapter", reproducible: true, thai: "การกระจายของ motif/แก่น" },
 ];
 
 const SIGNAL_BY_ID: Record<string, SignalClass> = SIGNAL_REGISTRY.reduce(
@@ -159,6 +166,11 @@ export const REFUSED_CONSTRUCTS: RefusedConstruct[] = [
   { id: "flowScore", thai: "คะแนนลื่นไหล (0–100)", why: "proxy/surrogate for merit with no validation — optimizing it corrupts the writing (Goodhart)" },
   { id: "overallQuality", thai: "คะแนนคุณภาพรวม", why: "averaging non-count judgments — a category error (Stevens' stance); map ≠ territory (Korzybski)" },
   { id: "isAiWritten", thai: "แต่งโดย AI หรือไม่ (คะแนน)", why: "an inference sold as detection; not reproducible, not a measurement" },
+  { id: "narrativeConsistencyScore", thai: "คะแนนความสอดคล้องเรื่อง (0–100)", why: "latent construct — replaced by deterministic continuity flags + character-arc gaps you can re-derive" },
+  { id: "transportationScore", thai: "คะแนน narrative transportation (0–100)", why: "a reader-psychology construct (Green & Brock) with no valid text operation — not measurable from the manuscript" },
+  { id: "characterArcCoherence", thai: "คะแนนความกลมกลืน arc ตัวละคร (0–100)", why: "judgment, not a count — replaced by the per-chapter presence series + exit/gap flags" },
+  { id: "thematicResonance", thai: "คะแนน thematic resonance (0–100)", why: "reification of 'resonance' — replaced by motif distribution (how often/where a theme term recurs)" },
+  { id: "pacingBalanceScore", thai: "คะแนนสมดุล pacing (0–100)", why: "replaced by per-act measured averages + disclosed threshold flags — no single invented number" },
 ];
 
 /** The ten Kālāma grounds (AN 3.65) — reasons NOT to accept a claim by themselves. Marked:

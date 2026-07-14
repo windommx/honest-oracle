@@ -99,6 +99,24 @@ describe("runCli", () => {
     expect(r.stderr).toContain("Thai-only");
   });
 
+  it("narrative prints deterministic presence + pacing, no 0–100 score", () => {
+    const text =
+      "## บทที่ 1\nเดนโอเดินทางกับริน แสงจ้าเป็นประกาย\n" +
+      "## บทที่ 2\nรินอยู่คนเดียว เธอคิดถึงบ้าน\n" +
+      "## บทที่ 3\nเดนโอกลับมา ทั้งคู่เดินต่อ";
+    const r = runCli(["narrative", "b.md", "--names", "เดนโอ,ริน", "--motifs", "แสง"], { read: () => text });
+    expect(r.code).toBe(0);
+    expect(r.stdout).toContain("character presence");
+    expect(r.stdout).toContain("pacing by act");
+    expect(r.stdout).toContain("no invented arc/pacing/resonance score");
+  });
+
+  it("narrative refuses a non-Thai manuscript for now", () => {
+    const r = runCli(["narrative", "b.md"], { read: () => "The sun rose over the quiet hills again." });
+    expect(r.code).toBe(2);
+    expect(r.stderr).toContain("Thai-only");
+  });
+
   it("register suggestions appear in a Thai analyze", () => {
     const text = "## บท 1\n" + "เขาจะอัพเดทข้อมูลแล้วเช็คอีเมล์ทุกวัน ".repeat(3);
     const r = runCli(["analyze", "b.md"], { read: () => text });

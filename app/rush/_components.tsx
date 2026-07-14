@@ -16,6 +16,7 @@ import { renameTerm } from "@/lib/rush-engine/rename";
 import { checkThaiRegister } from "@/lib/rush-engine/register";
 import { checkTranslation, expansionReport, type TermRule } from "@/lib/rush-engine/translation";
 import { groupByTier, REFUSED_CONSTRUCTS, llmKalamaViolations, YATHABHUTA, warrant } from "@/lib/rush-engine/epistemics";
+import { characterArc, pacingProfile, motifTracker, type ChapterSignal } from "@/lib/rush-engine/narrative";
 import { downloadBlob } from "./_utils";
 import { wordDiff, diffTokens, type DiffOp } from "@/lib/rush-engine/text-util";
 import { listManuscripts, getManuscript, saveManuscript, deleteManuscript, type StoredManuscript } from "./_manuscript-store";
@@ -538,6 +539,119 @@ function TranslationView({ source }: { source: string }) {
   );
 }
 
+/** A tiny per-chapter presence strip — each cell shaded by mention count. A sparkline of
+ *  a real count series, not a curve fit to an invented arc score. */
+function PresenceStrip({ series }: { series: number[] }) {
+  const max = Math.max(...series, 1);
+  return (
+    <div className="flex gap-0.5" title={series.join(" · ")}>
+      {series.map((c, i) => (
+        <span
+          key={i}
+          className="inline-block w-2.5 h-4 rounded-sm"
+          style={{ background: c === 0 ? "rgba(255,255,255,0.06)" : `rgba(201,168,76,${0.25 + 0.6 * (c / max)})` }}
+        />
+      ))}
+    </div>
+  );
+}
+
+/** Narrative Intelligence, the HONEST way — the deterministic replacement for a competitor's
+ *  "narrative_consistency 73 / arc_coherence 68" panel. Character presence across chapters
+ *  (with gap/exit flags), pacing across the three acts (measured averages + threshold flags),
+ *  and motif distribution. Every value is a count or a disclosed flag — never a 0–100 score. */
+function NarrativeView({ text, lang, names, chapterSignals }: { text: string; lang: "th" | "en"; names: string[]; chapterSignals: ChapterSignal[] }) {
+  const [motifRaw, setMotifRaw] = useState("");
+  const arcs = useMemo(() => (names.length ? characterArc(text, names, lang) : null), [text, names, lang]);
+  const pacing = useMemo(() => pacingProfile(chapterSignals), [chapterSignals]);
+  const motifTerms = useMemo(() => motifRaw.split(/[,\n]+/).map((m) => m.trim()).filter(Boolean), [motifRaw]);
+  const motifs = useMemo(() => (motifTerms.length ? motifTracker(text, motifTerms, lang) : null), [text, motifTerms, lang]);
+  const th = lang === "th";
+  if (chapterSignals.length < 2) return null;
+  return (
+    <div className="space-y-4">
+      <h3 className="text-xs font-semibold tracking-widest text-gray-400 uppercase">
+        {th ? "ปัญญาการเล่าเรื่อง (นับได้ · ไม่ใช่คะแนน 0–100)" : "Narrative intelligence (counted · not a 0–100 score)"}
+      </h3>
+
+      {arcs && arcs.characters.some((c) => c.total > 0) && (
+        <div>
+          <p className="text-[0.65rem] text-gray-500 mb-1.5">{th ? "การปรากฏของตัวละครรายบท:" : "Character presence by chapter:"}</p>
+          <div className="space-y-1.5">
+            {arcs.characters.filter((c) => c.total > 0).map((c) => (
+              <div key={c.name} className="flex items-center gap-2 flex-wrap text-xs">
+                <span className="w-24 shrink-0 truncate text-gray-300" title={c.name}>{c.name}</span>
+                <PresenceStrip series={c.perChapter} />
+                <span className="text-[0.62rem] text-gray-500">{th ? "บท" : "ch"} {c.firstChapter}–{c.lastChapter}</span>
+                {c.gaps.length > 0 && <span className="text-[0.62rem] text-amber-300/90">⚠ {th ? "หายช่วงบท" : "gap ch"} {c.gaps.map((g) => `${g.from}-${g.to}`).join(", ")}</span>}
+                {c.exitsEarly && <span className="text-[0.62rem] text-orange-300/90">⚠ {th ? "หายก่อนจบ" : "exits early"}</span>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {pacing.acts.length > 0 && (
+        <div>
+          <p className="text-[0.65rem] text-gray-500 mb-1.5">{th ? "จังหวะรายองก์ (ค่าเฉลี่ยสัญญาณที่วัดได้):" : "Pacing by act (measured-signal averages):"}</p>
+          <div className="overflow-x-auto rounded-lg border border-white/10">
+            <table className="w-full text-[0.7rem]">
+              <thead>
+                <tr className="text-gray-500 border-b border-white/10">
+                  <th className="text-left px-2 py-1.5 font-medium">{th ? "องก์" : "Act"}</th>
+                  <th className="px-2 py-1.5 font-medium">{th ? "คำ/บท" : "words"}</th>
+                  <th className="px-2 py-1.5 font-medium">{th ? "บทพูด%" : "dialogue%"}</th>
+                  <th className="px-2 py-1.5 font-medium">{th ? "บอก/100" : "telling/100"}</th>
+                  <th className="px-2 py-1.5 font-medium">{th ? "ผัสสะ/1k" : "sensory/1k"}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pacing.acts.map((a) => (
+                  <tr key={a.act} className="border-b border-white/5 last:border-0">
+                    <td className="text-left px-2 py-1 text-gray-300">{th ? { beginning: "เปิด", middle: "กลาง", end: "ปิด" }[a.act] : a.act} <span className="text-gray-600">({a.chapters[0]}–{a.chapters[a.chapters.length - 1]})</span></td>
+                    <td className="px-2 py-1 text-center tabular-nums text-gray-400">{a.avgWords}</td>
+                    <td className="px-2 py-1 text-center tabular-nums text-gray-400">{a.avgDialogue}</td>
+                    <td className="px-2 py-1 text-center tabular-nums text-gray-400">{a.avgTelling}</td>
+                    <td className="px-2 py-1 text-center tabular-nums text-gray-400">{a.avgSensory}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {pacing.flags.map((f, i) => (
+            <p key={i} className="text-[0.62rem] text-cyan-300/80 mt-1">• {f}</p>
+          ))}
+        </div>
+      )}
+
+      <div>
+        <p className="text-[0.65rem] text-gray-500 mb-1">{th ? "ติดตาม motif/แก่น (ใส่คำ คั่นด้วยจุลภาค):" : "Track motifs/themes (comma-separated):"}</p>
+        <input
+          value={motifRaw}
+          onChange={(e) => setMotifRaw(e.target.value)}
+          placeholder={th ? "เช่น ดาบ, คำสัญญา, สายฝน" : "e.g. sword, promise, rain"}
+          className="w-full text-xs px-2.5 py-1.5 rounded border border-white/10 bg-white/5 text-gray-200 placeholder:text-gray-600 focus:border-[#c9a84c]/50 focus:outline-none"
+        />
+        {motifs && motifs.motifs.length > 0 && (
+          <div className="space-y-1.5 mt-2">
+            {motifs.motifs.map((m) => (
+              <div key={m.term} className="flex items-center gap-2 flex-wrap text-xs">
+                <span className="w-24 shrink-0 truncate text-gray-300" title={m.term}>{m.term}</span>
+                <PresenceStrip series={m.perChapter} />
+                <span className="text-[0.62rem] text-gray-500">{m.total}× · {th ? "อยู่" : "in"} {m.chaptersPresent}/{motifs.chapters} {th ? "บท" : "ch"}</span>
+                {m.longestAbsentRun >= 3 && <span className="text-[0.62rem] text-amber-300/90">⚠ {th ? "เงียบยาว" : "silent"} {m.longestAbsentRun} {th ? "บท" : "ch"}</span>}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+      <p className="text-[0.6rem] text-gray-500">
+        {th ? "ทุกค่าเป็นการนับ/ธงที่ตรวจซ้ำได้ · ไม่มีคะแนน consistency/arc/resonance แบบเดา (ดูชั้นญาณวิทยา)" : "Every value is a re-derivable count or flag · no invented consistency/arc/resonance score."}
+      </p>
+    </div>
+  );
+}
+
 /** The epistemic panel — the honesty engine made visible. It badges the analyzer's own
  *  outputs by WHAT KIND OF KNOWING each is (ประจักษ์ direct count → อนุมาน derived → สัญญา
  *  heuristic label), then shows the constructs Rush REFUSES to score and why. Foldable;
@@ -950,6 +1064,19 @@ export function ThaiAnalyzerModal({ onClose, initialText }: { onClose: () => voi
                 <RelationshipView text={dtext} lang="th" names={protect} />
               </div>
             )}
+            <div className="mt-4">
+              <NarrativeView
+                text={dtext}
+                lang="th"
+                names={protect}
+                chapterSignals={scan.map((c) => ({
+                  words: c.words,
+                  dialogueRatio: c.dialogueRatio,
+                  tellingPer100: c.words ? Math.round((c.telling / c.words) * 1000) / 10 : 0,
+                  sensoryPer1k: sensoryDensity(c.body, "th").per1k,
+                }))}
+              />
+            </div>
           </div>
         )}
         {a && (
