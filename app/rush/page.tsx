@@ -130,8 +130,15 @@ export default function RushPage() {
     refreshProjects();
     const params = new URLSearchParams(window.location.search);
     const pid = params.get("project");
+    const typeParam = params.get("type");
     if (pid) loadProject(pid);
-    else {
+    else if (typeParam && typeParam in BOOK_TYPES) {
+      // Deep-link from the /rush/explore landing: preselect a book type + genre.
+      const tk = typeParam as BookTypeKey;
+      setType(tk);
+      const g = params.get("genre");
+      setSubGenre(g && BOOK_TYPES[tk].sub_genres.includes(g) ? g : BOOK_TYPES[tk].sub_genres[0]);
+    } else {
       // Restore the last working draft (client-side) so a non-logged-in setup
       // — including the Story Bible / STATE — survives a reload.
       try {
