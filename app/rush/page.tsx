@@ -133,11 +133,24 @@ export default function RushPage() {
     const typeParam = params.get("type");
     if (pid) loadProject(pid);
     else if (typeParam && typeParam in BOOK_TYPES) {
-      // Deep-link from the /rush/explore landing: preselect a book type + genre.
+      // Deep-link from the /rush/explore landing or the /rush/start wizard:
+      // preselect book type + genre (+ optional length, prompt language, modules).
       const tk = typeParam as BookTypeKey;
       setType(tk);
       const g = params.get("genre");
       setSubGenre(g && BOOK_TYPES[tk].sub_genres.includes(g) ? g : BOOK_TYPES[tk].sub_genres[0]);
+      const ch = parseInt(params.get("chapters") ?? "", 10);
+      if (ch >= 1 && ch <= 100) setChapters(ch);
+      const w = parseInt(params.get("words") ?? "", 10);
+      if (w >= 100 && w <= 20000) setWordsPerChapter(w);
+      const pl = params.get("lang");
+      if (pl === "th" || pl === "en") { setPromptLanguage(pl); setPromptLangTouched(true); }
+      const grp = params.get("groups");
+      if (grp) {
+        const valid = new Set(MODULE_GROUPS.map((m) => m.key as string));
+        const chosen = grp.split(",").map((s) => s.trim()).filter((s) => valid.has(s)) as OptionalGroup[];
+        setGroups(chosen.length ? chosen : defaultGroupsFor(tk));
+      } else setGroups(defaultGroupsFor(tk));
     } else {
       // Restore the last working draft (client-side) so a non-logged-in setup
       // — including the Story Bible / STATE — survives a reload.
