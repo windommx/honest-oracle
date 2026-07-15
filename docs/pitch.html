@@ -1,0 +1,594 @@
+<title>NaraSuite — Honest Name & Life Intelligence</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --ink:        #0a0b12;
+    --ink-deep:   #06070d;
+    --surface:    #12141f;
+    --surface-2:  #171a27;
+    --line:       rgba(201,168,76,0.14);
+    --line-soft:  rgba(200,205,225,0.10);
+    --text:       #d3d5df;
+    --text-strong:#f3f2ee;
+    --muted:      #888ca0;
+    --gold:       #c9a84c;
+    --gold-lite:  #e7ce7d;
+    --gold-deep:  #9c8130;
+    --data:       #63cfc6;
+    --good:       #6cc083;
+    --warn:       #e0a13a;
+    --danger:     #e0705f;
+    --grad-gold:  linear-gradient(135deg,#e7ce7d 0%,#c9a84c 45%,#9c8130 100%);
+
+    --font-sans: system-ui,-apple-system,"Segoe UI","Noto Sans Thai","Leelawadee UI",Thonburi,Roboto,"Helvetica Neue",Arial,sans-serif;
+    --font-serif:"Iowan Old Style","Palatino Linotype",Palatino,"Noto Serif Thai",Georgia,"Times New Roman",serif;
+    --font-mono:"SF Mono","JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+
+    --maxw: 1120px;
+  }
+
+  @media (prefers-color-scheme: light) {
+    :root {
+      --ink:        #eef0f6;
+      --ink-deep:   #e6e8f1;
+      --surface:    #ffffff;
+      --surface-2:  #f7f8fc;
+      --line:       rgba(120,95,20,0.18);
+      --line-soft:  rgba(20,25,45,0.10);
+      --text:       #33384a;
+      --text-strong:#141625;
+      --muted:      #676c80;
+      --gold:       #8a6f22;
+      --gold-lite:  #a8862c;
+      --gold-deep:  #6f591c;
+      --data:       #1a877e;
+      --grad-gold:  linear-gradient(135deg,#a8862c 0%,#8a6f22 55%,#6f591c 100%);
+    }
+  }
+  :root[data-theme="dark"] {
+    --ink:#0a0b12; --ink-deep:#06070d; --surface:#12141f; --surface-2:#171a27;
+    --line:rgba(201,168,76,0.14); --line-soft:rgba(200,205,225,0.10);
+    --text:#d3d5df; --text-strong:#f3f2ee; --muted:#888ca0;
+    --gold:#c9a84c; --gold-lite:#e7ce7d; --gold-deep:#9c8130; --data:#63cfc6;
+    --grad-gold:linear-gradient(135deg,#e7ce7d 0%,#c9a84c 45%,#9c8130 100%);
+  }
+  :root[data-theme="light"] {
+    --ink:#eef0f6; --ink-deep:#e6e8f1; --surface:#ffffff; --surface-2:#f7f8fc;
+    --line:rgba(120,95,20,0.18); --line-soft:rgba(20,25,45,0.10);
+    --text:#33384a; --text-strong:#141625; --muted:#676c80;
+    --gold:#8a6f22; --gold-lite:#a8862c; --gold-deep:#6f591c; --data:#1a877e;
+    --grad-gold:linear-gradient(135deg,#a8862c 0%,#8a6f22 55%,#6f591c 100%);
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+
+  body {
+    margin: 0;
+    background:
+      radial-gradient(1200px 620px at 78% -8%, rgba(201,168,76,0.10), transparent 60%),
+      radial-gradient(900px 520px at 8% 4%, rgba(99,207,198,0.06), transparent 55%),
+      var(--ink);
+    color: var(--text);
+    font-family: var(--font-sans);
+    font-size: 17px;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  .wrap { max-width: var(--maxw); margin: 0 auto; padding: 0 24px; }
+
+  /* ---- top bar ---- */
+  header.bar {
+    position: sticky; top: 0; z-index: 40;
+    backdrop-filter: blur(12px);
+    background: color-mix(in srgb, var(--ink) 78%, transparent);
+    border-bottom: 1px solid var(--line-soft);
+  }
+  .bar .wrap { display: flex; align-items: center; justify-content: space-between; height: 66px; gap: 20px; }
+  .brand { display: flex; align-items: center; gap: 11px; font-weight: 600; letter-spacing: .01em; }
+  .brand .mark { width: 26px; height: 26px; flex: 0 0 26px; }
+  .brand .name { font-size: 1.12rem; background: var(--grad-gold); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  nav.top { display: flex; align-items: center; gap: 26px; }
+  nav.top a { color: var(--muted); text-decoration: none; font-size: .93rem; transition: color .18s; }
+  nav.top a:hover { color: var(--gold); }
+  .ghost {
+    border: 1px solid var(--line); color: var(--text-strong);
+    padding: 8px 16px; border-radius: 10px; font-size: .9rem; font-weight: 500;
+    transition: border-color .18s, background .18s;
+  }
+  .ghost:hover { border-color: var(--gold); background: color-mix(in srgb, var(--gold) 10%, transparent); }
+  @media (max-width: 780px){ nav.top a:not(.ghost){ display:none; } }
+
+  /* ---- shared ---- */
+  .eyebrow {
+    font-family: var(--font-mono); font-size: .74rem; letter-spacing: .22em;
+    text-transform: uppercase; color: var(--gold);
+    display: inline-flex; align-items: center; gap: 9px;
+  }
+  .eyebrow::before { content:""; width: 24px; height: 1px; background: var(--gold); opacity:.7; }
+  h1,h2,h3 { color: var(--text-strong); text-wrap: balance; margin: 0; }
+  .section { padding: 88px 0; border-top: 1px solid var(--line-soft); }
+  .section-head { max-width: 640px; margin-bottom: 44px; }
+  .section-head h2 { font-size: clamp(1.7rem, 3.4vw, 2.5rem); font-weight: 650; letter-spacing: -0.015em; margin: 16px 0 12px; }
+  .section-head p { color: var(--muted); font-size: 1.03rem; margin: 0; }
+
+  .btn {
+    display: inline-flex; align-items: center; gap: 9px; cursor: pointer;
+    font-weight: 600; font-size: .96rem; border-radius: 12px; padding: 13px 22px;
+    text-decoration: none; border: 1px solid transparent; transition: transform .15s, box-shadow .2s, background .2s;
+  }
+  .btn-gold { background: var(--grad-gold); color: #201800; box-shadow: 0 8px 26px -12px rgba(201,168,76,.7); }
+  .btn-gold:hover { transform: translateY(-2px); box-shadow: 0 14px 32px -12px rgba(201,168,76,.8); }
+  .btn-ghost { border-color: var(--line); color: var(--text-strong); }
+  .btn-ghost:hover { border-color: var(--gold); background: color-mix(in srgb, var(--gold) 8%, transparent); }
+  @media (prefers-reduced-motion: reduce){ .btn:hover{ transform:none; } }
+
+  .tag {
+    font-family: var(--font-mono); font-size: .72rem; letter-spacing: .04em;
+    padding: 3px 9px; border-radius: 6px; border: 1px solid var(--line);
+    color: var(--muted); background: color-mix(in srgb, var(--surface) 60%, transparent);
+    white-space: nowrap;
+  }
+
+  /* ---- hero ---- */
+  .hero { padding: 74px 0 40px; }
+  .hero-grid { display: grid; grid-template-columns: 1.02fr 1fr; gap: 54px; align-items: center; }
+  @media (max-width: 940px){ .hero-grid { grid-template-columns: 1fr; gap: 40px; } }
+  .hero h1 {
+    font-size: clamp(2.5rem, 6vw, 4.05rem); font-weight: 680;
+    line-height: 1.04; letter-spacing: -0.022em; margin: 22px 0 20px;
+  }
+  .hero h1 em { font-style: normal; background: var(--grad-gold); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .hero .lead { font-size: 1.14rem; color: var(--text); max-width: 34ch; margin: 0 0 30px; }
+  .hero .lead b { color: var(--text-strong); font-weight: 600; }
+  .cta-row { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 26px; }
+  .trust { display: flex; gap: 22px; flex-wrap: wrap; color: var(--muted); font-size: .84rem; }
+  .trust span { display: inline-flex; align-items: center; gap: 7px; }
+  .trust .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--data); box-shadow: 0 0 0 3px color-mix(in srgb, var(--data) 20%, transparent); }
+
+  /* ---- instrument panel (hero chart) ---- */
+  .panel {
+    background: linear-gradient(180deg, var(--surface-2), var(--surface));
+    border: 1px solid var(--line); border-radius: 18px; padding: 20px;
+    box-shadow: 0 30px 80px -40px rgba(0,0,0,.7);
+  }
+  .panel-top { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 6px; }
+  .panel-top .ttl { font-size: .95rem; color: var(--text-strong); font-weight: 600; }
+  .sig { font-family: var(--font-mono); font-size: .76rem; color: var(--gold); letter-spacing: .06em; }
+  .panel .sub { color: var(--muted); font-size: .8rem; margin: 0 0 12px; }
+  .chart-box { position: relative; border-radius: 12px; overflow: hidden; background: var(--ink-deep); border: 1px solid var(--line-soft); }
+  canvas { display: block; width: 100%; height: auto; }
+  .legend { display: flex; gap: 18px; margin-top: 12px; flex-wrap: wrap; }
+  .legend span { display: inline-flex; align-items: center; gap: 7px; font-size: .78rem; color: var(--muted); font-family: var(--font-mono); }
+  .swatch { width: 10px; height: 10px; border-radius: 3px; }
+  .panel-foot { margin-top: 14px; padding-top: 13px; border-top: 1px solid var(--line-soft); display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+  .stat { display: flex; flex-direction: column; }
+  .stat b { font-family: var(--font-mono); font-variant-numeric: tabular-nums; color: var(--text-strong); font-size: 1.02rem; }
+  .stat small { color: var(--muted); font-size: .72rem; letter-spacing: .03em; }
+
+  /* ---- paradigm ---- */
+  .pillars { display: grid; grid-template-columns: repeat(4,1fr); gap: 1px; background: var(--line-soft); border: 1px solid var(--line-soft); border-radius: 16px; overflow: hidden; }
+  @media (max-width: 860px){ .pillars { grid-template-columns: 1fr 1fr; } }
+  @media (max-width: 480px){ .pillars { grid-template-columns: 1fr; } }
+  .pillar { background: var(--surface); padding: 26px 22px; }
+  .pillar .k { font-family: var(--font-mono); font-size: .72rem; color: var(--data); letter-spacing: .08em; text-transform: uppercase; }
+  .pillar h3 { font-size: 1.06rem; font-weight: 620; margin: 12px 0 8px; }
+  .pillar p { margin: 0; color: var(--muted); font-size: .9rem; line-height: 1.55; }
+
+  /* ---- product catalog ---- */
+  .cat { display: grid; grid-template-columns: repeat(3,1fr); gap: 18px; }
+  @media (max-width: 900px){ .cat { grid-template-columns: 1fr 1fr; } }
+  @media (max-width: 580px){ .cat { grid-template-columns: 1fr; } }
+  .card {
+    background: var(--surface); border: 1px solid var(--line-soft); border-radius: 16px; padding: 24px;
+    display: flex; flex-direction: column; gap: 12px; transition: transform .18s, border-color .18s;
+    position: relative;
+  }
+  .card:hover { transform: translateY(-3px); border-color: var(--line); }
+  @media (prefers-reduced-motion: reduce){ .card:hover{ transform:none; } }
+  .card.feature { grid-column: span 1; border-color: var(--line); background: linear-gradient(180deg, color-mix(in srgb,var(--gold) 7%, var(--surface)), var(--surface)); }
+  .card .cname { font-size: 1.18rem; font-weight: 640; color: var(--text-strong); display:flex; align-items:center; gap:9px; }
+  .card .cdesc { color: var(--muted); font-size: .92rem; margin: -4px 0 4px; }
+  .card .tags { display: flex; flex-wrap: wrap; gap: 7px; margin-top: auto; }
+  .card .price { font-family: var(--font-mono); font-variant-numeric: tabular-nums; color: var(--gold); font-weight: 600; font-size: .92rem; }
+  .cnum { font-family: var(--font-mono); font-size: .7rem; color: var(--muted); position:absolute; top:20px; right:22px; letter-spacing:.05em; }
+
+  /* ---- pricing ---- */
+  .plans { display: grid; grid-template-columns: repeat(3,1fr); gap: 18px; }
+  @media (max-width: 820px){ .plans { grid-template-columns: 1fr; max-width: 460px; } }
+  .plan { background: var(--surface); border: 1px solid var(--line-soft); border-radius: 18px; padding: 28px 24px; display:flex; flex-direction:column; gap: 16px; }
+  .plan.hot { border-color: var(--gold); box-shadow: 0 24px 60px -34px rgba(201,168,76,.55); position: relative; }
+  .plan .badge { position:absolute; top:-11px; left: 24px; font-family: var(--font-mono); font-size:.68rem; letter-spacing:.12em; text-transform:uppercase; background: var(--grad-gold); color:#201800; padding: 3px 11px; border-radius: 20px; font-weight:700; }
+  .plan .pname { font-size: 1.05rem; font-weight: 640; color: var(--text-strong); }
+  .plan .amt { display: flex; align-items: baseline; gap: 6px; }
+  .plan .amt b { font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-size: 2.15rem; color: var(--text-strong); letter-spacing: -0.02em; }
+  .plan .amt s { color: var(--muted); text-decoration: none; font-size: .9rem; }
+  .plan ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+  .plan li { font-size: .9rem; color: var(--text); display: flex; gap: 10px; align-items: flex-start; }
+  .plan li::before { content: "✓"; color: var(--good); font-weight: 700; flex: 0 0 auto; }
+  .alc { margin-top: 26px; border: 1px dashed var(--line); border-radius: 14px; padding: 18px 22px; display: flex; flex-wrap: wrap; gap: 10px 26px; align-items: center; }
+  .alc .lbl { font-family: var(--font-mono); font-size: .74rem; letter-spacing:.1em; text-transform: uppercase; color: var(--muted); }
+  .alc .item { font-size: .9rem; color: var(--text); }
+  .alc .item b { font-family: var(--font-mono); color: var(--gold); }
+
+  /* ---- manifesto ---- */
+  .manifesto { border-top: 1px solid var(--line-soft); }
+  .manifesto .wrap { padding: 92px 24px; }
+  .manifesto blockquote {
+    margin: 0; font-family: var(--font-serif); font-size: clamp(1.5rem, 3.6vw, 2.35rem);
+    line-height: 1.34; color: var(--text-strong); max-width: 20ch; letter-spacing: .005em;
+  }
+  .manifesto blockquote em { font-style: italic; color: var(--gold); }
+  .manifesto .note { margin-top: 26px; max-width: 56ch; color: var(--muted); font-size: .98rem; }
+  .manifesto .note b { color: var(--data); font-family: var(--font-mono); font-size: .82rem; letter-spacing: .08em; text-transform: uppercase; }
+
+  footer { border-top: 1px solid var(--line-soft); }
+  footer .wrap { padding: 34px 24px; display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; color: var(--muted); font-size: .85rem; }
+  footer a { color: var(--muted); text-decoration: none; }
+  footer a:hover { color: var(--gold); }
+
+  a:focus-visible, .btn:focus-visible, .ghost:focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; border-radius: 8px; }
+</style>
+
+<header class="bar">
+  <div class="wrap">
+    <div class="brand">
+      <svg class="mark" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M3 8l4 4 5-8 5 8 4-4-2 12H5L3 8z" fill="url(#g)" stroke="none"/>
+        <defs><linearGradient id="g" x1="0" y1="0" x2="24" y2="24">
+          <stop offset="0" stop-color="#e7ce7d"/><stop offset="1" stop-color="#9c8130"/>
+        </linearGradient></defs>
+      </svg>
+      <span class="name">NaraSuite</span>
+    </div>
+    <nav class="top">
+      <a href="#paradigm">แนวคิด</a>
+      <a href="#products">สินค้า</a>
+      <a href="#pricing">ราคา</a>
+      <a href="#api">API</a>
+      <a href="#" class="ghost">เข้าสู่ระบบ</a>
+    </nav>
+  </div>
+</header>
+
+<section class="hero wrap">
+  <div class="hero-grid">
+    <div>
+      <span class="eyebrow">Full-Stack Thai Name &amp; Life Intelligence</span>
+      <h1>ดูดวงที่<br><em>ซื่อสัตย์</em> กับคุณ</h1>
+      <p class="lead">ระบบวิเคราะห์ชื่อและ<b>แผนที่ชีวิต 100 ปี</b>ที่คำนวณได้ ทำซ้ำได้ และบอกตรง ๆ ว่ามันคือเครื่องมือสะท้อนตน — <b>ไม่ใช่คำทำนาย</b></p>
+      <div class="cta-row">
+        <a href="#products" class="btn btn-gold">ดูสินค้าทั้งหมด →</a>
+        <a href="#pricing" class="btn btn-ghost">แพ็กเกจ &amp; ราคา</a>
+      </div>
+      <div class="trust">
+        <span><i class="dot"></i>ผลเดิมทุกครั้ง (Deterministic)</span>
+        <span><i class="dot"></i>Public API พร้อมใช้</span>
+        <span><i class="dot"></i>โปร่งใส ตรวจสอบได้</span>
+      </div>
+    </div>
+
+    <div class="panel" aria-label="ตัวอย่างแผนที่ชีวิต 100 ปี">
+      <div class="panel-top">
+        <span class="ttl">Honest Oracle · แผนที่ชีวิต 100 ปี</span>
+        <span class="sig" id="sig">HO-9F2A-71C4</span>
+      </div>
+      <p class="sub">แบบจำลองเชิงโครงสร้าง ผูกกับข้อมูลนำเข้า — seed เดียวกันได้กราฟเดียวกันเสมอ</p>
+      <div class="chart-box"><canvas id="life" width="640" height="300"></canvas></div>
+      <div class="legend">
+        <span><i class="swatch" style="background:var(--good)"></i>จังหวะเติบโต</span>
+        <span><i class="swatch" style="background:var(--warn)"></i>จังหวะทบทวน</span>
+        <span><i class="swatch" style="background:var(--danger)"></i>จังหวะระวัง</span>
+      </div>
+      <div class="panel-foot">
+        <div class="stat"><b id="s-score">72</b><small>คะแนนภาพรวม /100</small></div>
+        <div class="stat"><b>100</b><small>จุดข้อมูล (อายุ 0–99)</small></div>
+        <div class="stat"><b>4</b><small>ธาตุ · 12 ภพ · 10 ดาว</small></div>
+        <div class="stat"><b id="s-turn">—</b><small>จุดเปลี่ยนที่พบ</small></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="paradigm">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="eyebrow">Paradigm · กระบวนทัศน์</span>
+      <h2>ทำไมถึงเรียกว่า “Honest”</h2>
+      <p>สี่หลักที่อยู่เบื้องหลังทุกผลลัพธ์ — และเป็นสิ่งที่คู่แข่งเลียนแบบได้ยาก</p>
+    </div>
+    <div class="pillars">
+      <div class="pillar">
+        <span class="k">Transparent</span>
+        <h3>สะท้อนตน ไม่ใช่คำทำนาย</h3>
+        <p>ทุกผลลัพธ์กำกับชัดว่าเป็นเครื่องมือช่วยตัดสินใจ ไม่การันตีชะตา — จุดยืนเชิงจริยธรรมที่เป็นตัวแบรนด์</p>
+      </div>
+      <div class="pillar">
+        <span class="k">Deterministic</span>
+        <h3>ผลเดิมทุกครั้ง</h3>
+        <p>ผูกกับ seed จากชื่อ + วันเกิด + เวลา + สถานที่ ไม่สุ่มรายครั้ง แชร์ลิงก์แล้วได้ผลเดิม สร้างลายเซ็นเฉพาะตัว</p>
+      </div>
+      <div class="pillar">
+        <span class="k">MCAS</span>
+        <h3>โหราศาสตร์ที่คำนวณได้</h3>
+        <p>กาลกิณี · เลขศาสตร์ · วรรคทักษา · สัทศาสตร์ · ธาตุ 5 มิติ → แปลงเป็นสกอร์หลายเกณฑ์ที่ integrate ผ่าน API ได้</p>
+      </div>
+      <div class="pillar">
+        <span class="k">Fail-closed</span>
+        <h3>กล้ารายงานตามจริง</h3>
+        <p>เมื่อผลไม่แน่นอน ถือว่า “ยังไม่ผ่าน” ไม่กลบ — มาจาก validation harness ที่ตรวจได้ว่าโมเดลมี skill จริงหรือไม่</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="products">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="eyebrow">Product Line · สายสินค้า</span>
+      <h2>ห้าบริการ หนึ่งแบรนด์</h2>
+      <p>ครบวงจรตั้งแต่ชื่อบุคคล องค์กร เด็กแรกเกิด ไปจนถึงแผนที่ชีวิต — cross-sell ในระบบเดียว</p>
+    </div>
+    <div class="cat">
+      <div class="card">
+        <span class="cname">NaraName</span>
+        <p class="cdesc">วิเคราะห์ชื่อบุคคล เชิงลึกหลายมิติ</p>
+        <div class="tags"><span class="tag">กาลกิณี</span><span class="tag">เลขศาสตร์</span><span class="tag">วรรคทักษา</span><span class="tag">สัทศาสตร์</span></div>
+        <span class="price">฿99 / ครั้ง · หรือใน Pro</span>
+      </div>
+      <div class="card">
+        <span class="cname">NaraCorp</span>
+        <p class="cdesc">วิเคราะห์ชื่อแบรนด์ / องค์กร</p>
+        <div class="tags"><span class="tag">CAI/MCAI</span><span class="tag">Resonant Triangle</span><span class="tag">Corporate Taksa</span><span class="tag">Shadow Power</span></div>
+        <span class="price">฿990 / ครั้ง · B2B</span>
+      </div>
+      <div class="card">
+        <span class="cname">NaraChild</span>
+        <p class="cdesc">ตั้งชื่อเด็กแรกเกิด พร้อมชื่อแนะนำ</p>
+        <div class="tags"><span class="tag">Warakkasa by Gender</span><span class="tag">Ayatana 6</span><span class="tag">Development Goals</span></div>
+        <span class="price">฿499 / ครั้ง</span>
+      </div>
+      <div class="card">
+        <span class="cname">NaraRename</span>
+        <p class="cdesc">แผนเปลี่ยนชื่อเดิมให้มงคล</p>
+        <div class="tags"><span class="tag">7-Step Protocol</span><span class="tag">Soft Transition</span><span class="tag">Problem Analysis</span></div>
+        <span class="price">฿699 / ครั้ง</span>
+      </div>
+      <div class="card feature">
+        <span class="cname">Honest Oracle ✦</span>
+        <p class="cdesc">แผนที่ชีวิต 100 ปี — สินค้าเรือธง</p>
+        <div class="tags"><span class="tag">Life Graph</span><span class="tag">Timeline</span><span class="tag">รายงานเชิงลึก</span><span class="tag">Premium API</span></div>
+        <span class="price">PDF ฿199 · หรือ Subscription</span>
+      </div>
+      <div class="card">
+        <span class="cname">OMNISIM</span>
+        <p class="cdesc">Toolkit สาย technical (Model Integrity)</p>
+        <div class="tags"><span class="tag">Validation Harness</span><span class="tag">Social-Dynamics</span><span class="tag">Python SDK</span></div>
+        <span class="price">Open-core + License</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="pricing">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="eyebrow">Pricing · แพ็กเกจ</span>
+      <h2>เริ่มฟรี อัปเกรดเมื่อพร้อม</h2>
+      <p>ราคาบนคุณค่าที่ทำซ้ำได้และ integrate ได้ ไม่ใช่ขายความกลัว</p>
+    </div>
+    <div class="plans">
+      <div class="plan">
+        <div class="pname">Free</div>
+        <div class="amt"><b>฿0</b></div>
+        <ul>
+          <li>วิเคราะห์จำกัด/วัน</li>
+          <li>เก็บประวัติ</li>
+          <li>แชร์ลิงก์ (manual)</li>
+        </ul>
+        <a href="#" class="btn btn-ghost">เริ่มใช้งาน</a>
+      </div>
+      <div class="plan hot">
+        <span class="badge">แนะนำ</span>
+        <div class="pname">Pro</div>
+        <div class="amt"><b>฿299</b><span style="color:var(--muted)">/เดือน</span></div>
+        <ul>
+          <li>ไม่จำกัดจำนวน/วัน</li>
+          <li>ทุก SKU สำหรับผู้บริโภค</li>
+          <li>Export รายงาน PDF</li>
+          <li>ประวัติยาวขึ้น</li>
+        </ul>
+        <a href="#" class="btn btn-gold">อัปเกรด Pro</a>
+      </div>
+      <div class="plan">
+        <div class="pname">Premium</div>
+        <div class="amt"><b>฿599</b><span style="color:var(--muted)">/เดือน</span></div>
+        <ul>
+          <li>ทุกอย่างใน Pro</li>
+          <li>Public API + API keys</li>
+          <li>โควตา API รายวัน</li>
+          <li>เหมาะกับนักพัฒนา</li>
+        </ul>
+        <a href="#" class="btn btn-ghost">ขอ Premium</a>
+      </div>
+    </div>
+    <div class="alc">
+      <span class="lbl">รายชิ้น (à la carte)</span>
+      <span class="item">Honest Oracle PDF <b>฿199</b></span>
+      <span class="item">ของขวัญ e-cert <b>฿249</b></span>
+      <span class="item">แพ็กครอบครัว ×3 <b>฿499</b></span>
+      <span class="item">NaraCorp Enterprise <b>฿9,900+</b></span>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="api">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="eyebrow">Developer API · B2D</span>
+      <h2>เอา engine ไปต่อยอด</h2>
+      <p>ขาย API key พร้อมโควตารายวัน — มีโครงระบบ usage + billing พร้อมแล้ว</p>
+    </div>
+    <div class="plans">
+      <div class="plan">
+        <div class="pname">API Starter</div>
+        <div class="amt"><b>฿599</b><span style="color:var(--muted)">/เดือน</span></div>
+        <ul><li>~500 calls/วัน</li><li>แอปเล็ก / ทดลอง</li></ul>
+      </div>
+      <div class="plan">
+        <div class="pname">API Growth</div>
+        <div class="amt"><b>฿1,990</b><span style="color:var(--muted)">/เดือน</span></div>
+        <ul><li>~5,000 calls/วัน</li><li>แอปที่มีผู้ใช้จริง</li></ul>
+      </div>
+      <div class="plan">
+        <div class="pname">API Scale</div>
+        <div class="amt"><b>฿5,900</b><span style="color:var(--muted)">/เดือน</span></div>
+        <ul><li>~20,000 calls/วัน + SLA</li><li>ผู้ให้บริการรายใหญ่ / White-label</li></ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="manifesto">
+  <div class="wrap">
+    <span class="eyebrow">Transparency</span>
+    <blockquote style="margin-top:20px">เราไม่ขาย<em>คำทำนาย</em> เราขายเครื่องมือที่ช่วยให้คุณ<em>คิดให้ชัด</em></blockquote>
+    <p class="note"><b>หมายเหตุ</b><br>ทุกผลิตภัณฑ์ในตระกูลนี้เป็นเครื่องมือเพื่อการสะท้อนตนและประกอบการตัดสินใจ ไม่ใช่การทำนายอนาคตหรือการรับรองผลในชีวิตจริง — และนั่นคือสิ่งที่ทำให้แบรนด์นี้น่าเชื่อถือ</p>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div class="brand" style="font-size:.95rem"><span class="name">NaraSuite</span> · Honest Oracle</div>
+    <div>© 2026 NaraSuite — ระบบวิเคราะห์ชื่อมงคล &amp; แผนที่ชีวิต · <a href="#products">สินค้า</a> · <a href="#pricing">ราคา</a></div>
+  </div>
+</footer>
+
+<script>
+(function () {
+  // deterministic seeded generator — mirrors the real Honest Oracle engine
+  function mulberry32(seed) {
+    return function () {
+      let t = (seed += 0x6d2b79f5);
+      t = Math.imul(t ^ (t >>> 15), t | 1);
+      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+  const clamp = (n, a, b) => Math.min(b, Math.max(a, n));
+  const rnd = mulberry32(0x9f2a71c4);
+  const base = 62;
+  const pts = [];
+  for (let age = 0; age < 100; age++) {
+    const wave = 16 * Math.sin((age / 11) * Math.PI * 2) + 10 * Math.sin((age / 27) * Math.PI * 2);
+    const noise = (rnd() - 0.5) * 16;
+    pts.push(clamp(Math.round(base + wave + noise), 0, 100));
+  }
+
+  // turning points
+  let turns = 0;
+  for (let i = 2; i < pts.length - 2; i++) {
+    const p = pts[i-1], c = pts[i], n = pts[i+1];
+    if ((c > p && c > n) || (c < p && c < n)) turns++;
+  }
+  document.getElementById('s-turn').textContent = turns;
+  document.getElementById('s-score').textContent = Math.round(pts.reduce((a,b)=>a+b,0)/pts.length);
+
+  const cv = document.getElementById('life');
+  const ctx = cv.getContext('2d');
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+  function css(v){ return getComputedStyle(document.documentElement).getPropertyValue(v).trim(); }
+
+  function resize() {
+    const w = cv.clientWidth, h = cv.clientHeight || 300;
+    cv.width = w * dpr; cv.height = h * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    return { w, h };
+  }
+
+  function draw(progress) {
+    const { w, h } = resize();
+    const padL = 34, padR = 14, padT = 16, padB = 24;
+    const gw = w - padL - padR, gh = h - padT - padB;
+    ctx.clearRect(0, 0, w, h);
+
+    const X = i => padL + (i / 99) * gw;
+    const Y = v => padT + (1 - v / 100) * gh;
+
+    // zone bands
+    const bands = [
+      { from: 70, to: 100, c: css('--good') },
+      { from: 45, to: 70,  c: css('--warn') },
+      { from: 0,  to: 45,  c: css('--danger') },
+    ];
+    bands.forEach(b => {
+      ctx.globalAlpha = 0.08;
+      ctx.fillStyle = b.c;
+      ctx.fillRect(padL, Y(b.to), gw, Y(b.from) - Y(b.to));
+    });
+    ctx.globalAlpha = 1;
+
+    // grid + y labels
+    ctx.strokeStyle = css('--line-soft');
+    ctx.fillStyle = css('--muted');
+    ctx.font = '10px ui-monospace, monospace';
+    ctx.lineWidth = 1;
+    [0, 50, 100].forEach(v => {
+      ctx.beginPath(); ctx.moveTo(padL, Y(v)); ctx.lineTo(w - padR, Y(v)); ctx.stroke();
+      ctx.fillText(String(v), 8, Y(v) + 3);
+    });
+    [0, 25, 50, 75, 99].forEach(a => {
+      ctx.fillText(a === 99 ? '99' : String(a), X(a) - 6, h - 7);
+    });
+
+    // area + line up to progress
+    const last = Math.max(1, Math.floor(99 * progress));
+    const grad = ctx.createLinearGradient(0, padT, 0, padT + gh);
+    grad.addColorStop(0, 'rgba(201,168,76,0.28)');
+    grad.addColorStop(1, 'rgba(201,168,76,0)');
+    ctx.beginPath();
+    ctx.moveTo(X(0), Y(pts[0]));
+    for (let i = 1; i <= last; i++) ctx.lineTo(X(i), Y(pts[i]));
+    ctx.lineTo(X(last), padT + gh); ctx.lineTo(X(0), padT + gh); ctx.closePath();
+    ctx.fillStyle = grad; ctx.fill();
+
+    ctx.beginPath();
+    ctx.moveTo(X(0), Y(pts[0]));
+    for (let i = 1; i <= last; i++) ctx.lineTo(X(i), Y(pts[i]));
+    ctx.strokeStyle = css('--gold'); ctx.lineWidth = 2.4;
+    ctx.lineJoin = 'round'; ctx.stroke();
+
+    // endpoint marker
+    ctx.beginPath();
+    ctx.arc(X(last), Y(pts[last]), 4.2, 0, Math.PI * 2);
+    ctx.fillStyle = css('--gold-lite'); ctx.fill();
+    ctx.strokeStyle = css('--ink-deep'); ctx.lineWidth = 2; ctx.stroke();
+  }
+
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (reduce) {
+    draw(1);
+  } else {
+    let start = null;
+    function step(ts) {
+      if (!start) start = ts;
+      const p = Math.min(1, (ts - start) / 1400);
+      const eased = 1 - Math.pow(1 - p, 3);
+      draw(eased);
+      if (p < 1) requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  }
+
+  let rt;
+  window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => draw(1), 120); });
+  const mq = window.matchMedia('(prefers-color-scheme: dark)');
+  mq.addEventListener && mq.addEventListener('change', () => draw(1));
+  const obs = new MutationObserver(() => draw(1));
+  obs.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+})();
+</script>
