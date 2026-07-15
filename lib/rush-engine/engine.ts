@@ -22,6 +22,7 @@ export * from "./rename";
 export * from "./relationships";
 export * from "./radar";
 export * from "./narrative";
+export * from "./thai-structures";
 export * from "./epistemics";
 export { TH_GROUP_LABEL } from "./th";
 

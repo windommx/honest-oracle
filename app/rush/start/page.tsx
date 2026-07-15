@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { ArrowRight, ArrowLeft, Check } from "lucide-react";
-import { BOOK_TYPES, MODULE_GROUPS, defaultGroupsFor, type BookTypeKey } from "@/lib/rush-engine/engine";
+import { BOOK_TYPES, MODULE_GROUPS, defaultGroupsFor, NARRATIVE_STRUCTURES, type BookTypeKey } from "@/lib/rush-engine/engine";
 
 type GroupKey = (typeof MODULE_GROUPS)[number]["key"];
 const STEPS = ["ประเภท", "แนวย่อย + ภาษา", "ความยาว", "โมดูลเสริม", "สรุป"];
@@ -16,6 +16,7 @@ export default function RushStart() {
   const [chapters, setChapters] = useState(BOOK_TYPES.novel.default_chapters);
   const [words, setWords] = useState(BOOK_TYPES.novel.default_words);
   const [groups, setGroups] = useState<GroupKey[]>(defaultGroupsFor("novel"));
+  const [structure, setStructure] = useState<string>(""); // "" = โครงมาตรฐาน (3 องก์)
 
   // Picking a type resets the downstream defaults to that type's.
   const chooseType = (key: BookTypeKey) => {
@@ -25,14 +26,16 @@ export default function RushStart() {
     setChapters(t.default_chapters);
     setWords(t.default_words);
     setGroups(defaultGroupsFor(key));
+    setStructure("");
   };
   const toggleGroup = (k: GroupKey) => setGroups((p) => (p.includes(k) ? p.filter((x) => x !== k) : [...p, k]));
 
   const href = useMemo(() => {
     const q = new URLSearchParams({ type, genre, lang, chapters: String(chapters), words: String(words) });
     if (groups.length) q.set("groups", groups.join(","));
+    if (structure) q.set("structure", structure);
     return `/rush?${q.toString()}`;
-  }, [type, genre, lang, chapters, words, groups]);
+  }, [type, genre, lang, chapters, words, groups, structure]);
 
   const canNext = step < STEPS.length - 1;
   const t = BOOK_TYPES[type];
@@ -106,6 +109,32 @@ export default function RushStart() {
                 </button>
               ))}
             </div>
+
+            {type === "novel" && lang === "th" && (
+              <div className="mt-6">
+                <h3 className="text-sm font-semibold mb-1">โครงเรื่อง (ทางเลือกไทย/เอเชีย)</h3>
+                <p className="text-[0.7rem] text-gray-500 mb-2">เลือกโครงพื้นถิ่นแทน 3 องก์ตะวันตก — จะฝัง beat รายบทลงใน prompt ภาษาไทย</p>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <button
+                    onClick={() => setStructure("")}
+                    className={`rounded-xl border p-3 text-left transition ${structure === "" ? "border-[#c9a84c] bg-[#c9a84c]/[0.06]" : "border-white/10 hover:border-white/25"}`}
+                  >
+                    <span className="block text-sm font-medium text-gray-100">โครงมาตรฐาน (3 องก์)</span>
+                    <span className="block text-[0.66rem] text-gray-500 mt-0.5">conflict → climax → resolution</span>
+                  </button>
+                  {NARRATIVE_STRUCTURES.map((s) => (
+                    <button
+                      key={s.id}
+                      onClick={() => setStructure(s.id)}
+                      className={`rounded-xl border p-3 text-left transition ${structure === s.id ? "border-[#c9a84c] bg-[#c9a84c]/[0.06]" : "border-white/10 hover:border-white/25"}`}
+                    >
+                      <span className="block text-sm font-medium text-gray-100">{s.thai}</span>
+                      <span className="block text-[0.66rem] text-gray-500 mt-0.5">{s.origin}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </section>
         )}
 
@@ -164,6 +193,7 @@ export default function RushStart() {
                 ["ประเภท", `${t.icon} ${t.label}`],
                 ["แนวย่อย", genre.replace(/_/g, " ")],
                 ["ภาษา prompt", lang === "th" ? "ไทย" : "อังกฤษ"],
+                ["โครงเรื่อง", structure ? (NARRATIVE_STRUCTURES.find((s) => s.id === structure)?.thai ?? structure) : "มาตรฐาน (3 องก์)"],
                 ["ความยาว", `${chapters} บท × ${words.toLocaleString()} คำ (~${(chapters * words).toLocaleString()} คำ)`],
                 ["โมดูลเสริม", groups.length ? groups.map((k) => MODULE_GROUPS.find((m) => m.key === k)?.label).join(", ") : "core เท่านั้น"],
               ].map(([k, v]) => (

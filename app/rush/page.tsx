@@ -74,6 +74,7 @@ export default function RushPage() {
   const couplePrimed = useRef(false);
 
   const [groups, setGroups] = useState<OptionalGroup[]>(defaultGroupsFor("nonfiction"));
+  const [structure, setStructure] = useState<string>("");
   const [prompts, setPrompts] = useState<GeneratedPrompt[]>([]);
   const [openId, setOpenId] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -111,8 +112,9 @@ export default function RushPage() {
       outline: outline || undefined,
       storyBible: storyBible || undefined,
       promptLanguage,
+      structure: structure || undefined,
     }),
-    [type, title, thesis, reader, voice, chapters, wordsPerChapter, subGenre, citationStyle, language, outline, storyBible, promptLanguage]
+    [type, title, thesis, reader, voice, chapters, wordsPerChapter, subGenre, citationStyle, language, outline, storyBible, promptLanguage, structure]
   );
 
   const totalWords = chapters * wordsPerChapter;
@@ -151,6 +153,8 @@ export default function RushPage() {
         const chosen = grp.split(",").map((s) => s.trim()).filter((s) => valid.has(s)) as OptionalGroup[];
         setGroups(chosen.length ? chosen : defaultGroupsFor(tk));
       } else setGroups(defaultGroupsFor(tk));
+      const st = params.get("structure");
+      if (st) setStructure(st);
     } else {
       // Restore the last working draft (client-side) so a non-logged-in setup
       // — including the Story Bible / STATE — survives a reload.

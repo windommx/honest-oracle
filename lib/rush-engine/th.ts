@@ -5,6 +5,7 @@
 
 import { BOOK_TYPES } from "./book-types";
 import { parseOutline } from "./outline";
+import { structureGuidanceTh } from "./thai-structures";
 import {
   moduleDialectIsan,
   moduleDialectNorth,
@@ -233,7 +234,11 @@ const TH_NF_STRUCT: Record<string, string> = {
 
 function thChapterBody(config: BookConfig, chapter: ChapterPlan): string {
   if (config.type === "novel") {
-    let p = `═══ คำสั่งฉาก ═══\nประเภทฉาก: ${chapter.sceneType}\nองก์: ${chapter.act}\nระดับความตึงเครียด: ${Math.round((chapter.tensionLevel ?? 0) * 100)}%\n\n`;
+    // When the writer picked a Thai/Asian structure, lead with its per-chapter beat.
+    // No structure → empty string → prompt unchanged (existing snapshots stay valid).
+    let p = structureGuidanceTh(config.structure, chapter.number, config.chapters);
+    if (p) p += "\n";
+    p += `═══ คำสั่งฉาก ═══\nประเภทฉาก: ${chapter.sceneType}\nองก์: ${chapter.act}\nระดับความตึงเครียด: ${Math.round((chapter.tensionLevel ?? 0) * 100)}%\n\n`;
     p += `═══ โครงสร้าง ═══\n` + (TH_NOVEL_STRUCT[chapter.sceneType ?? ""] ?? `1. เปิดฉากด้วยรายละเอียดประสาทสัมผัส\n2. พัฒนา: ความขัดแย้ง + ปฏิสัมพันธ์ตัวละคร\n3. จุดพลิก/เปิดเผย\n4. จบด้วยแรงส่งไปข้างหน้า`);
     if ((chapter.tensionLevel ?? 0) > 0.7) {
       p += `\n\n⚠ บทตึงเครียดสูง — รักษาจังหวะ:\n- ประโยค/ย่อหน้าสั้นลง\n- ตัดฉากเร็วขึ้น\n- บรรยายเท่าที่จำเป็น\n- ความคิดในใจเฉพาะจุดสำคัญ`;
