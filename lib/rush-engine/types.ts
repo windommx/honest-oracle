@@ -48,6 +48,9 @@ export interface BookConfig {
   storyBible?: string;
   /** Language of the prompt scaffolding itself (not the book output). */
   promptLanguage?: "en" | "th";
+  /** Chosen narrative structure id (see thai-structures.ts). When set for fiction, its
+   *  per-chapter beat guidance is injected into the Thai chapter prompt. */
+  structure?: string;
 }
 
 export interface ChapterPlan {

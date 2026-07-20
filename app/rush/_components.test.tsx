@@ -75,6 +75,71 @@ describe("ThaiAnalyzerModal", () => {
     expect(screen.getByText(/ดาวน์โหลดฉบับที่เปลี่ยนชื่อแล้ว/)).toBeTruthy();
   });
 
+  it("shows the epistemic panel: tiers of knowing and the refused constructs", () => {
+    render(<ThaiAnalyzerModal onClose={() => {}} />);
+    fireEvent.change(screen.getByPlaceholderText(/วางข้อความภาษาไทย/), {
+      target: { value: "แสงจ้าเป็นประกาย เสียงดังก้อง เธอเงียบ รู้สึกกลัวจับใจ เดินจากไป" },
+    });
+    // The honesty panel is present with the yathābhūta banner…
+    expect(screen.getByText(/ญาณวิทยา/)).toBeTruthy();
+    expect(screen.getByText(/ยถาภูต/)).toBeTruthy();
+    // …and expands to reveal the refused 0–100 constructs by name.
+    fireEvent.click(screen.getByText(/ญาณวิทยา/));
+    expect(screen.getByText(/โมเมนตัม/)).toBeTruthy();
+    expect(screen.getByText(/เกินวิสัยของเครื่องนี้/)).toBeTruthy();
+  });
+
+  it("suggests standard Thai spellings for informal loanwords", () => {
+    render(<ThaiAnalyzerModal onClose={() => {}} />);
+    fireEvent.change(screen.getByPlaceholderText(/วางข้อความภาษาไทย/), {
+      target: { value: "เขาจะอัพเดทข้อมูลแล้วเช็คอีเมล์ทุกวัน เขาจะอัพเดทข้อมูลอีกครั้ง" },
+    });
+    expect(screen.getByText(/คำ\/การสะกด/)).toBeTruthy();
+    expect(screen.getByText(/อัปเดต/)).toBeTruthy(); // อัพเดท → อัปเดต
+  });
+
+  it("adds a sensory column to the per-chapter heatmap", () => {
+    render(<ThaiAnalyzerModal onClose={() => {}} />);
+    fireEvent.change(screen.getByPlaceholderText(/วางข้อความภาษาไทย/), {
+      target: {
+        value:
+          "## บทที่ 1\nแสงจ้าเป็นประกาย กลิ่นดินหอมกรุ่น เสียงลมหวีดดังก้อง\n" +
+          "## บทที่ 2\nรุ่งเช้าเธอเดินเข้าเมือง ผู้คนพลุกพล่านเนืองแน่น",
+      },
+    });
+    fireEvent.click(screen.getByText(/สแกนรายบท/));
+    expect(screen.getByText(/ผัสสะ\/1k/)).toBeTruthy();
+  });
+
+  it("checks a Thai→English translation for per-chapter length drift", () => {
+    render(<ThaiAnalyzerModal onClose={() => {}} />);
+    fireEvent.change(screen.getByPlaceholderText(/วางข้อความภาษาไทย/), {
+      target: { value: "## บทที่ 1\nเธอเดินไป\n## บทที่ 2\nเขายืนรอ" },
+    });
+    fireEvent.click(screen.getByText(/ตรวจการแปล/));
+    fireEvent.change(screen.getByPlaceholderText(/วางคำแปลภาษาอังกฤษ/), {
+      target: { value: "## 1\nShe walked away slowly.\n## 2\nHe stood waiting." },
+    });
+    expect(screen.getByText(/ความยาวรายบท/)).toBeTruthy();
+  });
+
+  it("shows deterministic narrative intelligence — presence, pacing, motifs — never a 0–100 score", () => {
+    render(<ThaiAnalyzerModal onClose={() => {}} />);
+    fireEvent.change(screen.getByPlaceholderText(/วางข้อความภาษาไทย/), {
+      target: {
+        value:
+          "## บทที่ 1\nเดนโอเดินทางกับริน แสงจ้าเป็นประกาย กลิ่นดินหอมกรุ่น\n" +
+          "## บทที่ 2\nรินอยู่คนเดียว เธอคิดถึงบ้าน ลมพัดเย็น\n" +
+          "## บทที่ 3\nเดนโอกลับมา ทั้งคู่เดินต่อ เสียงน้ำไหลริน",
+      },
+    });
+    fireEvent.change(screen.getByPlaceholderText(/ชื่อตัวละคร\/สถานที่/), { target: { value: "เดนโอ, ริน" } });
+    expect(screen.getByText(/ปัญญาการเล่าเรื่อง/)).toBeTruthy();
+    expect(screen.getByText(/จังหวะรายองก์/)).toBeTruthy();
+    // the honesty disclaimer is present; no invented score label
+    expect(screen.getByText(/ไม่มีคะแนน consistency\/arc\/resonance แบบเดา/)).toBeTruthy();
+  });
+
   it("surfaces the continuity radar and relationship graph once the glossary is filled", () => {
     render(<ThaiAnalyzerModal onClose={() => {}} />);
     // Multi-chapter draft: เดนโอ/ริน are canon; กรรณ recurs but isn't declared.

@@ -2,10 +2,12 @@ import { BOOK_TYPES, isFictionType } from "./book-types";
 import type { Architecture, BookConfig, ChapterPlan, ContinuityState } from "./types";
 import { getAnalysisMetrics, getQualityChecklist, getQualityStandards, getRevisionRules } from "./standards";
 import { parseOutline } from "./outline";
+import { parseCodex, codexDigestEn, codexLocalEn } from "./codex";
 
 export function generateMasterSystemPrompt(config: BookConfig, architecture: Architecture): string {
   const type = BOOK_TYPES[config.type];
   const lang = config.language === "thai" ? "ภาษาไทย" : config.language === "bilingual" ? "Thai-English bilingual" : "English";
+  const codexMaster = codexDigestEn(parseCodex(config.storyBible)); // "" when no codex declared
 
   let p = `You are a master ${type.label.toLowerCase()} author writing "${config.title}".
 
@@ -27,7 +29,7 @@ Your target reader: ${config.reader}.
 ═══ THESIS / PREMISE ═══
 ${config.thesis}
 
-═══ QUALITY STANDARDS (aim for these; use judgment over rigid ratios) ═══
+${codexMaster ? codexMaster + "\n" : ""}═══ QUALITY STANDARDS (aim for these; use judgment over rigid ratios) ═══
 ${getQualityStandards(config.type)}
 
 `;
@@ -348,6 +350,11 @@ export function generateChapterPrompt(
     p += `═══ PLANNED OUTLINE (follow the part relevant to Chapter ${chapter.number}) ═══\n`;
     p += `${config.outline.trim()}\n\n`;
   }
+
+  // GraphRAG-style local view: codex entities appearing in this chapter's beat
+  // (+ their 1-hop neighbours). "" when nothing declared/mentioned → no change.
+  const codexLocalBlock = codexLocalEn(parseCodex(config.storyBible), chapterBeat ?? "");
+  if (codexLocalBlock) p += codexLocalBlock + "\n";
 
   if (prevChapter) {
     p += `═══ PREVIOUS CHAPTER (Ch.${prevChapter.number}) CONTEXT ═══\n`;

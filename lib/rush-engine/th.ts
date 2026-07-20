@@ -5,6 +5,8 @@
 
 import { BOOK_TYPES } from "./book-types";
 import { parseOutline } from "./outline";
+import { structureGuidanceTh } from "./thai-structures";
+import { parseCodex, codexDigestTh, codexLocalTh } from "./codex";
 import {
   moduleDialectIsan,
   moduleDialectNorth,
@@ -102,6 +104,7 @@ function thChecklist(type: BookTypeKey): string {
 
 export function thMaster(config: BookConfig, architecture: Architecture): string {
   const type = BOOK_TYPES[config.type];
+  const codexMaster = codexDigestTh(parseCodex(config.storyBible)); // "" when no codex declared
   let p = `คุณคือนักเขียน${type.label}มืออาชีพ กำลังเขียนหนังสือเรื่อง "${config.title}"
 
 ═══ บทบาท & ตัวตน ═══
@@ -120,7 +123,7 @@ export function thMaster(config: BookConfig, architecture: Architecture): string
 ═══ แก่นเรื่อง / เรื่องย่อ ═══
 ${config.thesis}
 
-═══ มาตรฐานคุณภาพ (ยึดเป็นแนวทาง ใช้วิจารณญาณมากกว่ายึดตัวเลขตายตัว) ═══
+${codexMaster ? codexMaster + "\n" : ""}═══ มาตรฐานคุณภาพ (ยึดเป็นแนวทาง ใช้วิจารณญาณมากกว่ายึดตัวเลขตายตัว) ═══
 ${thQualityStandards(config.type)}
 
 `;
@@ -233,7 +236,11 @@ const TH_NF_STRUCT: Record<string, string> = {
 
 function thChapterBody(config: BookConfig, chapter: ChapterPlan): string {
   if (config.type === "novel") {
-    let p = `═══ คำสั่งฉาก ═══\nประเภทฉาก: ${chapter.sceneType}\nองก์: ${chapter.act}\nระดับความตึงเครียด: ${Math.round((chapter.tensionLevel ?? 0) * 100)}%\n\n`;
+    // When the writer picked a Thai/Asian structure, lead with its per-chapter beat.
+    // No structure → empty string → prompt unchanged (existing snapshots stay valid).
+    let p = structureGuidanceTh(config.structure, chapter.number, config.chapters);
+    if (p) p += "\n";
+    p += `═══ คำสั่งฉาก ═══\nประเภทฉาก: ${chapter.sceneType}\nองก์: ${chapter.act}\nระดับความตึงเครียด: ${Math.round((chapter.tensionLevel ?? 0) * 100)}%\n\n`;
     p += `═══ โครงสร้าง ═══\n` + (TH_NOVEL_STRUCT[chapter.sceneType ?? ""] ?? `1. เปิดฉากด้วยรายละเอียดประสาทสัมผัส\n2. พัฒนา: ความขัดแย้ง + ปฏิสัมพันธ์ตัวละคร\n3. จุดพลิก/เปิดเผย\n4. จบด้วยแรงส่งไปข้างหน้า`);
     if ((chapter.tensionLevel ?? 0) > 0.7) {
       p += `\n\n⚠ บทตึงเครียดสูง — รักษาจังหวะ:\n- ประโยค/ย่อหน้าสั้นลง\n- ตัดฉากเร็วขึ้น\n- บรรยายเท่าที่จำเป็น\n- ความคิดในใจเฉพาะจุดสำคัญ`;
@@ -289,6 +296,11 @@ export function thChapter(config: BookConfig, architecture: Architecture, chapte
   } else if (config.outline && config.outline.trim()) {
     p += `═══ โครงที่วางไว้ (ทำตามส่วนของบทที่ ${chapter.number}) ═══\n${config.outline.trim()}\n\n`;
   }
+
+  // GraphRAG-style local view: only the codex entities that appear in this chapter's
+  // beat (+ their 1-hop neighbours). "" when nothing declared/mentioned → no change.
+  const codexLocal = codexLocalTh(parseCodex(config.storyBible), chapterBeat ?? "");
+  if (codexLocal) p += codexLocal + "\n";
 
   if (prev) {
     p += `═══ บริบทบทก่อนหน้า (บท ${prev.number}) ═══\nประเภท: ${thTypeLabel(prev)}\nวัตถุประสงค์: ${thPurpose(prev)}\n→ ต่อยอดสิ่งที่ตั้งไว้ อย่าเล่าซ้ำ คงโทน สถานะตัวละคร และเส้นเวลา\n\n`;

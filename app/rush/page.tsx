@@ -74,6 +74,7 @@ export default function RushPage() {
   const couplePrimed = useRef(false);
 
   const [groups, setGroups] = useState<OptionalGroup[]>(defaultGroupsFor("nonfiction"));
+  const [structure, setStructure] = useState<string>("");
   const [prompts, setPrompts] = useState<GeneratedPrompt[]>([]);
   const [openId, setOpenId] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -111,8 +112,9 @@ export default function RushPage() {
       outline: outline || undefined,
       storyBible: storyBible || undefined,
       promptLanguage,
+      structure: structure || undefined,
     }),
-    [type, title, thesis, reader, voice, chapters, wordsPerChapter, subGenre, citationStyle, language, outline, storyBible, promptLanguage]
+    [type, title, thesis, reader, voice, chapters, wordsPerChapter, subGenre, citationStyle, language, outline, storyBible, promptLanguage, structure]
   );
 
   const totalWords = chapters * wordsPerChapter;
@@ -130,8 +132,30 @@ export default function RushPage() {
     refreshProjects();
     const params = new URLSearchParams(window.location.search);
     const pid = params.get("project");
+    const typeParam = params.get("type");
     if (pid) loadProject(pid);
-    else {
+    else if (typeParam && typeParam in BOOK_TYPES) {
+      // Deep-link from the /rush/explore landing or the /rush/start wizard:
+      // preselect book type + genre (+ optional length, prompt language, modules).
+      const tk = typeParam as BookTypeKey;
+      setType(tk);
+      const g = params.get("genre");
+      setSubGenre(g && BOOK_TYPES[tk].sub_genres.includes(g) ? g : BOOK_TYPES[tk].sub_genres[0]);
+      const ch = parseInt(params.get("chapters") ?? "", 10);
+      if (ch >= 1 && ch <= 100) setChapters(ch);
+      const w = parseInt(params.get("words") ?? "", 10);
+      if (w >= 100 && w <= 20000) setWordsPerChapter(w);
+      const pl = params.get("lang");
+      if (pl === "th" || pl === "en") { setPromptLanguage(pl); setPromptLangTouched(true); }
+      const grp = params.get("groups");
+      if (grp) {
+        const valid = new Set(MODULE_GROUPS.map((m) => m.key as string));
+        const chosen = grp.split(",").map((s) => s.trim()).filter((s) => valid.has(s)) as OptionalGroup[];
+        setGroups(chosen.length ? chosen : defaultGroupsFor(tk));
+      } else setGroups(defaultGroupsFor(tk));
+      const st = params.get("structure");
+      if (st) setStructure(st);
+    } else {
       // Restore the last working draft (client-side) so a non-logged-in setup
       // — including the Story Bible / STATE — survives a reload.
       try {
@@ -763,11 +787,21 @@ export default function RushPage() {
                     Story Bible / STATE
                     {storyBible.trim() && <span className="text-[0.6rem] text-green-400 normal-case">● injected</span>}
                   </h3>
-                  {storyBible.trim() && (
-                    <button onClick={() => setStoryBible("")} className="text-[0.65rem] text-gray-500 hover:text-red-400">
-                      Clear
-                    </button>
-                  )}
+                  <div className="flex items-center gap-2">
+                    {!storyBible.trim() && (
+                      <button
+                        onClick={() => setStoryBible("[ตัวละคร]\nชื่อ: ลักษณะเด่น\n\n[สถานที่]\nชื่อ: คำอธิบาย\n\n[สิ่งของ]\nชื่อ: บทบาท\n\n[ความสัมพันธ์]\nA - B: ความสัมพันธ์\nA -> C: การกระทำ\n")}
+                        className="text-[0.65rem] text-[#c9a84c] hover:text-[#e6c86a]"
+                      >
+                        + แทรกโครง Codex
+                      </button>
+                    )}
+                    {storyBible.trim() && (
+                      <button onClick={() => setStoryBible("")} className="text-[0.65rem] text-gray-500 hover:text-red-400">
+                        Clear
+                      </button>
+                    )}
+                  </div>
                 </div>
                 <textarea
                   value={storyBible}
@@ -776,7 +810,11 @@ export default function RushPage() {
                   className="input min-h-[80px] resize-y font-mono text-[0.72rem]"
                 />
                 <p className="text-[0.62rem] text-gray-600 mt-1">
-                  ปิดช่องว่าง continuity แบบ Sudowrite ด้วย prompt ล้วน — แก้ที่นี่ที่เดียว ใช้กับทุกบท (กด Generate Prompts ใหม่เพื่อใช้ค่าล่าสุด)
+                  ปิดช่องว่าง continuity ด้วย prompt ล้วน — แก้ที่นี่ที่เดียว ใช้กับทุกบท (กด Generate Prompts ใหม่เพื่อใช้ค่าล่าสุด)
+                </p>
+                <p className="text-[0.62rem] text-gray-600 mt-1 leading-relaxed">
+                  <span className="text-[#c9a84c]">Story Codex (GraphRAG):</span> ประกาศ entity ใต้หัวข้อ <code className="text-gray-400">[ตัวละคร] [สถานที่] [สิ่งของ] [ความสัมพันธ์]</code> →
+                  สารบบทั้งเล่มฉีดเข้า master prompt ส่วนแต่ละบทจะได้เฉพาะ entity ที่ปรากฏใน beat บทนั้น + ตัวที่เชื่อมกัน (deterministic ไม่มี LLM แอบทำงาน)
                 </p>
               </div>
 

@@ -1,0 +1,14 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if [ ! -d node_modules ]; then npm ci --no-audit --no-fund >/dev/null 2>&1 && npx prisma generate >/dev/null 2>&1; fi; echo 'honest-oracle ready — one gate for everything: npm run verify (typecheck · lint · test · build)'"
+          }
+        ]
+      }
+    ]
+  }
+}

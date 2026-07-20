@@ -13,6 +13,10 @@ import { sensoryDensity, SENSE_LABEL, type Sense } from "@/lib/rush-engine/senso
 import { continuityRadar, sceneReadout } from "@/lib/rush-engine/radar";
 import { characterGraph } from "@/lib/rush-engine/relationships";
 import { renameTerm } from "@/lib/rush-engine/rename";
+import { checkThaiRegister } from "@/lib/rush-engine/register";
+import { checkTranslation, expansionReport, type TermRule } from "@/lib/rush-engine/translation";
+import { groupByTier, REFUSED_CONSTRUCTS, llmKalamaViolations, YATHABHUTA, warrant } from "@/lib/rush-engine/epistemics";
+import { characterArc, pacingProfile, motifTracker, type ChapterSignal } from "@/lib/rush-engine/narrative";
 import { downloadBlob } from "./_utils";
 import { wordDiff, diffTokens, type DiffOp } from "@/lib/rush-engine/text-util";
 import { listManuscripts, getManuscript, saveManuscript, deleteManuscript, type StoredManuscript } from "./_manuscript-store";
@@ -436,6 +440,287 @@ function RenameView({ text, lang }: { text: string; lang: "th" | "en" }) {
   );
 }
 
+/** Thai register/spelling suggestions — loanwords & informal spellings with their
+ *  Royal-Institute-standard equivalents. Skips glossary proper nouns (a coined name is
+ *  never "wrong"). Suggestions, not errors. */
+function RegisterView({ text, protect }: { text: string; protect?: string[] }) {
+  const findings = useMemo(() => (text.trim() ? checkThaiRegister(text, { skip: protect }) : []), [text, protect]);
+  if (findings.length === 0) return null;
+  return (
+    <div>
+      <h3 className="text-xs font-semibold tracking-widest text-gray-400 uppercase mb-2">คำ/การสะกด (ภาษาไทยมาตรฐาน — ไม่ใช่ข้อผิด)</h3>
+      <div className="space-y-1">
+        {findings.slice(0, 20).map((r) => (
+          <div key={r.term} className="flex items-center gap-2 text-xs">
+            <span className="px-2 py-0.5 rounded border border-teal-400/40 text-teal-300">{r.term} ×{r.count}</span>
+            <span className="text-gray-500">→</span>
+            <span className="text-gray-200">{r.suggest}</span>
+            {r.note && <span className="text-[0.6rem] text-gray-500">({r.note})</span>}
+          </div>
+        ))}
+      </div>
+      <p className="text-[0.6rem] text-gray-500 mt-1">คำยืม/สะกดไม่เป็นทางการ พร้อมคำมาตรฐาน · เว้นชื่อเฉพาะใน glossary · เป็นคำแนะนำ ไม่ใช่คำตัดสิน</p>
+    </div>
+  );
+}
+
+/** Parse a "ไทย=English" term map (one per line) into TermRule[] for the translation check. */
+function parseTermMap(raw: string): TermRule[] {
+  return raw
+    .split(/\n+/)
+    .map((line) => line.split(/[=:]/).map((s) => s.trim()))
+    .filter((p) => p.length >= 2 && p[0] && p[1])
+    .map(([source, target]) => ({ source, target, caseSensitive: /^[A-Z]/.test(target) }));
+}
+
+/** Translation faithfulness (Thai source → English target). Two deterministic signals:
+ *  per-chapter length-ratio drift (added/summarised content) and a term-map check
+ *  (dropped canon terms / wrong case). Collapsible — the writer pastes the translation. */
+function TranslationView({ source }: { source: string }) {
+  const [open, setOpen] = useState(false);
+  const [target, setTarget] = useState("");
+  const [map, setMap] = useState("");
+  const dtarget = useDebounced(target);
+  const rules = useMemo(() => parseTermMap(map), [map]);
+  const exp = useMemo(() => (source.trim() && dtarget.trim() ? expansionReport(source, dtarget) : null), [source, dtarget]);
+  const terms = useMemo(() => (source.trim() && dtarget.trim() && rules.length ? checkTranslation(source, dtarget, rules) : []), [source, dtarget, rules]);
+  return (
+    <div>
+      <button onClick={() => setOpen((v) => !v)} className="text-[0.7rem] text-[#c9a84c] hover:underline">
+        {open ? "− ซ่อนการตรวจการแปล" : "+ ตรวจการแปล (ไทย → อังกฤษ)"}
+      </button>
+      {open && (
+        <div className="mt-2 space-y-2">
+          <textarea
+            value={target}
+            onChange={(e) => setTarget(e.target.value)}
+            placeholder="วางคำแปลภาษาอังกฤษที่นี่ (แบ่งบทด้วย ## เหมือนต้นฉบับ เพื่อเทียบความยาวรายบท)…"
+            className="input min-h-[110px] resize-y"
+          />
+          <textarea
+            value={map}
+            onChange={(e) => setMap(e.target.value)}
+            placeholder="ศัพท์เฉพาะ (ไม่บังคับ) บรรทัดละคู่ เช่น&#10;ธนกร=Thanakorn&#10;ดาบเทวะ=Deva Blade"
+            className="input min-h-[64px] resize-y text-xs"
+          />
+          {exp && exp.chunks.length > 0 && (
+            <Heatmap
+              title={`ความยาวรายบท (มัธยฐาน ${exp.medianRatio}× อังกฤษ÷ไทย)`}
+              headers={["ต้นฉบับ (ตัวอักษร)", "คำแปล (ตัวอักษร)", "อัตราส่วน"]}
+              rows={exp.chunks.map((c) => ({
+                title: `${c.flag === "expanded" ? "▲ " : c.flag === "shrunk" ? "▼ " : ""}บท ${c.chapter}`,
+                cells: [{ value: c.sourceChars }, { value: c.targetChars }, { value: c.ratio, bad: c.flag !== null }],
+              }))}
+              note="▲ ยาวกว่ามัธยฐานมาก = อาจเติมเนื้อหา · ▼ สั้นกว่ามาก = อาจสรุปตัด · เป็นสัญญาณ ไม่ใช่คำตัดสิน"
+            />
+          )}
+          {terms.length > 0 && (
+            <div>
+              <p className="text-[0.65rem] text-gray-500 mb-1">ศัพท์เฉพาะ:</p>
+              <div className="space-y-1">
+                {terms.map((t, i) => (
+                  <div key={`${t.rule}-${i}`} className="flex items-center gap-2 text-xs">
+                    <span className="px-2 py-0.5 rounded border border-rose-400/40 text-rose-300">
+                      {t.kind === "dropped-term" ? "หาย" : t.kind === "wrong-case" ? "ตัวพิมพ์" : "คำต้องห้าม"} ×{t.count}
+                    </span>
+                    <span className="text-gray-300">{t.detail}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          {exp && terms.length === 0 && rules.length > 0 && (
+            <p className="text-xs text-green-400">✓ ศัพท์เฉพาะครบตามที่ประกาศไว้</p>
+          )}
+          <p className="text-[0.6rem] text-gray-500">ทุกอย่างทำงานในเบราว์เซอร์ ไม่เรียก AI · อัตราส่วนความยาวและการนับศัพท์เป็นสัญญาณ ไม่ใช่คำตัดสินคุณภาพการแปล</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** A tiny per-chapter presence strip — each cell shaded by mention count. A sparkline of
+ *  a real count series, not a curve fit to an invented arc score. */
+function PresenceStrip({ series }: { series: number[] }) {
+  const max = Math.max(...series, 1);
+  return (
+    <div className="flex gap-0.5" title={series.join(" · ")}>
+      {series.map((c, i) => (
+        <span
+          key={i}
+          className="inline-block w-2.5 h-4 rounded-sm"
+          style={{ background: c === 0 ? "rgba(255,255,255,0.06)" : `rgba(201,168,76,${0.25 + 0.6 * (c / max)})` }}
+        />
+      ))}
+    </div>
+  );
+}
+
+/** Narrative Intelligence, the HONEST way — the deterministic replacement for a competitor's
+ *  "narrative_consistency 73 / arc_coherence 68" panel. Character presence across chapters
+ *  (with gap/exit flags), pacing across the three acts (measured averages + threshold flags),
+ *  and motif distribution. Every value is a count or a disclosed flag — never a 0–100 score. */
+function NarrativeView({ text, lang, names, chapterSignals }: { text: string; lang: "th" | "en"; names: string[]; chapterSignals: ChapterSignal[] }) {
+  const [motifRaw, setMotifRaw] = useState("");
+  const arcs = useMemo(() => (names.length ? characterArc(text, names, lang) : null), [text, names, lang]);
+  const pacing = useMemo(() => pacingProfile(chapterSignals), [chapterSignals]);
+  const motifTerms = useMemo(() => motifRaw.split(/[,\n]+/).map((m) => m.trim()).filter(Boolean), [motifRaw]);
+  const motifs = useMemo(() => (motifTerms.length ? motifTracker(text, motifTerms, lang) : null), [text, motifTerms, lang]);
+  const th = lang === "th";
+  if (chapterSignals.length < 2) return null;
+  return (
+    <div className="space-y-4">
+      <h3 className="text-xs font-semibold tracking-widest text-gray-400 uppercase">
+        {th ? "ปัญญาการเล่าเรื่อง (นับได้ · ไม่ใช่คะแนน 0–100)" : "Narrative intelligence (counted · not a 0–100 score)"}
+      </h3>
+
+      {arcs && arcs.characters.some((c) => c.total > 0) && (
+        <div>
+          <p className="text-[0.65rem] text-gray-500 mb-1.5">{th ? "การปรากฏของตัวละครรายบท:" : "Character presence by chapter:"}</p>
+          <div className="space-y-1.5">
+            {arcs.characters.filter((c) => c.total > 0).map((c) => (
+              <div key={c.name} className="flex items-center gap-2 flex-wrap text-xs">
+                <span className="w-24 shrink-0 truncate text-gray-300" title={c.name}>{c.name}</span>
+                <PresenceStrip series={c.perChapter} />
+                <span className="text-[0.62rem] text-gray-500">{th ? "บท" : "ch"} {c.firstChapter}–{c.lastChapter}</span>
+                {c.gaps.length > 0 && <span className="text-[0.62rem] text-amber-300/90">⚠ {th ? "หายช่วงบท" : "gap ch"} {c.gaps.map((g) => `${g.from}-${g.to}`).join(", ")}</span>}
+                {c.exitsEarly && <span className="text-[0.62rem] text-orange-300/90">⚠ {th ? "หายก่อนจบ" : "exits early"}</span>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {pacing.acts.length > 0 && (
+        <div>
+          <p className="text-[0.65rem] text-gray-500 mb-1.5">{th ? "จังหวะรายองก์ (ค่าเฉลี่ยสัญญาณที่วัดได้):" : "Pacing by act (measured-signal averages):"}</p>
+          <div className="overflow-x-auto rounded-lg border border-white/10">
+            <table className="w-full text-[0.7rem]">
+              <thead>
+                <tr className="text-gray-500 border-b border-white/10">
+                  <th className="text-left px-2 py-1.5 font-medium">{th ? "องก์" : "Act"}</th>
+                  <th className="px-2 py-1.5 font-medium">{th ? "คำ/บท" : "words"}</th>
+                  <th className="px-2 py-1.5 font-medium">{th ? "บทพูด%" : "dialogue%"}</th>
+                  <th className="px-2 py-1.5 font-medium">{th ? "บอก/100" : "telling/100"}</th>
+                  <th className="px-2 py-1.5 font-medium">{th ? "ผัสสะ/1k" : "sensory/1k"}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pacing.acts.map((a) => (
+                  <tr key={a.act} className="border-b border-white/5 last:border-0">
+                    <td className="text-left px-2 py-1 text-gray-300">{th ? { beginning: "เปิด", middle: "กลาง", end: "ปิด" }[a.act] : a.act} <span className="text-gray-600">({a.chapters[0]}–{a.chapters[a.chapters.length - 1]})</span></td>
+                    <td className="px-2 py-1 text-center tabular-nums text-gray-400">{a.avgWords}</td>
+                    <td className="px-2 py-1 text-center tabular-nums text-gray-400">{a.avgDialogue}</td>
+                    <td className="px-2 py-1 text-center tabular-nums text-gray-400">{a.avgTelling}</td>
+                    <td className="px-2 py-1 text-center tabular-nums text-gray-400">{a.avgSensory}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {pacing.flags.map((f, i) => (
+            <p key={i} className="text-[0.62rem] text-cyan-300/80 mt-1">• {f}</p>
+          ))}
+        </div>
+      )}
+
+      <div>
+        <p className="text-[0.65rem] text-gray-500 mb-1">{th ? "ติดตาม motif/แก่น (ใส่คำ คั่นด้วยจุลภาค):" : "Track motifs/themes (comma-separated):"}</p>
+        <input
+          value={motifRaw}
+          onChange={(e) => setMotifRaw(e.target.value)}
+          placeholder={th ? "เช่น ดาบ, คำสัญญา, สายฝน" : "e.g. sword, promise, rain"}
+          className="w-full text-xs px-2.5 py-1.5 rounded border border-white/10 bg-white/5 text-gray-200 placeholder:text-gray-600 focus:border-[#c9a84c]/50 focus:outline-none"
+        />
+        {motifs && motifs.motifs.length > 0 && (
+          <div className="space-y-1.5 mt-2">
+            {motifs.motifs.map((m) => (
+              <div key={m.term} className="flex items-center gap-2 flex-wrap text-xs">
+                <span className="w-24 shrink-0 truncate text-gray-300" title={m.term}>{m.term}</span>
+                <PresenceStrip series={m.perChapter} />
+                <span className="text-[0.62rem] text-gray-500">{m.total}× · {th ? "อยู่" : "in"} {m.chaptersPresent}/{motifs.chapters} {th ? "บท" : "ch"}</span>
+                {m.longestAbsentRun >= 3 && <span className="text-[0.62rem] text-amber-300/90">⚠ {th ? "เงียบยาว" : "silent"} {m.longestAbsentRun} {th ? "บท" : "ch"}</span>}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+      <p className="text-[0.6rem] text-gray-500">
+        {th ? "ทุกค่าเป็นการนับ/ธงที่ตรวจซ้ำได้ · ไม่มีคะแนน consistency/arc/resonance แบบเดา (ดูชั้นญาณวิทยา)" : "Every value is a re-derivable count or flag · no invented consistency/arc/resonance score."}
+      </p>
+    </div>
+  );
+}
+
+/** The epistemic panel — the honesty engine made visible. It badges the analyzer's own
+ *  outputs by WHAT KIND OF KNOWING each is (ประจักษ์ direct count → อนุมาน derived → สัญญา
+ *  heuristic label), then shows the constructs Rush REFUSES to score and why. Foldable;
+ *  it's the "why you can trust this number — and where its limit is" layer. */
+const TIER_TONE: Record<string, string> = {
+  paccakkha: "var(--tier-1, #34d399)",
+  anumana: "var(--tier-2, #38bdf8)",
+  sanna: "var(--tier-3, #fbbf24)",
+};
+function EpistemicPanel({ ids }: { ids: string[] }) {
+  const [open, setOpen] = useState(false);
+  const groups = useMemo(() => groupByTier(ids), [ids]);
+  const kalama = useMemo(() => llmKalamaViolations(), []);
+  if (!groups.length) return null;
+  return (
+    <div className="rounded-xl border border-[#c9a84c]/25 bg-[#c9a84c]/[0.04] p-3">
+      <button onClick={() => setOpen((v) => !v)} className="w-full text-left">
+        <h3 className="text-xs font-semibold tracking-widest text-[#c9a84c] uppercase">
+          ญาณวิทยา · ทำไมเชื่อตัวเลขนี้ได้ (และเส้นที่เราไม่ข้าม) {open ? "−" : "+"}
+        </h3>
+      </button>
+      <p className="text-[0.62rem] text-gray-500 mt-1">{YATHABHUTA}</p>
+      {open && (
+        <div className="mt-3 space-y-3">
+          {groups.map((g) => (
+            <div key={g.tier.id}>
+              <div className="flex items-center gap-2 mb-1">
+                <span className="inline-block w-2 h-2 rounded-full" style={{ background: TIER_TONE[g.tier.id] ?? "#9ca3af" }} />
+                <span className="text-xs font-semibold text-gray-200">{g.tier.thai}</span>
+                <span className="text-[0.6rem] text-gray-500 italic">{g.tier.pali}</span>
+              </div>
+              <p className="text-[0.62rem] text-gray-500 mb-1.5 pl-4">{g.tier.gloss}</p>
+              <div className="flex flex-wrap gap-1.5 pl-4">
+                {g.signals.map((s) => (
+                  <span
+                    key={s.id}
+                    title={warrant(s.id) ?? ""}
+                    className="text-[0.68rem] px-2 py-0.5 rounded border cursor-help"
+                    style={{ borderColor: (TIER_TONE[g.tier.id] ?? "#9ca3af") + "66", color: TIER_TONE[g.tier.id] ?? "#9ca3af" }}
+                  >
+                    {s.thai} · {s.level}
+                  </span>
+                ))}
+              </div>
+            </div>
+          ))}
+          <div className="pt-1 border-t border-white/10">
+            <div className="flex items-center gap-2 mb-1">
+              <span className="inline-block w-2 h-2 rounded-full bg-rose-400/70" />
+              <span className="text-xs font-semibold text-rose-300">อวิสัย · เกินวิสัยของเครื่องนี้ — เราปฏิเสธที่จะให้คะแนน</span>
+            </div>
+            <div className="flex flex-col gap-1 pl-4">
+              {REFUSED_CONSTRUCTS.map((c) => (
+                <div key={c.id} className="text-[0.66rem] text-gray-400">
+                  <span className="text-rose-300/90 line-through">{c.thai}</span> — {c.why}
+                </div>
+              ))}
+            </div>
+          </div>
+          <p className="text-[0.62rem] text-gray-500 pl-4 pt-1 border-t border-white/10">
+            กาลามสูตรระบุ {kalama.length} ใน 10 ฐานที่คะแนน LLM พึ่งพา — รวมข้อ 6 “เพราะการอนุมาน” และข้อ 9 “เพราะดูน่าเชื่อถือ”.
+            ตัวเลขทุกตัวข้างบนตรวจซ้ำเองได้ (paccakkha/anumāna) — เราเปิดเผยเครื่องมือเสมอ (ชี้ที่ป้ายเพื่อดู warrant)
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 type Delta = { label: string; before: number; after: number; delta: number; good: "lower" | "higher" | "neutral" };
 
 function DeltaTable({ title, deltas, note }: { title: string; deltas: Delta[]; note: string }) {
@@ -738,8 +1023,8 @@ export function ThaiAnalyzerModal({ onClose, initialText }: { onClose: () => voi
         )}
         {showScan && scan.length > 1 && (
           <Heatmap
-            title="heatmap รายบท"
-            headers={["คำ", "CV%", "บทพูด%", "บอกอารมณ์", "คลิเช", "echoes"]}
+            title="heatmap รายบท — อ่านค่าฉากทุกบท (สัญญาณที่วัดได้ ไม่ใช่คะแนน 0–100)"
+            headers={["คำ", "CV%", "บทพูด%", "บอกอารมณ์", "ผัสสะ/1k", "คลิเช", "echoes"]}
             rows={scan.map((c, i) => ({
               title: c.title,
               cells: [
@@ -747,6 +1032,7 @@ export function ThaiAnalyzerModal({ onClose, initialText }: { onClose: () => voi
                 { value: c.cv, bad: worst.cv === i },
                 { value: c.dialogueRatio },
                 { value: c.telling },
+                { value: sensoryDensity(c.body, "th").per1k },
                 { value: c.aiTells, bad: worst.aiTells === i },
                 { value: c.echoes },
               ],
@@ -759,8 +1045,15 @@ export function ThaiAnalyzerModal({ onClose, initialText }: { onClose: () => voi
           />
         )}
         {a && <div className="mt-4"><SceneReadoutView text={dtext} /></div>}
+        {a && (
+          <div className="mt-4">
+            <EpistemicPanel ids={["wordCount", "sentenceCount", "rhythmCv", "dialogueRatio", "tellingPer100", "sensoryPer1k", "aiTells", "echoes", ...(scan.length > 1 ? ["variantClusters", "droppedTerms", "storyBibleEntries"] : []), ...(protect.length > 0 ? ["offCanon", "coEdgeWeight"] : []), "registerSuggestions"]} />
+          </div>
+        )}
         {a && <div className="mt-4"><SensoryView text={dtext} lang="th" /></div>}
+        {a && <div className="mt-4"><RegisterView text={dtext} protect={protect} /></div>}
         {a && <div className="mt-4"><RenameView text={dtext} lang="th" /></div>}
+        {a && <div className="mt-4"><TranslationView source={dtext} /></div>}
         {scan.length > 1 && (
           <div className="mt-4">
             <GlossaryInput value={glossary} onChange={setGlossary} suggestions={nameSuggestions} />
@@ -771,6 +1064,19 @@ export function ThaiAnalyzerModal({ onClose, initialText }: { onClose: () => voi
                 <RelationshipView text={dtext} lang="th" names={protect} />
               </div>
             )}
+            <div className="mt-4">
+              <NarrativeView
+                text={dtext}
+                lang="th"
+                names={protect}
+                chapterSignals={scan.map((c) => ({
+                  words: c.words,
+                  dialogueRatio: c.dialogueRatio,
+                  tellingPer100: c.words ? Math.round((c.telling / c.words) * 1000) / 10 : 0,
+                  sensoryPer1k: sensoryDensity(c.body, "th").per1k,
+                }))}
+              />
+            </div>
           </div>
         )}
         {a && (
@@ -1150,6 +1456,11 @@ export function ProseAnalyzerModal({ onClose, initialText }: { onClose: () => vo
           />
         )}
         {a && <div className="mt-4"><SensoryView text={dtext} lang="en" /></div>}
+        {a && (
+          <div className="mt-4">
+            <EpistemicPanel ids={["wordCount", "sentenceCount", "rhythmCv", "dialogueRatio", "tellingPer100", "sensoryPer1k", "aiTells", "echoes", ...(scan.length > 1 ? ["variantClusters", "droppedTerms", "storyBibleEntries"] : [])]} />
+          </div>
+        )}
         {a && <div className="mt-4"><RenameView text={dtext} lang="en" /></div>}
         {scan.length > 1 && <ConsistencyView text={dtext} lang="en" />}
         {a && (

@@ -25,7 +25,7 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-    name: vitest + typecheck
+    name: verify (typecheck · lint · test · build)
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -34,9 +34,12 @@ jobs:
           cache: 'npm'
       - name: Install dependencies
         run: npm ci
-      - name: Lint
-        run: npm run lint
-      - name: Unit tests (Rush Engine)
-        run: npm test
-      - name: Type check
-        run: npm run typecheck
+      # Single gate — identical to `npm run verify` locally, so a green
+      # CI run means exactly what a green local run means (Loop Engineering:
+      # one success criterion, no drift between machine and human).
+      - name: Verify
+        run: npm run verify
+        env:
+          # next build needs a DATABASE_URL present at collect-time; a dummy
+          # value is enough for the static/route analysis CI performs.
+          DATABASE_URL: 'postgresql://ci:ci@localhost:5432/ci'
