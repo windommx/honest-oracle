@@ -12,6 +12,7 @@ import { consistencyLedger, storyBible, formatStoryBible, suggestThaiNames } fro
 import { sensoryDensity, SENSE_LABEL, type Sense } from "@/lib/rush-engine/sensory";
 import { continuityRadar, sceneReadout } from "@/lib/rush-engine/radar";
 import { parseCodex, codexAudit, codexMermaid } from "@/lib/rush-engine/codex";
+import { analyzeSaga, type SagaBook } from "@/lib/rush-engine/saga";
 import { characterGraph } from "@/lib/rush-engine/relationships";
 import { renameTerm } from "@/lib/rush-engine/rename";
 import { checkThaiRegister } from "@/lib/rush-engine/register";
@@ -292,6 +293,93 @@ function RadarView({ text, lang, canon }: { text: string; lang: "th" | "en"; can
       <p className="text-[0.6rem] text-gray-500 mt-1">
         {th ? "นับเทียบกับ glossary ของคุณ ไม่ใช่คำตัดสิน · ประกาศการเปลี่ยนชื่อใน glossary เพื่อล้าง flag" : "Counts vs. your glossary, not a verdict · declare renames in the glossary to clear a flag."}
       </p>
+    </div>
+  );
+}
+
+// Saga — series-level continuity across books. Self-contained (its own per-book
+// codex inputs); the same deterministic engine as `rush saga`.
+function SagaView({ lang }: { lang: "th" | "en" }) {
+  const th = lang === "th";
+  const [books, setBooks] = useState<Array<{ title: string; bible: string }>>([
+    { title: "", bible: "" },
+    { title: "", bible: "" },
+  ]);
+  const report = useMemo(() => {
+    const declared: SagaBook[] = books
+      .map((b, i) => ({ title: b.title.trim() || `${th ? "เล่ม" : "Book"} ${i + 1}`, codex: parseCodex(b.bible) }))
+      .filter((b) => b.codex.entities.length > 0);
+    return declared.length >= 2 ? analyzeSaga(declared) : null;
+  }, [books, th]);
+
+  const set = (i: number, patch: Partial<{ title: string; bible: string }>) =>
+    setBooks((prev) => prev.map((b, j) => (j === i ? { ...b, ...patch } : b)));
+  const chip = (name: string, cls: string) => (
+    <span key={name} className={`text-xs px-2 py-0.5 rounded border ${cls}`}>{name}</span>
+  );
+
+  return (
+    <div>
+      <h3 className="text-xs font-semibold tracking-widest text-gray-400 uppercase mb-1">
+        {th ? "ความต่อเนื่องซีรีส์ (Saga — หลายเล่ม)" : "Series continuity (Saga — multi-book)"}
+      </h3>
+      <p className="text-[0.62rem] text-gray-600 mb-2">
+        {th ? "ประกาศคาสต์ของแต่ละเล่ม (เรียงตามลำดับซีรีส์) แล้วดูว่าใครถูกแนะนำใหม่ / สืบเนื่อง / หายไป และใครเป็นแกนซีรีส์" : "Declare each book's cast (in series order); see who is introduced / carried / dropped, and the series backbone."}
+      </p>
+      <div className="space-y-2">
+        {books.map((b, i) => (
+          <div key={i} className="flex gap-2 items-start">
+            <span className="text-[0.7rem] text-gray-500 mt-2 w-4 shrink-0 tabular-nums">{i + 1}</span>
+            <div className="flex-1 space-y-1">
+              <input
+                value={b.title}
+                onChange={(e) => set(i, { title: e.target.value })}
+                placeholder={th ? `ชื่อเล่ม ${i + 1}` : `Book ${i + 1} title`}
+                className="input text-xs w-full"
+              />
+              <textarea
+                value={b.bible}
+                onChange={(e) => set(i, { bible: e.target.value })}
+                placeholder={th ? "[ตัวละคร]\nอนันต์: ...\nมาลี: ..." : "[CHARACTERS]\nAnan: ...\nMali: ..."}
+                className="input min-h-[52px] resize-y font-mono text-[0.7rem] w-full"
+              />
+            </div>
+            {books.length > 2 && (
+              <button onClick={() => setBooks((p) => p.filter((_, j) => j !== i))} className="text-gray-600 hover:text-red-400 mt-2" aria-label="remove book">
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+        ))}
+      </div>
+      <button
+        onClick={() => setBooks((p) => [...p, { title: "", bible: "" }])}
+        className="mt-2 text-[0.65rem] text-[#c9a84c] hover:text-[#e6c86a]"
+      >
+        {th ? "+ เพิ่มเล่ม" : "+ add book"}
+      </button>
+
+      {report && (
+        <div className="mt-3 space-y-3">
+          {report.books.map((b) => (
+            <div key={b.index} className="border-l-2 border-[#c9a84c]/30 pl-2.5">
+              <p className="text-[0.7rem] text-gray-300 mb-1">[{b.index}] {b.title}</p>
+              <div className="flex flex-wrap gap-1.5">
+                {b.introduced.map((e) => chip(e.name, "border-emerald-400/40 text-emerald-300"))}
+                {b.carried.map((n) => chip(n, "border-sky-400/30 text-sky-300"))}
+                {b.dropped.map((n) => chip(`${n} ↓`, "border-amber-400/40 text-amber-300"))}
+              </div>
+            </div>
+          ))}
+          <div className="text-[0.68rem] text-gray-500 pt-1">
+            <p>{th ? "แกนซีรีส์ (อยู่ ≥2 เล่ม): " : "series backbone (≥2 books): "}<span className="text-gray-300">{report.recurring.join(", ") || "—"}</span></p>
+            <p className="mt-0.5">{th ? "ปรากฏเล่มเดียว: " : "single-book: "}<span className="text-gray-400">{report.standalone.join(", ") || "—"}</span></p>
+          </div>
+          <p className="text-[0.6rem] text-gray-500">
+            {th ? "สีเขียว=แนะนำใหม่ · ฟ้า=สืบเนื่อง · เหลือง↓=หายจากเล่มก่อน (สัญญาณ ไม่ใช่ error) · deterministic ไม่มี LLM" : "green=introduced · blue=carried · amber↓=dropped vs prev (a signal, not an error) · deterministic, no LLM"}
+          </p>
+        </div>
+      )}
     </div>
   );
 }
@@ -1142,6 +1230,7 @@ export function ThaiAnalyzerModal({ onClose, initialText }: { onClose: () => voi
         {a && <div className="mt-4"><RenameView text={dtext} lang="th" /></div>}
         {a && <div className="mt-4"><TranslationView source={dtext} /></div>}
         {a && <div className="mt-4"><CodexView text={dtext} lang="th" /></div>}
+        {a && <div className="mt-4"><SagaView lang="th" /></div>}
         {scan.length > 1 && (
           <div className="mt-4">
             <GlossaryInput value={glossary} onChange={setGlossary} suggestions={nameSuggestions} />
@@ -1551,6 +1640,7 @@ export function ProseAnalyzerModal({ onClose, initialText }: { onClose: () => vo
         )}
         {a && <div className="mt-4"><RenameView text={dtext} lang="en" /></div>}
         {a && <div className="mt-4"><CodexView text={dtext} lang="en" /></div>}
+        {a && <div className="mt-4"><SagaView lang="en" /></div>}
         {scan.length > 1 && <ConsistencyView text={dtext} lang="en" />}
         {a && (
           <div className="mt-4 space-y-4 text-sm">
