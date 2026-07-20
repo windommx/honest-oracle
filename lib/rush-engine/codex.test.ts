@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseCodex, hasCodex, codexLocal, codexDigestTh, codexLocalTh, codexDigestEn, codexAudit, codexCanon, formatCodexAudit } from "./codex";
+import { parseCodex, hasCodex, codexLocal, codexDigestTh, codexLocalTh, codexDigestEn, codexAudit, codexCanon, formatCodexAudit, codexMermaid } from "./codex";
 import { generateAllPrompts } from "./engine";
 
 const BIBLE = `
@@ -107,6 +107,32 @@ describe("end-to-end injection", () => {
     const plain = generateAllPrompts({ ...base, storyBible: undefined } as typeof base, []);
     expect(plain.find((p) => p.id === "MASTER")!.prompt).not.toContain("Codex ของหนังสือ");
     expect(plain.find((p) => p.id === "CH_1")!.prompt).not.toContain("Codex ต่อเนื่อง");
+  });
+});
+
+describe("codexMermaid — the declared graph, drawn", () => {
+  const codex = parseCodex(BIBLE);
+
+  it("emits a Mermaid graph with a node per entity and labelled edges", () => {
+    const m = codexMermaid(codex);
+    expect(m).toMatch(/^graph LR/);
+    expect(m).toContain(':::character');
+    expect(m).toContain(':::place');
+    expect(m).toContain(':::item');
+    expect(m).toContain("-->|ตามล่า|"); // directed relation อนันต์ -> เสือ
+    expect(m).toContain("---|พี่น้อง|"); // undirected อนันต์ - มาลี
+    // every declared entity name appears as a node label
+    for (const e of codex.entities) expect(m).toContain(`"${e.name}"`);
+  });
+
+  it("returns empty string for an empty codex", () => {
+    expect(codexMermaid(parseCodex(""))).toBe("");
+  });
+
+  it("gives undeclared relation endpoints their own node (no dropped edge)", () => {
+    const m = codexMermaid(parseCodex("[ตัวละคร]\nA: x\n[ความสัมพันธ์]\nA -> ผี: หนีจาก"));
+    expect(m).toContain(":::unknown");
+    expect(m).toContain('"ผี"');
   });
 });
 

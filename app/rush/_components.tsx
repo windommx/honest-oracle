@@ -11,7 +11,7 @@ import { buildEpub } from "@/lib/rush-engine/epub";
 import { consistencyLedger, storyBible, formatStoryBible, suggestThaiNames } from "@/lib/rush-engine/consistency";
 import { sensoryDensity, SENSE_LABEL, type Sense } from "@/lib/rush-engine/sensory";
 import { continuityRadar, sceneReadout } from "@/lib/rush-engine/radar";
-import { parseCodex, codexAudit } from "@/lib/rush-engine/codex";
+import { parseCodex, codexAudit, codexMermaid } from "@/lib/rush-engine/codex";
 import { characterGraph } from "@/lib/rush-engine/relationships";
 import { renameTerm } from "@/lib/rush-engine/rename";
 import { checkThaiRegister } from "@/lib/rush-engine/register";
@@ -300,7 +300,10 @@ function RadarView({ text, lang, canon }: { text: string; lang: "th" | "en"; can
 // Same deterministic engine as `rush codex`; the codex textarea IS the canon.
 function CodexView({ text, lang }: { text: string; lang: "th" | "en" }) {
   const [bible, setBible] = useState("");
-  const audit = useMemo(() => codexAudit(parseCodex(bible), text, lang), [bible, text, lang]);
+  const [copied, setCopied] = useState(false);
+  const codex = useMemo(() => parseCodex(bible), [bible]);
+  const audit = useMemo(() => codexAudit(codex, text, lang), [codex, text, lang]);
+  const mermaid = useMemo(() => codexMermaid(codex), [codex]);
   const th = lang === "th";
   const declared = audit.present.length + audit.variants.length + audit.missing.length;
   return (
@@ -354,6 +357,23 @@ function CodexView({ text, lang }: { text: string; lang: "th" | "en" }) {
             </div>
           )}
         </div>
+      )}
+      {mermaid && (
+        <details className="mt-2">
+          <summary className="text-[0.65rem] text-[#c9a84c] cursor-pointer hover:text-[#e6c86a]">
+            {th ? "กราฟความสัมพันธ์ (Mermaid — คัดลอกไปเรนเดอร์ที่ไหนก็ได้)" : "Relationship graph (Mermaid — copy & render anywhere)"}
+          </summary>
+          <div className="relative mt-1.5">
+            <button
+              onClick={() => { navigator.clipboard?.writeText(mermaid); setCopied(true); setTimeout(() => setCopied(false), 1200); }}
+              className="absolute top-1.5 right-1.5 flex items-center gap-1 text-[0.6rem] px-1.5 py-0.5 rounded border border-white/15 text-gray-300 hover:border-[#c9a84c]/50 bg-black/40"
+            >
+              {copied ? <Check className="w-3 h-3 text-green-400" /> : <Copy className="w-3 h-3" />}
+              {copied ? (th ? "คัดลอกแล้ว" : "copied") : (th ? "คัดลอก" : "copy")}
+            </button>
+            <pre className="text-[0.62rem] text-gray-400 bg-black/40 border border-white/10 rounded p-2 pr-16 overflow-x-auto font-mono whitespace-pre">{mermaid}</pre>
+          </div>
+        </details>
       )}
       <p className="text-[0.6rem] text-gray-500 mt-1">
         {th ? "deterministic ล้วน ไม่มี LLM · นับได้ ไม่ใช่คำตัดสิน · 'ไม่ถูกอ้างถึง' เป็นสัญญาณ ไม่ใช่ error" : "Pure/deterministic, no LLM · counts, not a verdict · 'not referenced' is a signal, not an error."}

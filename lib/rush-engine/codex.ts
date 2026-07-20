@@ -179,6 +179,54 @@ export function codexLocalEn(codex: Codex, text: string): string {
   return p;
 }
 
+// ── Visualisation — the declared graph as Mermaid (draws only what's declared) ─
+
+/** Render the codex as a Mermaid graph: nodes shaped/coloured by entity type,
+ *  edges labelled by relation kind (→ directed, — undirected). "" if empty.
+ *  Undeclared relation endpoints become plain nodes so no edge is dropped. */
+export function codexMermaid(codex: Codex): string {
+  if (!hasCodex(codex)) return "";
+  const id = new Map<string, string>();
+  codex.entities.forEach((e, i) => id.set(e.name.toLowerCase(), `n${i}`));
+  const esc = (s: string) => s.replace(/"/g, "'").replace(/[[\]{}()|]/g, " ").trim();
+
+  const adhoc: Array<{ id: string; label: string }> = [];
+  let extra = 0;
+  const idOf = (name: string): string => {
+    const k = name.toLowerCase();
+    const found = id.get(k);
+    if (found) return found;
+    const nid = `x${extra++}`;
+    id.set(k, nid);
+    adhoc.push({ id: nid, label: esc(name) });
+    return nid;
+  };
+
+  // Build edges first so ad-hoc endpoints are discovered before we emit nodes.
+  const edges: string[] = [];
+  for (const r of codex.relations) {
+    const a = idOf(r.from);
+    const b = idOf(r.to);
+    const arrow = r.directed ? "-->" : "---";
+    edges.push(r.kind ? `  ${a} ${arrow}|${esc(r.kind)}| ${b}` : `  ${a} ${arrow} ${b}`);
+  }
+
+  const L = ["graph LR"];
+  for (const e of codex.entities) {
+    const n = id.get(e.name.toLowerCase())!;
+    const label = esc(e.name);
+    const shape = e.type === "place" ? `(["${label}"])` : e.type === "item" ? `{{"${label}"}}` : `["${label}"]`;
+    L.push(`  ${n}${shape}:::${e.type}`);
+  }
+  for (const a of adhoc) L.push(`  ${a.id}["${a.label}"]:::unknown`);
+  L.push(...edges);
+  L.push("  classDef character fill:#c9a84c22,stroke:#c9a84c,color:#e6c86a;");
+  L.push("  classDef place fill:#4c9ac922,stroke:#6bb0d8,color:#9fd0ea;");
+  L.push("  classDef item fill:#9a4cc922,stroke:#b47cd8,color:#d0a8ea;");
+  L.push("  classDef unknown stroke-dasharray:4,stroke:#888,color:#aaa;");
+  return L.join("\n");
+}
+
 // ── Codex audit — deterministic continuity check of a DRAFT vs the codex ──────
 //  The codex is the declared cast; a draft chapter is checked against it. Every
 //  finding is a COUNT, never a 0–100 verdict. "Not referenced" is a signal, not

@@ -16,7 +16,7 @@ import { characterGraph } from "./relationships";
 import { continuityRadar, sceneReadout } from "./radar";
 import { characterArc, pacingProfile, motifTracker } from "./narrative";
 import { splitChapters } from "./chapters";
-import { parseCodex, codexAudit, codexCanon, formatCodexAudit } from "./codex";
+import { parseCodex, codexAudit, codexCanon, formatCodexAudit, codexMermaid } from "./codex";
 import { analyzeSaga, formatSaga, type SagaBook } from "./saga";
 
 export interface CliResult { stdout: string; stderr: string; code: number }
@@ -45,7 +45,7 @@ USAGE
   rush rename   <file.md> --from <name> --to <name> [--lang th|en] [--write]
   rush relations <file.md> --names "A,B,C" [--lang th|en]
   rush radar    <file.md> --canon "A,B,C" [--lang th|en]
-  rush codex    <draft.md> --bible <bible.md> [--lang th|en]
+  rush codex    <draft.md> --bible <bible.md> [--lang th|en]  (or: --bible <b> --graph)
   rush saga     --books "b1.md,b2.md,..." [--titles "A,B,..."] [--lang th|en]
   rush scene    <file.md>   (Thai: real per-scene signals — no fake 0–100 scores)
   rush narrative <file.md> [--names "A,B"] [--motifs "x,y"]  (Thai: presence/pacing/motifs)
@@ -218,15 +218,17 @@ function cmdRadar(file: string | undefined, flags: Record<string, string | true>
 function cmdCodex(file: string | undefined, flags: Record<string, string | true>, read?: (p: string) => string): CliResult {
   const bibleFile = typeof flags.bible === "string" ? flags.bible : "";
   if (!bibleFile) return { stdout: "", stderr: 'codex needs --bible <bible.md> (the declared Story Codex)\n', code: 2 };
-  const draft = readFile(file, read);
-  if ("code" in draft) return draft;
   const bible = readFile(bibleFile, read);
   if ("code" in bible) return bible;
-
   const codex = parseCodex(bible.text);
   if (!codex.entities.length) {
     return { stdout: "", stderr: `no entities declared in "${bibleFile}" — use [ตัวละคร]/[CHARACTERS] etc. sections\n`, code: 2 };
   }
+  // --graph draws the declared cast as a Mermaid graph (no draft needed).
+  if (flags.graph) return { stdout: codexMermaid(codex) + "\n", stderr: "", code: 0 };
+
+  const draft = readFile(file, read);
+  if ("code" in draft) return draft;
   const lang: "th" | "en" = flags.lang === "en" ? "en" : /[฀-๿]/.test(draft.text) ? "th" : "en";
   const audit = codexAudit(codex, draft.text, lang);
   let out = formatCodexAudit(audit, lang);
