@@ -18,6 +18,7 @@ import { characterArc, pacingProfile, motifTracker } from "./narrative";
 import { splitChapters } from "./chapters";
 import { parseCodex, codexAudit, codexCanon, formatCodexAudit, codexMermaid } from "./codex";
 import { analyzeSaga, formatSaga, type SagaBook } from "./saga";
+import { analyzeOpeners, formatOpeners } from "./openers";
 
 export interface CliResult { stdout: string; stderr: string; code: number }
 
@@ -47,6 +48,7 @@ USAGE
   rush radar    <file.md> --canon "A,B,C" [--lang th|en]
   rush codex    <draft.md> --bible <bible.md> [--lang th|en]  (or: --bible <b> --graph)
   rush saga     --books "b1.md,b2.md,..." [--titles "A,B,..."] [--lang th|en]
+  rush openers  <file.md> [--lang th|en]   (sentence/clause opener monotony)
   rush scene    <file.md>   (Thai: real per-scene signals — no fake 0–100 scores)
   rush narrative <file.md> [--names "A,B"] [--motifs "x,y"]  (Thai: presence/pacing/motifs)
   rush help
@@ -68,6 +70,8 @@ COMMANDS
   saga      Series continuity across many book codices (--books, ordered): per book,
             who is introduced / carried / dropped, plus the series backbone (entities
             spanning ≥2 books). Counts, not a verdict.
+  openers   Sentence/clause opener monotony: how often lines start with the same word
+            (He… He… / เขา… เขา…). Counts + share, not a verdict.
   scene     Per-scene readout (Thai): words, clauses, rhythm cv, dialogue ratio, telling
             density, sensory/1k, AI-tells — real signals, never a fake 0–100 vibe score.
 
@@ -261,6 +265,13 @@ function cmdSaga(flags: Record<string, string | true>, read?: (p: string) => str
   return { stdout: formatSaga(analyzeSaga(books), lang), stderr: "", code: 0 };
 }
 
+function cmdOpeners(file: string | undefined, flags: Record<string, string | true>, read?: (p: string) => string): CliResult {
+  const r = readFile(file, read);
+  if ("code" in r) return r;
+  const lang: "th" | "en" = flags.lang === "en" ? "en" : flags.lang === "th" ? "th" : /[฀-๿]/.test(r.text) ? "th" : "en";
+  return { stdout: formatOpeners(analyzeOpeners(r.text, lang), lang), stderr: "", code: 0 };
+}
+
 function cmdScene(file: string | undefined, flags: Record<string, string | true>, read?: (p: string) => string): CliResult {
   const r = readFile(file, read);
   if ("code" in r) return r;
@@ -341,6 +352,7 @@ export function runCli(argv: string[], io?: { read?: (path: string) => string })
   if (cmd === "radar") return cmdRadar(positional[1], flags, io?.read);
   if (cmd === "codex") return cmdCodex(positional[1], flags, io?.read);
   if (cmd === "saga") return cmdSaga(flags, io?.read);
+  if (cmd === "openers") return cmdOpeners(positional[1], flags, io?.read);
   if (cmd === "scene") return cmdScene(positional[1], flags, io?.read);
   if (cmd === "narrative") return cmdNarrative(positional[1], flags, io?.read);
   return { stdout: "", stderr: `unknown command "${cmd}". try: rush help\n`, code: 2 };

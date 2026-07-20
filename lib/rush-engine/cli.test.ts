@@ -115,6 +115,13 @@ describe("runCli", () => {
     expect(r.stderr).toContain("≥2");
   });
 
+  it("openers flags a repeated sentence start", () => {
+    const r = runCli(["openers", "d.md", "--lang", "en"], { read: () => "He ran. He fell. He wept. She left." });
+    expect(r.code).toBe(0);
+    expect(r.stdout).toContain("openers");
+    expect(r.stdout).toContain('"he" ×3');
+  });
+
   it("scene readout prints measured signals and no fake 0–100 vibe score", () => {
     const text =
       "แสงอาทิตย์สาดจ้าเป็นประกาย เสียงลมหวีดดังก้อง กลิ่นดินหอมกรุ่นอบอวล " +

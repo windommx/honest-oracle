@@ -13,6 +13,7 @@ import { sensoryDensity, SENSE_LABEL, type Sense } from "@/lib/rush-engine/senso
 import { continuityRadar, sceneReadout } from "@/lib/rush-engine/radar";
 import { parseCodex, codexAudit, codexMermaid } from "@/lib/rush-engine/codex";
 import { analyzeSaga, type SagaBook } from "@/lib/rush-engine/saga";
+import { analyzeOpeners } from "@/lib/rush-engine/openers";
 import { characterGraph } from "@/lib/rush-engine/relationships";
 import { renameTerm } from "@/lib/rush-engine/rename";
 import { checkThaiRegister } from "@/lib/rush-engine/register";
@@ -292,6 +293,49 @@ function RadarView({ text, lang, canon }: { text: string; lang: "th" | "en"; can
       )}
       <p className="text-[0.6rem] text-gray-500 mt-1">
         {th ? "นับเทียบกับ glossary ของคุณ ไม่ใช่คำตัดสิน · ประกาศการเปลี่ยนชื่อใน glossary เพื่อล้าง flag" : "Counts vs. your glossary, not a verdict · declare renames in the glossary to clear a flag."}
+      </p>
+    </div>
+  );
+}
+
+// Opener monotony — how often sentences/clauses start with the same word.
+// Reads the analyzed draft directly; same engine as `rush openers`.
+function OpenerView({ text, lang }: { text: string; lang: "th" | "en" }) {
+  const th = lang === "th";
+  const report = useMemo(() => analyzeOpeners(text, lang), [text, lang]);
+  if (report.units === 0) return null;
+  const pct = (r: number) => `${Math.round(r * 100)}%`;
+  return (
+    <div>
+      <h3 className="text-xs font-semibold tracking-widest text-gray-400 uppercase mb-2">
+        {th ? "คำขึ้นต้นประโยค/วรรค" : "Sentence / clause openers"}
+      </h3>
+      {report.monotone.length > 0 ? (
+        <div>
+          <p className="text-[0.65rem] text-gray-500 mb-1">{th ? "ขึ้นต้นซ้ำมาก (ลองสลับจังหวะ):" : "over-used openers (consider varying):"}</p>
+          <div className="flex flex-wrap gap-1.5">
+            {report.monotone.map((s) => (
+              <span key={s.opener} className="text-xs px-2 py-0.5 rounded border border-amber-400/40 text-amber-300">
+                {s.opener} ×{s.count} · {pct(s.ratio)}
+              </span>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <p className="text-xs text-green-400">
+          ✓ {th ? "ไม่มีคำขึ้นต้นที่ซ้ำเกินเกณฑ์ — จังหวะเปิดหลากหลายดี" : "No opener repeats past the threshold — varied openings."}
+        </p>
+      )}
+      <p className="text-[0.65rem] text-gray-500 mt-2 mb-1">{th ? "พบบ่อยสุด:" : "most frequent:"}</p>
+      <div className="flex flex-wrap gap-1.5">
+        {report.top.map((s) => (
+          <span key={s.opener} className="text-xs px-2 py-0.5 rounded border border-white/10 text-gray-400">
+            {s.opener} ×{s.count}
+          </span>
+        ))}
+      </div>
+      <p className="text-[0.6rem] text-gray-500 mt-2">
+        {th ? `${report.units} หน่วย · ${report.distinct} แบบ · นับได้ ไม่ใช่คำตัดสิน` : `${report.units} units · ${report.distinct} distinct · counts, not a verdict`}
       </p>
     </div>
   );
@@ -1230,6 +1274,7 @@ export function ThaiAnalyzerModal({ onClose, initialText }: { onClose: () => voi
         {a && <div className="mt-4"><SensoryView text={dtext} lang="th" /></div>}
         {a && <div className="mt-4"><RegisterView text={dtext} protect={protect} /></div>}
         {a && <div className="mt-4"><RenameView text={dtext} lang="th" /></div>}
+        {a && <div className="mt-4"><OpenerView text={dtext} lang="th" /></div>}
         {a && <div className="mt-4"><TranslationView source={dtext} /></div>}
         {a && <div className="mt-4"><CodexView text={dtext} lang="th" /></div>}
         {a && <div className="mt-4"><SagaView lang="th" /></div>}
@@ -1641,6 +1686,7 @@ export function ProseAnalyzerModal({ onClose, initialText }: { onClose: () => vo
           </div>
         )}
         {a && <div className="mt-4"><RenameView text={dtext} lang="en" /></div>}
+        {a && <div className="mt-4"><OpenerView text={dtext} lang="en" /></div>}
         {a && <div className="mt-4"><CodexView text={dtext} lang="en" /></div>}
         {a && <div className="mt-4"><SagaView lang="en" /></div>}
         {scan.length > 1 && <ConsistencyView text={dtext} lang="en" />}
