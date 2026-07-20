@@ -11,6 +11,7 @@ import { buildEpub } from "@/lib/rush-engine/epub";
 import { consistencyLedger, storyBible, formatStoryBible, suggestThaiNames } from "@/lib/rush-engine/consistency";
 import { sensoryDensity, SENSE_LABEL, type Sense } from "@/lib/rush-engine/sensory";
 import { continuityRadar, sceneReadout } from "@/lib/rush-engine/radar";
+import { parseCodex, codexAudit } from "@/lib/rush-engine/codex";
 import { characterGraph } from "@/lib/rush-engine/relationships";
 import { renameTerm } from "@/lib/rush-engine/rename";
 import { checkThaiRegister } from "@/lib/rush-engine/register";
@@ -290,6 +291,72 @@ function RadarView({ text, lang, canon }: { text: string; lang: "th" | "en"; can
       )}
       <p className="text-[0.6rem] text-gray-500 mt-1">
         {th ? "นับเทียบกับ glossary ของคุณ ไม่ใช่คำตัดสิน · ประกาศการเปลี่ยนชื่อใน glossary เพื่อล้าง flag" : "Counts vs. your glossary, not a verdict · declare renames in the glossary to clear a flag."}
+      </p>
+    </div>
+  );
+}
+
+// Story Codex audit — declare the cast in sections, check THIS draft against it.
+// Same deterministic engine as `rush codex`; the codex textarea IS the canon.
+function CodexView({ text, lang }: { text: string; lang: "th" | "en" }) {
+  const [bible, setBible] = useState("");
+  const audit = useMemo(() => codexAudit(parseCodex(bible), text, lang), [bible, text, lang]);
+  const th = lang === "th";
+  const declared = audit.present.length + audit.variants.length + audit.missing.length;
+  return (
+    <div>
+      <h3 className="text-xs font-semibold tracking-widest text-gray-400 uppercase mb-2">
+        {th ? "ตรวจ Codex (เทียบคาสต์ที่ประกาศ)" : "Codex audit (vs. declared cast)"}
+      </h3>
+      <textarea
+        value={bible}
+        onChange={(e) => setBible(e.target.value)}
+        placeholder={th
+          ? "ประกาศคาสต์ใต้หัวข้อ — [ตัวละคร] / [สถานที่] / [สิ่งของ] / [ความสัมพันธ์]\nอนันต์: นักสืบ\nมาลี: น้องสาว"
+          : "Declare the cast under sections — [CHARACTERS] / [PLACES] / [ITEMS] / [RELATIONS]\nAnan: detective\nMali: sister"}
+        className="input min-h-[72px] resize-y font-mono text-[0.72rem] w-full"
+      />
+      {declared === 0 ? (
+        <p className="text-[0.62rem] text-gray-600 mt-1">
+          {th ? "ยังไม่ได้ประกาศ entity — พิมพ์คาสต์ใต้หัวข้อ [ตัวละคร] ฯลฯ แล้วจะตรวจกับดราฟต์ให้" : "No entities declared yet — list a cast under [CHARACTERS] etc. to audit the draft."}
+        </p>
+      ) : (
+        <div className="space-y-2 mt-2">
+          <div>
+            <p className="text-[0.65rem] text-gray-500 mb-1">
+              {th ? `ปรากฏในดราฟต์ (${audit.present.length}/${audit.canonSize}):` : `Present in draft (${audit.present.length}/${audit.canonSize}):`}
+            </p>
+            <div className="flex flex-wrap gap-1.5">
+              {audit.present.length === 0 && <span className="text-xs text-gray-600">—</span>}
+              {audit.present.map((e) => (
+                <span key={e.name} className="text-xs px-2 py-0.5 rounded border border-emerald-400/40 text-emerald-300">{e.name}</span>
+              ))}
+            </div>
+          </div>
+          {audit.variants.length > 0 && (
+            <div>
+              <p className="text-[0.65rem] text-gray-500 mb-1">{th ? "อาจสะกดเพี้ยน (เช็กความสอดคล้อง):" : "Possible misspellings (check consistency):"}</p>
+              <div className="flex flex-wrap gap-1.5">
+                {audit.variants.map((v) => (
+                  <span key={v.declared} className="text-xs px-2 py-0.5 rounded border border-amber-400/40 text-amber-300">{v.declared} ~ {v.found}</span>
+                ))}
+              </div>
+            </div>
+          )}
+          {audit.missing.length > 0 && (
+            <div>
+              <p className="text-[0.65rem] text-gray-500 mb-1">{th ? "ไม่ถูกอ้างถึง (ตั้งใจ หรือช่องว่าง continuity?):" : "Not referenced (intentional, or a continuity gap?):"}</p>
+              <div className="flex flex-wrap gap-1.5">
+                {audit.missing.map((e) => (
+                  <span key={e.name} className="text-xs px-2 py-0.5 rounded border border-gray-500/40 text-gray-400">{e.name}</span>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+      <p className="text-[0.6rem] text-gray-500 mt-1">
+        {th ? "deterministic ล้วน ไม่มี LLM · นับได้ ไม่ใช่คำตัดสิน · 'ไม่ถูกอ้างถึง' เป็นสัญญาณ ไม่ใช่ error" : "Pure/deterministic, no LLM · counts, not a verdict · 'not referenced' is a signal, not an error."}
       </p>
     </div>
   );
@@ -1054,6 +1121,7 @@ export function ThaiAnalyzerModal({ onClose, initialText }: { onClose: () => voi
         {a && <div className="mt-4"><RegisterView text={dtext} protect={protect} /></div>}
         {a && <div className="mt-4"><RenameView text={dtext} lang="th" /></div>}
         {a && <div className="mt-4"><TranslationView source={dtext} /></div>}
+        {a && <div className="mt-4"><CodexView text={dtext} lang="th" /></div>}
         {scan.length > 1 && (
           <div className="mt-4">
             <GlossaryInput value={glossary} onChange={setGlossary} suggestions={nameSuggestions} />
@@ -1462,6 +1530,7 @@ export function ProseAnalyzerModal({ onClose, initialText }: { onClose: () => vo
           </div>
         )}
         {a && <div className="mt-4"><RenameView text={dtext} lang="en" /></div>}
+        {a && <div className="mt-4"><CodexView text={dtext} lang="en" /></div>}
         {scan.length > 1 && <ConsistencyView text={dtext} lang="en" />}
         {a && (
           <div className="mt-4 space-y-4 text-sm">
