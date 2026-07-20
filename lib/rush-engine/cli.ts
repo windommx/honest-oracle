@@ -17,6 +17,7 @@ import { continuityRadar, sceneReadout } from "./radar";
 import { characterArc, pacingProfile, motifTracker } from "./narrative";
 import { splitChapters } from "./chapters";
 import { parseCodex, codexAudit, codexCanon, formatCodexAudit } from "./codex";
+import { analyzeSaga, formatSaga, type SagaBook } from "./saga";
 
 export interface CliResult { stdout: string; stderr: string; code: number }
 
@@ -45,6 +46,7 @@ USAGE
   rush relations <file.md> --names "A,B,C" [--lang th|en]
   rush radar    <file.md> --canon "A,B,C" [--lang th|en]
   rush codex    <draft.md> --bible <bible.md> [--lang th|en]
+  rush saga     --books "b1.md,b2.md,..." [--titles "A,B,..."] [--lang th|en]
   rush scene    <file.md>   (Thai: real per-scene signals — no fake 0–100 scores)
   rush narrative <file.md> [--names "A,B"] [--motifs "x,y"]  (Thai: presence/pacing/motifs)
   rush help
@@ -63,6 +65,9 @@ COMMANDS
   codex     Audit a draft against a declared Story Codex (the --bible file): which
             entities appear, which are misspelled, which aren't referenced, plus the
             radar's off-canon drift. The codex IS the canon. Counts, not a verdict.
+  saga      Series continuity across many book codices (--books, ordered): per book,
+            who is introduced / carried / dropped, plus the series backbone (entities
+            spanning ≥2 books). Counts, not a verdict.
   scene     Per-scene readout (Thai): words, clauses, rhythm cv, dialogue ratio, telling
             density, sensory/1k, AI-tells — real signals, never a fake 0–100 vibe score.
 
@@ -235,6 +240,25 @@ function cmdCodex(file: string | undefined, flags: Record<string, string | true>
   return { stdout: out, stderr: "", code: 0 };
 }
 
+function cmdSaga(flags: Record<string, string | true>, read?: (p: string) => string): CliResult {
+  const files = (typeof flags.books === "string" ? flags.books : "").split(",").map((s) => s.trim()).filter(Boolean);
+  if (files.length < 2) return { stdout: "", stderr: 'saga needs --books "b1.md,b2.md,..." (≥2, in series order)\n', code: 2 };
+  const titles = (typeof flags.titles === "string" ? flags.titles : "").split(",").map((s) => s.trim());
+
+  const books: SagaBook[] = [];
+  let anyThai = false;
+  for (let i = 0; i < files.length; i++) {
+    const r = readFile(files[i], read);
+    if ("code" in r) return r;
+    if (/[฀-๿]/.test(r.text)) anyThai = true;
+    const codex = parseCodex(r.text);
+    if (!codex.entities.length) return { stdout: "", stderr: `no entities declared in "${files[i]}" — use [ตัวละคร]/[CHARACTERS] etc. sections\n`, code: 2 };
+    books.push({ title: titles[i] || files[i], codex });
+  }
+  const lang: "th" | "en" = flags.lang === "en" ? "en" : flags.lang === "th" ? "th" : anyThai ? "th" : "en";
+  return { stdout: formatSaga(analyzeSaga(books), lang), stderr: "", code: 0 };
+}
+
 function cmdScene(file: string | undefined, flags: Record<string, string | true>, read?: (p: string) => string): CliResult {
   const r = readFile(file, read);
   if ("code" in r) return r;
@@ -314,6 +338,7 @@ export function runCli(argv: string[], io?: { read?: (path: string) => string })
   if (cmd === "relations") return cmdRelations(positional[1], flags, io?.read);
   if (cmd === "radar") return cmdRadar(positional[1], flags, io?.read);
   if (cmd === "codex") return cmdCodex(positional[1], flags, io?.read);
+  if (cmd === "saga") return cmdSaga(flags, io?.read);
   if (cmd === "scene") return cmdScene(positional[1], flags, io?.read);
   if (cmd === "narrative") return cmdNarrative(positional[1], flags, io?.read);
   return { stdout: "", stderr: `unknown command "${cmd}". try: rush help\n`, code: 2 };

@@ -96,6 +96,25 @@ describe("runCli", () => {
     expect(r.stderr).toContain("--bible");
   });
 
+  it("saga reports series continuity across ordered book codices", () => {
+    const files: Record<string, string> = {
+      "b1.md": "[ตัวละคร]\nอนันต์: x\nมาลี: y",
+      "b2.md": "[ตัวละคร]\nอนันต์: x\nเสือ: z",
+    };
+    const r = runCli(["saga", "--books", "b1.md,b2.md", "--titles", "เล่ม1,เล่ม2"], { read: (p) => files[p] });
+    expect(r.code).toBe(0);
+    expect(r.stdout).toContain("saga");
+    expect(r.stdout).toContain("แกนซีรีส์"); // backbone section
+    expect(r.stdout).toContain("อนันต์");    // spans both books
+    expect(r.stdout).toContain("หายจากเล่มก่อน"); // มาลี dropped in book 2
+  });
+
+  it("saga needs at least two books", () => {
+    const r = runCli(["saga", "--books", "only.md"], { read: () => "[ตัวละคร]\nA: x" });
+    expect(r.code).toBe(2);
+    expect(r.stderr).toContain("≥2");
+  });
+
   it("scene readout prints measured signals and no fake 0–100 vibe score", () => {
     const text =
       "แสงอาทิตย์สาดจ้าเป็นประกาย เสียงลมหวีดดังก้อง กลิ่นดินหอมกรุ่นอบอวล " +
