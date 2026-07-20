@@ -787,11 +787,21 @@ export default function RushPage() {
                     Story Bible / STATE
                     {storyBible.trim() && <span className="text-[0.6rem] text-green-400 normal-case">● injected</span>}
                   </h3>
-                  {storyBible.trim() && (
-                    <button onClick={() => setStoryBible("")} className="text-[0.65rem] text-gray-500 hover:text-red-400">
-                      Clear
-                    </button>
-                  )}
+                  <div className="flex items-center gap-2">
+                    {!storyBible.trim() && (
+                      <button
+                        onClick={() => setStoryBible("[ตัวละคร]\nชื่อ: ลักษณะเด่น\n\n[สถานที่]\nชื่อ: คำอธิบาย\n\n[สิ่งของ]\nชื่อ: บทบาท\n\n[ความสัมพันธ์]\nA - B: ความสัมพันธ์\nA -> C: การกระทำ\n")}
+                        className="text-[0.65rem] text-[#c9a84c] hover:text-[#e6c86a]"
+                      >
+                        + แทรกโครง Codex
+                      </button>
+                    )}
+                    {storyBible.trim() && (
+                      <button onClick={() => setStoryBible("")} className="text-[0.65rem] text-gray-500 hover:text-red-400">
+                        Clear
+                      </button>
+                    )}
+                  </div>
                 </div>
                 <textarea
                   value={storyBible}
@@ -800,7 +810,11 @@ export default function RushPage() {
                   className="input min-h-[80px] resize-y font-mono text-[0.72rem]"
                 />
                 <p className="text-[0.62rem] text-gray-600 mt-1">
-                  ปิดช่องว่าง continuity แบบ Sudowrite ด้วย prompt ล้วน — แก้ที่นี่ที่เดียว ใช้กับทุกบท (กด Generate Prompts ใหม่เพื่อใช้ค่าล่าสุด)
+                  ปิดช่องว่าง continuity ด้วย prompt ล้วน — แก้ที่นี่ที่เดียว ใช้กับทุกบท (กด Generate Prompts ใหม่เพื่อใช้ค่าล่าสุด)
+                </p>
+                <p className="text-[0.62rem] text-gray-600 mt-1 leading-relaxed">
+                  <span className="text-[#c9a84c]">Story Codex (GraphRAG):</span> ประกาศ entity ใต้หัวข้อ <code className="text-gray-400">[ตัวละคร] [สถานที่] [สิ่งของ] [ความสัมพันธ์]</code> →
+                  สารบบทั้งเล่มฉีดเข้า master prompt ส่วนแต่ละบทจะได้เฉพาะ entity ที่ปรากฏใน beat บทนั้น + ตัวที่เชื่อมกัน (deterministic ไม่มี LLM แอบทำงาน)
                 </p>
               </div>
 
