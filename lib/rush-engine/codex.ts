@@ -17,6 +17,10 @@
 // ║  No declarations → empty codex → nothing injected. Zero magic.      ║
 // ╚══════════════════════════════════════════════════════════════════╝
 
+import { withinOneEdit, thaiMarkVariant } from "./consistency";
+import { tokenizeThai } from "./thai-analyzer";
+import { tokenizeProse } from "./prose-analyzer";
+
 export type CodexEntityType = "character" | "place" | "item";
 export interface CodexEntity {
   name: string;
@@ -173,4 +177,75 @@ export function codexLocalEn(codex: Codex, text: string): string {
   if (local.relations.length) p += `Relevant relations:\n` + local.relations.map((r) => `• ${renderRelation(r)}`).join("\n") + "\n";
   p += `Keep these traits and relations consistent with the codex.\n`;
   return p;
+}
+
+// ── Codex audit — deterministic continuity check of a DRAFT vs the codex ──────
+//  The codex is the declared cast; a draft chapter is checked against it. Every
+//  finding is a COUNT, never a 0–100 verdict. "Not referenced" is a signal, not
+//  an error — an entity may simply not belong in this chapter.
+
+/** The declared cast as a flat name list — feed straight into continuityRadar(). */
+export function codexCanon(codex: Codex): string[] {
+  return codex.entities.map((e) => e.name);
+}
+
+export interface CodexAudit {
+  present: CodexEntity[];                              // named verbatim in the draft
+  variants: Array<{ declared: string; found: string }>; // near-miss spelling in the draft
+  missing: CodexEntity[];                              // neither present nor a near-miss
+  canonSize: number;
+}
+
+/** Check a draft against the codex, reusing the existing near-miss detectors
+ *  (withinOneEdit for Latin, thaiMarkVariant for Thai). Pure/deterministic. */
+export function codexAudit(codex: Codex, draft: string, lang: "th" | "en"): CodexAudit {
+  const present: CodexEntity[] = [];
+  const variants: Array<{ declared: string; found: string }> = [];
+  const missing: CodexEntity[] = [];
+  if (!hasCodex(codex) || !draft) {
+    return { present, variants, missing: codex.entities.slice(), canonSize: codex.entities.length };
+  }
+  const hay = draft.toLowerCase();
+  const tokens = lang === "th" ? tokenizeThai(draft) : tokenizeProse(draft);
+  for (const e of codex.entities) {
+    if (hay.includes(e.name.toLowerCase())) { present.push(e); continue; }
+    const hit = tokens.find((t) =>
+      lang === "th" ? thaiMarkVariant(e.name, t) : withinOneEdit(e.name.toLowerCase(), t.toLowerCase())
+    );
+    if (hit) variants.push({ declared: e.name, found: hit });
+    else missing.push(e);
+  }
+  return { present, variants, missing, canonSize: codex.entities.length };
+}
+
+/** Human-readable audit report (bilingual). Counts, not a verdict. */
+export function formatCodexAudit(audit: CodexAudit, lang: "th" | "en"): string {
+  const th = lang === "th";
+  const L: string[] = [
+    th
+      ? `# codex audit — canon ${audit.canonSize} (นับได้ ไม่ใช่คำตัดสิน)`
+      : `# codex audit — canon of ${audit.canonSize} (counts, not a verdict)`,
+  ];
+  L.push(
+    th
+      ? `ปรากฏในดราฟต์ (${audit.present.length}/${audit.canonSize}): ${audit.present.map((e) => e.name).join(", ") || "—"}`
+      : `present in draft (${audit.present.length}/${audit.canonSize}): ${audit.present.map((e) => e.name).join(", ") || "—"}`
+  );
+  if (audit.variants.length) {
+    L.push("", th ? "อาจสะกดเพี้ยน (เช็กความสอดคล้อง):" : "possible misspellings (check consistency):");
+    for (const v of audit.variants) L.push(`  "${v.declared}" ~ "${v.found}"`);
+  }
+  if (audit.missing.length) {
+    L.push(
+      "",
+      th
+        ? `ไม่ถูกอ้างถึง (${audit.missing.length}) — ตั้งใจ หรือช่องว่าง continuity?`
+        : `not referenced (${audit.missing.length}) — intentional, or a continuity gap?`
+    );
+    for (const e of audit.missing) L.push(`  ${e.name}`);
+  }
+  if (!audit.variants.length && !audit.missing.length) {
+    L.push("", th ? "ครบทุกชื่อในดราฟต์ ไม่มีชื่อเพี้ยน" : "every declared name appears; no misspellings.");
+  }
+  return L.join("\n") + "\n";
 }

@@ -16,6 +16,7 @@ import { characterGraph } from "./relationships";
 import { continuityRadar, sceneReadout } from "./radar";
 import { characterArc, pacingProfile, motifTracker } from "./narrative";
 import { splitChapters } from "./chapters";
+import { parseCodex, codexAudit, codexCanon, formatCodexAudit } from "./codex";
 
 export interface CliResult { stdout: string; stderr: string; code: number }
 
@@ -43,6 +44,7 @@ USAGE
   rush rename   <file.md> --from <name> --to <name> [--lang th|en] [--write]
   rush relations <file.md> --names "A,B,C" [--lang th|en]
   rush radar    <file.md> --canon "A,B,C" [--lang th|en]
+  rush codex    <draft.md> --bible <bible.md> [--lang th|en]
   rush scene    <file.md>   (Thai: real per-scene signals — no fake 0–100 scores)
   rush narrative <file.md> [--names "A,B"] [--motifs "x,y"]  (Thai: presence/pacing/motifs)
   rush help
@@ -58,6 +60,9 @@ COMMANDS
   relations Character co-occurrence graph: who shares scenes with whom (needs --names).
   radar     Continuity radar: canon names never used + off-canon names that recur
             (drift/rename/typo). Counts vs. your glossary — not a verdict (needs --canon).
+  codex     Audit a draft against a declared Story Codex (the --bible file): which
+            entities appear, which are misspelled, which aren't referenced, plus the
+            radar's off-canon drift. The codex IS the canon. Counts, not a verdict.
   scene     Per-scene readout (Thai): words, clauses, rhythm cv, dialogue ratio, telling
             density, sensory/1k, AI-tells — real signals, never a fake 0–100 vibe score.
 
@@ -205,6 +210,31 @@ function cmdRadar(file: string | undefined, flags: Record<string, string | true>
   return { stdout: L.join("\n") + "\n", stderr: "", code: 0 };
 }
 
+function cmdCodex(file: string | undefined, flags: Record<string, string | true>, read?: (p: string) => string): CliResult {
+  const bibleFile = typeof flags.bible === "string" ? flags.bible : "";
+  if (!bibleFile) return { stdout: "", stderr: 'codex needs --bible <bible.md> (the declared Story Codex)\n', code: 2 };
+  const draft = readFile(file, read);
+  if ("code" in draft) return draft;
+  const bible = readFile(bibleFile, read);
+  if ("code" in bible) return bible;
+
+  const codex = parseCodex(bible.text);
+  if (!codex.entities.length) {
+    return { stdout: "", stderr: `no entities declared in "${bibleFile}" — use [ตัวละคร]/[CHARACTERS] etc. sections\n`, code: 2 };
+  }
+  const lang: "th" | "en" = flags.lang === "en" ? "en" : /[฀-๿]/.test(draft.text) ? "th" : "en";
+  const audit = codexAudit(codex, draft.text, lang);
+  let out = formatCodexAudit(audit, lang);
+
+  // The codex IS the canon — layer the radar's off-canon drift on top.
+  const off = continuityRadar(draft.text, codexCanon(codex), lang).filter((f) => f.kind === "off-canon");
+  if (off.length) {
+    out += (lang === "th" ? "\noff-canon (ใช้แต่ไม่ได้ประกาศ — drift/typo?):\n" : "\noff-canon (used but not declared — drift/typo?):\n");
+    for (const f of off.slice(0, 20)) out += `  ${f.term} ×${f.count}\n`;
+  }
+  return { stdout: out, stderr: "", code: 0 };
+}
+
 function cmdScene(file: string | undefined, flags: Record<string, string | true>, read?: (p: string) => string): CliResult {
   const r = readFile(file, read);
   if ("code" in r) return r;
@@ -283,6 +313,7 @@ export function runCli(argv: string[], io?: { read?: (path: string) => string })
   if (cmd === "rename") return cmdRename(positional[1], flags, io?.read);
   if (cmd === "relations") return cmdRelations(positional[1], flags, io?.read);
   if (cmd === "radar") return cmdRadar(positional[1], flags, io?.read);
+  if (cmd === "codex") return cmdCodex(positional[1], flags, io?.read);
   if (cmd === "scene") return cmdScene(positional[1], flags, io?.read);
   if (cmd === "narrative") return cmdNarrative(positional[1], flags, io?.read);
   return { stdout: "", stderr: `unknown command "${cmd}". try: rush help\n`, code: 2 };

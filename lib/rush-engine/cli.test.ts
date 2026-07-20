@@ -78,6 +78,24 @@ describe("runCli", () => {
     expect(r.stdout).toContain("เดนโอ"); // unused canon name
   });
 
+  it("codex audits a draft against a declared story bible", () => {
+    const bible = "[ตัวละคร]\nอนันต์: นักสืบ\nมาลี: น้องสาว\nเสือ: ตัวร้าย";
+    const draft = "## บทที่ 1\nอนันต์ เดินไปหา มาลี ที่บ้าน";
+    const files: Record<string, string> = { "bible.md": bible, "draft.md": draft };
+    const r = runCli(["codex", "draft.md", "--bible", "bible.md"], { read: (p) => files[p] });
+    expect(r.code).toBe(0);
+    expect(r.stdout).toContain("codex audit");
+    expect(r.stdout).toContain("ปรากฏในดราฟต์"); // Thai draft → Thai report
+    expect(r.stdout).toContain("อนันต์");
+    expect(r.stdout).toContain("เสือ"); // declared but not referenced
+  });
+
+  it("codex requires --bible", () => {
+    const r = runCli(["codex", "draft.md"], { read: () => "x" });
+    expect(r.code).toBe(2);
+    expect(r.stderr).toContain("--bible");
+  });
+
   it("scene readout prints measured signals and no fake 0–100 vibe score", () => {
     const text =
       "แสงอาทิตย์สาดจ้าเป็นประกาย เสียงลมหวีดดังก้อง กลิ่นดินหอมกรุ่นอบอวล " +
