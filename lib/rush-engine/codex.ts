@@ -188,7 +188,10 @@ export function codexMermaid(codex: Codex): string {
   if (!hasCodex(codex)) return "";
   const id = new Map<string, string>();
   codex.entities.forEach((e, i) => id.set(e.name.toLowerCase(), `n${i}`));
-  const esc = (s: string) => s.replace(/"/g, "'").replace(/[[\]{}()|]/g, " ").trim();
+  // Neutralise every Mermaid-significant char (unquoted edge labels are the strict
+  // case: & is its multi-node operator, <>#;|(){}[] all have syntax meaning). Fall
+  // back to "?" so a name of only-special chars never emits an empty label.
+  const esc = (s: string) => s.replace(/"/g, "'").replace(/[[\]{}()|&<>#;]/g, " ").replace(/\s+/g, " ").trim() || "?";
 
   const adhoc: Array<{ id: string; label: string }> = [];
   let extra = 0;

@@ -306,9 +306,12 @@ function SagaView({ lang }: { lang: "th" | "en" }) {
     { title: "", bible: "" },
   ]);
   const report = useMemo(() => {
+    // Number the default titles by SERIES position (post-filter), so leaving a
+    // middle book blank doesn't skip a number in the report.
     const declared: SagaBook[] = books
-      .map((b, i) => ({ title: b.title.trim() || `${th ? "เล่ม" : "Book"} ${i + 1}`, codex: parseCodex(b.bible) }))
-      .filter((b) => b.codex.entities.length > 0);
+      .map((b) => ({ rawTitle: b.title.trim(), codex: parseCodex(b.bible) }))
+      .filter((b) => b.codex.entities.length > 0)
+      .map((b, i) => ({ title: b.rawTitle || `${th ? "เล่ม" : "Book"} ${i + 1}`, codex: b.codex }));
     return declared.length >= 2 ? analyzeSaga(declared) : null;
   }, [books, th]);
 
@@ -393,7 +396,6 @@ function CodexView({ text, lang }: { text: string; lang: "th" | "en" }) {
   const audit = useMemo(() => codexAudit(codex, text, lang), [codex, text, lang]);
   const mermaid = useMemo(() => codexMermaid(codex), [codex]);
   const th = lang === "th";
-  const declared = audit.present.length + audit.variants.length + audit.missing.length;
   return (
     <div>
       <h3 className="text-xs font-semibold tracking-widest text-gray-400 uppercase mb-2">
@@ -407,7 +409,7 @@ function CodexView({ text, lang }: { text: string; lang: "th" | "en" }) {
           : "Declare the cast under sections — [CHARACTERS] / [PLACES] / [ITEMS] / [RELATIONS]\nAnan: detective\nMali: sister"}
         className="input min-h-[72px] resize-y font-mono text-[0.72rem] w-full"
       />
-      {declared === 0 ? (
+      {audit.canonSize === 0 ? (
         <p className="text-[0.62rem] text-gray-600 mt-1">
           {th ? "ยังไม่ได้ประกาศ entity — พิมพ์คาสต์ใต้หัวข้อ [ตัวละคร] ฯลฯ แล้วจะตรวจกับดราฟต์ให้" : "No entities declared yet — list a cast under [CHARACTERS] etc. to audit the draft."}
         </p>

@@ -129,6 +129,23 @@ describe("codexMermaid — the declared graph, drawn", () => {
     expect(codexMermaid(parseCodex(""))).toBe("");
   });
 
+  it("neutralises Mermaid-significant chars in labels (& < > # ; never leak)", () => {
+    const m = codexMermaid(parseCodex("[ตัวละคร]\nแม่ & ลูก: ครอบครัว\n[ความสัมพันธ์]\nแม่ & ลูก -> เสือ: รัก<เกลียด"));
+    // & (Mermaid's multi-node operator) and < never appear in valid output — the
+    // arrow "-->" legitimately contains >, and classDef colours contain #, so those
+    // two are the unambiguous sentinels that a raw label char leaked through.
+    expect(m).not.toContain("&");
+    expect(m).not.toContain("<");
+    expect(m).toContain('n0["แม่ ลูก"]'); // & collapsed to a space in the label
+    expect(m).toContain("|รัก เกลียด|");  // < collapsed in the edge label
+  });
+
+  it("falls back to a placeholder rather than an empty label", () => {
+    const m = codexMermaid(parseCodex("[ตัวละคร]\n(): บทบาท"));
+    expect(m).not.toContain('[""]');
+    expect(m).toContain('"?"');
+  });
+
   it("gives undeclared relation endpoints their own node (no dropped edge)", () => {
     const m = codexMermaid(parseCodex("[ตัวละคร]\nA: x\n[ความสัมพันธ์]\nA -> ผี: หนีจาก"));
     expect(m).toContain(":::unknown");
