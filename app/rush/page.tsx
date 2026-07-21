@@ -34,6 +34,8 @@ import {
   defaultGroupsFor,
   generateAllPrompts,
   estimateTokens,
+  diffConfigs,
+  summarizeConfigDiff,
   type BookConfig,
   type BookTypeKey,
   type GeneratedPrompt,
@@ -483,11 +485,18 @@ export default function RushPage() {
   }
 
   function restoreVersion(cfg: BookConfig) {
+    // Field-level diff vs. what was on screen, so the notice says exactly what
+    // the restore changed (config is the source of truth — prompts just derive).
+    const changed = summarizeConfigDiff(diffConfigs(config, cfg));
     applyConfig(cfg);
     const g = defaultGroupsFor(cfg.type);
     setGroups(g);
     setPrompts(generateAllPrompts(cfg, g));
-    setNotice("กู้คืนเวอร์ชันแล้ว — กด Save เพื่อบันทึกเป็นเวอร์ชันล่าสุด");
+    setNotice(
+      changed
+        ? `กู้คืนเวอร์ชันแล้ว — ที่ต่างจากก่อนหน้า: ${changed} · กด Save เพื่อบันทึกเป็นเวอร์ชันล่าสุด`
+        : "กู้คืนเวอร์ชันแล้ว (เหมือนค่าบนจอทุกช่อง) — กด Save เพื่อบันทึกเป็นเวอร์ชันล่าสุด"
+    );
   }
 
   async function deleteProject(id: string) {
