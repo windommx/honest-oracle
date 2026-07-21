@@ -36,6 +36,11 @@ export interface CodexEntity {
   /** Declared continuity status (e.g. "ตายในบท 5", "หายตัว") — powers the
    *  dead-but-present audit flag. */
   status?: string;
+  /** Signature phrases this character DOES say (comma-separated). */
+  catchphrase?: string;
+  /** Words/phrases this character must NEVER say (comma-separated) — powers the
+   *  deterministic voice guard in codexAudit. */
+  forbidden?: string;
 }
 export interface CodexRelation {
   from: string;
@@ -68,7 +73,7 @@ const SECTION: Array<{ re: RegExp; type: CodexEntityType | "relation" | "thread"
 
 // Character-depth trait keys (bilingual). A line "อยาก: หาน้องสาว" following a
 // character attaches to that character instead of declaring a new entity.
-type TraitKey = "want" | "need" | "flaw" | "ghost" | "voice" | "status";
+type TraitKey = "want" | "need" | "flaw" | "ghost" | "voice" | "status" | "catchphrase" | "forbidden";
 const TRAITS: Array<{ re: RegExp; key: TraitKey }> = [
   { re: /^(อยาก|want)$/i, key: "want" },
   { re: /^(ต้องการจริง|ปมจริง|need)$/i, key: "need" },
@@ -76,6 +81,8 @@ const TRAITS: Array<{ re: RegExp; key: TraitKey }> = [
   { re: /^(แผลใจ|ghost)$/i, key: "ghost" },
   { re: /^(เสียง|วิธีพูด|voice)$/i, key: "voice" },
   { re: /^(สถานะ|status)$/i, key: "status" },
+  { re: /^(คำติดปาก|catchphrases?)$/i, key: "catchphrase" },
+  { re: /^(คำต้องห้าม|ห้ามพูด|forbidden)$/i, key: "forbidden" },
 ];
 
 // Thread priority keywords (bilingual). "desc: สูง" → high.
@@ -193,7 +200,8 @@ function renderRelation(r: CodexRelation): string {
   return `${r.from} ${arrow}${kind}${arrow} ${r.to}`;
 }
 
-const hasDepth = (e: CodexEntity): boolean => !!(e.want || e.need || e.flaw || e.ghost || e.voice || e.status);
+const hasDepth = (e: CodexEntity): boolean =>
+  !!(e.want || e.need || e.flaw || e.ghost || e.voice || e.status || e.catchphrase || e.forbidden);
 
 /** "อยาก: X · ต้องการจริง: Y …" — only declared traits, in a fixed order. */
 function renderDepth(e: CodexEntity, lang: "th" | "en"): string {
@@ -205,7 +213,26 @@ function renderDepth(e: CodexEntity, lang: "th" | "en"): string {
   if (e.ghost) parts.push(`${th ? "แผลใจ" : "ghost"}: ${e.ghost}`);
   if (e.voice) parts.push(`${th ? "เสียง" : "voice"}: ${e.voice}`);
   if (e.status) parts.push(`${th ? "สถานะ" : "status"}: ${e.status}`);
+  if (e.catchphrase) parts.push(`${th ? "คำติดปาก" : "catchphrases"}: ${e.catchphrase}`);
+  if (e.forbidden) parts.push(`${th ? "คำต้องห้าม" : "never says"}: ${e.forbidden}`);
   return parts.join(" · ");
+}
+
+/** Explicit status constraints for the digest: dead/missing characters must not
+ *  walk into the present timeline unannounced. "" when none declared. */
+function renderStatusConstraints(codex: Codex, lang: "th" | "en"): string {
+  const gone = codex.entities.filter((e) => e.status && GONE.test(e.status));
+  if (!gone.length) return "";
+  const th = lang === "th";
+  let p = th ? `ข้อจำกัดสถานะ:\n` : `Status constraints:\n`;
+  p += gone
+    .map((e) =>
+      th
+        ? `• ${e.name} — สถานะ "${e.status}": ห้ามปรากฏมีชีวิตในไทม์ไลน์ปัจจุบันหลังจุดนั้น การย้อนอดีต/ความฝัน/ผี ต้องบอกผู้อ่านให้ชัด`
+        : `• ${e.name} — status "${e.status}": must not appear alive in the present timeline past that point; flashbacks/dreams/ghosts must be clearly signalled`
+    )
+    .join("\n") + "\n";
+  return p;
 }
 
 const PRIORITY_TH: Record<ThreadPriority, string> = { critical: "วิกฤต", high: "สูง", medium: "กลาง", low: "ต่ำ" };
@@ -235,6 +262,7 @@ export function codexDigestTh(codex: Codex): string {
   const deep = codex.entities.filter(hasDepth);
   if (deep.length) p += `เจาะลึกตัวละคร:\n` + deep.map((e) => `• ${e.name} — ${renderDepth(e, "th")}`).join("\n") + "\n";
   if (codex.relations.length) p += `ความสัมพันธ์ (${codex.relations.length}):\n` + codex.relations.map((r) => `• ${renderRelation(r)}`).join("\n") + "\n";
+  p += renderStatusConstraints(codex, "th");
   p += renderThreads(codex, "th");
   p += `กฎ: ถือ Codex นี้เป็นแหล่งความจริง คงชื่อ/ลักษณะ/ความสัมพันธ์ให้สอดคล้องตลอดเล่ม ห้ามขัดแย้ง`;
   if (deep.some((e) => e.voice)) p += ` ทุกบทพูดของตัวละครที่ระบุ "เสียง" ต้องคงเอกลักษณ์นั้น`;
@@ -253,6 +281,7 @@ export function codexDigestEn(codex: Codex): string {
   const deep = codex.entities.filter(hasDepth);
   if (deep.length) p += `Character depth:\n` + deep.map((e) => `• ${e.name} — ${renderDepth(e, "en")}`).join("\n") + "\n";
   if (codex.relations.length) p += `Relations (${codex.relations.length}):\n` + codex.relations.map((r) => `• ${renderRelation(r)}`).join("\n") + "\n";
+  p += renderStatusConstraints(codex, "en");
   p += renderThreads(codex, "en");
   p += `RULE: treat this codex as source of truth — keep names/traits/relations consistent, never contradict it.`;
   if (deep.some((e) => e.voice)) p += ` Every line of dialogue from a character with a declared "voice" must keep that voice.`;
@@ -350,6 +379,10 @@ export interface CodexAudit {
   /** Present in the draft while their declared status says dead/missing — could be
    *  a flashback or a ghost, so it's a SIGNAL to check, not an error. */
   statusConflicts: CodexEntity[];
+  /** A declared คำต้องห้าม appears in the draft. We cannot attribute dialogue to a
+   *  speaker deterministically, so this only says the word OCCURS — the writer
+   *  checks who says it. */
+  forbiddenHits: Array<{ name: string; word: string; count: number }>;
   canonSize: number;
 }
 
@@ -362,7 +395,7 @@ export function codexAudit(codex: Codex, draft: string, lang: "th" | "en"): Code
   const variants: Array<{ declared: string; found: string }> = [];
   const missing: CodexEntity[] = [];
   if (!hasCodex(codex) || !draft) {
-    return { present, variants, missing: codex.entities.slice(), statusConflicts: [], canonSize: codex.entities.length };
+    return { present, variants, missing: codex.entities.slice(), statusConflicts: [], forbiddenHits: [], canonSize: codex.entities.length };
   }
   const hay = draft.toLowerCase();
   const tokens = lang === "th" ? tokenizeThai(draft) : tokenizeProse(draft);
@@ -375,7 +408,21 @@ export function codexAudit(codex: Codex, draft: string, lang: "th" | "en"): Code
     else missing.push(e);
   }
   const statusConflicts = present.filter((e) => e.status && GONE.test(e.status));
-  return { present, variants, missing, statusConflicts, canonSize: codex.entities.length };
+
+  // Voice guard: count occurrences of each declared คำต้องห้าม in the draft.
+  const forbiddenHits: Array<{ name: string; word: string; count: number }> = [];
+  for (const e of codex.entities) {
+    if (!e.forbidden) continue;
+    for (const raw of e.forbidden.split(/[,、]/)) {
+      const word = raw.trim();
+      if (word.length < 2) continue;
+      let count = 0;
+      let idx = hay.indexOf(word.toLowerCase());
+      while (idx !== -1) { count++; idx = hay.indexOf(word.toLowerCase(), idx + word.length); }
+      if (count > 0) forbiddenHits.push({ name: e.name, word, count });
+    }
+  }
+  return { present, variants, missing, statusConflicts, forbiddenHits, canonSize: codex.entities.length };
 }
 
 /** Human-readable audit report (bilingual). Counts, not a verdict. */
@@ -399,6 +446,15 @@ export function formatCodexAudit(audit: CodexAudit, lang: "th" | "en"): string {
         : "⚠ status conflict — declared dead/missing yet appears in the draft (flashback? ghost? or a continuity slip?):"
     );
     for (const e of audit.statusConflicts) L.push(`  ${e.name} — ${e.status}`);
+  }
+  if (audit.forbiddenHits.length) {
+    L.push(
+      "",
+      th
+        ? "🗣 voice guard — คำต้องห้ามที่ประกาศไว้ปรากฏในดราฟต์ (ระบบชี้แค่ว่า 'มีคำนี้' — ตรวจเองว่าใครพูด):"
+        : "🗣 voice guard — a declared never-says word occurs in the draft (we only detect occurrence — check who says it):"
+    );
+    for (const h of audit.forbiddenHits) L.push(`  ${h.name}: "${h.word}" ×${h.count}`);
   }
   if (audit.variants.length) {
     L.push("", th ? "อาจสะกดเพี้ยน (เช็กความสอดคล้อง):" : "possible misspellings (check consistency):");

@@ -470,6 +470,26 @@ function CodexView({ text, lang }: { text: string; lang: "th" | "en" }) {
               ))}
             </div>
           </div>
+          {audit.statusConflicts.length > 0 && (
+            <div>
+              <p className="text-[0.65rem] text-gray-500 mb-1">{th ? "⚠ สถานะขัดแย้ง — ตาย/หายตัว แต่ปรากฏ (ย้อนอดีต? ผี? หลุด?):" : "⚠ Status conflict — dead/missing yet appears (flashback? ghost? slip?):"}</p>
+              <div className="flex flex-wrap gap-1.5">
+                {audit.statusConflicts.map((e) => (
+                  <span key={e.name} className="text-xs px-2 py-0.5 rounded border border-rose-400/40 text-rose-300">{e.name} — {e.status}</span>
+                ))}
+              </div>
+            </div>
+          )}
+          {audit.forbiddenHits.length > 0 && (
+            <div>
+              <p className="text-[0.65rem] text-gray-500 mb-1">{th ? "🗣 voice guard — คำต้องห้ามปรากฏในดราฟต์ (ตรวจเองว่าใครพูด):" : "🗣 Voice guard — a never-says word occurs (check who says it):"}</p>
+              <div className="flex flex-wrap gap-1.5">
+                {audit.forbiddenHits.map((h) => (
+                  <span key={`${h.name}-${h.word}`} className="text-xs px-2 py-0.5 rounded border border-amber-400/40 text-amber-300">{h.name}: “{h.word}” ×{h.count}</span>
+                ))}
+              </div>
+            </div>
+          )}
           {audit.variants.length > 0 && (
             <div>
               <p className="text-[0.65rem] text-gray-500 mb-1">{th ? "อาจสะกดเพี้ยน (เช็กความสอดคล้อง):" : "Possible misspellings (check consistency):"}</p>

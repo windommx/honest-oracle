@@ -133,6 +133,38 @@ describe("status conflicts — declared dead/missing yet present", () => {
     const c = parseCodex("[ตัวละคร]\nบุญมา: พ่อ\nสถานะ: ตายในบท 3\nอนันต์: ลูก\nสถานะ: ยังอยู่");
     expect(codexAudit(c, "อนันต์ เดินคนเดียว", "th").statusConflicts).toEqual([]);
   });
+
+  it("digest carries an explicit status constraint for dead/missing characters", () => {
+    const d = codexDigestTh(parseCodex("[ตัวละคร]\nบุญมา: พ่อ\nสถานะ: ตายในบท 3"));
+    expect(d).toContain("ข้อจำกัดสถานะ:");
+    expect(d).toContain("ห้ามปรากฏมีชีวิตในไทม์ไลน์ปัจจุบัน");
+    // no dead characters → no constraint block
+    expect(codexDigestTh(parseCodex("[ตัวละคร]\nA: x"))).not.toContain("ข้อจำกัดสถานะ");
+  });
+});
+
+describe("voice guard — declared คำต้องห้าม in the draft", () => {
+  const c = parseCodex("[ตัวละคร]\nธารา: หมอ\nคำติดปาก: ผมรับผิดชอบเอง\nคำต้องห้าม: ก็ตามใจ, ไม่รู้สิ");
+
+  it("parses catchphrase + forbidden traits and renders them in depth", () => {
+    expect(c.entities[0].catchphrase).toBe("ผมรับผิดชอบเอง");
+    expect(c.entities[0].forbidden).toBe("ก็ตามใจ, ไม่รู้สิ");
+    const d = codexDigestTh(c);
+    expect(d).toContain("คำติดปาก: ผมรับผิดชอบเอง");
+    expect(d).toContain("คำต้องห้าม: ก็ตามใจ, ไม่รู้สิ");
+  });
+
+  it("counts forbidden-word occurrences, framed as occurrence-only (no attribution)", () => {
+    const a = codexAudit(c, 'ธารา ถอนใจ "ก็ตามใจ" เขาว่า แล้วพึมพำ ก็ตามใจ อีกครั้ง', "th");
+    expect(a.forbiddenHits).toEqual([{ name: "ธารา", word: "ก็ตามใจ", count: 2 }]);
+    const out = formatCodexAudit(a, "th");
+    expect(out).toContain("voice guard");
+    expect(out).toContain("ตรวจเองว่าใครพูด"); // honest: no speaker attribution
+  });
+
+  it("no hits when forbidden words stay out of the draft", () => {
+    expect(codexAudit(c, "ธารา เงียบ", "th").forbiddenHits).toEqual([]);
+  });
 });
 
 describe("codexLocal — GraphRAG local view", () => {
