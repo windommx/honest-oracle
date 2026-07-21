@@ -33,6 +33,7 @@ import {
   STARTER_GROUPS,
   defaultGroupsFor,
   generateAllPrompts,
+  estimateTokens,
   type BookConfig,
   type BookTypeKey,
   type GeneratedPrompt,
@@ -291,7 +292,10 @@ export default function RushPage() {
       "อนันต์ - มาลี: พี่น้อง\n" +
       "อนันต์ -> เสือ: ตามล่า\n" +
       "เสือ -> มาลี: ลักพาตัว\n" +
-      "หมอลี -> อนันต์: ให้เบาะแส"
+      "หมอลี -> อนันต์: ให้เบาะแส\n\n" +
+      "[ปมค้าง]\n" +
+      "ความลับที่มาลีสืบอยู่ก่อนหายตัว: สูง\n" +
+      "เหตุที่อนันต์ลาออกจากตำรวจ: กลาง"
     );
     setPrompts([]);
     setError("");
@@ -914,6 +918,9 @@ export default function RushPage() {
                               <span className="text-xs text-gray-500 truncate">{p.name}</span>
                             </button>
                             <div className="flex items-center gap-2 flex-shrink-0">
+                              <span className="text-[0.6rem] text-gray-600 tabular-nums" title="ประมาณจากอัตราส่วนตัวอักษร/token (heuristic) — จำนวนจริงต่างกันตามโมเดล">
+                                ≈{estimateTokens(p.prompt).toLocaleString()} tok
+                              </span>
                               <span className={`text-[0.6rem] px-1.5 py-0.5 border rounded ${GROUP_COLORS[p.group]}`}>{groupLabel(p.group)}</span>
                               <button onClick={() => runInStudio(p)} className="text-gray-400 hover:text-[#c9a84c]" title="Run in Studio" aria-label={`Run ${p.id} in Studio`}>
                                 <Play className="w-4 h-4" />

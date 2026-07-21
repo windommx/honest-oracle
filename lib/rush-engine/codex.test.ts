@@ -93,6 +93,48 @@ describe("character depth traits (declared, never inferred)", () => {
   });
 });
 
+describe("open threads (ปมค้าง)", () => {
+  const T = `[ตัวละคร]\nอนันต์: นักสืบ\n[ปมค้าง]\nความลับผลแล็บ: สูง\nอดีตของหมอลี\nศัตรูเก่าตามมา: critical`;
+
+  it("parses threads with bilingual priorities (default medium)", () => {
+    const c = parseCodex(T);
+    expect(c.threads).toEqual([
+      { desc: "ความลับผลแล็บ", priority: "high" },
+      { desc: "อดีตของหมอลี", priority: "medium" },
+      { desc: "ศัตรูเก่าตามมา", priority: "critical" },
+    ]);
+  });
+
+  it("renders threads in the digest sorted by priority, with the never-drop rule", () => {
+    const d = codexDigestTh(parseCodex(T));
+    expect(d).toContain("ปมที่ค้าง (3):");
+    expect(d.indexOf("[วิกฤต] ศัตรูเก่าตามมา")).toBeLessThan(d.indexOf("[สูง] ความลับผลแล็บ"));
+    expect(d).toContain("ห้ามทิ้งเงียบ");
+  });
+
+  it("threads-only codex counts as a codex but draws no graph", () => {
+    const c = parseCodex("[ปมค้าง]\nปมเดียว: ต่ำ");
+    expect(hasCodex(c)).toBe(true);
+    expect(codexMermaid(c)).toBe("");
+  });
+});
+
+describe("status conflicts — declared dead/missing yet present", () => {
+  it("flags a dead character appearing in the draft, as a signal not an error", () => {
+    const c = parseCodex("[ตัวละคร]\nบุญมา: พ่อ\nสถานะ: ตายในบท 3\nอนันต์: ลูก");
+    const a = codexAudit(c, "อนันต์ ฝันเห็น บุญมา ยืนอยู่ริมน้ำ", "th");
+    expect(a.statusConflicts.map((e) => e.name)).toEqual(["บุญมา"]);
+    const out = formatCodexAudit(a, "th");
+    expect(out).toContain("สถานะขัดแย้ง");
+    expect(out).toContain("ย้อนอดีต? ผี?"); // framed as a question, not a verdict
+  });
+
+  it("no flag when the dead character stays off-page or status is alive", () => {
+    const c = parseCodex("[ตัวละคร]\nบุญมา: พ่อ\nสถานะ: ตายในบท 3\nอนันต์: ลูก\nสถานะ: ยังอยู่");
+    expect(codexAudit(c, "อนันต์ เดินคนเดียว", "th").statusConflicts).toEqual([]);
+  });
+});
+
 describe("codexLocal — GraphRAG local view", () => {
   const c = parseCodex(BIBLE);
 

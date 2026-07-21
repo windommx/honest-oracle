@@ -27,6 +27,7 @@ export * from "./codex";
 export * from "./saga";
 export * from "./openers";
 export * from "./epistemics";
+export { estimateTokens } from "./text-util";
 export { TH_GROUP_LABEL } from "./th";
 
 import { buildArchitecture } from "./architecture";

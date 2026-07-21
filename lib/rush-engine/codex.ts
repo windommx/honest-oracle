@@ -33,6 +33,9 @@ export interface CodexEntity {
   flaw?: string;
   ghost?: string;
   voice?: string;
+  /** Declared continuity status (e.g. "ตายในบท 5", "หายตัว") — powers the
+   *  dead-but-present audit flag. */
+  status?: string;
 }
 export interface CodexRelation {
   from: string;
@@ -40,30 +43,47 @@ export interface CodexRelation {
   kind: string;
   directed: boolean;
 }
+export type ThreadPriority = "low" | "medium" | "high" | "critical";
+/** An open plot thread (ปมค้าง) the author has promised to pay off. */
+export interface CodexThread {
+  desc: string;
+  priority: ThreadPriority;
+}
 export interface Codex {
   entities: CodexEntity[];
   relations: CodexRelation[];
+  threads: CodexThread[];
 }
 
 // Section headers (bilingual). A line like "[CHARACTERS]", "ตัวละคร:", "CAST"
 // switches the active section. Only lines INSIDE a recognised section are parsed,
 // so freeform story-bible prose (no headers) yields an empty codex untouched.
-const SECTION: Array<{ re: RegExp; type: CodexEntityType | "relation" }> = [
+const SECTION: Array<{ re: RegExp; type: CodexEntityType | "relation" | "thread" }> = [
   { re: /^\[?\s*(characters?|cast|ตัวละคร)\s*\]?\s*:?\s*$/i, type: "character" },
   { re: /^\[?\s*(places?|locations?|setting|สถานที่|ฉาก)\s*\]?\s*:?\s*$/i, type: "place" },
   { re: /^\[?\s*(items?|objects?|artifacts?|สิ่งของ|ไอเทม|วัตถุ)\s*\]?\s*:?\s*$/i, type: "item" },
   { re: /^\[?\s*(relations?|relationships?|ความสัมพันธ์)\s*\]?\s*:?\s*$/i, type: "relation" },
+  { re: /^\[?\s*(threads?|open\s*threads?|ปมค้าง|ปมที่ค้าง|เส้นเรื่องค้าง)\s*\]?\s*:?\s*$/i, type: "thread" },
 ];
 
 // Character-depth trait keys (bilingual). A line "อยาก: หาน้องสาว" following a
 // character attaches to that character instead of declaring a new entity.
-type TraitKey = "want" | "need" | "flaw" | "ghost" | "voice";
+type TraitKey = "want" | "need" | "flaw" | "ghost" | "voice" | "status";
 const TRAITS: Array<{ re: RegExp; key: TraitKey }> = [
   { re: /^(อยาก|want)$/i, key: "want" },
   { re: /^(ต้องการจริง|ปมจริง|need)$/i, key: "need" },
   { re: /^(จุดอ่อน|ปมด้อย|flaw)$/i, key: "flaw" },
   { re: /^(แผลใจ|ghost)$/i, key: "ghost" },
   { re: /^(เสียง|วิธีพูด|voice)$/i, key: "voice" },
+  { re: /^(สถานะ|status)$/i, key: "status" },
+];
+
+// Thread priority keywords (bilingual). "desc: สูง" → high.
+const PRIORITY: Array<{ re: RegExp; p: ThreadPriority }> = [
+  { re: /^(critical|วิกฤต)$/i, p: "critical" },
+  { re: /^(high|สูง)$/i, p: "high" },
+  { re: /^(medium|กลาง|ปกติ)$/i, p: "medium" },
+  { re: /^(low|ต่ำ)$/i, p: "low" },
 ];
 
 /** Parse an author-declared story bible into a continuity graph. Deterministic;
@@ -71,10 +91,11 @@ const TRAITS: Array<{ re: RegExp; key: TraitKey }> = [
 export function parseCodex(text: string | undefined): Codex {
   const entities: CodexEntity[] = [];
   const relations: CodexRelation[] = [];
-  if (!text) return { entities, relations };
+  const threads: CodexThread[] = [];
+  if (!text) return { entities, relations, threads };
 
   const seen = new Set<string>(); // dedupe entity names (case-insensitive)
-  let section: CodexEntityType | "relation" | null = null;
+  let section: CodexEntityType | "relation" | "thread" | null = null;
 
   for (const raw of text.split(/\r?\n/)) {
     const line = raw.trim().replace(/^[-•*]\s+/, ""); // tolerate list bullets
@@ -95,6 +116,17 @@ export function parseCodex(text: string | undefined): Codex {
           relations.push({ from, to, kind: (m[4] ?? "").trim(), directed });
         }
       }
+      continue;
+    }
+
+    if (section === "thread") {
+      // "คำอธิบายปม: สูง" — text after the LAST colon is a priority keyword if it
+      // matches; otherwise the whole line is the description (default: medium).
+      const lastColon = line.lastIndexOf(":");
+      const tail = lastColon >= 0 ? line.slice(lastColon + 1).trim() : "";
+      const pr = PRIORITY.find((x) => x.re.test(tail));
+      const desc = (pr ? line.slice(0, lastColon) : line).trim();
+      if (desc) threads.push({ desc, priority: pr?.p ?? "medium" });
       continue;
     }
 
@@ -121,11 +153,11 @@ export function parseCodex(text: string | undefined): Codex {
     entities.push({ name, type: section, desc });
   }
 
-  return { entities, relations };
+  return { entities, relations, threads };
 }
 
 export function hasCodex(codex: Codex): boolean {
-  return codex.entities.length > 0;
+  return codex.entities.length > 0 || codex.threads.length > 0;
 }
 
 export interface LocalCodex {
@@ -161,7 +193,7 @@ function renderRelation(r: CodexRelation): string {
   return `${r.from} ${arrow}${kind}${arrow} ${r.to}`;
 }
 
-const hasDepth = (e: CodexEntity): boolean => !!(e.want || e.need || e.flaw || e.ghost || e.voice);
+const hasDepth = (e: CodexEntity): boolean => !!(e.want || e.need || e.flaw || e.ghost || e.voice || e.status);
 
 /** "อยาก: X · ต้องการจริง: Y …" — only declared traits, in a fixed order. */
 function renderDepth(e: CodexEntity, lang: "th" | "en"): string {
@@ -172,7 +204,24 @@ function renderDepth(e: CodexEntity, lang: "th" | "en"): string {
   if (e.flaw) parts.push(`${th ? "จุดอ่อน" : "flaw"}: ${e.flaw}`);
   if (e.ghost) parts.push(`${th ? "แผลใจ" : "ghost"}: ${e.ghost}`);
   if (e.voice) parts.push(`${th ? "เสียง" : "voice"}: ${e.voice}`);
+  if (e.status) parts.push(`${th ? "สถานะ" : "status"}: ${e.status}`);
   return parts.join(" · ");
+}
+
+const PRIORITY_TH: Record<ThreadPriority, string> = { critical: "วิกฤต", high: "สูง", medium: "กลาง", low: "ต่ำ" };
+
+/** "ปมที่ค้าง" block for digests (bilingual). "" if no threads. */
+function renderThreads(codex: Codex, lang: "th" | "en"): string {
+  if (!codex.threads.length) return "";
+  const th = lang === "th";
+  const order: ThreadPriority[] = ["critical", "high", "medium", "low"];
+  const sorted = [...codex.threads].sort((a, b) => order.indexOf(a.priority) - order.indexOf(b.priority));
+  let p = th ? `ปมที่ค้าง (${codex.threads.length}):\n` : `Open threads (${codex.threads.length}):\n`;
+  p += sorted.map((t) => `• [${th ? PRIORITY_TH[t.priority] : t.priority.toUpperCase()}] ${t.desc}`).join("\n") + "\n";
+  p += th
+    ? `ปมระดับสูง/วิกฤตต้องถูกแตะหรือพัฒนาในบทที่เหมาะสม — ห้ามทิ้งเงียบ และห้ามปิดปมนอกฉาก\n`
+    : `High/critical threads must be touched or advanced in an appropriate chapter — never silently dropped, never resolved off-page.\n`;
+  return p;
 }
 
 /** Whole-book codex block ≈ GraphRAG global/community view (Thai). "" if empty. */
@@ -186,6 +235,7 @@ export function codexDigestTh(codex: Codex): string {
   const deep = codex.entities.filter(hasDepth);
   if (deep.length) p += `เจาะลึกตัวละคร:\n` + deep.map((e) => `• ${e.name} — ${renderDepth(e, "th")}`).join("\n") + "\n";
   if (codex.relations.length) p += `ความสัมพันธ์ (${codex.relations.length}):\n` + codex.relations.map((r) => `• ${renderRelation(r)}`).join("\n") + "\n";
+  p += renderThreads(codex, "th");
   p += `กฎ: ถือ Codex นี้เป็นแหล่งความจริง คงชื่อ/ลักษณะ/ความสัมพันธ์ให้สอดคล้องตลอดเล่ม ห้ามขัดแย้ง`;
   if (deep.some((e) => e.voice)) p += ` ทุกบทพูดของตัวละครที่ระบุ "เสียง" ต้องคงเอกลักษณ์นั้น`;
   p += `\n`;
@@ -203,6 +253,7 @@ export function codexDigestEn(codex: Codex): string {
   const deep = codex.entities.filter(hasDepth);
   if (deep.length) p += `Character depth:\n` + deep.map((e) => `• ${e.name} — ${renderDepth(e, "en")}`).join("\n") + "\n";
   if (codex.relations.length) p += `Relations (${codex.relations.length}):\n` + codex.relations.map((r) => `• ${renderRelation(r)}`).join("\n") + "\n";
+  p += renderThreads(codex, "en");
   p += `RULE: treat this codex as source of truth — keep names/traits/relations consistent, never contradict it.`;
   if (deep.some((e) => e.voice)) p += ` Every line of dialogue from a character with a declared "voice" must keep that voice.`;
   p += `\n`;
@@ -237,7 +288,7 @@ export function codexLocalEn(codex: Codex, text: string): string {
  *  edges labelled by relation kind (→ directed, — undirected). "" if empty.
  *  Undeclared relation endpoints become plain nodes so no edge is dropped. */
 export function codexMermaid(codex: Codex): string {
-  if (!hasCodex(codex)) return "";
+  if (codex.entities.length === 0) return ""; // threads have no graph shape
   const id = new Map<string, string>();
   codex.entities.forEach((e, i) => id.set(e.name.toLowerCase(), `n${i}`));
   // Neutralise every Mermaid-significant char (unquoted edge labels are the strict
@@ -296,8 +347,13 @@ export interface CodexAudit {
   present: CodexEntity[];                              // named verbatim in the draft
   variants: Array<{ declared: string; found: string }>; // near-miss spelling in the draft
   missing: CodexEntity[];                              // neither present nor a near-miss
+  /** Present in the draft while their declared status says dead/missing — could be
+   *  a flashback or a ghost, so it's a SIGNAL to check, not an error. */
+  statusConflicts: CodexEntity[];
   canonSize: number;
 }
+
+const GONE = /ตาย|เสียชีวิต|สิ้นชีวิต|หายตัว|สาบสูญ|dead|deceased|missing/i;
 
 /** Check a draft against the codex, reusing the existing near-miss detectors
  *  (withinOneEdit for Latin, thaiMarkVariant for Thai). Pure/deterministic. */
@@ -306,7 +362,7 @@ export function codexAudit(codex: Codex, draft: string, lang: "th" | "en"): Code
   const variants: Array<{ declared: string; found: string }> = [];
   const missing: CodexEntity[] = [];
   if (!hasCodex(codex) || !draft) {
-    return { present, variants, missing: codex.entities.slice(), canonSize: codex.entities.length };
+    return { present, variants, missing: codex.entities.slice(), statusConflicts: [], canonSize: codex.entities.length };
   }
   const hay = draft.toLowerCase();
   const tokens = lang === "th" ? tokenizeThai(draft) : tokenizeProse(draft);
@@ -318,7 +374,8 @@ export function codexAudit(codex: Codex, draft: string, lang: "th" | "en"): Code
     if (hit) variants.push({ declared: e.name, found: hit });
     else missing.push(e);
   }
-  return { present, variants, missing, canonSize: codex.entities.length };
+  const statusConflicts = present.filter((e) => e.status && GONE.test(e.status));
+  return { present, variants, missing, statusConflicts, canonSize: codex.entities.length };
 }
 
 /** Human-readable audit report (bilingual). Counts, not a verdict. */
@@ -334,6 +391,15 @@ export function formatCodexAudit(audit: CodexAudit, lang: "th" | "en"): string {
       ? `ปรากฏในดราฟต์ (${audit.present.length}/${audit.canonSize}): ${audit.present.map((e) => e.name).join(", ") || "—"}`
       : `present in draft (${audit.present.length}/${audit.canonSize}): ${audit.present.map((e) => e.name).join(", ") || "—"}`
   );
+  if (audit.statusConflicts.length) {
+    L.push(
+      "",
+      th
+        ? "⚠ สถานะขัดแย้ง — ประกาศว่าตาย/หายตัว แต่ปรากฏในดราฟต์ (ย้อนอดีต? ผี? หรือหลุด continuity?):"
+        : "⚠ status conflict — declared dead/missing yet appears in the draft (flashback? ghost? or a continuity slip?):"
+    );
+    for (const e of audit.statusConflicts) L.push(`  ${e.name} — ${e.status}`);
+  }
   if (audit.variants.length) {
     L.push("", th ? "อาจสะกดเพี้ยน (เช็กความสอดคล้อง):" : "possible misspellings (check consistency):");
     for (const v of audit.variants) L.push(`  "${v.declared}" ~ "${v.found}"`);
