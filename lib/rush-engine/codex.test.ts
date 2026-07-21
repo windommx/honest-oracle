@@ -50,6 +50,49 @@ describe("parseCodex — indexing", () => {
   });
 });
 
+describe("character depth traits (declared, never inferred)", () => {
+  const DEEP = `[ตัวละคร]
+อนันต์: นักสืบ
+อยาก: หาน้องสาวให้เจอ
+ต้องการจริง: ให้อภัยตัวเอง
+จุดอ่อน: กลัวความมืด
+เสียง: ประโยคสั้น ห้วน
+มาลี: น้องสาว`;
+
+  it("attaches trait lines to the character above instead of declaring entities", () => {
+    const c = parseCodex(DEEP);
+    expect(c.entities.map((e) => e.name)).toEqual(["อนันต์", "มาลี"]); // no entity named "อยาก"
+    const anan = c.entities[0];
+    expect(anan.want).toBe("หาน้องสาวให้เจอ");
+    expect(anan.need).toBe("ให้อภัยตัวเอง");
+    expect(anan.flaw).toBe("กลัวความมืด");
+    expect(anan.voice).toBe("ประโยคสั้น ห้วน");
+    expect(c.entities[1].want).toBeUndefined(); // มาลี has none
+  });
+
+  it("renders depth in the digest and per-chapter local view, with a voice rule", () => {
+    const c = parseCodex(DEEP);
+    const digest = codexDigestTh(c);
+    expect(digest).toContain("เจาะลึกตัวละคร:");
+    expect(digest).toContain("อยาก: หาน้องสาวให้เจอ");
+    expect(digest).toContain('ระบุ "เสียง"'); // voice-consistency rule appears
+    const local = codexLocalTh(c, "บทนี้ อนันต์ ออกเดินทาง");
+    expect(local).toContain("เสียง: ประโยคสั้น ห้วน");
+  });
+
+  it("no traits declared → digest byte-identical to before (snapshot safety)", () => {
+    const plain = parseCodex("[ตัวละคร]\nA: x\nB: y");
+    expect(codexDigestTh(plain)).not.toContain("เจาะลึกตัวละคร");
+    expect(codexDigestEn(plain)).not.toContain("Character depth");
+  });
+
+  it("English trait keys work too", () => {
+    const c = parseCodex("[CHARACTERS]\nAnan: detective\nwant: find his sister\nvoice: clipped sentences");
+    expect(c.entities[0].want).toBe("find his sister");
+    expect(codexDigestEn(c)).toContain("Character depth:");
+  });
+});
+
 describe("codexLocal — GraphRAG local view", () => {
   const c = parseCodex(BIBLE);
 

@@ -26,6 +26,13 @@ export interface CodexEntity {
   name: string;
   type: CodexEntityType;
   desc: string;
+  /** Optional declared character depth (Want vs Need, flaw, ghost, speech voice).
+   *  Author-declared only — never inferred. */
+  want?: string;
+  need?: string;
+  flaw?: string;
+  ghost?: string;
+  voice?: string;
 }
 export interface CodexRelation {
   from: string;
@@ -46,6 +53,17 @@ const SECTION: Array<{ re: RegExp; type: CodexEntityType | "relation" }> = [
   { re: /^\[?\s*(places?|locations?|setting|สถานที่|ฉาก)\s*\]?\s*:?\s*$/i, type: "place" },
   { re: /^\[?\s*(items?|objects?|artifacts?|สิ่งของ|ไอเทม|วัตถุ)\s*\]?\s*:?\s*$/i, type: "item" },
   { re: /^\[?\s*(relations?|relationships?|ความสัมพันธ์)\s*\]?\s*:?\s*$/i, type: "relation" },
+];
+
+// Character-depth trait keys (bilingual). A line "อยาก: หาน้องสาว" following a
+// character attaches to that character instead of declaring a new entity.
+type TraitKey = "want" | "need" | "flaw" | "ghost" | "voice";
+const TRAITS: Array<{ re: RegExp; key: TraitKey }> = [
+  { re: /^(อยาก|want)$/i, key: "want" },
+  { re: /^(ต้องการจริง|ปมจริง|need)$/i, key: "need" },
+  { re: /^(จุดอ่อน|ปมด้อย|flaw)$/i, key: "flaw" },
+  { re: /^(แผลใจ|ghost)$/i, key: "ghost" },
+  { re: /^(เสียง|วิธีพูด|voice)$/i, key: "voice" },
 ];
 
 /** Parse an author-declared story bible into a continuity graph. Deterministic;
@@ -85,6 +103,18 @@ export function parseCodex(text: string | undefined): Codex {
     const name = (colon >= 0 ? line.slice(0, colon) : line).trim();
     const desc = colon >= 0 ? line.slice(colon + 1).trim() : "";
     if (!name) continue;
+
+    // Depth trait for the character above ("อยาก: …", "voice: …") — attaches to
+    // the last character instead of declaring an entity named "อยาก".
+    if (section === "character" && colon >= 0 && desc) {
+      const trait = TRAITS.find((t) => t.re.test(name));
+      const last = entities[entities.length - 1];
+      if (trait && last && last.type === "character") {
+        if (!last[trait.key]) last[trait.key] = desc;
+        continue;
+      }
+    }
+
     const key = name.toLowerCase();
     if (seen.has(key)) continue;
     seen.add(key);
@@ -131,6 +161,20 @@ function renderRelation(r: CodexRelation): string {
   return `${r.from} ${arrow}${kind}${arrow} ${r.to}`;
 }
 
+const hasDepth = (e: CodexEntity): boolean => !!(e.want || e.need || e.flaw || e.ghost || e.voice);
+
+/** "อยาก: X · ต้องการจริง: Y …" — only declared traits, in a fixed order. */
+function renderDepth(e: CodexEntity, lang: "th" | "en"): string {
+  const th = lang === "th";
+  const parts: string[] = [];
+  if (e.want) parts.push(`${th ? "อยาก" : "want"}: ${e.want}`);
+  if (e.need) parts.push(`${th ? "ต้องการจริง" : "need"}: ${e.need}`);
+  if (e.flaw) parts.push(`${th ? "จุดอ่อน" : "flaw"}: ${e.flaw}`);
+  if (e.ghost) parts.push(`${th ? "แผลใจ" : "ghost"}: ${e.ghost}`);
+  if (e.voice) parts.push(`${th ? "เสียง" : "voice"}: ${e.voice}`);
+  return parts.join(" · ");
+}
+
 /** Whole-book codex block ≈ GraphRAG global/community view (Thai). "" if empty. */
 export function codexDigestTh(codex: Codex): string {
   if (!hasCodex(codex)) return "";
@@ -139,8 +183,12 @@ export function codexDigestTh(codex: Codex): string {
     const es = codex.entities.filter((e) => e.type === t);
     if (es.length) p += `${TYPE_TH[t]} (${es.length}): ` + es.map((e) => e.desc ? `${e.name} — ${e.desc}` : e.name).join(" · ") + "\n";
   });
+  const deep = codex.entities.filter(hasDepth);
+  if (deep.length) p += `เจาะลึกตัวละคร:\n` + deep.map((e) => `• ${e.name} — ${renderDepth(e, "th")}`).join("\n") + "\n";
   if (codex.relations.length) p += `ความสัมพันธ์ (${codex.relations.length}):\n` + codex.relations.map((r) => `• ${renderRelation(r)}`).join("\n") + "\n";
-  p += `กฎ: ถือ Codex นี้เป็นแหล่งความจริง คงชื่อ/ลักษณะ/ความสัมพันธ์ให้สอดคล้องตลอดเล่ม ห้ามขัดแย้ง\n`;
+  p += `กฎ: ถือ Codex นี้เป็นแหล่งความจริง คงชื่อ/ลักษณะ/ความสัมพันธ์ให้สอดคล้องตลอดเล่ม ห้ามขัดแย้ง`;
+  if (deep.some((e) => e.voice)) p += ` ทุกบทพูดของตัวละครที่ระบุ "เสียง" ต้องคงเอกลักษณ์นั้น`;
+  p += `\n`;
   return p;
 }
 
@@ -152,8 +200,12 @@ export function codexDigestEn(codex: Codex): string {
     const es = codex.entities.filter((e) => e.type === t);
     if (es.length) p += `${TYPE_EN[t]}s (${es.length}): ` + es.map((e) => e.desc ? `${e.name} — ${e.desc}` : e.name).join(" · ") + "\n";
   });
+  const deep = codex.entities.filter(hasDepth);
+  if (deep.length) p += `Character depth:\n` + deep.map((e) => `• ${e.name} — ${renderDepth(e, "en")}`).join("\n") + "\n";
   if (codex.relations.length) p += `Relations (${codex.relations.length}):\n` + codex.relations.map((r) => `• ${renderRelation(r)}`).join("\n") + "\n";
-  p += `RULE: treat this codex as source of truth — keep names/traits/relations consistent, never contradict it.\n`;
+  p += `RULE: treat this codex as source of truth — keep names/traits/relations consistent, never contradict it.`;
+  if (deep.some((e) => e.voice)) p += ` Every line of dialogue from a character with a declared "voice" must keep that voice.`;
+  p += `\n`;
   return p;
 }
 
@@ -162,7 +214,7 @@ export function codexLocalTh(codex: Codex, text: string): string {
   const local = codexLocal(codex, text);
   if (local.entities.length === 0) return "";
   let p = `═══ Codex ต่อเนื่อง (เฉพาะบทนี้) ═══\nปรากฏในบทนี้:\n`;
-  p += local.entities.map((e) => `• ${e.name} (${TYPE_TH[e.type]})${e.desc ? ` — ${e.desc}` : ""}`).join("\n") + "\n";
+  p += local.entities.map((e) => `• ${e.name} (${TYPE_TH[e.type]})${e.desc ? ` — ${e.desc}` : ""}${hasDepth(e) ? ` | ${renderDepth(e, "th")}` : ""}`).join("\n") + "\n";
   if (local.relations.length) p += `ความสัมพันธ์ที่เกี่ยวข้อง:\n` + local.relations.map((r) => `• ${renderRelation(r)}`).join("\n") + "\n";
   p += `คงลักษณะและความสัมพันธ์เหล่านี้ให้ตรงกับ Codex\n`;
   return p;
@@ -173,7 +225,7 @@ export function codexLocalEn(codex: Codex, text: string): string {
   const local = codexLocal(codex, text);
   if (local.entities.length === 0) return "";
   let p = `═══ CODEX (this chapter) ═══\nAppears here:\n`;
-  p += local.entities.map((e) => `• ${e.name} (${TYPE_EN[e.type]})${e.desc ? ` — ${e.desc}` : ""}`).join("\n") + "\n";
+  p += local.entities.map((e) => `• ${e.name} (${TYPE_EN[e.type]})${e.desc ? ` — ${e.desc}` : ""}${hasDepth(e) ? ` | ${renderDepth(e, "en")}` : ""}`).join("\n") + "\n";
   if (local.relations.length) p += `Relevant relations:\n` + local.relations.map((r) => `• ${renderRelation(r)}`).join("\n") + "\n";
   p += `Keep these traits and relations consistent with the codex.\n`;
   return p;
