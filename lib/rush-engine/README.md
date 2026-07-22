@@ -125,6 +125,35 @@ const pack = generateAllPrompts(config, defaultGroupsFor(config.type));
 - `config.storyBible` → parsed into the Story Codex + injected as source-of-truth STATE.
 - `config.outline` → threaded into each chapter prompt; `config.structure` → per-chapter beat.
 
+## Craft module index (one question each — keep it orthogonal)
+
+Every craft module answers ONE question no other module answers. Before adding
+a craft module, find your question here; if a row already answers it, extend
+that module instead of adding a sibling.
+
+| Module | The one question it answers |
+|---|---|
+| `GENRE_CORE` | What promise does this genre make to its reader? |
+| `STRUCTURE` | How is the whole book shaped? (see also `thai-structures.ts` for per-chapter beats) |
+| `VOICE_SHEET` | How does each character speak distinctly? |
+| `CHAR_ARC` | How does a character change? (Lie-vs-Truth) |
+| `PSYCH_ARC` | How does a *relationship* change believably? (attachment, earned security, repair) |
+| `WORLD_CODEX` | What is true about this world? |
+| `SCENE` | How is one dramatic unit built? (Scene/Sequel + MRU) |
+| `QUIET_SCENE` | How does a low-dialogue scene carry weight? (prosody, staged co-regulation, distance/timing/objects, quiet repair) |
+| `DIALOGUE` | How does dialogue sharpen? (action beats, subtext, trimmed tags) |
+| `HOOK_CRAFT` | How does a chapter END? (hook typology + restraint: almost-moment, what-they-don't-do, body-betrays-last, micro-conflict) |
+| `ANTI_SAFE` | How do we break tidy AI defaults? |
+| `SENSORY` | Are the five senses actually on the page? |
+| `IMMERSION` | How close is the reader to the POV? (deep POV) |
+
+Topics that intentionally do NOT get their own module (they live inside the
+rows above): body language & restraint → `HOOK_CRAFT`/`QUIET_SCENE`; prosody &
+co-regulation & silence → `QUIET_SCENE`; subtext → `DIALOGUE`; repair &
+attachment → `PSYCH_ARC`; emotional sensory anchoring → `SENSORY` + the
+high-tension chapter block in `th.ts`. Splitting these out would give users a
+dozen 80%-overlapping craft modules and no way to choose.
+
 ## Adding a module
 
 1. Add an EN builder `(config) => string` in `modules.ts` and register it in
