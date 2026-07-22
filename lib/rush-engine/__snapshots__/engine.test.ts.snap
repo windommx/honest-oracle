@@ -1517,6 +1517,46 @@ attachment ในฐานะเครื่องยนต์พฤติกร
     "usage": "ใช้ตอนออกแบบหรือตรวจเส้นความสัมพันธ์ slow burn",
   },
   {
+    "description": "ฉากที่พูดโดยไม่ใช้บทสนทนา: prosody (เทียบฐานเดิม เสียงแตกช้า), จัดฉาก co-regulation 5 จังหวะ, ระยะห่าง/จังหวะ/วัตถุ, การซ่อมแบบเงียบ",
+    "group": "craft",
+    "id": "QUIET_SCENE",
+    "name": "Quiet Scene & Prosody",
+    "prompt": "เขียน (หรือเขียนใหม่) "ฉากเงียบ" — ฉากที่สื่อสารเกือบทั้งหมดโดยไม่พึ่งบทสนทนา: ผ่านคุณภาพเสียง ระยะห่าง จังหวะเวลา และการปรากฏตัว นี่คือ craft ระดับลงมือเขียนฉาก — ใช้คู่กับ "Attachment & Repair Arc" ที่ถือการออกแบบความสัมพันธ์เบื้องหลัง
+
+น้ำเสียงคือสัญญาณ (prosody — เสียงพูดก่อนคำพูดเสมอ):
+1. เทียบกับฐานเดิม — เครื่องมือที่แม่นสุด: บรรยายว่าเสียง "ต่างจากปกติของตัวละครคนนี้" อย่างไร ("ช้ากว่าเสียงตอนราวด์วอร์ด") ไม่ใช่ชมว่าเสียงเพราะ
+2. ความช้า + จังหวะหยุด — การนิ่งหนึ่งจังหวะก่อนตอบ อ่านได้ทั้งการคุมอารมณ์ ความใส่ใจ หรือความเปราะ แล้วแต่บริบท
+3. เสียงทุ้มลง-เบาลง (ไม่ใช่กระซิบ) = เกราะกำลังลด
+4. เสียงราบผิดธรรมชาติ — ไม่มีขึ้นลงเลย อ่านได้ทั้ง "กำแพง" และ "ปิดระบบ" ให้บริบทตัดสิน
+5. เสียงขัดกับคำ — ปากว่า "ผมเข้าใจ" แต่เสียงเร็วและตึงเกินไป = subtext ทันที
+6. เสียงแตกช้ากว่าเหตุการณ์ — เสียงนิ่งตลอดฉาก แล้วค่อยสั่นตอนอีกฝ่ายเดินพ้นไปแล้ว เกราะที่อยู่ได้นานกว่าโมเมนต์นั่นแหละคือเรื่องเล่า
+เลี่ยง: "เสียงสั่นเครือ" ซ้ำ ๆ · คำคุณศัพท์อารมณ์แปะเสียง ("เสียงโกรธ" "เสียงเศร้า") · เสียงไพเราะเกินจริง
+
+จัดฉาก co-regulation (ระบบประสาทสงบหนึ่งดวงพยุงอีกดวง — 5 จังหวะ):
+1. โชว์ A ที่ไม่นิ่ง (เครียดจัดหรือชา) → 2. B เข้ามาด้วยความสงบ ไม่ประกาศตัว → 3. สัมผัสทางประสาทสัมผัสเล็ก ๆ: จังหวะเสียง การยืนนิ่ง ๆ หรือ "วัตถุที่วางไว้" (แก้วน้ำที่วางลงพูดว่า "ฉันอยู่นี่") — ไม่ใช่เริ่มด้วยการแตะตัว → 4. ไม่เร่ง ไม่แก้ปัญหา ไม่ซัก → 5. การเปลี่ยนแปลงร่างกายเล็ก ๆ หนึ่งจุดบอกว่าได้ผล: ลมหายใจออกยาวขึ้น ไหล่ตกลงเซนติเมตรเดียว มือเอื้อมไปหยิบแก้ว
+สิ่งที่ฆ่าฉากนี้: คำปลอบยาว ๆ · บังคับให้เล่า · แตะตัวหนักเกินไปเร็วเกินไป (โดยเฉพาะกับ avoidant) · หายดีในฉากเดียว · "ทุกอย่างจะเรียบร้อย" ที่ไม่มีน้ำหนักของการอยู่จริง
+
+ช่องทาง nonverbal นอกเหนือร่างกาย:
+- ระยะห่าง — ครึ่งก้าวเข้าหรือออกคือหนึ่งประโยค การรักษาระยะอย่างเคารพบางทีพูดดังกว่าการเข้าใกล้
+- จังหวะเวลา — ตอบช้าลง อยู่ต่อนานกว่าหน้าที่กำหนด จังหวะก่อนประตูปิด
+- การเลี่ยงสัมผัส — ส่งของแบบไม่ให้นิ้วแตะกัน คือการสื่อสาร ไม่ใช่ความว่างเปล่า
+- วัตถุ — เสื้อกาวน์ที่พาดไว้ กาแฟที่วางทิ้งไว้: การปรากฏตัวที่ไม่เรียกร้องอะไรตอบ
+
+การซ่อมแซมแบบเงียบ (หลังรอยร้าว คำพูดน้อยที่สุด):
+- ฝ่ายที่ "ถอย" ต้องเป็นฝ่ายกลับมาก่อน — ให้อีกฝ่ายตามตลอดคือวนลูปไล่ตาม-ถอยหนีซ้ำ
+- บอก "ผลกระทบ" ไม่ใช่ข้อแก้ตัว ("การถอยของผมทำให้คุณลำบาก" ไม่ใช่ "ผมไม่ได้ตั้งใจ")
+- แยกพฤติกรรมออกจากตัวตน ("ตอนนั้นคุณห่างไป" ไม่ใช่ "คุณเป็นคนเย็นชา")
+- แล้ว "อยู่ต่อ" โดยไม่เรียกร้องคำตอบ — ฉากซ่อมหนึ่งฉากไม่เคยจบงาน การซ่อมต้องเกิดซ้ำ
+
+กฎของฉาก: งบบทสนทนา ≤ 5 บรรทัดสั้น · ความเงียบคือช่องทางสื่อสาร ไม่ใช่บทสนทนาที่หายไป · จบที่การขยับเล็ก ๆ ไม่ใช่การคลี่คลาย
+
+ผลลัพธ์: ฉากเงียบ (หรือฉบับแก้) + โน้ตท้าย 2 บรรทัด ระบุว่าใช้ prosody device ไหนกับ co-regulation จังหวะไหนเป็นตัวพา
+
+═══ ฉาก / สถานการณ์ที่จะเขียน ═══
+[วางฉาก หรือบอกว่าใครกำลังไม่นิ่ง และใครเดินเข้ามา]",
+    "usage": "ส่งฉากอารมณ์ที่บทสนทนาน้อยเพื่อเขียนหรือขัดให้คม",
+  },
+  {
     "description": "แปลซื่อสัตย์: คัมภีร์ canon + ล็อกศัพท์ + ข้อห้าม + micro-chunking กัน AI มโน/ไหลค่าเฉลี่ย",
     "group": "craft",
     "id": "TRANSLATE",
@@ -3251,6 +3291,46 @@ Output: per lead — attachment pattern + 3 in-scene tells; the arc's current st
 ═══ LEADS + RELATIONSHIP PREMISE ═══
 [paste your leads and where the relationship currently stands]",
     "usage": "Run when designing or auditing a slow-burn relationship arc.",
+  },
+  {
+    "description": "Scenes that speak without dialogue: prosody devices (baseline shift, delayed crack), staged co-regulation, distance/timing/objects as channels, quiet repair.",
+    "group": "craft",
+    "id": "QUIET_SCENE",
+    "name": "Quiet Scene & Prosody",
+    "prompt": "Write (or rewrite) a QUIET SCENE — a scene that communicates almost entirely without dialogue: through voice quality, distance, timing, and presence. This is scene-level execution; pair with "Attachment & Repair Arc" for the relationship design behind it.
+
+PROSODY AS SIGNAL (voice quality speaks before words do):
+1. BASELINE COMPARISON — the strongest device: describe how the voice differs from THIS character's normal ("slower than his ward-round voice"), not generic prettiness.
+2. SLOWNESS + PAUSES — a held beat before answering reads as control, care, or fragility depending on context.
+3. PITCH/VOLUME DROP — lower and softer (not whispering) = armor coming down.
+4. UNNATURAL FLATNESS — a voice with no rise and fall reads as either a wall or a shutdown; let context decide which.
+5. MISMATCH — words say "I understand", the voice is too fast and tight: instant subtext.
+6. DELAYED SHIFT — the voice holds steady through the scene and only cracks after the other person leaves. The armor outlasting the moment IS the story.
+AVOID: "trembling voice" on repeat; emotion adjectives glued to voice ("angry voice", "sad voice"); voices described as beautiful.
+
+CO-REGULATION, STAGED (one calm nervous system steadies another — 5 beats):
+1. show A dysregulated (wired or shut down) → 2. B arrives CALM, no announcement → 3. small sensory contact: voice rhythm, steady presence, a placed object (a glass of water set down says "I'm here") — NOT touch-first → 4. no rushing, no fixing, no interrogating → 5. ONE small body shift shows it landed: a longer exhale, shoulders dropping a centimetre, reaching for the glass.
+WHAT KILLS IT: comfort speeches; demanding they talk; heavy touch too early (especially with an avoidant); healed-within-one-scene; "everything will be fine" without the weight of staying.
+
+NONVERBAL CHANNELS BEYOND THE BODY:
+- DISTANCE — half a step closer or further is a sentence; keeping respectful distance can say more than approaching.
+- TIMING — answering slowly, staying longer than duty requires, the pause before a door closes.
+- TOUCH AVOIDED — handing something over so fingers don't meet is communication, not absence of it.
+- OBJECTS — a coat draped on a chair, coffee left on a desk: presence that asks for nothing back.
+
+QUIET REPAIR (after a rupture, minimal words):
+- the one who WITHDREW returns first — making the other chase re-runs the pursue-withdraw loop;
+- name the impact, not the excuse ("my pulling away made this hard for you", not "I didn't mean it");
+- separate behavior from identity ("you went distant" not "you're cold");
+- then STAY, without demanding a response. One repair scene never finishes the job — repairs repeat.
+
+RULES FOR THE SCENE: dialogue budget ≤ 5 short lines; silence is a communication channel, not missing dialogue; end on a SMALL shift, not a resolution.
+
+Output: the quiet scene (or rewrite) + a 2-line margin note naming which prosody device and which co-regulation beat carried it.
+
+═══ SCENE / SITUATION TO WORK ON ═══
+[paste the scene, or describe who is dysregulated and who shows up]",
+    "usage": "Send a low-dialogue emotional scene to write or sharpen.",
   },
   {
     "description": "Canon lorebook + terminology lock + negative prompts + micro-chunking — translate without AI drift/hallucination.",

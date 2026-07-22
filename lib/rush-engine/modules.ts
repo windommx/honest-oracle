@@ -531,6 +531,42 @@ Output: a per-scene sense table + the targeted additions.
 [INSERT DRAFT HERE]`;
 }
 
+function moduleQuietScene(): string {
+  return `Write (or rewrite) a QUIET SCENE — a scene that communicates almost entirely without dialogue: through voice quality, distance, timing, and presence. This is scene-level execution; pair with "Attachment & Repair Arc" for the relationship design behind it.
+
+PROSODY AS SIGNAL (voice quality speaks before words do):
+1. BASELINE COMPARISON — the strongest device: describe how the voice differs from THIS character's normal ("slower than his ward-round voice"), not generic prettiness.
+2. SLOWNESS + PAUSES — a held beat before answering reads as control, care, or fragility depending on context.
+3. PITCH/VOLUME DROP — lower and softer (not whispering) = armor coming down.
+4. UNNATURAL FLATNESS — a voice with no rise and fall reads as either a wall or a shutdown; let context decide which.
+5. MISMATCH — words say "I understand", the voice is too fast and tight: instant subtext.
+6. DELAYED SHIFT — the voice holds steady through the scene and only cracks after the other person leaves. The armor outlasting the moment IS the story.
+AVOID: "trembling voice" on repeat; emotion adjectives glued to voice ("angry voice", "sad voice"); voices described as beautiful.
+
+CO-REGULATION, STAGED (one calm nervous system steadies another — 5 beats):
+1. show A dysregulated (wired or shut down) → 2. B arrives CALM, no announcement → 3. small sensory contact: voice rhythm, steady presence, a placed object (a glass of water set down says "I'm here") — NOT touch-first → 4. no rushing, no fixing, no interrogating → 5. ONE small body shift shows it landed: a longer exhale, shoulders dropping a centimetre, reaching for the glass.
+WHAT KILLS IT: comfort speeches; demanding they talk; heavy touch too early (especially with an avoidant); healed-within-one-scene; "everything will be fine" without the weight of staying.
+
+NONVERBAL CHANNELS BEYOND THE BODY:
+- DISTANCE — half a step closer or further is a sentence; keeping respectful distance can say more than approaching.
+- TIMING — answering slowly, staying longer than duty requires, the pause before a door closes.
+- TOUCH AVOIDED — handing something over so fingers don't meet is communication, not absence of it.
+- OBJECTS — a coat draped on a chair, coffee left on a desk: presence that asks for nothing back.
+
+QUIET REPAIR (after a rupture, minimal words):
+- the one who WITHDREW returns first — making the other chase re-runs the pursue-withdraw loop;
+- name the impact, not the excuse ("my pulling away made this hard for you", not "I didn't mean it");
+- separate behavior from identity ("you went distant" not "you're cold");
+- then STAY, without demanding a response. One repair scene never finishes the job — repairs repeat.
+
+RULES FOR THE SCENE: dialogue budget ≤ 5 short lines; silence is a communication channel, not missing dialogue; end on a SMALL shift, not a resolution.
+
+Output: the quiet scene (or rewrite) + a 2-line margin note naming which prosody device and which co-regulation beat carried it.
+
+═══ SCENE / SITUATION TO WORK ON ═══
+[paste the scene, or describe who is dysregulated and who shows up]`;
+}
+
 function modulePsychArc(): string {
   return `Design (or audit) a relationship arc using ATTACHMENT PSYCHOLOGY — real frameworks (Bowlby/Ainsworth attachment styles; Hazan & Shaver's adult-romance extension; "earned security" from adult-attachment research), used as behavior PREDICTORS, never as diagnosis labels pasted on characters.
 
@@ -1037,6 +1073,7 @@ export const MODULE_CATALOG: ModuleDef[] = [
   { id: "IMMERSION", group: "craft", name: "Immersion / Deep-POV Pass", description: "Deep-POV rewrite: ground fast, cut filter verbs, add interiority, open one loop, end on momentum.", usage: "Send a scene to pull the reader inside it.", build: moduleImmersion },
   { id: "HOOK_CRAFT", group: "craft", name: "Ending Hook & Restraint", description: "Emotional-hook typology (5 types + hybrid) and restraint craft — the almost-moment, what-they-don't-do, body-betrays-last — for chapter endings.", usage: "Send a chapter ending to sharpen its hook (or write one).", build: moduleHookCraft },
   { id: "PSYCH_ARC", group: "craft", name: "Attachment & Repair Arc", description: "Attachment styles as behavior predictors, the earned-security arc (slow, relapsing), and repair scene types (corrective experience / co-regulation / mentalization).", usage: "Run when designing or auditing a slow-burn relationship arc.", build: modulePsychArc },
+  { id: "QUIET_SCENE", group: "craft", name: "Quiet Scene & Prosody", description: "Scenes that speak without dialogue: prosody devices (baseline shift, delayed crack), staged co-regulation, distance/timing/objects as channels, quiet repair.", usage: "Send a low-dialogue emotional scene to write or sharpen.", build: moduleQuietScene },
   { id: "TRANSLATE", group: "craft", name: "Faithful Translation", description: "Canon lorebook + terminology lock + negative prompts + micro-chunking — translate without AI drift/hallucination.", usage: "Use to translate a passage (e.g. Thai→English for Royal Road) faithfully.", build: moduleTranslate },
   { id: "SCENE_ART", group: "craft", name: "Scene Illustration Prompt", description: "Turns a scene into a consistent image prompt (style/subject/setting/mood/composition + negative).", usage: "Send a scene to get a ready image prompt (you run Midjourney/SD).", build: moduleSceneArt },
   { id: "CHAR_CHAT", group: "craft", name: "Character Chat System Prompt", description: "Build a canon-safe, in-voice system prompt to chat with a character (spoiler + knowledge guardrails).", usage: "Fill from the character bible; run in your own LLM to chat in-world.", build: moduleCharChat },

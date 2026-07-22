@@ -179,7 +179,7 @@ describe("generateAllPrompts — core", () => {
 
 describe("generateAllPrompts — module groups", () => {
   const counts: Record<Exclude<PromptGroup, "core">, number> = {
-    craft: 16,
+    craft: 17,
     nonfiction: 5,
     prose: 4,
     thai: 1,
@@ -200,10 +200,21 @@ describe("generateAllPrompts — module groups", () => {
     }
   });
 
-  it("includes all 56 optional modules when every group is on", () => {
+  it("includes all 57 optional modules when every group is on", () => {
     const all = MODULE_GROUPS.map((m) => m.key);
     const pack = generateAllPrompts(cfg(), all);
-    expect(pack.filter((p) => p.group !== "core").length).toBe(56);
+    expect(pack.filter((p) => p.group !== "core").length).toBe(57);
+  });
+
+  it("QUIET_SCENE ships prosody devices + co-regulation staging in both languages", () => {
+    const en = generateAllPrompts(cfg({ type: "novel" }), ["craft"]).find((p) => p.id === "QUIET_SCENE")!;
+    expect(en.prompt).toContain("BASELINE COMPARISON");
+    expect(en.prompt).toContain("DELAYED SHIFT");
+    expect(en.prompt).toContain("WHAT KILLS IT");
+    const th = generateAllPrompts(cfg({ type: "novel", language: "thai", promptLanguage: "th" }), ["craft"]).find((p) => p.id === "QUIET_SCENE")!;
+    expect(th.prompt).toContain("เทียบกับฐานเดิม");
+    expect(th.prompt).toContain("เสียงแตกช้ากว่าเหตุการณ์");
+    expect(th.prompt).toContain("ฝ่ายที่ \"ถอย\" ต้องเป็นฝ่ายกลับมาก่อน");
   });
 
   it("PSYCH_ARC uses attachment as predictor, flags contested science, bans insta-heal", () => {
