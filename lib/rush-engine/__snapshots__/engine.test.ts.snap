@@ -1482,6 +1482,41 @@ Hybrid — เหตุการณ์เล็ก + ปฏิกิริยา
     "usage": "ส่งตอนจบของบทเพื่อทำ hook ให้คม (หรือเขียนใหม่)",
   },
   {
+    "description": "จิตวิทยาความผูกพันเป็นเครื่องทำนายพฤติกรรม, เส้นทาง earned security (ช้า กำเริบได้), และฉากซ่อมแซม 3 ประเภท",
+    "group": "craft",
+    "id": "PSYCH_ARC",
+    "name": "Attachment & Repair Arc",
+    "prompt": "ออกแบบ (หรือตรวจ) เส้นความสัมพันธ์ด้วย "จิตวิทยาความผูกพัน" — กรอบทฤษฎีจริง (attachment ของ Bowlby/Ainsworth ต่อยอดสู่ความรักผู้ใหญ่โดย Hazan & Shaver; "earned security" จากงานวิจัย adult attachment) ใช้เป็น "เครื่องทำนายพฤติกรรม" ไม่ใช่ป้ายวินิจฉัยแปะตัวละคร
+
+attachment ในฐานะเครื่องยนต์พฤติกรรม (เลือกให้ตัวหลัก — ทำนายว่าเขาทำอะไรเมื่อความใกล้ชิดเพิ่ม):
+- มั่นคง (secure) — ใกล้ได้โดยไม่เสียตัวตน พบน้อยในตัวเอกดราม่า แต่เหมาะกับตัวละคร "ฐานที่ปลอดภัย"
+- วิตก (anxious) — อ่านสัญญาณเล็กเป็นการปฏิเสธ ต้องการการยืนยันแต่กลัวเป็นภาระ ร่องรอย: ตีความข้อความสั้นหนักเกิน ถามซ้ำเรื่องเล็ก รอการตอบนาน
+- หลีกเลี่ยง (avoidant) — ระยะห่าง = ความปลอดภัย ใช้งาน/ความเป็นมืออาชีพเป็นเกราะ ร่องรอย: พูดเป็นทางการขึ้นเมื่อเรื่องเริ่มส่วนตัว หาเหตุผลหน้าที่เพื่อออกจากฉาก ทำงานหนักขึ้นหลังโมเมนต์ใกล้ชิด
+- กลัว-หลีกเลี่ยง (fearful-avoidant) — อยากใกล้และกลัวไปพร้อมกัน: เข้าใกล้ → ตื่นกลัว → ผลัก → เสียใจ วงจรร้อน-เย็นที่เป็นเชื้อเพลิง (และกับดัก) ของ slow burn
+โน้ตการจับคู่: avoidant × anxious สร้างวงจรไล่ตาม-ถอยหนีโดยอัตโนมัติ — ไม่ต้องมีอุปสรรคภายนอกทุกตอน วงจรนั้นแหละคืออุปสรรค
+
+เส้นทาง earned security (การเยียวยาที่น่าเชื่อ — สำหรับตัวเอก avoidant):
+1. ถอยเมื่อใกล้ (จุดตั้งต้น) → 2. ถอยแล้วรู้สึกว่างเปล่า → 3. ลองอยู่ต่อนานกว่าครั้งก่อนนิดเดียว → 4. ถูกเห็นตอนอ่อนแอที่สุดแล้ว "ไม่ถูกลงโทษ" → 5. ทนความใกล้ชิดได้โดยไม่หนี — และต้องมี "อาการกำเริบ" คั่นทุกขั้น
+กฎเหล็ก: ห้ามหายด้วยจูบ ห้ามเหตุการณ์ใหญ่ครั้งเดียวแก้ทุกอย่าง avoidant ที่เล่าแผลใจวัยเด็กได้คล่องตั้งแต่ตอนที่ 3 คือหลุดคาแรกเตอร์ การเปลี่ยนแปลงต้อง ช้า เงียบ และกำเริบเป็นระยะ ความรู้สึกผิด "ที่ตัวเองรู้สึก" มักแรงกว่าตัวความรู้สึก — จงเขียนความรู้สึกผิดนั้น
+
+ประเภทฉากซ่อมแซม (แต่ละแบบคือฉากที่จัดวางได้จริง):
+- corrective experience — ความคาดหวังเก่าถูกหักล้าง: เขาผลัก แล้วอีกฝ่าย "ไม่ไปไหนและไม่เอาคืน" ต้องเกิดใต้อารมณ์จริง ไม่ใช่บทสนทนาสงบ ๆ
+- co-regulation — มีคนอยู่ด้วยตลอดพายุโดยไม่แก้ปัญหา ไม่เร่ง ไม่ซัก ฉากเงียบที่ "การอยู่" ทำงานแทนคำพูด
+- mentalization beat — ตัวละครจับ pattern ตัวเองได้กลางทาง ("ฉันกำลังจะเดินหนีอีกแล้ว... เพราะกลัว") แล้วเลือกต่างครั้งแรก ใช้ประหยัด — beat นี้ต้องสะสมมาหลายบทถึงจะคู่ควร
+
+สภาวะระบบประสาทเป็นฐาน body language (เลนส์การเขียนจากสายบำบัดแนว polyvagal — บอกตรง ๆ: ข้อกล่าวอ้างทาง neuroscience ของทฤษฎีนี้ยังถูกโต้แย้ง ใช้เป็นคลังคำ craft ไม่ใช่ข้อเท็จจริงการแพทย์):
+- ปลอดภัย/เชื่อมโยง: ไหล่หย่อน เสียงมีจังหวะ สบตาง่าย หายใจต่ำและช้า
+- สู้/หนี: กรามแน่น หายใจตื้น พูดห้วน นิ้วอยู่ไม่สุข น้ำหนักถอยหลัง
+- ปิดระบบ: เสียงราบ ตอบช้า ตาว่าง เคลื่อนไหวน้อย — อาการทรุดหลังเลิกเวรของคนที่แข็งมาทั้งวัน
+อาชีพแรงกดดันสูงแกว่งไปมา: สู้/หนีตอนทำงาน → ปิดระบบตอนอยู่คนเดียว การแกว่งนั้นแหละคือตัวละคร
+
+ผลลัพธ์: ต่อตัวหลัก — pattern ความผูกพัน + ร่องรอยในฉาก 3 อย่าง; ขั้นปัจจุบันของเส้นทาง (1-5) + อาการกำเริบครั้งถัดไป; ฉากซ่อมแซม 1 ฉากจัดวางเป็นรูปธรรม (ประเภท ตัวจุดชนวน และสิ่งที่อีกฝ่าย "ไม่ทำ"); และแต่ละฉากสำคัญเริ่ม-จบในสภาวะระบบประสาทไหน
+
+═══ ตัวหลัก + สถานะความสัมพันธ์ปัจจุบัน ═══
+[วางตัวละครหลักและจุดที่ความสัมพันธ์อยู่ตอนนี้]",
+    "usage": "ใช้ตอนออกแบบหรือตรวจเส้นความสัมพันธ์ slow burn",
+  },
+  {
     "description": "แปลซื่อสัตย์: คัมภีร์ canon + ล็อกศัพท์ + ข้อห้าม + micro-chunking กัน AI มโน/ไหลค่าเฉลี่ย",
     "group": "craft",
     "id": "TRANSLATE",
@@ -3181,6 +3216,41 @@ Output: the rewritten ending (last 3–8 lines) + one margin note naming which h
 ═══ CHAPTER ENDING (or scene) TO WORK ON ═══
 [paste the ending here]",
     "usage": "Send a chapter ending to sharpen its hook (or write one).",
+  },
+  {
+    "description": "Attachment styles as behavior predictors, the earned-security arc (slow, relapsing), and repair scene types (corrective experience / co-regulation / mentalization).",
+    "group": "craft",
+    "id": "PSYCH_ARC",
+    "name": "Attachment & Repair Arc",
+    "prompt": "Design (or audit) a relationship arc using ATTACHMENT PSYCHOLOGY — real frameworks (Bowlby/Ainsworth attachment styles; Hazan & Shaver's adult-romance extension; "earned security" from adult-attachment research), used as behavior PREDICTORS, never as diagnosis labels pasted on characters.
+
+ATTACHMENT AS A BEHAVIOR ENGINE (pick per lead; predicts what they do when closeness increases):
+- SECURE — can be close without losing self. Rare in drama leads; common in the "safe base" side character.
+- ANXIOUS — reads tiny signals as rejection; needs reassurance but fears being a burden. Tells: over-interprets a short reply, waits by the phone, asks twice about small things.
+- AVOIDANT — distance = safety; work/professionalism as armor. Tells: goes formal when it gets personal, finds a duty reason to leave, works harder after a close moment.
+- FEARFUL-AVOIDANT — wants closeness AND fears it: approach → panic → push away → regret. The hot-cold cycle that fuels (and can cheapen) slow burn.
+PAIRING NOTE: avoidant × anxious creates the pursue-withdraw loop automatically — you don't need external obstacles every episode; the loop IS the obstacle.
+
+THE EARNED-SECURITY ARC (the believable healing path — for an avoidant lead):
+1. retreats when close (baseline) → 2. retreats, then feels the emptiness → 3. stays slightly longer than last time → 4. is seen at their weakest and is NOT punished for it → 5. tolerates closeness without fleeing — with RELAPSES between every stage.
+HARD RULES: no heal-by-kiss; no single big event that fixes everything; an avoidant who narrates their childhood wound fluently in episode 3 has broken character. Change is slow, quiet, and relapsing. Guilt ABOUT feeling (“I shouldn't feel this on duty”) usually outweighs the feeling itself — write the guilt.
+
+REPAIR SCENE TYPES (each is a scene you can actually stage):
+- CORRECTIVE EXPERIENCE — the old expectation is violated: they push, the other person neither leaves nor retaliates. Must happen under real emotion, not as a calm conversation.
+- CO-REGULATION — someone stays present through the storm without fixing, rushing, or interrogating. A quiet scene where presence does the work words can't.
+- MENTALIZATION BEAT — the character catches their own pattern mid-motion ("I'm about to walk away again — because I'm scared"), and for once chooses differently. Use sparingly; earning this beat takes chapters.
+
+NERVOUS-SYSTEM STATES AS BODY-LANGUAGE GROUND (a writing lens from polyvagal-informed therapy — note honestly: its neuroscience claims are contested; use it as craft vocabulary, not medical fact):
+- SAFE/CONNECTED: shoulders drop, voice has rhythm, eye contact easy, breath low and slow.
+- FIGHT/FLIGHT: jaw tight, shallow breath, clipped speech, fingers restless, weight shifts back.
+- SHUTDOWN: flat voice, delayed answers, empty gaze, minimal movement — the after-shift collapse of someone who was iron all day.
+High-pressure professionals oscillate: fight/flight on duty → shutdown alone afterward. That oscillation IS the character.
+
+Output: per lead — attachment pattern + 3 in-scene tells; the arc's current stage (1–5) and the next relapse; ONE repair scene staged concretely (type, trigger, what the other person does NOT do); and which nervous-system state each key scene starts and ends in.
+
+═══ LEADS + RELATIONSHIP PREMISE ═══
+[paste your leads and where the relationship currently stands]",
+    "usage": "Run when designing or auditing a slow-burn relationship arc.",
   },
   {
     "description": "Canon lorebook + terminology lock + negative prompts + micro-chunking — translate without AI drift/hallucination.",

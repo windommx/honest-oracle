@@ -531,6 +531,37 @@ Output: a per-scene sense table + the targeted additions.
 [INSERT DRAFT HERE]`;
 }
 
+function modulePsychArc(): string {
+  return `Design (or audit) a relationship arc using ATTACHMENT PSYCHOLOGY — real frameworks (Bowlby/Ainsworth attachment styles; Hazan & Shaver's adult-romance extension; "earned security" from adult-attachment research), used as behavior PREDICTORS, never as diagnosis labels pasted on characters.
+
+ATTACHMENT AS A BEHAVIOR ENGINE (pick per lead; predicts what they do when closeness increases):
+- SECURE — can be close without losing self. Rare in drama leads; common in the "safe base" side character.
+- ANXIOUS — reads tiny signals as rejection; needs reassurance but fears being a burden. Tells: over-interprets a short reply, waits by the phone, asks twice about small things.
+- AVOIDANT — distance = safety; work/professionalism as armor. Tells: goes formal when it gets personal, finds a duty reason to leave, works harder after a close moment.
+- FEARFUL-AVOIDANT — wants closeness AND fears it: approach → panic → push away → regret. The hot-cold cycle that fuels (and can cheapen) slow burn.
+PAIRING NOTE: avoidant × anxious creates the pursue-withdraw loop automatically — you don't need external obstacles every episode; the loop IS the obstacle.
+
+THE EARNED-SECURITY ARC (the believable healing path — for an avoidant lead):
+1. retreats when close (baseline) → 2. retreats, then feels the emptiness → 3. stays slightly longer than last time → 4. is seen at their weakest and is NOT punished for it → 5. tolerates closeness without fleeing — with RELAPSES between every stage.
+HARD RULES: no heal-by-kiss; no single big event that fixes everything; an avoidant who narrates their childhood wound fluently in episode 3 has broken character. Change is slow, quiet, and relapsing. Guilt ABOUT feeling (“I shouldn't feel this on duty”) usually outweighs the feeling itself — write the guilt.
+
+REPAIR SCENE TYPES (each is a scene you can actually stage):
+- CORRECTIVE EXPERIENCE — the old expectation is violated: they push, the other person neither leaves nor retaliates. Must happen under real emotion, not as a calm conversation.
+- CO-REGULATION — someone stays present through the storm without fixing, rushing, or interrogating. A quiet scene where presence does the work words can't.
+- MENTALIZATION BEAT — the character catches their own pattern mid-motion ("I'm about to walk away again — because I'm scared"), and for once chooses differently. Use sparingly; earning this beat takes chapters.
+
+NERVOUS-SYSTEM STATES AS BODY-LANGUAGE GROUND (a writing lens from polyvagal-informed therapy — note honestly: its neuroscience claims are contested; use it as craft vocabulary, not medical fact):
+- SAFE/CONNECTED: shoulders drop, voice has rhythm, eye contact easy, breath low and slow.
+- FIGHT/FLIGHT: jaw tight, shallow breath, clipped speech, fingers restless, weight shifts back.
+- SHUTDOWN: flat voice, delayed answers, empty gaze, minimal movement — the after-shift collapse of someone who was iron all day.
+High-pressure professionals oscillate: fight/flight on duty → shutdown alone afterward. That oscillation IS the character.
+
+Output: per lead — attachment pattern + 3 in-scene tells; the arc's current stage (1–5) and the next relapse; ONE repair scene staged concretely (type, trigger, what the other person does NOT do); and which nervous-system state each key scene starts and ends in.
+
+═══ LEADS + RELATIONSHIP PREMISE ═══
+[paste your leads and where the relationship currently stands]`;
+}
+
 function moduleHookCraft(): string {
   return `Fix a chapter ENDING (or write one) using the emotional-hook craft of serial fiction — the ending is what makes a reader open the next episode.
 
@@ -1005,6 +1036,7 @@ export const MODULE_CATALOG: ModuleDef[] = [
   { id: "SENSORY", group: "craft", name: "Sensory Audit", description: "Per-scene 5-sense check (≥3) + targeted concrete additions.", usage: "Send a draft to ground it in the senses.", build: moduleSensoryAudit },
   { id: "IMMERSION", group: "craft", name: "Immersion / Deep-POV Pass", description: "Deep-POV rewrite: ground fast, cut filter verbs, add interiority, open one loop, end on momentum.", usage: "Send a scene to pull the reader inside it.", build: moduleImmersion },
   { id: "HOOK_CRAFT", group: "craft", name: "Ending Hook & Restraint", description: "Emotional-hook typology (5 types + hybrid) and restraint craft — the almost-moment, what-they-don't-do, body-betrays-last — for chapter endings.", usage: "Send a chapter ending to sharpen its hook (or write one).", build: moduleHookCraft },
+  { id: "PSYCH_ARC", group: "craft", name: "Attachment & Repair Arc", description: "Attachment styles as behavior predictors, the earned-security arc (slow, relapsing), and repair scene types (corrective experience / co-regulation / mentalization).", usage: "Run when designing or auditing a slow-burn relationship arc.", build: modulePsychArc },
   { id: "TRANSLATE", group: "craft", name: "Faithful Translation", description: "Canon lorebook + terminology lock + negative prompts + micro-chunking — translate without AI drift/hallucination.", usage: "Use to translate a passage (e.g. Thai→English for Royal Road) faithfully.", build: moduleTranslate },
   { id: "SCENE_ART", group: "craft", name: "Scene Illustration Prompt", description: "Turns a scene into a consistent image prompt (style/subject/setting/mood/composition + negative).", usage: "Send a scene to get a ready image prompt (you run Midjourney/SD).", build: moduleSceneArt },
   { id: "CHAR_CHAT", group: "craft", name: "Character Chat System Prompt", description: "Build a canon-safe, in-voice system prompt to chat with a character (spoiler + knowledge guardrails).", usage: "Fill from the character bible; run in your own LLM to chat in-world.", build: moduleCharChat },
