@@ -179,7 +179,7 @@ describe("generateAllPrompts — core", () => {
 
 describe("generateAllPrompts — module groups", () => {
   const counts: Record<Exclude<PromptGroup, "core">, number> = {
-    craft: 14,
+    craft: 15,
     nonfiction: 5,
     prose: 4,
     thai: 1,
@@ -200,10 +200,19 @@ describe("generateAllPrompts — module groups", () => {
     }
   });
 
-  it("includes all 54 optional modules when every group is on", () => {
+  it("includes all 55 optional modules when every group is on", () => {
     const all = MODULE_GROUPS.map((m) => m.key);
     const pack = generateAllPrompts(cfg(), all);
-    expect(pack.filter((p) => p.group !== "core").length).toBe(54);
+    expect(pack.filter((p) => p.group !== "core").length).toBe(55);
+  });
+
+  it("HOOK_CRAFT ships the hook typology in both languages", () => {
+    const en = generateAllPrompts(cfg({ type: "novel" }), ["craft"]).find((p) => p.id === "HOOK_CRAFT")!;
+    expect(en.prompt).toContain("THE ALMOST MOMENT");
+    const th = generateAllPrompts(cfg({ type: "novel", language: "thai", promptLanguage: "th" }), ["craft"]).find((p) => p.id === "HOOK_CRAFT")!;
+    expect(th.prompt).toContain("almost moment");
+    expect(th.prompt).toContain("สิ่งที่เขาไม่ทำ");
+    expect(th.prompt).toContain("✗"); // contrastive example present
   });
 
   it("saga group plans long-form 3–9 seasons with cross-season continuity", () => {

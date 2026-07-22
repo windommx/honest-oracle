@@ -1448,6 +1448,40 @@ POV: [ ] · เป้าหมาย: [ ] · อุปสรรค: [ ] · ต�
     "usage": "ส่งฉากเพื่อดึงผู้อ่านเข้าไปข้างใน",
   },
   {
+    "description": "ศาสตร์ hook ท้ายตอน (5 ประเภท + hybrid) และความยับยั้ง — almost moment, สิ่งที่เขาไม่ทำ, ร่างกายทรยศทีหลัง",
+    "group": "craft",
+    "id": "HOOK_CRAFT",
+    "name": "Ending Hook & Restraint",
+    "prompt": "แก้ (หรือเขียน) "ตอนจบของบท" ด้วยศาสตร์ emotional hook ของนิยายรายตอน — ท้ายตอนคือเหตุผลที่ผู้อ่านกดตอนถัดไป
+
+ประเภท hook (เลือกให้เข้ากับฉาก — hybrid แรงสุด):
+1. อารมณ์ค้าง — ความรู้สึกที่ไม่ถูกระบาย: อยากพูดแต่พูดไม่ออก
+2. การรับรู้เงียบ — ความจริงที่ค่อย ๆ กดทับ ไม่ใช่ระเบิด
+3. ย้อนแย้งทางอารมณ์ — ทำตรงข้ามกับที่รู้สึก ("พักผ่อนนะ" จากคนที่เพิ่งสั่งให้เธอควงเวรต่อ)
+4. คำถามทางใจ — จบด้วยคำถามภายในที่ยังไม่มีคำตอบ
+5. ร่างกายสะท้อน — ร่างกายเก็บสิ่งที่ไม่ได้พูด (ไหล่ที่ยังอุ่น มือที่เย็นลง)
+Hybrid — เหตุการณ์เล็ก + ปฏิกิริยาอารมณ์ + สิ่งที่ยังค้าง
+
+ศาสตร์ความยับยั้ง (เครื่องยนต์ของทุกข้อ):
+- "สิ่งที่เขาไม่ทำ" หนักกว่าสิ่งที่ทำ — การข้ามกิจวัตรที่ทำทุกคืน บอกมากกว่าการจ้องมอง
+- almost moment — เกือบพูด เกือบสัมผัส แล้วหยุด ยิ่งใกล้ ยิ่งหยุดแล้วกระแทกแรง
+- ร่างกายทรยศทีหลัง — มือนิ่งตลอดหัตถการ แต่สั่นตอนเปิดขวดน้ำหลังเลิกเวร ส่วนปลายรั่วก่อน (นิ้ว ไหล่) ใบหน้ารั่วท้ายสุด
+- ความเป็นทางการคือร่องรอย — ยิ่งคุมอารมณ์ ยิ่งพูดเป็นทางการผิดปกติ
+- micro-conflict — อยากถามแต่ไม่กล้า อยากใกล้แต่บังคับให้ห่าง แรงเสียดทานเล็ก ๆ ซ้ำ ๆ ตึงกว่าเหตุการณ์ใหญ่ในแนว slow burn
+
+ตัวอย่างเทียบ:
+  ✗ "เธอรู้สึกเศร้ามาก ไม่รู้จะทำอย่างไรต่อไป"
+  ✓ "เธอนั่งลงบนเก้าอี้เหล็กเย็น มือยังกำผลแล็บจนกระดาษยับ รู้ทั้งรู้ว่าควรลุกไปหาเขา — แต่ตอนนี้แม้แต่การลุกขึ้นยืนก็ยังยากเกินไป"
+
+กฎความสมจริง: คนทำงานจริงเหนื่อยและพูดน้อย — ตัดคำกวี/อุปมาที่เกินธรรมชาติ ใช้นิสัยอาชีพเล็ก ๆ (จัดไฟล์ที่เรียบร้อยอยู่แล้วซ้ำ ล้างมือนานเกิน protocol) ใช้ความเงียบและการชะงักแทนคำหนัก ๆ และจบเงียบได้ถ้า "ตั้งใจ" — ให้บอกไว้ในโน้ตท้าย
+
+ผลลัพธ์: ตอนจบที่แก้แล้ว (3-8 บรรทัดสุดท้าย) + โน้ต 1 ข้อ ระบุว่าใช้ hook ประเภทไหนกับกลไกยับยั้งอะไร เพราะอะไร
+
+═══ ตอนจบของบท (หรือฉาก) ที่จะแก้ ═══
+[วางตอนจบที่นี่]",
+    "usage": "ส่งตอนจบของบทเพื่อทำ hook ให้คม (หรือเขียนใหม่)",
+  },
+  {
     "description": "แปลซื่อสัตย์: คัมภีร์ canon + ล็อกศัพท์ + ข้อห้าม + micro-chunking กัน AI มโน/ไหลค่าเฉลี่ย",
     "group": "craft",
     "id": "TRANSLATE",
@@ -3113,6 +3147,40 @@ Output: the rewritten scene, then a 3-5 line changelog naming each filter word c
 ═══ DRAFT ═══
 [INSERT SCENE HERE]",
     "usage": "Send a scene to pull the reader inside it.",
+  },
+  {
+    "description": "Emotional-hook typology (5 types + hybrid) and restraint craft — the almost-moment, what-they-don't-do, body-betrays-last — for chapter endings.",
+    "group": "craft",
+    "id": "HOOK_CRAFT",
+    "name": "Ending Hook & Restraint",
+    "prompt": "Fix a chapter ENDING (or write one) using the emotional-hook craft of serial fiction — the ending is what makes a reader open the next episode.
+
+HOOK TYPES (pick what fits — hybrid is strongest):
+1. UNRESOLVED EMOTION — a feeling that never gets released: wants to speak, can't.
+2. QUIET REVELATION — a realization that presses down slowly instead of exploding.
+3. EMOTIONAL IRONY — the character does the opposite of what they feel ("rest well," says the man who just ordered her a double shift).
+4. QUESTION OF THE HEART — end on an unanswerable inner question.
+5. PHYSICAL ECHO — the body carries what was never said (a warm shoulder, a cold hand).
+HYBRID — small external event + emotional reaction + unresolved residue.
+
+RESTRAINT CRAFT (the engine of all of the above):
+- WHAT THEY DON'T DO beats what they do: skipping a nightly habit says more than a stare.
+- THE ALMOST MOMENT — nearly speaks, nearly touches, then stops. The closer to the act, the harder the stop lands.
+- BODY BETRAYS LAST — steady hands during the crisis; a tremor opening a water bottle after. Extremities leak first (fingers, shoulders), the face last.
+- FORMALITY AS A TELL — the more controlled a character feels, the more official their speech gets.
+- MICRO-CONFLICT — wants to ask / doesn't dare; wants closeness / keeps distance. Small frictions, repeated, out-tension big events in slow-burn.
+
+CONTRASTIVE EXAMPLE:
+  ✗ "She felt very sad. She didn't know what to do."
+  ✓ "She sat down on the cold steel chair, the lab report still crushed in her fist. She knew she should stand up and find him — but right now even standing felt like too much."
+
+REALISM RULES: tired professionals talk less, not prettier — cut poetic similes; use small occupational habits (re-sorting an already-sorted file, over-washing hands past protocol); silence and hesitation over heavy lines; a quiet ending is allowed when CHOSEN — say so in a margin note.
+
+Output: the rewritten ending (last 3–8 lines) + one margin note naming which hook type and restraint device you used and why.
+
+═══ CHAPTER ENDING (or scene) TO WORK ON ═══
+[paste the ending here]",
+    "usage": "Send a chapter ending to sharpen its hook (or write one).",
   },
   {
     "description": "Canon lorebook + terminology lock + negative prompts + micro-chunking — translate without AI drift/hallucination.",

@@ -531,6 +531,36 @@ Output: a per-scene sense table + the targeted additions.
 [INSERT DRAFT HERE]`;
 }
 
+function moduleHookCraft(): string {
+  return `Fix a chapter ENDING (or write one) using the emotional-hook craft of serial fiction — the ending is what makes a reader open the next episode.
+
+HOOK TYPES (pick what fits — hybrid is strongest):
+1. UNRESOLVED EMOTION — a feeling that never gets released: wants to speak, can't.
+2. QUIET REVELATION — a realization that presses down slowly instead of exploding.
+3. EMOTIONAL IRONY — the character does the opposite of what they feel ("rest well," says the man who just ordered her a double shift).
+4. QUESTION OF THE HEART — end on an unanswerable inner question.
+5. PHYSICAL ECHO — the body carries what was never said (a warm shoulder, a cold hand).
+HYBRID — small external event + emotional reaction + unresolved residue.
+
+RESTRAINT CRAFT (the engine of all of the above):
+- WHAT THEY DON'T DO beats what they do: skipping a nightly habit says more than a stare.
+- THE ALMOST MOMENT — nearly speaks, nearly touches, then stops. The closer to the act, the harder the stop lands.
+- BODY BETRAYS LAST — steady hands during the crisis; a tremor opening a water bottle after. Extremities leak first (fingers, shoulders), the face last.
+- FORMALITY AS A TELL — the more controlled a character feels, the more official their speech gets.
+- MICRO-CONFLICT — wants to ask / doesn't dare; wants closeness / keeps distance. Small frictions, repeated, out-tension big events in slow-burn.
+
+CONTRASTIVE EXAMPLE:
+  ✗ "She felt very sad. She didn't know what to do."
+  ✓ "She sat down on the cold steel chair, the lab report still crushed in her fist. She knew she should stand up and find him — but right now even standing felt like too much."
+
+REALISM RULES: tired professionals talk less, not prettier — cut poetic similes; use small occupational habits (re-sorting an already-sorted file, over-washing hands past protocol); silence and hesitation over heavy lines; a quiet ending is allowed when CHOSEN — say so in a margin note.
+
+Output: the rewritten ending (last 3–8 lines) + one margin note naming which hook type and restraint device you used and why.
+
+═══ CHAPTER ENDING (or scene) TO WORK ON ═══
+[paste the ending here]`;
+}
+
 function moduleImmersion(): string {
   return `Rewrite a scene to pull the reader INSIDE the POV character's experience (deep POV / "transportation"). Keep plot, facts, and dialogue meaning — change how close we are, not what happens.
 
@@ -974,6 +1004,7 @@ export const MODULE_CATALOG: ModuleDef[] = [
   { id: "ANTI_SAFE", group: "craft", name: "Anti-Safe Pass", description: "Break safe/tidy AI defaults; raise real stakes; ban Thai AI-tell clichés.", usage: "Send a draft to make it riskier.", build: moduleAntiSafe },
   { id: "SENSORY", group: "craft", name: "Sensory Audit", description: "Per-scene 5-sense check (≥3) + targeted concrete additions.", usage: "Send a draft to ground it in the senses.", build: moduleSensoryAudit },
   { id: "IMMERSION", group: "craft", name: "Immersion / Deep-POV Pass", description: "Deep-POV rewrite: ground fast, cut filter verbs, add interiority, open one loop, end on momentum.", usage: "Send a scene to pull the reader inside it.", build: moduleImmersion },
+  { id: "HOOK_CRAFT", group: "craft", name: "Ending Hook & Restraint", description: "Emotional-hook typology (5 types + hybrid) and restraint craft — the almost-moment, what-they-don't-do, body-betrays-last — for chapter endings.", usage: "Send a chapter ending to sharpen its hook (or write one).", build: moduleHookCraft },
   { id: "TRANSLATE", group: "craft", name: "Faithful Translation", description: "Canon lorebook + terminology lock + negative prompts + micro-chunking — translate without AI drift/hallucination.", usage: "Use to translate a passage (e.g. Thai→English for Royal Road) faithfully.", build: moduleTranslate },
   { id: "SCENE_ART", group: "craft", name: "Scene Illustration Prompt", description: "Turns a scene into a consistent image prompt (style/subject/setting/mood/composition + negative).", usage: "Send a scene to get a ready image prompt (you run Midjourney/SD).", build: moduleSceneArt },
   { id: "CHAR_CHAT", group: "craft", name: "Character Chat System Prompt", description: "Build a canon-safe, in-voice system prompt to chat with a character (spoiler + knowledge guardrails).", usage: "Fill from the character bible; run in your own LLM to chat in-world.", build: moduleCharChat },

@@ -91,7 +91,7 @@ Nothing is injected when no codex is declared, so existing prompt snapshots stay
 | `standards.ts` | Quality standards, writing rules, citation guide, checklists |
 | `context.ts` · `architecture.ts` | Per-type global context + architecture (acts/tension/beats, chapter plans) |
 | `core-prompts.ts` · `th.ts` | Master / chapter / overview / analysis / front·back-matter prompts (EN + native Thai) |
-| `modules.ts` | 54 optional module builders across 10 groups (`MODULE_CATALOG` / `MODULE_GROUPS` / `defaultGroupsFor`) |
+| `modules.ts` | 55 optional module builders across 10 groups (`MODULE_CATALOG` / `MODULE_GROUPS` / `defaultGroupsFor`) |
 | `thai-structures.ts` | Authentic Thai/Asian narrative structures (kishōtenketsu, จักร ๆ วงศ์ ๆ, ชาดก, …) |
 | `starter.ts` | Guided starter sequence/groups |
 | `engine.ts` | Public **barrel** — re-exports everything + `generateAllPrompts` orchestrator |
