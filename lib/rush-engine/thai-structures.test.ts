@@ -22,6 +22,15 @@ describe("narrative structures", () => {
     expect(j.beats[3].en).toContain("identification");
   });
 
+  it("ships Save the Cat with all 15 canonical beats, flagged as a commercial import", () => {
+    const s = structureById("save-the-cat")!;
+    expect(s.beats).toHaveLength(15);
+    expect(s.beats[0].en).toBe("Opening image");
+    expect(s.beats[14].en).toBe("Final image");
+    expect(s.beats.map((b) => b.en)).toContain("Dark night of the soul");
+    expect(s.note).toContain("ไม่ใช่โครงพื้นถิ่น"); // honest: not indigenous
+  });
+
   it("ships the Thai web-novel episode flow ending in a next-episode hook", () => {
     const w = structureById("thai-web-novel")!;
     expect(w.beats).toHaveLength(9);
