@@ -14,7 +14,7 @@ import { checkThaiRegister } from "./register";
 import { renameTerm } from "./rename";
 import { characterGraph } from "./relationships";
 import { continuityRadar, sceneReadout } from "./radar";
-import { characterArc, pacingProfile, motifTracker } from "./narrative";
+import { characterArc, pacingProfile, motifTracker, hookSignal } from "./narrative";
 import { splitChapters } from "./chapters";
 import { parseCodex, codexAudit, codexCanon, formatCodexAudit, codexMermaid } from "./codex";
 import { analyzeSaga, formatSaga, type SagaBook } from "./saga";
@@ -334,6 +334,18 @@ function cmdNarrative(file: string | undefined, flags: Record<string, string | t
     const m = motifTracker(r.text, motifs, "th");
     L.push("motif / theme distribution:");
     for (const t of m.motifs) L.push(`  ${t.term.padEnd(12)} ${t.total}× · in ${t.chaptersPresent}/${m.chapters} ch${t.longestAbsentRun >= 3 ? `  ⚠ silent ${t.longestAbsentRun} ch` : ""}`);
+    L.push("");
+  }
+
+  // Ending-hook devices per chapter — presence facts, not a "hook strength" score.
+  const chapterList = splitChapters(r.text);
+  if (chapterList.length) {
+    L.push("ending-hook devices (last ~400 chars of each chapter):");
+    chapterList.forEach((c, i) => {
+      const h = hookSignal(c.body, "th");
+      const found = [h.hasQuestion ? "คำถาม" : "", h.hasEllipsis ? "จุดไข่ปลา" : "", h.tensionWords.length ? `คำตึง: ${h.tensionWords.slice(0, 3).join("/")}` : ""].filter(Boolean);
+      L.push(`  ch ${i + 1}: ${found.length ? found.join(" · ") : "— ไม่พบ device (จบเงียบอาจตั้งใจ — ผู้เขียนตัดสิน)"}`);
+    });
     L.push("");
   }
 

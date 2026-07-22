@@ -167,6 +167,32 @@ describe("voice guard — declared คำต้องห้าม in the draft",
   });
 });
 
+describe("thread-trace heuristic (Thai-aware, not space-split)", () => {
+  const c = parseCodex("[ตัวละคร]\nอนันต์: นักสืบ\n[ปมค้าง]\nความลับผลแล็บของมาลี: สูง\nอดีตหมอลี: ต่ำ");
+
+  it("flags a high thread whose tokenized keywords leave no trace", () => {
+    const a = codexAudit(c, "อนันต์ นั่งดื่มกาแฟ ฝนตกทั้งคืน", "th");
+    expect(a.threadsNoTrace).toHaveLength(1);
+    expect(a.threadsNoTrace[0].desc).toBe("ความลับผลแล็บของมาลี");
+    expect(a.threadsNoTrace[0].matched).toBe(0);
+    const out = formatCodexAudit(a, "th");
+    expect(out).toContain("ไม่พบร่องรอย");
+    expect(out).toContain("อาจไม่ใช่ที่ของมัน"); // framed as placement question, not "you forgot"
+  });
+
+  it("a single tokenized keyword hit clears the thread (ความลับ appears)", () => {
+    // Thai draft has no spaces around ความลับ — space-split matching would miss it;
+    // tokenization finds it.
+    const a = codexAudit(c, "อนันต์รู้ว่าความลับกำลังใกล้เข้ามา", "th");
+    expect(a.threadsNoTrace).toEqual([]);
+  });
+
+  it("low/medium threads are never flagged (only high/critical are must-touch)", () => {
+    const a = codexAudit(c, "ไม่มีอะไรเลย", "th");
+    expect(a.threadsNoTrace.every((t) => t.priority === "high" || t.priority === "critical")).toBe(true);
+  });
+});
+
 describe("codexLocal — GraphRAG local view", () => {
   const c = parseCodex(BIBLE);
 

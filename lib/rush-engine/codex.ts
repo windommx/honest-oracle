@@ -383,6 +383,10 @@ export interface CodexAudit {
    *  speaker deterministically, so this only says the word OCCURS — the writer
    *  checks who says it. */
   forbiddenHits: Array<{ name: string; word: string; count: number }>;
+  /** High/critical threads whose keywords leave no trace in this draft — a
+   *  HEURISTIC keyword match (Thai-aware tokenization), framed as "this chapter
+   *  may not be its place", never "you forgot". matched/total are real counts. */
+  threadsNoTrace: Array<{ desc: string; priority: ThreadPriority; matched: number; total: number }>;
   canonSize: number;
 }
 
@@ -395,7 +399,7 @@ export function codexAudit(codex: Codex, draft: string, lang: "th" | "en"): Code
   const variants: Array<{ declared: string; found: string }> = [];
   const missing: CodexEntity[] = [];
   if (!hasCodex(codex) || !draft) {
-    return { present, variants, missing: codex.entities.slice(), statusConflicts: [], forbiddenHits: [], canonSize: codex.entities.length };
+    return { present, variants, missing: codex.entities.slice(), statusConflicts: [], forbiddenHits: [], threadsNoTrace: [], canonSize: codex.entities.length };
   }
   const hay = draft.toLowerCase();
   const tokens = lang === "th" ? tokenizeThai(draft) : tokenizeProse(draft);
@@ -422,7 +426,21 @@ export function codexAudit(codex: Codex, draft: string, lang: "th" | "en"): Code
       if (count > 0) forbiddenHits.push({ name: e.name, word, count });
     }
   }
-  return { present, variants, missing, statusConflicts, forbiddenHits, canonSize: codex.entities.length };
+  // Thread-trace heuristic: does anything from a high/critical thread's wording
+  // appear in this draft? Thai has no spaces between words, so the description is
+  // TOKENIZED (not space-split) before matching. Content words only (≥4 chars);
+  // a thread whose description yields no usable keywords is skipped, not flagged.
+  const threadsNoTrace: CodexAudit["threadsNoTrace"] = [];
+  for (const t of codex.threads) {
+    if (t.priority !== "high" && t.priority !== "critical") continue;
+    const words = (lang === "th" ? tokenizeThai(t.desc) : t.desc.toLowerCase().split(/[^a-z0-9ก-๙]+/))
+      .filter((w) => w.length >= 4);
+    if (!words.length) continue;
+    const matched = words.filter((w) => hay.includes(w.toLowerCase())).length;
+    if (matched === 0) threadsNoTrace.push({ desc: t.desc, priority: t.priority, matched, total: words.length });
+  }
+
+  return { present, variants, missing, statusConflicts, forbiddenHits, threadsNoTrace, canonSize: codex.entities.length };
 }
 
 /** Human-readable audit report (bilingual). Counts, not a verdict. */
@@ -446,6 +464,15 @@ export function formatCodexAudit(audit: CodexAudit, lang: "th" | "en"): string {
         : "⚠ status conflict — declared dead/missing yet appears in the draft (flashback? ghost? or a continuity slip?):"
     );
     for (const e of audit.statusConflicts) L.push(`  ${e.name} — ${e.status}`);
+  }
+  if (audit.threadsNoTrace.length) {
+    L.push(
+      "",
+      th
+        ? "🧵 ปมสูง/วิกฤตที่ไม่พบร่องรอยในดราฟต์นี้ (เทียบคำสำคัญแบบ heuristic — บทนี้อาจไม่ใช่ที่ของมัน):"
+        : "🧵 high/critical threads with no trace in this draft (heuristic keyword match — this chapter may not be its place):"
+    );
+    for (const t of audit.threadsNoTrace) L.push(`  [${t.priority}] ${t.desc} (0/${t.total} ${th ? "คำสำคัญ" : "keywords"})`);
   }
   if (audit.forbiddenHits.length) {
     L.push(

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { characterArc, pacingProfile, motifTracker, type ChapterSignal } from "./narrative";
+import { characterArc, pacingProfile, motifTracker, hookSignal, type ChapterSignal } from "./narrative";
 
 describe("characterArc", () => {
   it("tracks per-chapter presence and flags a mid-story disappearance (gap)", () => {
@@ -64,5 +64,26 @@ describe("motifTracker", () => {
     expect(sword.total).toBe(3);
     expect(sword.chaptersPresent).toBe(2);
     expect(sword.longestAbsentRun).toBe(2);
+  });
+});
+
+describe("hookSignal — ending devices, presence not strength", () => {
+  it("detects a question + tension word in a Thai ending", () => {
+    const h = hookSignal("เนื้อเรื่องยาว ๆ ก่อนหน้า " + "x".repeat(500) + " แต่เธอจะกลับมาอีกไหม?", "th");
+    expect(h.hasQuestion).toBe(true);
+    expect(h.tensionWords).toContain("แต่");
+    expect(h.anyDevice).toBe(true);
+  });
+
+  it("reports a quiet ending as no-device (writer's call, not an error)", () => {
+    const h = hookSignal("เขากลับบ้าน กินข้าว แล้วนอนหลับสบายดี", "th");
+    expect(h.hasQuestion).toBe(false);
+    expect(h.anyDevice === (h.tensionWords.length > 0 || h.hasEllipsis)).toBe(true);
+  });
+
+  it("only inspects the ending window, not the whole text", () => {
+    const early = "อันตราย! ความลับ! ".repeat(10) + "จากนั้นทุกอย่างสงบ " + "ก".repeat(450);
+    const h = hookSignal(early, "th");
+    expect(h.tensionWords).toEqual([]); // tension words live before the tail window
   });
 });
