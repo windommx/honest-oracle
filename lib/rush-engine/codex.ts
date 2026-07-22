@@ -41,6 +41,9 @@ export interface CodexEntity {
   /** Words/phrases this character must NEVER say (comma-separated) — powers the
    *  deterministic voice guard in codexAudit. */
   forbidden?: string;
+  /** What this character already KNOWS (comma-separated) — powers the
+   *  knowledge-lock block: others must not know it without an on-page scene. */
+  knows?: string;
 }
 export interface CodexRelation {
   from: string;
@@ -73,7 +76,7 @@ const SECTION: Array<{ re: RegExp; type: CodexEntityType | "relation" | "thread"
 
 // Character-depth trait keys (bilingual). A line "อยาก: หาน้องสาว" following a
 // character attaches to that character instead of declaring a new entity.
-type TraitKey = "want" | "need" | "flaw" | "ghost" | "voice" | "status" | "catchphrase" | "forbidden";
+type TraitKey = "want" | "need" | "flaw" | "ghost" | "voice" | "status" | "catchphrase" | "forbidden" | "knows";
 const TRAITS: Array<{ re: RegExp; key: TraitKey }> = [
   { re: /^(อยาก|want)$/i, key: "want" },
   { re: /^(ต้องการจริง|ปมจริง|need)$/i, key: "need" },
@@ -83,6 +86,7 @@ const TRAITS: Array<{ re: RegExp; key: TraitKey }> = [
   { re: /^(สถานะ|status)$/i, key: "status" },
   { re: /^(คำติดปาก|catchphrases?)$/i, key: "catchphrase" },
   { re: /^(คำต้องห้าม|ห้ามพูด|forbidden)$/i, key: "forbidden" },
+  { re: /^(รู้แล้ว|รู้ความลับ|knows)$/i, key: "knows" },
 ];
 
 // Thread priority keywords (bilingual). "desc: สูง" → high.
@@ -201,10 +205,12 @@ function renderRelation(r: CodexRelation): string {
 }
 
 const hasDepth = (e: CodexEntity): boolean =>
-  !!(e.want || e.need || e.flaw || e.ghost || e.voice || e.status || e.catchphrase || e.forbidden);
+  !!(e.want || e.need || e.flaw || e.ghost || e.voice || e.status || e.catchphrase || e.forbidden || e.knows);
 
-/** "อยาก: X · ต้องการจริง: Y …" — only declared traits, in a fixed order. */
-function renderDepth(e: CodexEntity, lang: "th" | "en"): string {
+/** "อยาก: X · ต้องการจริง: Y …" — only declared traits, in a fixed order.
+ *  skipVoiceVocab leaves catchphrase/forbidden out (the digest renders those as
+ *  contrastive ✓/✗ lines instead, which steer a model better than flat labels). */
+function renderDepth(e: CodexEntity, lang: "th" | "en", skipVoiceVocab = false): string {
   const th = lang === "th";
   const parts: string[] = [];
   if (e.want) parts.push(`${th ? "อยาก" : "want"}: ${e.want}`);
@@ -213,9 +219,36 @@ function renderDepth(e: CodexEntity, lang: "th" | "en"): string {
   if (e.ghost) parts.push(`${th ? "แผลใจ" : "ghost"}: ${e.ghost}`);
   if (e.voice) parts.push(`${th ? "เสียง" : "voice"}: ${e.voice}`);
   if (e.status) parts.push(`${th ? "สถานะ" : "status"}: ${e.status}`);
-  if (e.catchphrase) parts.push(`${th ? "คำติดปาก" : "catchphrases"}: ${e.catchphrase}`);
-  if (e.forbidden) parts.push(`${th ? "คำต้องห้าม" : "never says"}: ${e.forbidden}`);
+  if (!skipVoiceVocab && e.catchphrase) parts.push(`${th ? "คำติดปาก" : "catchphrases"}: ${e.catchphrase}`);
+  if (!skipVoiceVocab && e.forbidden) parts.push(`${th ? "คำต้องห้าม" : "never says"}: ${e.forbidden}`);
+  if (e.knows) parts.push(`${th ? "รู้แล้ว" : "knows"}: ${e.knows}`);
   return parts.join(" · ");
+}
+
+/** Contrastive voice lines for the digest: ✓ what they DO say, ✗ what they never
+ *  say — declared examples only, shown side by side (steers voice better than a
+ *  description alone). "" when neither is declared. */
+function renderContrastiveVoice(e: CodexEntity, lang: "th" | "en"): string {
+  if (!e.catchphrase && !e.forbidden) return "";
+  const th = lang === "th";
+  const L: string[] = [];
+  if (e.catchphrase) L.push(`  ✓ ${th ? "พูดแบบนี้" : "does say"}: ${e.catchphrase}`);
+  if (e.forbidden) L.push(`  ✗ ${th ? "ห้ามพูด" : "never says"}: ${e.forbidden}`);
+  return L.join("\n") + "\n";
+}
+
+/** Knowledge-lock block: who already knows what. Others must not "just know" it —
+ *  information travels only through on-page scenes. "" when nothing declared. */
+function renderKnowledgeLock(codex: Codex, lang: "th" | "en"): string {
+  const knowers = codex.entities.filter((e) => e.knows);
+  if (!knowers.length) return "";
+  const th = lang === "th";
+  let p = th ? `การควบคุมข้อมูล (ใครรู้อะไรแล้ว):\n` : `Knowledge control (who already knows what):\n`;
+  p += knowers.map((e) => `• ${e.name} ${th ? "รู้แล้ว" : "knows"}: ${e.knows}`).join("\n") + "\n";
+  p += th
+    ? `กฎ: ตัวละครอื่นยังไม่รู้ข้อมูลเหล่านี้ ห้าม "รู้เอง" — ข้อมูลเดินทางผ่านฉากบนหน้ากระดาษเท่านั้น และผู้รู้ต้องมีปฏิกิริยาที่สอดคล้องกับสิ่งที่รู้\n`
+    : `RULE: other characters do NOT know these yet and must never "just know" — information travels only through on-page scenes, and knowers must react consistently with what they know.\n`;
+  return p;
 }
 
 /** Explicit status constraints for the digest: dead/missing characters must not
@@ -260,8 +293,16 @@ export function codexDigestTh(codex: Codex): string {
     if (es.length) p += `${TYPE_TH[t]} (${es.length}): ` + es.map((e) => e.desc ? `${e.name} — ${e.desc}` : e.name).join(" · ") + "\n";
   });
   const deep = codex.entities.filter(hasDepth);
-  if (deep.length) p += `เจาะลึกตัวละคร:\n` + deep.map((e) => `• ${e.name} — ${renderDepth(e, "th")}`).join("\n") + "\n";
+  if (deep.length) {
+    p += `เจาะลึกตัวละคร:\n` + deep.map((e) => {
+      const inline = renderDepth(e, "th", true);
+      const line = inline ? `• ${e.name} — ${inline}` : `• ${e.name}`;
+      const cv = renderContrastiveVoice(e, "th");
+      return cv ? `${line}\n${cv.trimEnd()}` : line;
+    }).join("\n") + "\n";
+  }
   if (codex.relations.length) p += `ความสัมพันธ์ (${codex.relations.length}):\n` + codex.relations.map((r) => `• ${renderRelation(r)}`).join("\n") + "\n";
+  p += renderKnowledgeLock(codex, "th");
   p += renderStatusConstraints(codex, "th");
   p += renderThreads(codex, "th");
   p += `กฎ: ถือ Codex นี้เป็นแหล่งความจริง คงชื่อ/ลักษณะ/ความสัมพันธ์ให้สอดคล้องตลอดเล่ม ห้ามขัดแย้ง`;
@@ -279,8 +320,16 @@ export function codexDigestEn(codex: Codex): string {
     if (es.length) p += `${TYPE_EN[t]}s (${es.length}): ` + es.map((e) => e.desc ? `${e.name} — ${e.desc}` : e.name).join(" · ") + "\n";
   });
   const deep = codex.entities.filter(hasDepth);
-  if (deep.length) p += `Character depth:\n` + deep.map((e) => `• ${e.name} — ${renderDepth(e, "en")}`).join("\n") + "\n";
+  if (deep.length) {
+    p += `Character depth:\n` + deep.map((e) => {
+      const inline = renderDepth(e, "en", true);
+      const line = inline ? `• ${e.name} — ${inline}` : `• ${e.name}`;
+      const cv = renderContrastiveVoice(e, "en");
+      return cv ? `${line}\n${cv.trimEnd()}` : line;
+    }).join("\n") + "\n";
+  }
   if (codex.relations.length) p += `Relations (${codex.relations.length}):\n` + codex.relations.map((r) => `• ${renderRelation(r)}`).join("\n") + "\n";
+  p += renderKnowledgeLock(codex, "en");
   p += renderStatusConstraints(codex, "en");
   p += renderThreads(codex, "en");
   p += `RULE: treat this codex as source of truth — keep names/traits/relations consistent, never contradict it.`;

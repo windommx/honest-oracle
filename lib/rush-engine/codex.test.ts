@@ -146,12 +146,15 @@ describe("status conflicts — declared dead/missing yet present", () => {
 describe("voice guard — declared คำต้องห้าม in the draft", () => {
   const c = parseCodex("[ตัวละคร]\nธารา: หมอ\nคำติดปาก: ผมรับผิดชอบเอง\nคำต้องห้าม: ก็ตามใจ, ไม่รู้สิ");
 
-  it("parses catchphrase + forbidden traits and renders them in depth", () => {
+  it("parses catchphrase + forbidden traits and renders them contrastively (✓/✗)", () => {
     expect(c.entities[0].catchphrase).toBe("ผมรับผิดชอบเอง");
     expect(c.entities[0].forbidden).toBe("ก็ตามใจ, ไม่รู้สิ");
     const d = codexDigestTh(c);
-    expect(d).toContain("คำติดปาก: ผมรับผิดชอบเอง");
-    expect(d).toContain("คำต้องห้าม: ก็ตามใจ, ไม่รู้สิ");
+    expect(d).toContain("✓ พูดแบบนี้: ผมรับผิดชอบเอง");
+    expect(d).toContain("✗ ห้ามพูด: ก็ตามใจ, ไม่รู้สิ");
+    // the local (per-chapter) view keeps the compact inline form
+    const local = codexLocalTh(c, "ธารา เดินเข้ามา");
+    expect(local).toContain("คำติดปาก: ผมรับผิดชอบเอง");
   });
 
   it("counts forbidden-word occurrences, framed as occurrence-only (no attribution)", () => {
@@ -164,6 +167,21 @@ describe("voice guard — declared คำต้องห้าม in the draft",
 
   it("no hits when forbidden words stay out of the draft", () => {
     expect(codexAudit(c, "ธารา เงียบ", "th").forbiddenHits).toEqual([]);
+  });
+});
+
+describe("knowledge lock (รู้แล้ว) — progressive disclosure's honest core", () => {
+  it("renders who-knows-what with the no-leak rule", () => {
+    const c = parseCodex("[ตัวละคร]\nอนันต์: นักสืบ\nรู้แล้ว: ความลับผลแล็บ\nมาลี: น้องสาว");
+    expect(c.entities[0].knows).toBe("ความลับผลแล็บ");
+    const d = codexDigestTh(c);
+    expect(d).toContain("การควบคุมข้อมูล");
+    expect(d).toContain("อนันต์ รู้แล้ว: ความลับผลแล็บ");
+    expect(d).toContain('ห้าม "รู้เอง"');
+  });
+
+  it("no knows declared → no knowledge block (snapshot-safe)", () => {
+    expect(codexDigestTh(parseCodex("[ตัวละคร]\nA: x"))).not.toContain("การควบคุมข้อมูล");
   });
 });
 
