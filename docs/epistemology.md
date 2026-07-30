@@ -161,6 +161,32 @@ Held to the same standard this document argues for:
   (Duhem–Quine, Kuhn, Lakatos). Used as a lens, not a settled criterion.
 - LLM-as-judge papers — 2026 **preprints**; the finding is robustly cross-corroborated but
   exact IDs are unverified.
+
+## What the research says (updated July 2026)
+
+The refusal of invented quality scores has since accumulated direct empirical support
+(all multi-source-verified; numbers should be re-checked against primary PDFs before
+citing in print):
+
+- **Art or Artifice?** (Chakrabarty et al., CHI 2024; arXiv:2309.14556) — with a
+  Torrance-derived rubric and 10 expert judges, **no LLM assessor correlated positively
+  with expert creativity judgments**.
+- **WritingPreferenceBench** (arXiv:2510.14616, 2025) — once objective signals (grammar,
+  length, factuality) are neutralized, zero-shot LLM judges score **53.9% ≈ chance** on
+  subjective writing preference, with per-genre variance from 18% to 92%.
+- **LitBench** (arXiv:2507.00769, 2025) — the best zero-shot judge agrees with human
+  story preferences only 73% of the time.
+- **Self-preference bias** (arXiv:2410.21819, 2024) — judges systematically favor
+  low-perplexity, LLM-flavored prose over human prose; a 0–100 "quality score" from a
+  judge partly measures *how LLM-like the text is*.
+- **NoCha** (EMNLP 2024, arXiv:2406.16264) — on true/false claims about full novels, no
+  open-weight model beats random; even GPT-4o reaches only 55.8%. Long-range consistency
+  cannot be delegated to a model reading the whole book — which is why this engine makes
+  the author DECLARE canon (Story Codex) and then counts against it.
+- Conversely, the *countable* signals this engine reports align with what research
+  measures: sentence-rhythm variance (our rhythm CV) matches the low-"burstiness"
+  AI-tell finding (O'Sullivan 2025), and per-character declared voice mirrors the
+  persona-diversification mitigation for AI homogenization (arXiv:2504.13868).
 - "Not everything that counts can be counted" — **Cameron (1963)**, not Einstein.
 - ประมาณ (*pramāṇa*) colloquially means "approximately" in Thai — glossed as
   เครื่องวัด/เกณฑ์ตัดสินความรู้ wherever it surfaces, to avoid the "estimate" reading.

@@ -69,6 +69,8 @@ TENSION: ...  (fiction only)
 
 Keep STATE compact (≤ 250 words), newest facts first, plain facts only. Carry it forward chapter to chapter. If I paste a STATE block into a later prompt, treat it as the source of truth.
 
+⚠ STATE is a working tool, not book content — before compiling/publishing, strip every <<<STATE>>> block and any prompt remnants from the manuscript (in 2025 several published authors were caught with forgotten prompts printed in their books).
+
 ═══ OUTPUT FORMAT ═══
 - Write the chapter content directly (no meta-commentary, no preamble like "Here is the chapter")
 - Begin with the chapter title as a Markdown heading (## Chapter N: Title)
@@ -529,6 +531,12 @@ Target: 3000 words (±20%), english language, "storytelling" voice.
    - rewrite: major revision while keeping core content
 5. Output the COMPLETE revised chapter — not a diff, not commentary.
 
+═══ HUNT THESE FIRST (what human editors measurably fix most in AI prose — LAMP corpus, CHI 2025) ═══
+1. Awkward/overused word choice (~28% of edits)
+2. Weak or same-shaped sentence structure (~20%)
+3. Redundant exposition — restating what the reader was already told (~18%)
+4. Clichés and stock imagery (~17%)
+
 ═══ REVISION MODE: [SPECIFIED BY ANALYSIS] ═══
 
 ═══ SPECIFIC FIXES: [LISTED BY ANALYSIS] ═══
@@ -768,6 +776,8 @@ Act 3: Climax & Resolution: บท 4-6 — Dark night, climax, resolution
 <<<END STATE>>>
 
 เขียน STATE ให้กระชับ (≤ 250 คำ) ข้อเท็จจริงใหม่ขึ้นก่อน เป็นข้อเท็จจริงล้วน ส่งต่อจากบทสู่บท ถ้าผู้ใช้วางบล็อก STATE มาในพรอมป์ตถัดไป ให้ถือเป็นแหล่งความจริง
+
+⚠ STATE เป็นเครื่องมือทำงาน ไม่ใช่เนื้อหาหนังสือ — ตอนรวมเล่ม/ตีพิมพ์ ต้องลบบล็อก <<<STATE>>> และร่องรอย prompt ทุกชิ้นออกจากต้นฉบับ (ปี 2025 มีนักเขียนหลายรายถูกจับได้เพราะลืม prompt ไว้ในเล่มพิมพ์จริง)
 
 ═══ รูปแบบผลลัพธ์ ═══
 - เขียนเนื้อหาบทโดยตรง (ไม่มีคำเกริ่น เช่น "นี่คือบท...")
@@ -1161,6 +1171,12 @@ Act 3: Climax & Resolution: บท 4-6 — Dark night, climax, resolution
 3. คงความยาวในกรอบ ±20%
 4. ใช้โหมดแก้ที่กำหนด: polish / strengthen_evidence / clarify / restructure / deepen / rewrite
 5. output บทที่แก้แล้วฉบับสมบูรณ์ (ไม่ใช่ diff ไม่มีคำอธิบาย) เป็นภาษาไทย
+
+═══ ลำดับสิ่งที่ต้องล่าก่อน (จากงานวิจัยที่วัดว่าบรรณาธิการมนุษย์แก้ prose ของ AI ตรงไหนจริง — LAMP, CHI 2025) ═══
+1. คำ/สำนวนเฝือและผิดที่ (พบมากสุด ~28% ของการแก้)
+2. โครงประโยคอ่อน/จังหวะซ้ำ (~20%)
+3. การเล่าซ้ำสิ่งที่บอกผู้อ่านไปแล้ว — redundant exposition (~18%)
+4. คลิเช/ภาพจำสำเร็จรูป (~17%)
 
 ═══ โหมดแก้: [ระบุโดยผลวิเคราะห์] ═══
 ═══ จุดที่ต้องแก้: [ระบุโดยผลวิเคราะห์] ═══
@@ -1724,6 +1740,8 @@ TENSION: ...  (fiction only)
 
 Keep STATE compact (≤ 250 words), newest facts first, plain facts only. Carry it forward chapter to chapter. If I paste a STATE block into a later prompt, treat it as the source of truth.
 
+⚠ STATE is a working tool, not book content — before compiling/publishing, strip every <<<STATE>>> block and any prompt remnants from the manuscript (in 2025 several published authors were caught with forgotten prompts printed in their books).
+
 ═══ OUTPUT FORMAT ═══
 - Write the chapter content directly (no meta-commentary, no preamble like "Here is the chapter")
 - Begin with the chapter title as a Markdown heading (## Chapter N: Title)
@@ -2146,6 +2164,12 @@ Target: 3000 words (±20%), thai language, "storytelling" voice.
    - rewrite: major revision while keeping core content
 5. Output the COMPLETE revised chapter — not a diff, not commentary.
 
+═══ HUNT THESE FIRST (what human editors measurably fix most in AI prose — LAMP corpus, CHI 2025) ═══
+1. Awkward/overused word choice (~28% of edits)
+2. Weak or same-shaped sentence structure (~20%)
+3. Redundant exposition — restating what the reader was already told (~18%)
+4. Clichés and stock imagery (~17%)
+
 ═══ REVISION MODE: [SPECIFIED BY ANALYSIS] ═══
 
 ═══ SPECIFIC FIXES: [LISTED BY ANALYSIS] ═══
@@ -2480,6 +2504,8 @@ TENSION: ...  (fiction only)
 <<<END STATE>>>
 
 Keep STATE compact (≤ 250 words), newest facts first, plain facts only. Carry it forward chapter to chapter. If I paste a STATE block into a later prompt, treat it as the source of truth.
+
+⚠ STATE is a working tool, not book content — before compiling/publishing, strip every <<<STATE>>> block and any prompt remnants from the manuscript (in 2025 several published authors were caught with forgotten prompts printed in their books).
 
 ═══ OUTPUT FORMAT ═══
 - Write the chapter content directly (no meta-commentary, no preamble like "Here is the chapter")
@@ -2923,6 +2949,12 @@ Target: 3000 words (±20%), english language, "storytelling" voice.
    - deepen: add sensory detail, emotion, character depth
    - rewrite: major revision while keeping core content
 5. Output the COMPLETE revised chapter — not a diff, not commentary.
+
+═══ HUNT THESE FIRST (what human editors measurably fix most in AI prose — LAMP corpus, CHI 2025) ═══
+1. Awkward/overused word choice (~28% of edits)
+2. Weak or same-shaped sentence structure (~20%)
+3. Redundant exposition — restating what the reader was already told (~18%)
+4. Clichés and stock imagery (~17%)
 
 ═══ REVISION MODE: [SPECIFIED BY ANALYSIS] ═══
 
@@ -3489,6 +3521,7 @@ Then output an Amazon-safe HTML version using only <b>, <i>, <h4>, <br>, <ul><li
 2. CATEGORIES: 3 specific, valid category paths (deepest relevant nodes), ranked, with why each fits.
 3. VERIFICATION CHECKLIST: for each keyword — how to validate it (type it into Amazon search; check autocomplete suggestions; confirm books rank for it; gauge competition). Mark any guess as "VERIFY".
 4. A 2-line A+ / comparison hook for the product page.
+5. AI DISCLOSURE note for the user (state it plainly, don't decide for them): under KDP's policy (framework since Sept 2023 — verify current wording in KDP help), AI-GENERATED content (text/images/translation created by AI, even if edited) must be disclosed to Amazon during publishing setup; AI-ASSISTED (you wrote it, AI helped edit/refine/brainstorm) requires no disclosure. Tell the user which side their workflow falls on is THEIR call to make honestly — and that platform rules change, so re-check at publish time.
 
 Be concrete; avoid generic single words.",
     "usage": "Run before publishing on KDP.",
