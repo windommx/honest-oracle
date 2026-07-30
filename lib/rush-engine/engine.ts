@@ -26,6 +26,7 @@ export * from "./thai-structures";
 export * from "./codex";
 export * from "./saga";
 export * from "./openers";
+export * from "./restatement";
 export * from "./epistemics";
 export { estimateTokens } from "./text-util";
 export * from "./config-diff";

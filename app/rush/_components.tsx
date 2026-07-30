@@ -14,6 +14,7 @@ import { continuityRadar, sceneReadout } from "@/lib/rush-engine/radar";
 import { parseCodex, codexAudit, codexMermaid } from "@/lib/rush-engine/codex";
 import { analyzeSaga, type SagaBook } from "@/lib/rush-engine/saga";
 import { analyzeOpeners } from "@/lib/rush-engine/openers";
+import { findRestatements } from "@/lib/rush-engine/restatement";
 import { characterGraph } from "@/lib/rush-engine/relationships";
 import { renameTerm } from "@/lib/rush-engine/rename";
 import { checkThaiRegister } from "@/lib/rush-engine/register";
@@ -336,6 +337,39 @@ function OpenerView({ text, lang }: { text: string; lang: "th" | "en" }) {
       </div>
       <p className="text-[0.6rem] text-gray-500 mt-2">
         {th ? `${report.units} หน่วย · ${report.distinct} แบบ · นับได้ ไม่ใช่คำตัดสิน` : `${report.units} units · ${report.distinct} distinct · counts, not a verdict`}
+      </p>
+    </div>
+  );
+}
+
+// Verbatim restatements — the countable slice of "redundant exposition"
+// (top-3 human-editor fix in AI prose, LAMP corpus / CHI 2025).
+function RestatementView({ text, lang }: { text: string; lang: "th" | "en" }) {
+  const th = lang === "th";
+  const report = useMemo(() => findRestatements(text, lang), [text, lang]);
+  if (report.totalTokens < 40) return null;
+  return (
+    <div>
+      <h3 className="text-xs font-semibold tracking-widest text-gray-400 uppercase mb-2">
+        {th ? "เล่าซ้ำคำต่อคำ (verbatim)" : "Verbatim restatements"}
+      </h3>
+      {report.found.length === 0 ? (
+        <p className="text-xs text-green-400">✓ {th ? "ไม่พบวลียาวที่ซ้ำคำต่อคำ" : "No long word-for-word repeats."}</p>
+      ) : (
+        <div className="space-y-1">
+          {report.found.slice(0, 8).map((r) => (
+            <div key={r.phrase} className="text-xs text-gray-300">
+              <span className="text-amber-300">×{r.count}</span>
+              {r.chapters.length > 1 && <span className="text-gray-500"> ({th ? "บท" : "ch"} {r.chapters.join(",")})</span>}
+              <span className="text-gray-400"> “{r.phrase.length > 70 ? r.phrase.slice(0, 70) + "…" : r.phrase}”</span>
+            </div>
+          ))}
+        </div>
+      )}
+      <p className="text-[0.6rem] text-gray-500 mt-1.5">
+        {th
+          ? "จับเฉพาะซ้ำคำต่อคำ (≥6 คำ) — เล่าซ้ำแบบเปลี่ยนถ้อยคำต้องอ่านเอง · อิงงานวิจัย LAMP: การเล่าซ้ำคือ ~18% ของสิ่งที่บรรณาธิการมนุษย์แก้ใน prose ของ AI"
+          : "Word-for-word repeats only (≥6 tokens) — paraphrased redundancy needs a human read · grounded in LAMP: restatement is ~18% of human edits to AI prose."}
       </p>
     </div>
   );
@@ -1295,6 +1329,7 @@ export function ThaiAnalyzerModal({ onClose, initialText }: { onClose: () => voi
         {a && <div className="mt-4"><RegisterView text={dtext} protect={protect} /></div>}
         {a && <div className="mt-4"><RenameView text={dtext} lang="th" /></div>}
         {a && <div className="mt-4"><OpenerView text={dtext} lang="th" /></div>}
+        {a && <div className="mt-4"><RestatementView text={dtext} lang="th" /></div>}
         {a && <div className="mt-4"><TranslationView source={dtext} /></div>}
         {a && <div className="mt-4"><CodexView text={dtext} lang="th" /></div>}
         {a && <div className="mt-4"><SagaView lang="th" /></div>}
@@ -1707,6 +1742,7 @@ export function ProseAnalyzerModal({ onClose, initialText }: { onClose: () => vo
         )}
         {a && <div className="mt-4"><RenameView text={dtext} lang="en" /></div>}
         {a && <div className="mt-4"><OpenerView text={dtext} lang="en" /></div>}
+        {a && <div className="mt-4"><RestatementView text={dtext} lang="en" /></div>}
         {a && <div className="mt-4"><CodexView text={dtext} lang="en" /></div>}
         {a && <div className="mt-4"><SagaView lang="en" /></div>}
         {scan.length > 1 && <ConsistencyView text={dtext} lang="en" />}

@@ -19,6 +19,7 @@ import { splitChapters } from "./chapters";
 import { parseCodex, codexAudit, codexCanon, formatCodexAudit, codexMermaid } from "./codex";
 import { analyzeSaga, formatSaga, type SagaBook } from "./saga";
 import { analyzeOpeners, formatOpeners } from "./openers";
+import { findRestatements } from "./restatement";
 
 export interface CliResult { stdout: string; stderr: string; code: number }
 
@@ -132,6 +133,18 @@ function cmdAnalyze(file: string | undefined, flags: Record<string, string | tru
     L.push("", "sensory density (per 1k words):");
     for (const s of sd.senses) L.push(`  ${SENSE_LABEL[s.sense as Sense].en.padEnd(6)} ${String(s.count).padStart(3)}×  ${s.per1k}/1k`);
     if (sd.unused.length) L.push(`  never used: ${sd.unused.map((u) => SENSE_LABEL[u].en).join(", ")}`);
+  }
+
+  // Verbatim restatements — the countable slice of "redundant exposition"
+  // (the #3 human-editor fix in AI prose per the LAMP corpus, CHI 2025).
+  const restated = findRestatements(text, lang);
+  if (restated.found.length) {
+    L.push("", `verbatim restatements (≥${restated.window} tokens, word-for-word):`);
+    for (const r of restated.found.slice(0, 8)) {
+      const loc = r.chapters.length > 1 ? ` (ch ${r.chapters.join(",")})` : "";
+      L.push(`  ×${r.count}${loc}  "${r.phrase.length > 70 ? r.phrase.slice(0, 70) + "…" : r.phrase}"`);
+    }
+    L.push("  (verbatim only — paraphrased redundancy needs a human read)");
   }
 
   const led = consistencyLedger(text, lang);
