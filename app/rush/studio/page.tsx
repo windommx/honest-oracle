@@ -117,9 +117,10 @@ export default function StudioPage() {
 
   function saveOutput() {
     if (!output.trim()) return;
-    saveManuscript({ title: `Studio ${new Date().toLocaleString()}`, lang: saveLang, text: output });
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+    void saveManuscript({ title: `Studio ${new Date().toLocaleString()}`, lang: saveLang, text: output }).then(() => {
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    });
   }
 
   return (

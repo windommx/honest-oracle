@@ -174,12 +174,13 @@ export default function RushPage() {
     }
     const mid = params.get("analyze");
     if (mid) {
-      const m = getManuscript(mid);
-      if (m) {
-        setAnalyzeText(m.text);
-        if (m.lang === "th") setShowAnalyzer(true);
-        else setShowProse(true);
-      }
+      void getManuscript(mid).then((m) => {
+        if (m) {
+          setAnalyzeText(m.text);
+          if (m.lang === "th") setShowAnalyzer(true);
+          else setShowProse(true);
+        }
+      });
     }
     const tool = params.get("tool");
     if (tool === "thai") setShowAnalyzer(true);

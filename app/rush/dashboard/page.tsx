@@ -97,7 +97,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     loadProjects();
-    setManuscripts(listManuscripts());
+    void listManuscripts().then(setManuscripts);
   }, []);
 
   async function del(id: string) {
@@ -108,9 +108,9 @@ export default function DashboardPage() {
       /* best-effort */
     }
   }
-  const delManuscript = (id: string) => {
-    deleteManuscript(id);
-    setManuscripts(listManuscripts());
+  const delManuscript = async (id: string) => {
+    await deleteManuscript(id);
+    setManuscripts(await listManuscripts());
   };
   const exportEpub = (m: StoredManuscript) => {
     const chs = splitChapters(m.text).filter((c) => c.body.trim());

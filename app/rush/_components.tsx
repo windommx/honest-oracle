@@ -1099,35 +1099,37 @@ function Mechanics({ items, title }: { items: { issue: string; count: number }[]
   );
 }
 
-/** Saved-manuscript bar: load / save / delete named drafts in localStorage. */
+/** Saved-manuscript bar: load / save / delete named drafts in IndexedDB. */
 function ManuscriptBar({ lang, text, onLoad }: { lang: "th" | "en"; text: string; onLoad: (t: string) => void }) {
   const [items, setItems] = useState<StoredManuscript[]>([]);
   const [selected, setSelected] = useState("");
   const [name, setName] = useState("");
-  const refresh = () => setItems(listManuscripts(lang));
+  const refresh = () => void listManuscripts(lang).then(setItems);
   useEffect(refresh, [lang]);
 
   const load = (id: string) => {
     setSelected(id);
-    const m = id ? getManuscript(id) : undefined;
-    if (m) onLoad(m.text);
+    if (!id) return;
+    void getManuscript(id).then((m) => {
+      if (m) onLoad(m.text);
+    });
   };
-  const save = () => {
+  const save = async () => {
     if (!text.trim()) return;
     const title = name.trim() || `${lang === "th" ? "ฉบับ" : "Draft"} ${new Date().toLocaleString()}`;
-    const rec = saveManuscript({ title, lang, text });
+    const rec = await saveManuscript({ title, lang, text });
     setName("");
     refresh();
     setSelected(rec.id);
-    if (storeNearQuota()) {
+    if (await storeNearQuota()) {
       window.alert(lang === "th"
         ? "พื้นที่เก็บฉบับใกล้เต็ม (~70% ของเพดานเบราว์เซอร์) — แนะนำลบฉบับเก่า หรือดาวน์โหลด .md เก็บไว้ก่อน"
         : "Draft storage is near the browser's ceiling (~70%) — delete old drafts or download .md backups.");
     }
   };
-  const remove = () => {
+  const remove = async () => {
     if (!selected) return;
-    deleteManuscript(selected);
+    await deleteManuscript(selected);
     setSelected("");
     refresh();
   };
