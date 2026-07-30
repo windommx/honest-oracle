@@ -199,7 +199,7 @@ describe("generateAllPrompts — module groups", () => {
     advanced: 4,
     agents: 6,
     nis: 8,
-    saga: 4,
+    saga: 5,
   };
 
   it("appends exactly the modules for each requested group", () => {
@@ -211,10 +211,10 @@ describe("generateAllPrompts — module groups", () => {
     }
   });
 
-  it("includes all 58 optional modules when every group is on", () => {
+  it("includes all 59 optional modules when every group is on", () => {
     const all = MODULE_GROUPS.map((m) => m.key);
     const pack = generateAllPrompts(cfg(), all);
-    expect(pack.filter((p) => p.group !== "core").length).toBe(58);
+    expect(pack.filter((p) => p.group !== "core").length).toBe(59);
   });
 
   it("CUT_PASS classifies cuts and protects setups, in both languages", () => {

@@ -1304,7 +1304,12 @@ Act 3: Climax & Resolution: บท 4-6 — Dark night, climax, resolution
 3. ระบุบทที่เป็นเหตุการณ์จุดประกาย จุดกึ่งกลาง และจุดสุดยอด
 4. แต่ละบท: "คำสัญญา" หนึ่งบรรทัด + hook ท้ายบท
 
-รูปแบบ: เขียนหนึ่งบรรทัดต่อบทเป็น "N. <beat>" (เช่น "1. ...", "2. ...") เพื่อวางลงช่อง Outline แล้วระบบจะ map เข้าแต่ละบทอัตโนมัติ",
+รูปแบบ: เขียนหนึ่งบรรทัดต่อบทเป็น "N. <beat>" (เช่น "1. ...", "2. ...") เพื่อวางลงช่อง Outline แล้วระบบจะ map เข้าแต่ละบทอัตโนมัติ
+
+5. ตรวจ BUT/THEREFORE (กฎ Parker & Stone): อ่าน outline เป็นลูกโซ่ — ทุกคู่ beat ที่ติดกันต้องเชื่อมด้วย "เพราะฉะนั้น" (เหตุ-ผล) หรือ "แต่" (พลิกผัน) ทำเครื่องหมายและแก้ทุกข้อต่อที่เป็น "แล้วก็" — ตรงนั้นคือจุดที่เรื่องเล่าหยุดเป็นเรื่องเล่าแล้วกลายเป็นรายการเหตุการณ์
+6. ถ้ามีหลายเส้นเรื่อง ให้ติดป้าย A/B/C ทุก beat (A = เส้นหลัก beat มากสุด; B = เส้นขนานที่มักถือแก่นเรื่อง; C = runner คลายเครียด) และเช็คว่าไม่มีเส้นไหนเงียบเกิน 3 บทติด
+
+ข้อมูลจาก streaming (Netflix hook study): ผู้อ่าน/ผู้ชมแทบไม่เคยติดที่ตอนเปิด — ตอน 2-4 คือตัวตรึงจริง: บทแรกซื้อความสนใจ บท 2-4 ต้องเปลี่ยนเป็นความผูกพัน",
     "usage": "รันก่อนเขียนเพื่อวางแผนทั้งเล่ม",
   },
   {
@@ -1497,6 +1502,8 @@ POV: [ ] · เป้าหมาย: [ ] · อุปสรรค: [ ] · ต�
 4. คำถามทางใจ — จบด้วยคำถามภายในที่ยังไม่มีคำตอบ
 5. ร่างกายสะท้อน — ร่างกายเก็บสิ่งที่ไม่ได้พูด (ไหล่ที่ยังอุ่น มือที่เย็นลง)
 Hybrid — เหตุการณ์เล็ก + ปฏิกิริยาอารมณ์ + สิ่งที่ยังค้าง
+
+act-out กลางบท (จากศาสตร์ act break ของทีวี): บทยาวควรมี "หน้าผาภายใน" 1-2 จุดกลางบท — จบฉาก/ตอนย่อยด้วยคำถามที่ส่วนถัดไปต้องตอบ นักเขียนบททีวีวางแผน act-out ก่อนสิ่งอื่นเพราะมันกำหนดวิถีของทุกอย่างที่มาก่อนหน้า
 
 ศาสตร์ความยับยั้ง (เครื่องยนต์ของทุกข้อ):
 - "สิ่งที่เขาไม่ทำ" หนักกว่าสิ่งที่ทำ — การข้ามกิจวัตรที่ทำทุกคืน บอกมากกว่าการจ้องมอง
@@ -3134,6 +3141,10 @@ Chapters: 6 · ~3000 words each · english
 2. Map every beat to a chapter number (1-6) with a 1-2 sentence purpose.
 3. Mark the inciting incident, midpoint, and climax chapters.
 4. For each chapter: a one-line "promise" (what the reader gets) and a hook for the chapter end.
+5. BUT/THEREFORE AUDIT (Parker & Stone's rule): read the outline as a chain — every adjacent beat pair must connect with "THEREFORE" (causation) or "BUT" (reversal). Flag and fix every "AND THEN" joint: that is where a story stops being a story and becomes a list.
+6. If the book braids multiple plotlines, mark each beat A/B/C (A = main line, carries most beats; B = parallel line that usually carries the THEME; C = light runner) and check no line goes silent for more than 3 consecutive chapters.
+
+NOTE FROM STREAMING DATA (Netflix's own hook study): audiences almost never commit on the opener — episodes 2-4 do the hooking. Budget accordingly: the opening chapter earns attention, chapters 2-4 must CONVERT it.
 
 FORMAT: output one line per chapter as "N. <beat>" (e.g. "1. ...", "2. ...") so it can be pasted into the Outline field and auto-mapped to each chapter prompt.",
     "usage": "Run before writing, to plan the whole book.",
@@ -3334,6 +3345,8 @@ HOOK TYPES (pick what fits — hybrid is strongest):
 4. QUESTION OF THE HEART — end on an unanswerable inner question.
 5. PHYSICAL ECHO — the body carries what was never said (a warm shoulder, a cold hand).
 HYBRID — small external event + emotional reaction + unresolved residue.
+
+MID-CHAPTER ACT-OUTS (from TV act-break craft): long chapters deserve 1-2 internal cliffs — end a scene/section on a question the next section must answer. TV writers plan act-outs before anything else because the break determines the trajectory of everything preceding it.
 
 RESTRAINT CRAFT (the engine of all of the above):
 - WHAT THEY DON'T DO beats what they do: skipping a nightly habit says more than a stare.

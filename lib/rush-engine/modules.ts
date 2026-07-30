@@ -62,7 +62,10 @@ function moduleStructureOutline(config: BookConfig): string {
   p += `1. State the chosen structure and why it fits this premise.\n`;
   p += `2. Map every beat to a chapter number (1-${config.chapters}) with a 1-2 sentence purpose.\n`;
   p += `3. Mark the inciting incident, midpoint, and climax chapters.\n`;
-  p += `4. For each chapter: a one-line "promise" (what the reader gets) and a hook for the chapter end.\n\n`;
+  p += `4. For each chapter: a one-line "promise" (what the reader gets) and a hook for the chapter end.\n`;
+  p += `5. BUT/THEREFORE AUDIT (Parker & Stone's rule): read the outline as a chain — every adjacent beat pair must connect with "THEREFORE" (causation) or "BUT" (reversal). Flag and fix every "AND THEN" joint: that is where a story stops being a story and becomes a list.\n`;
+  p += `6. If the book braids multiple plotlines, mark each beat A/B/C (A = main line, carries most beats; B = parallel line that usually carries the THEME; C = light runner) and check no line goes silent for more than 3 consecutive chapters.\n\n`;
+  p += `NOTE FROM STREAMING DATA (Netflix's own hook study): audiences almost never commit on the opener — episodes 2-4 do the hooking. Budget accordingly: the opening chapter earns attention, chapters 2-4 must CONVERT it.\n\n`;
   p += `FORMAT: output one line per chapter as "N. <beat>" (e.g. "1. ...", "2. ...") so it can be pasted into the Outline field and auto-mapped to each chapter prompt.`;
   return p;
 }
@@ -636,6 +639,8 @@ HOOK TYPES (pick what fits — hybrid is strongest):
 5. PHYSICAL ECHO — the body carries what was never said (a warm shoulder, a cold hand).
 HYBRID — small external event + emotional reaction + unresolved residue.
 
+MID-CHAPTER ACT-OUTS (from TV act-break craft): long chapters deserve 1-2 internal cliffs — end a scene/section on a question the next section must answer. TV writers plan act-outs before anything else because the break determines the trajectory of everything preceding it.
+
 RESTRAINT CRAFT (the engine of all of the above):
 - WHAT THEY DON'T DO beats what they do: skipping a nightly habit says more than a stare.
 - THE ALMOST MOMENT — nearly speaks, nearly touches, then stops. The closer to the act, the harder the stop lands.
@@ -1018,6 +1023,25 @@ End with: a 0-100 thematic-coherence score and the single change that would shar
 
 // ── SAGA — long-form multi-season (3–9 seasons/parts) ──────────
 
+export function moduleWritersRoom(config: BookConfig): string {
+  return `Run a SOLO WRITERS' ROOM to break your season/book the way TV rooms do (the documented practice: blue-sky -> arcing -> the board -> breaking -> outline; in the Breaking Bad room ~75% of the writing happened at this stage). You play every chair; I referee the process.
+
+PHASE 1 — BLUE SKY (no filtering): 15 minutes of unfiltered "what if" for "${config.title}". Wild ideas welcome; nothing is rejected yet. Output 15-25 raw sparks.
+
+PHASE 2 — ARCING: pick the sparks that serve the premise. Define: the season/book question (what the finale must answer), each lead's start->end movement, and the midpoint reversal.
+
+PHASE 3 — THE BOARD: ${config.chapters} columns (one per chapter). Under each: 2-4 beat cards, each a single logline (the Breaking Bad discipline: if a beat can't be one line, it isn't broken yet). Mark each card A/B/C by plotline. Keep asking the room question: "where is the protagonist's head at?"
+
+PHASE 4 — BREAK ONE CHAPTER: take the weakest column and break it properly — act-outs first (the internal cliffs), then the beats that earn them, but/therefore joints only.
+
+PHASE 5 — AUDIT: no plotline silent >3 chapters; every plant has a payoff column; chapters 2-4 carry the hook burden (streaming data: openers don't hook, 2-4 do); the finale answers the season question ON THE PAGE.
+
+Output each phase clearly separated. Stop after Phase 3 and wait for my picks before Phases 4-5 if the board is contested.
+
+Premise: ${config.thesis}
+Genre: ${config.subGenre.replace(/_/g, " ")}`;
+}
+
 export function moduleSagaArchitect(config: BookConfig): string {
   return `Design a SAGA ARCHITECTURE — a long-form work spanning 3–9 seasons (each season is itself a multi-part book) — for "${config.title}".
 
@@ -1151,6 +1175,7 @@ export const MODULE_CATALOG: ModuleDef[] = [
   { id: "NIS_SHOW", group: "nis", name: "Show-vs-Tell Audit", description: "Flags told emotions/summaries with a concrete showing rewrite; spares legit transitions.", usage: "Run on draft scenes that feel flat.", build: moduleNisShow },
   { id: "NIS_THEME", group: "nis", name: "Theme & Motif Audit", description: "Tracks every motif instance with quotes; flags dropped motifs and on-the-nose theme.", usage: "Run on the assembled manuscript.", build: moduleNisTheme },
   // saga (long-form 3–9 season planning + cross-season continuity)
+  { id: "WRITERS_ROOM", group: "saga", name: "Solo Writers' Room", description: "Blue-sky -> arcing -> the board -> break -> audit: the documented TV-room season-breaking process, run solo.", usage: "Run before outlining a season or book.", build: moduleWritersRoom },
   { id: "SAGA_ARCHITECT", group: "saga", name: "Saga Architect (3–9 seasons)", description: "Macro arc across 3–9 seasons: saga question, per-season role/cliffhanger, power-scale ladder.", usage: "Run first to plan a multi-season work.", build: moduleSagaArchitect },
   { id: "SAGA_SEASON", group: "saga", name: "Season Designer", description: "Designs one season in depth (its parts, plants/payoffs, cliffhanger) within the saga.", usage: "Run per season after the architect.", build: moduleSagaSeason },
   { id: "SAGA_CONTINUITY", group: "saga", name: "Saga Continuity (SAGA STATE)", description: "Cross-season canon/character/timeline/reveal ledger; watches power-creep.", usage: "Maintain across all seasons.", build: moduleSagaContinuity },
