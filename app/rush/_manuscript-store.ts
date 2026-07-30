@@ -49,8 +49,36 @@ export function getManuscript(id: string): StoredManuscript | undefined {
   return read().find((m) => m.id === id);
 }
 
+// Best-effort, once per session: ask the browser to protect this origin's
+// storage from eviction (Safari evicts most aggressively; a writer's drafts
+// should never silently disappear). Fire-and-forget — no permission UI on
+// most browsers, and failure changes nothing.
+let persistRequested = false;
+function requestPersistence(): void {
+  if (persistRequested) return;
+  persistRequested = true;
+  try {
+    void navigator.storage?.persist?.();
+  } catch {
+    /* unavailable (SSR/old browser) — ignore */
+  }
+}
+
+/** True when the store is nearing localStorage's ~5MB ceiling — surfaced so the
+ *  UI can warn instead of silently dropping a save. (The durable fix is an
+ *  IndexedDB migration — tracked as follow-up engineering.) */
+export function storeNearQuota(): boolean {
+  try {
+    const raw = window.localStorage.getItem(KEY);
+    return (raw?.length ?? 0) > 3_500_000; // ~70% of the common 5MB budget (UTF-16 units)
+  } catch {
+    return false;
+  }
+}
+
 /** Insert or update (by id) a manuscript and return the saved record. */
 export function saveManuscript(input: { id?: string; title: string; lang: "th" | "en"; text: string }): StoredManuscript {
+  requestPersistence();
   const list = read();
   // Strictly newer than every existing record so "newest first" is deterministic
   // even when two saves land in the same millisecond.

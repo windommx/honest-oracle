@@ -23,7 +23,7 @@ import { groupByTier, REFUSED_CONSTRUCTS, llmKalamaViolations, YATHABHUTA, warra
 import { characterArc, pacingProfile, motifTracker, type ChapterSignal } from "@/lib/rush-engine/narrative";
 import { downloadBlob } from "./_utils";
 import { wordDiff, diffTokens, type DiffOp } from "@/lib/rush-engine/text-util";
-import { listManuscripts, getManuscript, saveManuscript, deleteManuscript, type StoredManuscript } from "./_manuscript-store";
+import { listManuscripts, getManuscript, saveManuscript, deleteManuscript, storeNearQuota, type StoredManuscript } from "./_manuscript-store";
 
 export const GROUP_COLORS: Record<PromptGroup, string> = {
   core: "border-[#c9a84c] text-[#c9a84c]",
@@ -1119,6 +1119,11 @@ function ManuscriptBar({ lang, text, onLoad }: { lang: "th" | "en"; text: string
     setName("");
     refresh();
     setSelected(rec.id);
+    if (storeNearQuota()) {
+      window.alert(lang === "th"
+        ? "พื้นที่เก็บฉบับใกล้เต็ม (~70% ของเพดานเบราว์เซอร์) — แนะนำลบฉบับเก่า หรือดาวน์โหลด .md เก็บไว้ก่อน"
+        : "Draft storage is near the browser's ceiling (~70%) — delete old drafts or download .md backups.");
+    }
   };
   const remove = () => {
     if (!selected) return;
