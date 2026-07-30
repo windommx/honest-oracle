@@ -41,6 +41,23 @@ describe("narrative structures", () => {
     expect(structurePhase("thai-web-novel", 20, 20)!.beat.en).toBe("Next-episode hook");
   });
 
+  it("ships the duanju vertical-drama arc with honest snippet-tier provenance", () => {
+    const d = structureById("duanju")!;
+    expect(d.beats).toHaveLength(7);
+    expect(d.beats[0].en).toBe("Golden opening");
+    expect(d.beats[6].en).toBe("Compressed close");
+    // the course's countable density rule survives into the beats
+    expect(d.beats.map((b) => b.desc).join(" ")).toContain("1 จุดอารมณ์เล็กต่อตอน");
+    // provenance: official Hongguo course, but snippet-confidence — must say so,
+    // and the officially-denied / single-source numbers must NOT be taught
+    expect(d.note).toContain("snippet");
+    expect(d.note).toContain("ไม่นำมาใช้");
+    expect(d.origin).toContain("Hongguo");
+    // ch1/100 → golden opening; ch100/100 → compressed close
+    expect(structurePhase("duanju", 1, 100)!.beat.en).toBe("Golden opening");
+    expect(structurePhase("duanju", 100, 100)!.beat.en).toBe("Compressed close");
+  });
+
   it("returns null for an unknown structure id", () => {
     expect(structureById("bogus")).toBeNull();
     expect(structureById(undefined)).toBeNull();
