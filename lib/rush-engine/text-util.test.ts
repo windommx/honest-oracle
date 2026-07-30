@@ -1,5 +1,22 @@
 import { describe, it, expect } from "vitest";
-import { countPhrases, wordDiff, diffTokens } from "./text-util";
+import { countPhrases, wordDiff, diffTokens, estimateTokens } from "./text-util";
+
+describe("estimateTokens (heuristic)", () => {
+  it("weights Thai chars ~2.4× heavier than Latin", () => {
+    const thai = "ก".repeat(100);   // 100/1.65 ≈ 61
+    const latin = "a".repeat(100);  // 100/4 = 25
+    expect(estimateTokens(thai)).toBe(Math.ceil(100 / 1.65));
+    expect(estimateTokens(latin)).toBe(25);
+    expect(estimateTokens(thai)).toBeGreaterThan(estimateTokens(latin) * 2);
+  });
+
+  it("handles empty and mixed input deterministically", () => {
+    expect(estimateTokens("")).toBe(0);
+    const mixed = "hello สวัสดี";
+    expect(estimateTokens(mixed)).toBe(estimateTokens(mixed)); // stable
+    expect(estimateTokens(mixed)).toBeGreaterThan(0);
+  });
+});
 
 describe("countPhrases", () => {
   it("subtracts substring overlaps", () => {

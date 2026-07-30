@@ -69,6 +69,8 @@ TENSION: ...  (fiction only)
 
 Keep STATE compact (≤ 250 words), newest facts first, plain facts only. Carry it forward chapter to chapter. If I paste a STATE block into a later prompt, treat it as the source of truth.
 
+⚠ STATE is a working tool, not book content — before compiling/publishing, strip every <<<STATE>>> block and any prompt remnants from the manuscript (in 2025 several published authors were caught with forgotten prompts printed in their books).
+
 ═══ OUTPUT FORMAT ═══
 - Write the chapter content directly (no meta-commentary, no preamble like "Here is the chapter")
 - Begin with the chapter title as a Markdown heading (## Chapter N: Title)
@@ -529,6 +531,12 @@ Target: 3000 words (±20%), english language, "storytelling" voice.
    - rewrite: major revision while keeping core content
 5. Output the COMPLETE revised chapter — not a diff, not commentary.
 
+═══ HUNT THESE FIRST (what human editors measurably fix most in AI prose — LAMP corpus, CHI 2025) ═══
+1. Awkward/overused word choice (~28% of edits)
+2. Weak or same-shaped sentence structure (~20%)
+3. Redundant exposition — restating what the reader was already told (~18%)
+4. Clichés and stock imagery (~17%)
+
 ═══ REVISION MODE: [SPECIFIED BY ANALYSIS] ═══
 
 ═══ SPECIFIC FIXES: [LISTED BY ANALYSIS] ═══
@@ -769,6 +777,8 @@ Act 3: Climax & Resolution: บท 4-6 — Dark night, climax, resolution
 
 เขียน STATE ให้กระชับ (≤ 250 คำ) ข้อเท็จจริงใหม่ขึ้นก่อน เป็นข้อเท็จจริงล้วน ส่งต่อจากบทสู่บท ถ้าผู้ใช้วางบล็อก STATE มาในพรอมป์ตถัดไป ให้ถือเป็นแหล่งความจริง
 
+⚠ STATE เป็นเครื่องมือทำงาน ไม่ใช่เนื้อหาหนังสือ — ตอนรวมเล่ม/ตีพิมพ์ ต้องลบบล็อก <<<STATE>>> และร่องรอย prompt ทุกชิ้นออกจากต้นฉบับ (ปี 2025 มีนักเขียนหลายรายถูกจับได้เพราะลืม prompt ไว้ในเล่มพิมพ์จริง)
+
 ═══ รูปแบบผลลัพธ์ ═══
 - เขียนเนื้อหาบทโดยตรง (ไม่มีคำเกริ่น เช่น "นี่คือบท...")
 - ขึ้นต้นด้วยชื่อบทเป็นหัวข้อ Markdown (## บทที่ N: ชื่อบท)
@@ -992,6 +1002,7 @@ Act 3: Climax & Resolution: บท 4-6 — Dark night, climax, resolution
 - ตัดฉากเร็วขึ้น
 - บรรยายเท่าที่จำเป็น
 - ความคิดในใจเฉพาะจุดสำคัญ
+- อารมณ์แรงต้องออกผ่านร่างกายอย่างน้อย 1 ทาง (การหายใจ / อุณหภูมิมือ / เสียงในคอ-การกลืน / การหลบสายตา-การสัมผัส) — ห้ามเขียน "รู้สึก..." ลอย ๆ
 
 ═══ เชื่อมไปบทที่ 5 ═══
 บทถัดไป: ไคลแมกซ์ — ไคลแมกซ์: การเผชิญหน้าครั้งสุดท้าย
@@ -1048,6 +1059,7 @@ Act 3: Climax & Resolution: บท 4-6 — Dark night, climax, resolution
 - ตัดฉากเร็วขึ้น
 - บรรยายเท่าที่จำเป็น
 - ความคิดในใจเฉพาะจุดสำคัญ
+- อารมณ์แรงต้องออกผ่านร่างกายอย่างน้อย 1 ทาง (การหายใจ / อุณหภูมิมือ / เสียงในคอ-การกลืน / การหลบสายตา-การสัมผัส) — ห้ามเขียน "รู้สึก..." ลอย ๆ
 
 ═══ เชื่อมไปบทที่ 6 ═══
 บทถัดไป: บทสรุป — บทสรุป: ภาวะปกติใหม่ และถ้อยแถลงแก่นเรื่อง
@@ -1159,6 +1171,12 @@ Act 3: Climax & Resolution: บท 4-6 — Dark night, climax, resolution
 3. คงความยาวในกรอบ ±20%
 4. ใช้โหมดแก้ที่กำหนด: polish / strengthen_evidence / clarify / restructure / deepen / rewrite
 5. output บทที่แก้แล้วฉบับสมบูรณ์ (ไม่ใช่ diff ไม่มีคำอธิบาย) เป็นภาษาไทย
+
+═══ ลำดับสิ่งที่ต้องล่าก่อน (จากงานวิจัยที่วัดว่าบรรณาธิการมนุษย์แก้ prose ของ AI ตรงไหนจริง — LAMP, CHI 2025) ═══
+1. คำ/สำนวนเฝือและผิดที่ (พบมากสุด ~28% ของการแก้)
+2. โครงประโยคอ่อน/จังหวะซ้ำ (~20%)
+3. การเล่าซ้ำสิ่งที่บอกผู้อ่านไปแล้ว — redundant exposition (~18%)
+4. คลิเช/ภาพจำสำเร็จรูป (~17%)
 
 ═══ โหมดแก้: [ระบุโดยผลวิเคราะห์] ═══
 ═══ จุดที่ต้องแก้: [ระบุโดยผลวิเคราะห์] ═══
@@ -1446,6 +1464,115 @@ POV: [ ] · เป้าหมาย: [ ] · อุปสรรค: [ ] · ต�
     "usage": "ส่งฉากเพื่อดึงผู้อ่านเข้าไปข้างใน",
   },
   {
+    "description": "ศาสตร์ hook ท้ายตอน (5 ประเภท + hybrid) และความยับยั้ง — almost moment, สิ่งที่เขาไม่ทำ, ร่างกายทรยศทีหลัง",
+    "group": "craft",
+    "id": "HOOK_CRAFT",
+    "name": "Ending Hook & Restraint",
+    "prompt": "แก้ (หรือเขียน) "ตอนจบของบท" ด้วยศาสตร์ emotional hook ของนิยายรายตอน — ท้ายตอนคือเหตุผลที่ผู้อ่านกดตอนถัดไป
+
+ประเภท hook (เลือกให้เข้ากับฉาก — hybrid แรงสุด):
+1. อารมณ์ค้าง — ความรู้สึกที่ไม่ถูกระบาย: อยากพูดแต่พูดไม่ออก
+2. การรับรู้เงียบ — ความจริงที่ค่อย ๆ กดทับ ไม่ใช่ระเบิด
+3. ย้อนแย้งทางอารมณ์ — ทำตรงข้ามกับที่รู้สึก ("พักผ่อนนะ" จากคนที่เพิ่งสั่งให้เธอควงเวรต่อ)
+4. คำถามทางใจ — จบด้วยคำถามภายในที่ยังไม่มีคำตอบ
+5. ร่างกายสะท้อน — ร่างกายเก็บสิ่งที่ไม่ได้พูด (ไหล่ที่ยังอุ่น มือที่เย็นลง)
+Hybrid — เหตุการณ์เล็ก + ปฏิกิริยาอารมณ์ + สิ่งที่ยังค้าง
+
+ศาสตร์ความยับยั้ง (เครื่องยนต์ของทุกข้อ):
+- "สิ่งที่เขาไม่ทำ" หนักกว่าสิ่งที่ทำ — การข้ามกิจวัตรที่ทำทุกคืน บอกมากกว่าการจ้องมอง
+- almost moment — เกือบพูด เกือบสัมผัส แล้วหยุด ยิ่งใกล้ ยิ่งหยุดแล้วกระแทกแรง
+- ร่างกายทรยศทีหลัง — มือนิ่งตลอดหัตถการ แต่สั่นตอนเปิดขวดน้ำหลังเลิกเวร ส่วนปลายรั่วก่อน (นิ้ว ไหล่) ใบหน้ารั่วท้ายสุด
+- ความเป็นทางการคือร่องรอย — ยิ่งคุมอารมณ์ ยิ่งพูดเป็นทางการผิดปกติ
+- micro-conflict — อยากถามแต่ไม่กล้า อยากใกล้แต่บังคับให้ห่าง แรงเสียดทานเล็ก ๆ ซ้ำ ๆ ตึงกว่าเหตุการณ์ใหญ่ในแนว slow burn
+
+ตัวอย่างเทียบ:
+  ✗ "เธอรู้สึกเศร้ามาก ไม่รู้จะทำอย่างไรต่อไป"
+  ✓ "เธอนั่งลงบนเก้าอี้เหล็กเย็น มือยังกำผลแล็บจนกระดาษยับ รู้ทั้งรู้ว่าควรลุกไปหาเขา — แต่ตอนนี้แม้แต่การลุกขึ้นยืนก็ยังยากเกินไป"
+
+กฎความสมจริง: คนทำงานจริงเหนื่อยและพูดน้อย — ตัดคำกวี/อุปมาที่เกินธรรมชาติ ใช้นิสัยอาชีพเล็ก ๆ (จัดไฟล์ที่เรียบร้อยอยู่แล้วซ้ำ ล้างมือนานเกิน protocol) ใช้ความเงียบและการชะงักแทนคำหนัก ๆ และจบเงียบได้ถ้า "ตั้งใจ" — ให้บอกไว้ในโน้ตท้าย
+
+ผลลัพธ์: ตอนจบที่แก้แล้ว (3-8 บรรทัดสุดท้าย) + โน้ต 1 ข้อ ระบุว่าใช้ hook ประเภทไหนกับกลไกยับยั้งอะไร เพราะอะไร
+
+═══ ตอนจบของบท (หรือฉาก) ที่จะแก้ ═══
+[วางตอนจบที่นี่]",
+    "usage": "ส่งตอนจบของบทเพื่อทำ hook ให้คม (หรือเขียนใหม่)",
+  },
+  {
+    "description": "จิตวิทยาความผูกพันเป็นเครื่องทำนายพฤติกรรม, เส้นทาง earned security (ช้า กำเริบได้), และฉากซ่อมแซม 3 ประเภท",
+    "group": "craft",
+    "id": "PSYCH_ARC",
+    "name": "Attachment & Repair Arc",
+    "prompt": "ออกแบบ (หรือตรวจ) เส้นความสัมพันธ์ด้วย "จิตวิทยาความผูกพัน" — กรอบทฤษฎีจริง (attachment ของ Bowlby/Ainsworth ต่อยอดสู่ความรักผู้ใหญ่โดย Hazan & Shaver; "earned security" จากงานวิจัย adult attachment) ใช้เป็น "เครื่องทำนายพฤติกรรม" ไม่ใช่ป้ายวินิจฉัยแปะตัวละคร
+
+attachment ในฐานะเครื่องยนต์พฤติกรรม (เลือกให้ตัวหลัก — ทำนายว่าเขาทำอะไรเมื่อความใกล้ชิดเพิ่ม):
+- มั่นคง (secure) — ใกล้ได้โดยไม่เสียตัวตน พบน้อยในตัวเอกดราม่า แต่เหมาะกับตัวละคร "ฐานที่ปลอดภัย"
+- วิตก (anxious) — อ่านสัญญาณเล็กเป็นการปฏิเสธ ต้องการการยืนยันแต่กลัวเป็นภาระ ร่องรอย: ตีความข้อความสั้นหนักเกิน ถามซ้ำเรื่องเล็ก รอการตอบนาน
+- หลีกเลี่ยง (avoidant) — ระยะห่าง = ความปลอดภัย ใช้งาน/ความเป็นมืออาชีพเป็นเกราะ ร่องรอย: พูดเป็นทางการขึ้นเมื่อเรื่องเริ่มส่วนตัว หาเหตุผลหน้าที่เพื่อออกจากฉาก ทำงานหนักขึ้นหลังโมเมนต์ใกล้ชิด
+- กลัว-หลีกเลี่ยง (fearful-avoidant) — อยากใกล้และกลัวไปพร้อมกัน: เข้าใกล้ → ตื่นกลัว → ผลัก → เสียใจ วงจรร้อน-เย็นที่เป็นเชื้อเพลิง (และกับดัก) ของ slow burn
+โน้ตการจับคู่: avoidant × anxious สร้างวงจรไล่ตาม-ถอยหนีโดยอัตโนมัติ — ไม่ต้องมีอุปสรรคภายนอกทุกตอน วงจรนั้นแหละคืออุปสรรค
+
+เส้นทาง earned security (การเยียวยาที่น่าเชื่อ — สำหรับตัวเอก avoidant):
+1. ถอยเมื่อใกล้ (จุดตั้งต้น) → 2. ถอยแล้วรู้สึกว่างเปล่า → 3. ลองอยู่ต่อนานกว่าครั้งก่อนนิดเดียว → 4. ถูกเห็นตอนอ่อนแอที่สุดแล้ว "ไม่ถูกลงโทษ" → 5. ทนความใกล้ชิดได้โดยไม่หนี — และต้องมี "อาการกำเริบ" คั่นทุกขั้น
+กฎเหล็ก: ห้ามหายด้วยจูบ ห้ามเหตุการณ์ใหญ่ครั้งเดียวแก้ทุกอย่าง avoidant ที่เล่าแผลใจวัยเด็กได้คล่องตั้งแต่ตอนที่ 3 คือหลุดคาแรกเตอร์ การเปลี่ยนแปลงต้อง ช้า เงียบ และกำเริบเป็นระยะ ความรู้สึกผิด "ที่ตัวเองรู้สึก" มักแรงกว่าตัวความรู้สึก — จงเขียนความรู้สึกผิดนั้น
+
+ประเภทฉากซ่อมแซม (แต่ละแบบคือฉากที่จัดวางได้จริง):
+- corrective experience — ความคาดหวังเก่าถูกหักล้าง: เขาผลัก แล้วอีกฝ่าย "ไม่ไปไหนและไม่เอาคืน" ต้องเกิดใต้อารมณ์จริง ไม่ใช่บทสนทนาสงบ ๆ
+- co-regulation — มีคนอยู่ด้วยตลอดพายุโดยไม่แก้ปัญหา ไม่เร่ง ไม่ซัก ฉากเงียบที่ "การอยู่" ทำงานแทนคำพูด
+- mentalization beat — ตัวละครจับ pattern ตัวเองได้กลางทาง ("ฉันกำลังจะเดินหนีอีกแล้ว... เพราะกลัว") แล้วเลือกต่างครั้งแรก ใช้ประหยัด — beat นี้ต้องสะสมมาหลายบทถึงจะคู่ควร
+
+สภาวะระบบประสาทเป็นฐาน body language (เลนส์การเขียนจากสายบำบัดแนว polyvagal — บอกตรง ๆ: ข้อกล่าวอ้างทาง neuroscience ของทฤษฎีนี้ยังถูกโต้แย้ง ใช้เป็นคลังคำ craft ไม่ใช่ข้อเท็จจริงการแพทย์):
+- ปลอดภัย/เชื่อมโยง: ไหล่หย่อน เสียงมีจังหวะ สบตาง่าย หายใจต่ำและช้า
+- สู้/หนี: กรามแน่น หายใจตื้น พูดห้วน นิ้วอยู่ไม่สุข น้ำหนักถอยหลัง
+- ปิดระบบ: เสียงราบ ตอบช้า ตาว่าง เคลื่อนไหวน้อย — อาการทรุดหลังเลิกเวรของคนที่แข็งมาทั้งวัน
+อาชีพแรงกดดันสูงแกว่งไปมา: สู้/หนีตอนทำงาน → ปิดระบบตอนอยู่คนเดียว การแกว่งนั้นแหละคือตัวละคร
+
+ผลลัพธ์: ต่อตัวหลัก — pattern ความผูกพัน + ร่องรอยในฉาก 3 อย่าง; ขั้นปัจจุบันของเส้นทาง (1-5) + อาการกำเริบครั้งถัดไป; ฉากซ่อมแซม 1 ฉากจัดวางเป็นรูปธรรม (ประเภท ตัวจุดชนวน และสิ่งที่อีกฝ่าย "ไม่ทำ"); และแต่ละฉากสำคัญเริ่ม-จบในสภาวะระบบประสาทไหน
+
+═══ ตัวหลัก + สถานะความสัมพันธ์ปัจจุบัน ═══
+[วางตัวละครหลักและจุดที่ความสัมพันธ์อยู่ตอนนี้]",
+    "usage": "ใช้ตอนออกแบบหรือตรวจเส้นความสัมพันธ์ slow burn",
+  },
+  {
+    "description": "ฉากที่พูดโดยไม่ใช้บทสนทนา: prosody (เทียบฐานเดิม เสียงแตกช้า), จัดฉาก co-regulation 5 จังหวะ, ระยะห่าง/จังหวะ/วัตถุ, การซ่อมแบบเงียบ",
+    "group": "craft",
+    "id": "QUIET_SCENE",
+    "name": "Quiet Scene & Prosody",
+    "prompt": "เขียน (หรือเขียนใหม่) "ฉากเงียบ" — ฉากที่สื่อสารเกือบทั้งหมดโดยไม่พึ่งบทสนทนา: ผ่านคุณภาพเสียง ระยะห่าง จังหวะเวลา และการปรากฏตัว นี่คือ craft ระดับลงมือเขียนฉาก — ใช้คู่กับ "Attachment & Repair Arc" ที่ถือการออกแบบความสัมพันธ์เบื้องหลัง
+
+น้ำเสียงคือสัญญาณ (prosody — เสียงพูดก่อนคำพูดเสมอ):
+1. เทียบกับฐานเดิม — เครื่องมือที่แม่นสุด: บรรยายว่าเสียง "ต่างจากปกติของตัวละครคนนี้" อย่างไร ("ช้ากว่าเสียงตอนราวด์วอร์ด") ไม่ใช่ชมว่าเสียงเพราะ
+2. ความช้า + จังหวะหยุด — การนิ่งหนึ่งจังหวะก่อนตอบ อ่านได้ทั้งการคุมอารมณ์ ความใส่ใจ หรือความเปราะ แล้วแต่บริบท
+3. เสียงทุ้มลง-เบาลง (ไม่ใช่กระซิบ) = เกราะกำลังลด
+4. เสียงราบผิดธรรมชาติ — ไม่มีขึ้นลงเลย อ่านได้ทั้ง "กำแพง" และ "ปิดระบบ" ให้บริบทตัดสิน
+5. เสียงขัดกับคำ — ปากว่า "ผมเข้าใจ" แต่เสียงเร็วและตึงเกินไป = subtext ทันที
+6. เสียงแตกช้ากว่าเหตุการณ์ — เสียงนิ่งตลอดฉาก แล้วค่อยสั่นตอนอีกฝ่ายเดินพ้นไปแล้ว เกราะที่อยู่ได้นานกว่าโมเมนต์นั่นแหละคือเรื่องเล่า
+เลี่ยง: "เสียงสั่นเครือ" ซ้ำ ๆ · คำคุณศัพท์อารมณ์แปะเสียง ("เสียงโกรธ" "เสียงเศร้า") · เสียงไพเราะเกินจริง
+
+จัดฉาก co-regulation (ระบบประสาทสงบหนึ่งดวงพยุงอีกดวง — 5 จังหวะ):
+1. โชว์ A ที่ไม่นิ่ง (เครียดจัดหรือชา) → 2. B เข้ามาด้วยความสงบ ไม่ประกาศตัว → 3. สัมผัสทางประสาทสัมผัสเล็ก ๆ: จังหวะเสียง การยืนนิ่ง ๆ หรือ "วัตถุที่วางไว้" (แก้วน้ำที่วางลงพูดว่า "ฉันอยู่นี่") — ไม่ใช่เริ่มด้วยการแตะตัว → 4. ไม่เร่ง ไม่แก้ปัญหา ไม่ซัก → 5. การเปลี่ยนแปลงร่างกายเล็ก ๆ หนึ่งจุดบอกว่าได้ผล: ลมหายใจออกยาวขึ้น ไหล่ตกลงเซนติเมตรเดียว มือเอื้อมไปหยิบแก้ว
+สิ่งที่ฆ่าฉากนี้: คำปลอบยาว ๆ · บังคับให้เล่า · แตะตัวหนักเกินไปเร็วเกินไป (โดยเฉพาะกับ avoidant) · หายดีในฉากเดียว · "ทุกอย่างจะเรียบร้อย" ที่ไม่มีน้ำหนักของการอยู่จริง
+
+ช่องทาง nonverbal นอกเหนือร่างกาย:
+- ระยะห่าง — ครึ่งก้าวเข้าหรือออกคือหนึ่งประโยค การรักษาระยะอย่างเคารพบางทีพูดดังกว่าการเข้าใกล้
+- จังหวะเวลา — ตอบช้าลง อยู่ต่อนานกว่าหน้าที่กำหนด จังหวะก่อนประตูปิด
+- การเลี่ยงสัมผัส — ส่งของแบบไม่ให้นิ้วแตะกัน คือการสื่อสาร ไม่ใช่ความว่างเปล่า
+- วัตถุ — เสื้อกาวน์ที่พาดไว้ กาแฟที่วางทิ้งไว้: การปรากฏตัวที่ไม่เรียกร้องอะไรตอบ
+
+การซ่อมแซมแบบเงียบ (หลังรอยร้าว คำพูดน้อยที่สุด):
+- ฝ่ายที่ "ถอย" ต้องเป็นฝ่ายกลับมาก่อน — ให้อีกฝ่ายตามตลอดคือวนลูปไล่ตาม-ถอยหนีซ้ำ
+- บอก "ผลกระทบ" ไม่ใช่ข้อแก้ตัว ("การถอยของผมทำให้คุณลำบาก" ไม่ใช่ "ผมไม่ได้ตั้งใจ")
+- แยกพฤติกรรมออกจากตัวตน ("ตอนนั้นคุณห่างไป" ไม่ใช่ "คุณเป็นคนเย็นชา")
+- แล้ว "อยู่ต่อ" โดยไม่เรียกร้องคำตอบ — ฉากซ่อมหนึ่งฉากไม่เคยจบงาน การซ่อมต้องเกิดซ้ำ
+
+กฎของฉาก: งบบทสนทนา ≤ 5 บรรทัดสั้น · ความเงียบคือช่องทางสื่อสาร ไม่ใช่บทสนทนาที่หายไป · จบที่การขยับเล็ก ๆ ไม่ใช่การคลี่คลาย
+
+ผลลัพธ์: ฉากเงียบ (หรือฉบับแก้) + โน้ตท้าย 2 บรรทัด ระบุว่าใช้ prosody device ไหนกับ co-regulation จังหวะไหนเป็นตัวพา
+
+═══ ฉาก / สถานการณ์ที่จะเขียน ═══
+[วางฉาก หรือบอกว่าใครกำลังไม่นิ่ง และใครเดินเข้ามา]",
+    "usage": "ส่งฉากอารมณ์ที่บทสนทนาน้อยเพื่อเขียนหรือขัดให้คม",
+  },
+  {
     "description": "แปลซื่อสัตย์: คัมภีร์ canon + ล็อกศัพท์ + ข้อห้าม + micro-chunking กัน AI มโน/ไหลค่าเฉลี่ย",
     "group": "craft",
     "id": "TRANSLATE",
@@ -1612,6 +1739,8 @@ TENSION: ...  (fiction only)
 <<<END STATE>>>
 
 Keep STATE compact (≤ 250 words), newest facts first, plain facts only. Carry it forward chapter to chapter. If I paste a STATE block into a later prompt, treat it as the source of truth.
+
+⚠ STATE is a working tool, not book content — before compiling/publishing, strip every <<<STATE>>> block and any prompt remnants from the manuscript (in 2025 several published authors were caught with forgotten prompts printed in their books).
 
 ═══ OUTPUT FORMAT ═══
 - Write the chapter content directly (no meta-commentary, no preamble like "Here is the chapter")
@@ -2035,6 +2164,12 @@ Target: 3000 words (±20%), thai language, "storytelling" voice.
    - rewrite: major revision while keeping core content
 5. Output the COMPLETE revised chapter — not a diff, not commentary.
 
+═══ HUNT THESE FIRST (what human editors measurably fix most in AI prose — LAMP corpus, CHI 2025) ═══
+1. Awkward/overused word choice (~28% of edits)
+2. Weak or same-shaped sentence structure (~20%)
+3. Redundant exposition — restating what the reader was already told (~18%)
+4. Clichés and stock imagery (~17%)
+
 ═══ REVISION MODE: [SPECIFIED BY ANALYSIS] ═══
 
 ═══ SPECIFIC FIXES: [LISTED BY ANALYSIS] ═══
@@ -2369,6 +2504,8 @@ TENSION: ...  (fiction only)
 <<<END STATE>>>
 
 Keep STATE compact (≤ 250 words), newest facts first, plain facts only. Carry it forward chapter to chapter. If I paste a STATE block into a later prompt, treat it as the source of truth.
+
+⚠ STATE is a working tool, not book content — before compiling/publishing, strip every <<<STATE>>> block and any prompt remnants from the manuscript (in 2025 several published authors were caught with forgotten prompts printed in their books).
 
 ═══ OUTPUT FORMAT ═══
 - Write the chapter content directly (no meta-commentary, no preamble like "Here is the chapter")
@@ -2813,6 +2950,12 @@ Target: 3000 words (±20%), english language, "storytelling" voice.
    - rewrite: major revision while keeping core content
 5. Output the COMPLETE revised chapter — not a diff, not commentary.
 
+═══ HUNT THESE FIRST (what human editors measurably fix most in AI prose — LAMP corpus, CHI 2025) ═══
+1. Awkward/overused word choice (~28% of edits)
+2. Weak or same-shaped sentence structure (~20%)
+3. Redundant exposition — restating what the reader was already told (~18%)
+4. Clichés and stock imagery (~17%)
+
 ═══ REVISION MODE: [SPECIFIED BY ANALYSIS] ═══
 
 ═══ SPECIFIC FIXES: [LISTED BY ANALYSIS] ═══
@@ -3113,6 +3256,115 @@ Output: the rewritten scene, then a 3-5 line changelog naming each filter word c
     "usage": "Send a scene to pull the reader inside it.",
   },
   {
+    "description": "Emotional-hook typology (5 types + hybrid) and restraint craft — the almost-moment, what-they-don't-do, body-betrays-last — for chapter endings.",
+    "group": "craft",
+    "id": "HOOK_CRAFT",
+    "name": "Ending Hook & Restraint",
+    "prompt": "Fix a chapter ENDING (or write one) using the emotional-hook craft of serial fiction — the ending is what makes a reader open the next episode.
+
+HOOK TYPES (pick what fits — hybrid is strongest):
+1. UNRESOLVED EMOTION — a feeling that never gets released: wants to speak, can't.
+2. QUIET REVELATION — a realization that presses down slowly instead of exploding.
+3. EMOTIONAL IRONY — the character does the opposite of what they feel ("rest well," says the man who just ordered her a double shift).
+4. QUESTION OF THE HEART — end on an unanswerable inner question.
+5. PHYSICAL ECHO — the body carries what was never said (a warm shoulder, a cold hand).
+HYBRID — small external event + emotional reaction + unresolved residue.
+
+RESTRAINT CRAFT (the engine of all of the above):
+- WHAT THEY DON'T DO beats what they do: skipping a nightly habit says more than a stare.
+- THE ALMOST MOMENT — nearly speaks, nearly touches, then stops. The closer to the act, the harder the stop lands.
+- BODY BETRAYS LAST — steady hands during the crisis; a tremor opening a water bottle after. Extremities leak first (fingers, shoulders), the face last.
+- FORMALITY AS A TELL — the more controlled a character feels, the more official their speech gets.
+- MICRO-CONFLICT — wants to ask / doesn't dare; wants closeness / keeps distance. Small frictions, repeated, out-tension big events in slow-burn.
+
+CONTRASTIVE EXAMPLE:
+  ✗ "She felt very sad. She didn't know what to do."
+  ✓ "She sat down on the cold steel chair, the lab report still crushed in her fist. She knew she should stand up and find him — but right now even standing felt like too much."
+
+REALISM RULES: tired professionals talk less, not prettier — cut poetic similes; use small occupational habits (re-sorting an already-sorted file, over-washing hands past protocol); silence and hesitation over heavy lines; a quiet ending is allowed when CHOSEN — say so in a margin note.
+
+Output: the rewritten ending (last 3–8 lines) + one margin note naming which hook type and restraint device you used and why.
+
+═══ CHAPTER ENDING (or scene) TO WORK ON ═══
+[paste the ending here]",
+    "usage": "Send a chapter ending to sharpen its hook (or write one).",
+  },
+  {
+    "description": "Attachment styles as behavior predictors, the earned-security arc (slow, relapsing), and repair scene types (corrective experience / co-regulation / mentalization).",
+    "group": "craft",
+    "id": "PSYCH_ARC",
+    "name": "Attachment & Repair Arc",
+    "prompt": "Design (or audit) a relationship arc using ATTACHMENT PSYCHOLOGY — real frameworks (Bowlby/Ainsworth attachment styles; Hazan & Shaver's adult-romance extension; "earned security" from adult-attachment research), used as behavior PREDICTORS, never as diagnosis labels pasted on characters.
+
+ATTACHMENT AS A BEHAVIOR ENGINE (pick per lead; predicts what they do when closeness increases):
+- SECURE — can be close without losing self. Rare in drama leads; common in the "safe base" side character.
+- ANXIOUS — reads tiny signals as rejection; needs reassurance but fears being a burden. Tells: over-interprets a short reply, waits by the phone, asks twice about small things.
+- AVOIDANT — distance = safety; work/professionalism as armor. Tells: goes formal when it gets personal, finds a duty reason to leave, works harder after a close moment.
+- FEARFUL-AVOIDANT — wants closeness AND fears it: approach → panic → push away → regret. The hot-cold cycle that fuels (and can cheapen) slow burn.
+PAIRING NOTE: avoidant × anxious creates the pursue-withdraw loop automatically — you don't need external obstacles every episode; the loop IS the obstacle.
+
+THE EARNED-SECURITY ARC (the believable healing path — for an avoidant lead):
+1. retreats when close (baseline) → 2. retreats, then feels the emptiness → 3. stays slightly longer than last time → 4. is seen at their weakest and is NOT punished for it → 5. tolerates closeness without fleeing — with RELAPSES between every stage.
+HARD RULES: no heal-by-kiss; no single big event that fixes everything; an avoidant who narrates their childhood wound fluently in episode 3 has broken character. Change is slow, quiet, and relapsing. Guilt ABOUT feeling (“I shouldn't feel this on duty”) usually outweighs the feeling itself — write the guilt.
+
+REPAIR SCENE TYPES (each is a scene you can actually stage):
+- CORRECTIVE EXPERIENCE — the old expectation is violated: they push, the other person neither leaves nor retaliates. Must happen under real emotion, not as a calm conversation.
+- CO-REGULATION — someone stays present through the storm without fixing, rushing, or interrogating. A quiet scene where presence does the work words can't.
+- MENTALIZATION BEAT — the character catches their own pattern mid-motion ("I'm about to walk away again — because I'm scared"), and for once chooses differently. Use sparingly; earning this beat takes chapters.
+
+NERVOUS-SYSTEM STATES AS BODY-LANGUAGE GROUND (a writing lens from polyvagal-informed therapy — note honestly: its neuroscience claims are contested; use it as craft vocabulary, not medical fact):
+- SAFE/CONNECTED: shoulders drop, voice has rhythm, eye contact easy, breath low and slow.
+- FIGHT/FLIGHT: jaw tight, shallow breath, clipped speech, fingers restless, weight shifts back.
+- SHUTDOWN: flat voice, delayed answers, empty gaze, minimal movement — the after-shift collapse of someone who was iron all day.
+High-pressure professionals oscillate: fight/flight on duty → shutdown alone afterward. That oscillation IS the character.
+
+Output: per lead — attachment pattern + 3 in-scene tells; the arc's current stage (1–5) and the next relapse; ONE repair scene staged concretely (type, trigger, what the other person does NOT do); and which nervous-system state each key scene starts and ends in.
+
+═══ LEADS + RELATIONSHIP PREMISE ═══
+[paste your leads and where the relationship currently stands]",
+    "usage": "Run when designing or auditing a slow-burn relationship arc.",
+  },
+  {
+    "description": "Scenes that speak without dialogue: prosody devices (baseline shift, delayed crack), staged co-regulation, distance/timing/objects as channels, quiet repair.",
+    "group": "craft",
+    "id": "QUIET_SCENE",
+    "name": "Quiet Scene & Prosody",
+    "prompt": "Write (or rewrite) a QUIET SCENE — a scene that communicates almost entirely without dialogue: through voice quality, distance, timing, and presence. This is scene-level execution; pair with "Attachment & Repair Arc" for the relationship design behind it.
+
+PROSODY AS SIGNAL (voice quality speaks before words do):
+1. BASELINE COMPARISON — the strongest device: describe how the voice differs from THIS character's normal ("slower than his ward-round voice"), not generic prettiness.
+2. SLOWNESS + PAUSES — a held beat before answering reads as control, care, or fragility depending on context.
+3. PITCH/VOLUME DROP — lower and softer (not whispering) = armor coming down.
+4. UNNATURAL FLATNESS — a voice with no rise and fall reads as either a wall or a shutdown; let context decide which.
+5. MISMATCH — words say "I understand", the voice is too fast and tight: instant subtext.
+6. DELAYED SHIFT — the voice holds steady through the scene and only cracks after the other person leaves. The armor outlasting the moment IS the story.
+AVOID: "trembling voice" on repeat; emotion adjectives glued to voice ("angry voice", "sad voice"); voices described as beautiful.
+
+CO-REGULATION, STAGED (one calm nervous system steadies another — 5 beats):
+1. show A dysregulated (wired or shut down) → 2. B arrives CALM, no announcement → 3. small sensory contact: voice rhythm, steady presence, a placed object (a glass of water set down says "I'm here") — NOT touch-first → 4. no rushing, no fixing, no interrogating → 5. ONE small body shift shows it landed: a longer exhale, shoulders dropping a centimetre, reaching for the glass.
+WHAT KILLS IT: comfort speeches; demanding they talk; heavy touch too early (especially with an avoidant); healed-within-one-scene; "everything will be fine" without the weight of staying.
+
+NONVERBAL CHANNELS BEYOND THE BODY:
+- DISTANCE — half a step closer or further is a sentence; keeping respectful distance can say more than approaching.
+- TIMING — answering slowly, staying longer than duty requires, the pause before a door closes.
+- TOUCH AVOIDED — handing something over so fingers don't meet is communication, not absence of it.
+- OBJECTS — a coat draped on a chair, coffee left on a desk: presence that asks for nothing back.
+
+QUIET REPAIR (after a rupture, minimal words):
+- the one who WITHDREW returns first — making the other chase re-runs the pursue-withdraw loop;
+- name the impact, not the excuse ("my pulling away made this hard for you", not "I didn't mean it");
+- separate behavior from identity ("you went distant" not "you're cold");
+- then STAY, without demanding a response. One repair scene never finishes the job — repairs repeat.
+
+RULES FOR THE SCENE: dialogue budget ≤ 5 short lines; silence is a communication channel, not missing dialogue; end on a SMALL shift, not a resolution.
+
+Output: the quiet scene (or rewrite) + a 2-line margin note naming which prosody device and which co-regulation beat carried it.
+
+═══ SCENE / SITUATION TO WORK ON ═══
+[paste the scene, or describe who is dysregulated and who shows up]",
+    "usage": "Send a low-dialogue emotional scene to write or sharpen.",
+  },
+  {
     "description": "Canon lorebook + terminology lock + negative prompts + micro-chunking — translate without AI drift/hallucination.",
     "group": "craft",
     "id": "TRANSLATE",
@@ -3269,6 +3521,7 @@ Then output an Amazon-safe HTML version using only <b>, <i>, <h4>, <br>, <ul><li
 2. CATEGORIES: 3 specific, valid category paths (deepest relevant nodes), ranked, with why each fits.
 3. VERIFICATION CHECKLIST: for each keyword — how to validate it (type it into Amazon search; check autocomplete suggestions; confirm books rank for it; gauge competition). Mark any guess as "VERIFY".
 4. A 2-line A+ / comparison hook for the product page.
+5. AI DISCLOSURE note for the user (state it plainly, don't decide for them): under KDP's policy (framework since Sept 2023 — verify current wording in KDP help), AI-GENERATED content (text/images/translation created by AI, even if edited) must be disclosed to Amazon during publishing setup; AI-ASSISTED (you wrote it, AI helped edit/refine/brainstorm) requires no disclosure. Tell the user which side their workflow falls on is THEIR call to make honestly — and that platform rules change, so re-check at publish time.
 
 Be concrete; avoid generic single words.",
     "usage": "Run before publishing on KDP.",

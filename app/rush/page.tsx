@@ -33,6 +33,9 @@ import {
   STARTER_GROUPS,
   defaultGroupsFor,
   generateAllPrompts,
+  estimateTokens,
+  diffConfigs,
+  summarizeConfigDiff,
   type BookConfig,
   type BookTypeKey,
   type GeneratedPrompt,
@@ -244,6 +247,65 @@ export default function RushPage() {
     setGroups(defaultGroupsFor(key));
   }
 
+  // Quick Start: fill the whole form with one coherent worked example (Thai noir),
+  // including an outline whose beats reference the codex cast — so a first-time
+  // user sees the entire value chain (config → codex → per-chapter injection)
+  // with a single click, then hits Generate.
+  function loadExample() {
+    setType("novel");
+    setSubGenre("mystery");
+    setTitle("เงาใต้ท่าเรือ");
+    setThesis("นักสืบเอกชนตามหาน้องสาวที่หายตัวไปในย่านท่าเรือเก่า ยิ่งเข้าใกล้ความจริง ยิ่งพบว่าคนที่เขาไว้ใจที่สุดเกี่ยวข้องกับการหายตัว");
+    setReader("ผู้อ่านนิยายสืบสวนไทย 18-35 ชอบบรรยากาศ noir จังหวะเร็ว");
+    setVoice("storytelling");
+    setChapters(8);
+    setWordsPerChapter(2500);
+    setLanguage("thai");
+    setPromptLanguage("th");
+    setPromptLangTouched(true);
+    setGroups(defaultGroupsFor("novel"));
+    setOutline(
+      "บทที่ 1: อนันต์ รับโทรศัพท์แจ้งว่า มาลี หายตัวไปจาก ตรอกเจริญกรุง\n" +
+      "บทที่ 2: สืบร่องรอยแรก พบ กุญแจทองคำ ในห้องของมาลี\n" +
+      "บทที่ 3: หมอลี เตือนให้เลิกตาม — มีคนใหญ่เกี่ยวข้อง\n" +
+      "บทที่ 4: อนันต์ ลอบเข้า ท่าเรือคลองเตย ครั้งแรก เกือบถูกจับ\n" +
+      "บทที่ 5: พบว่า เสือ ครอบครองท่าเรือ และรู้จักมาลีมาก่อน\n" +
+      "บทที่ 6: หมอลี เปิดเผยอดีตของครอบครัวอนันต์\n" +
+      "บทที่ 7: กุญแจทองคำ เปิดโกดังลับ — ความจริงเรื่องมาลี\n" +
+      "บทที่ 8: เผชิญหน้า เสือ ที่ท่าเรือ บทสรุปของพี่น้อง"
+    );
+    setStoryBible(
+      "[ตัวละคร]\n" +
+      "อนันต์: นักสืบเอกชน อดีตตำรวจ\n" +
+      "อยาก: หาน้องสาวให้เจอ\n" +
+      "ต้องการจริง: ให้อภัยตัวเองเรื่องคดีเก่า\n" +
+      "จุดอ่อน: กลัวความมืดตั้งแต่เด็ก\n" +
+      "เสียง: ประโยคสั้น ห้วน ถามมากกว่าตอบ\n" +
+      "คำติดปาก: ผมรับผิดชอบเอง\n" +
+      "คำต้องห้าม: ก็ตามใจ, ไม่รู้สิ\n" +
+      "มาลี: น้องสาวอนันต์ นักข่าวสายสืบสวน หายตัวไป\n" +
+      "เสือ: เจ้าพ่อท่าเรือ\n" +
+      "เสียง: พูดเบา ช้า ทุกคำมีน้ำหนัก ไม่เคยขู่ตรง ๆ\n" +
+      "หมอลี: เจ้าของร้านยาจีน\n" +
+      "รู้แล้ว: มาลีสืบเรื่องโกดังลับก่อนหายตัว, อดีตตำรวจของอนันต์\n\n" +
+      "[สถานที่]\n" +
+      "ท่าเรือคลองเตย: อาณาจักรของเสือ\n" +
+      "ตรอกเจริญกรุง: ที่มาลีถูกพบครั้งสุดท้าย\n\n" +
+      "[สิ่งของ]\n" +
+      "กุญแจทองคำ: เปิดโกดังลับใต้ท่าเรือ\n\n" +
+      "[ความสัมพันธ์]\n" +
+      "อนันต์ - มาลี: พี่น้อง\n" +
+      "อนันต์ -> เสือ: ตามล่า\n" +
+      "เสือ -> มาลี: ลักพาตัว\n" +
+      "หมอลี -> อนันต์: ให้เบาะแส\n\n" +
+      "[ปมค้าง]\n" +
+      "ความลับที่มาลีสืบอยู่ก่อนหายตัว: สูง\n" +
+      "เหตุที่อนันต์ลาออกจากตำรวจ: กลาง"
+    );
+    setPrompts([]);
+    setError("");
+  }
+
   function generate() {
     setError("");
     setNotice("");
@@ -426,11 +488,18 @@ export default function RushPage() {
   }
 
   function restoreVersion(cfg: BookConfig) {
+    // Field-level diff vs. what was on screen, so the notice says exactly what
+    // the restore changed (config is the source of truth — prompts just derive).
+    const changed = summarizeConfigDiff(diffConfigs(config, cfg));
     applyConfig(cfg);
     const g = defaultGroupsFor(cfg.type);
     setGroups(g);
     setPrompts(generateAllPrompts(cfg, g));
-    setNotice("กู้คืนเวอร์ชันแล้ว — กด Save เพื่อบันทึกเป็นเวอร์ชันล่าสุด");
+    setNotice(
+      changed
+        ? `กู้คืนเวอร์ชันแล้ว — ที่ต่างจากก่อนหน้า: ${changed} · กด Save เพื่อบันทึกเป็นเวอร์ชันล่าสุด`
+        : "กู้คืนเวอร์ชันแล้ว (เหมือนค่าบนจอทุกช่อง) — กด Save เพื่อบันทึกเป็นเวอร์ชันล่าสุด"
+    );
   }
 
   async function deleteProject(id: string) {
@@ -497,6 +566,12 @@ export default function RushPage() {
               สร้างชุด prompt ครบเซ็ตสำหรับแต่งหนังสือทุกประเภท — คัดลอกไปใช้กับ LLM ตัวไหนก็ได้ (ChatGPT / Claude / Gemini)
               <span className="block text-[0.7rem] text-gray-600 mt-1">แพลตฟอร์มสร้าง “prompt” — ไม่ใช่ตัวเขียน AI · ไม่ต้องมี API key · ไม่มีค่า token</span>
             </p>
+            <button
+              onClick={loadExample}
+              className="mt-3 text-xs px-3 py-1.5 rounded-lg border border-[#c9a84c]/40 text-[#c9a84c] hover:bg-[#c9a84c]/10 transition-colors"
+            >
+              ⚡ โหลดตัวอย่าง — นิยายสืบสวน 8 บท พร้อม outline + Story Codex (แก้/ลบได้ทุกช่อง)
+            </button>
           </div>
 
           <div className="grid lg:grid-cols-[380px_1fr] gap-6">
@@ -855,6 +930,9 @@ export default function RushPage() {
                               <span className="text-xs text-gray-500 truncate">{p.name}</span>
                             </button>
                             <div className="flex items-center gap-2 flex-shrink-0">
+                              <span className="text-[0.6rem] text-gray-600 tabular-nums" title="ประมาณจากอัตราส่วนตัวอักษร/token (heuristic) — จำนวนจริงต่างกันตามโมเดล">
+                                ≈{estimateTokens(p.prompt).toLocaleString()} tok
+                              </span>
                               <span className={`text-[0.6rem] px-1.5 py-0.5 border rounded ${GROUP_COLORS[p.group]}`}>{groupLabel(p.group)}</span>
                               <button onClick={() => runInStudio(p)} className="text-gray-400 hover:text-[#c9a84c]" title="Run in Studio" aria-label={`Run ${p.id} in Studio`}>
                                 <Play className="w-4 h-4" />

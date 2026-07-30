@@ -22,6 +22,25 @@ describe("narrative structures", () => {
     expect(j.beats[3].en).toContain("identification");
   });
 
+  it("ships Save the Cat with all 15 canonical beats, flagged as a commercial import", () => {
+    const s = structureById("save-the-cat")!;
+    expect(s.beats).toHaveLength(15);
+    expect(s.beats[0].en).toBe("Opening image");
+    expect(s.beats[14].en).toBe("Final image");
+    expect(s.beats.map((b) => b.en)).toContain("Dark night of the soul");
+    expect(s.note).toContain("ไม่ใช่โครงพื้นถิ่น"); // honest: not indigenous
+  });
+
+  it("ships the Thai web-novel episode flow ending in a next-episode hook", () => {
+    const w = structureById("thai-web-novel")!;
+    expect(w.beats).toHaveLength(9);
+    expect(w.beats[0].thai).toContain("hook");
+    expect(w.beats[8].en).toBe("Next-episode hook"); // the defining beat of serial fiction
+    expect(w.note).toContain("ไม่ใช่โครงวิชาการ"); // honest provenance flag
+    // chapter 20/20 maps to the closing hook beat
+    expect(structurePhase("thai-web-novel", 20, 20)!.beat.en).toBe("Next-episode hook");
+  });
+
   it("returns null for an unknown structure id", () => {
     expect(structureById("bogus")).toBeNull();
     expect(structureById(undefined)).toBeNull();

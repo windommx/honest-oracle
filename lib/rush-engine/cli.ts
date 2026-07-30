@@ -14,9 +14,13 @@ import { checkThaiRegister } from "./register";
 import { renameTerm } from "./rename";
 import { characterGraph } from "./relationships";
 import { continuityRadar, sceneReadout } from "./radar";
-import { characterArc, pacingProfile, motifTracker } from "./narrative";
+import { characterArc, pacingProfile, motifTracker, hookSignal } from "./narrative";
 import { splitChapters } from "./chapters";
-import { parseCodex, codexAudit, codexCanon, formatCodexAudit } from "./codex";
+import { parseCodex, codexAudit, codexCanon, formatCodexAudit, codexMermaid } from "./codex";
+import { analyzeSaga, formatSaga, type SagaBook } from "./saga";
+import { analyzeOpeners, formatOpeners } from "./openers";
+import { findRestatements } from "./restatement";
+import { excessVocabulary, formatExcess } from "./excess";
 
 export interface CliResult { stdout: string; stderr: string; code: number }
 
@@ -44,7 +48,10 @@ USAGE
   rush rename   <file.md> --from <name> --to <name> [--lang th|en] [--write]
   rush relations <file.md> --names "A,B,C" [--lang th|en]
   rush radar    <file.md> --canon "A,B,C" [--lang th|en]
-  rush codex    <draft.md> --bible <bible.md> [--lang th|en]
+  rush codex    <draft.md> --bible <bible.md> [--lang th|en]  (or: --bible <b> --graph)
+  rush saga     --books "b1.md,b2.md,..." [--titles "A,B,..."] [--lang th|en]
+  rush openers  <file.md> [--lang th|en]   (sentence/clause opener monotony)
+  rush excess   <suspect.md> --baseline <human.md> [--lang th|en] [--min n]
   rush scene    <file.md>   (Thai: real per-scene signals — no fake 0–100 scores)
   rush narrative <file.md> [--names "A,B"] [--motifs "x,y"]  (Thai: presence/pacing/motifs)
   rush help
@@ -63,6 +70,15 @@ COMMANDS
   codex     Audit a draft against a declared Story Codex (the --bible file): which
             entities appear, which are misspelled, which aren't referenced, plus the
             radar's off-canon drift. The codex IS the canon. Counts, not a verdict.
+  saga      Series continuity across many book codices (--books, ordered): per book,
+            who is introduced / carried / dropped, plus the series backbone (entities
+            spanning ≥2 books). Counts, not a verdict.
+  openers   Sentence/clause opener monotony: how often lines start with the same word
+            (He… He… / เขา… เขา…). Counts + share, not a verdict.
+  excess    Excess-vocabulary comparison (Kobak et al. 2025 method): which words are
+            over-represented in a suspect corpus vs your baseline corpus. The tool for
+            BUILDING an evidence-based Thai AI-tell list — ratios are facts, the
+            "tell" judgement (and the corpora) are yours.
   scene     Per-scene readout (Thai): words, clauses, rhythm cv, dialogue ratio, telling
             density, sensory/1k, AI-tells — real signals, never a fake 0–100 vibe score.
 
@@ -123,6 +139,18 @@ function cmdAnalyze(file: string | undefined, flags: Record<string, string | tru
     L.push("", "sensory density (per 1k words):");
     for (const s of sd.senses) L.push(`  ${SENSE_LABEL[s.sense as Sense].en.padEnd(6)} ${String(s.count).padStart(3)}×  ${s.per1k}/1k`);
     if (sd.unused.length) L.push(`  never used: ${sd.unused.map((u) => SENSE_LABEL[u].en).join(", ")}`);
+  }
+
+  // Verbatim restatements — the countable slice of "redundant exposition"
+  // (the #3 human-editor fix in AI prose per the LAMP corpus, CHI 2025).
+  const restated = findRestatements(text, lang);
+  if (restated.found.length) {
+    L.push("", `verbatim restatements (≥${restated.window} tokens, word-for-word):`);
+    for (const r of restated.found.slice(0, 8)) {
+      const loc = r.chapters.length > 1 ? ` (ch ${r.chapters.join(",")})` : "";
+      L.push(`  ×${r.count}${loc}  "${r.phrase.length > 70 ? r.phrase.slice(0, 70) + "…" : r.phrase}"`);
+    }
+    L.push("  (verbatim only — paraphrased redundancy needs a human read)");
   }
 
   const led = consistencyLedger(text, lang);
@@ -213,15 +241,17 @@ function cmdRadar(file: string | undefined, flags: Record<string, string | true>
 function cmdCodex(file: string | undefined, flags: Record<string, string | true>, read?: (p: string) => string): CliResult {
   const bibleFile = typeof flags.bible === "string" ? flags.bible : "";
   if (!bibleFile) return { stdout: "", stderr: 'codex needs --bible <bible.md> (the declared Story Codex)\n', code: 2 };
-  const draft = readFile(file, read);
-  if ("code" in draft) return draft;
   const bible = readFile(bibleFile, read);
   if ("code" in bible) return bible;
-
   const codex = parseCodex(bible.text);
   if (!codex.entities.length) {
     return { stdout: "", stderr: `no entities declared in "${bibleFile}" — use [ตัวละคร]/[CHARACTERS] etc. sections\n`, code: 2 };
   }
+  // --graph draws the declared cast as a Mermaid graph (no draft needed).
+  if (flags.graph) return { stdout: codexMermaid(codex) + "\n", stderr: "", code: 0 };
+
+  const draft = readFile(file, read);
+  if ("code" in draft) return draft;
   const lang: "th" | "en" = flags.lang === "en" ? "en" : /[฀-๿]/.test(draft.text) ? "th" : "en";
   const audit = codexAudit(codex, draft.text, lang);
   let out = formatCodexAudit(audit, lang);
@@ -233,6 +263,44 @@ function cmdCodex(file: string | undefined, flags: Record<string, string | true>
     for (const f of off.slice(0, 20)) out += `  ${f.term} ×${f.count}\n`;
   }
   return { stdout: out, stderr: "", code: 0 };
+}
+
+function cmdSaga(flags: Record<string, string | true>, read?: (p: string) => string): CliResult {
+  const files = (typeof flags.books === "string" ? flags.books : "").split(",").map((s) => s.trim()).filter(Boolean);
+  if (files.length < 2) return { stdout: "", stderr: 'saga needs --books "b1.md,b2.md,..." (≥2, in series order)\n', code: 2 };
+  const titles = (typeof flags.titles === "string" ? flags.titles : "").split(",").map((s) => s.trim());
+
+  const books: SagaBook[] = [];
+  let anyThai = false;
+  for (let i = 0; i < files.length; i++) {
+    const r = readFile(files[i], read);
+    if ("code" in r) return r;
+    if (/[฀-๿]/.test(r.text)) anyThai = true;
+    const codex = parseCodex(r.text);
+    if (!codex.entities.length) return { stdout: "", stderr: `no entities declared in "${files[i]}" — use [ตัวละคร]/[CHARACTERS] etc. sections\n`, code: 2 };
+    books.push({ title: titles[i] || files[i], codex });
+  }
+  const lang: "th" | "en" = flags.lang === "en" ? "en" : flags.lang === "th" ? "th" : anyThai ? "th" : "en";
+  return { stdout: formatSaga(analyzeSaga(books), lang), stderr: "", code: 0 };
+}
+
+function cmdOpeners(file: string | undefined, flags: Record<string, string | true>, read?: (p: string) => string): CliResult {
+  const r = readFile(file, read);
+  if ("code" in r) return r;
+  const lang: "th" | "en" = flags.lang === "en" ? "en" : flags.lang === "th" ? "th" : /[฀-๿]/.test(r.text) ? "th" : "en";
+  return { stdout: formatOpeners(analyzeOpeners(r.text, lang), lang), stderr: "", code: 0 };
+}
+
+function cmdExcess(file: string | undefined, flags: Record<string, string | true>, read?: (p: string) => string): CliResult {
+  const baseFile = typeof flags.baseline === "string" ? flags.baseline : "";
+  if (!baseFile) return { stdout: "", stderr: 'excess needs --baseline <human.md> (the reference corpus)\n', code: 2 };
+  const suspect = readFile(file, read);
+  if ("code" in suspect) return suspect;
+  const base = readFile(baseFile, read);
+  if ("code" in base) return base;
+  const lang: "th" | "en" = flags.lang === "en" ? "en" : flags.lang === "th" ? "th" : /[฀-๿]/.test(suspect.text) ? "th" : "en";
+  const min = Math.max(2, parseInt(String(flags.min ?? ""), 10) || 5);
+  return { stdout: formatExcess(excessVocabulary(base.text, suspect.text, lang, min), lang), stderr: "", code: 0 };
 }
 
 function cmdScene(file: string | undefined, flags: Record<string, string | true>, read?: (p: string) => string): CliResult {
@@ -300,6 +368,18 @@ function cmdNarrative(file: string | undefined, flags: Record<string, string | t
     L.push("");
   }
 
+  // Ending-hook devices per chapter — presence facts, not a "hook strength" score.
+  const chapterList = splitChapters(r.text);
+  if (chapterList.length) {
+    L.push("ending-hook devices (last ~400 chars of each chapter):");
+    chapterList.forEach((c, i) => {
+      const h = hookSignal(c.body, "th");
+      const found = [h.hasQuestion ? "คำถาม" : "", h.hasEllipsis ? "จุดไข่ปลา" : "", h.tensionWords.length ? `คำตึง: ${h.tensionWords.slice(0, 3).join("/")}` : ""].filter(Boolean);
+      L.push(`  ch ${i + 1}: ${found.length ? found.join(" · ") : "— ไม่พบ device (จบเงียบอาจตั้งใจ — ผู้เขียนตัดสิน)"}`);
+    });
+    L.push("");
+  }
+
   L.push("every number is a re-derivable count · gaps/flags fire at a disclosed threshold · no invented arc/pacing/resonance score.");
   return { stdout: L.join("\n") + "\n", stderr: "", code: 0 };
 }
@@ -314,6 +394,9 @@ export function runCli(argv: string[], io?: { read?: (path: string) => string })
   if (cmd === "relations") return cmdRelations(positional[1], flags, io?.read);
   if (cmd === "radar") return cmdRadar(positional[1], flags, io?.read);
   if (cmd === "codex") return cmdCodex(positional[1], flags, io?.read);
+  if (cmd === "saga") return cmdSaga(flags, io?.read);
+  if (cmd === "openers") return cmdOpeners(positional[1], flags, io?.read);
+  if (cmd === "excess") return cmdExcess(positional[1], flags, io?.read);
   if (cmd === "scene") return cmdScene(positional[1], flags, io?.read);
   if (cmd === "narrative") return cmdNarrative(positional[1], flags, io?.read);
   return { stdout: "", stderr: `unknown command "${cmd}". try: rush help\n`, code: 2 };

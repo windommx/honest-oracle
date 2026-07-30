@@ -448,6 +448,7 @@ function moduleKdpMeta(config: BookConfig): string {
 2. CATEGORIES: 3 specific, valid category paths (deepest relevant nodes), ranked, with why each fits.
 3. VERIFICATION CHECKLIST: for each keyword — how to validate it (type it into Amazon search; check autocomplete suggestions; confirm books rank for it; gauge competition). Mark any guess as "VERIFY".
 4. A 2-line A+ / comparison hook for the product page.
+5. AI DISCLOSURE note for the user (state it plainly, don't decide for them): under KDP's policy (framework since Sept 2023 — verify current wording in KDP help), AI-GENERATED content (text/images/translation created by AI, even if edited) must be disclosed to Amazon during publishing setup; AI-ASSISTED (you wrote it, AI helped edit/refine/brainstorm) requires no disclosure. Tell the user which side their workflow falls on is THEIR call to make honestly — and that platform rules change, so re-check at publish time.
 
 Be concrete; avoid generic single words.`;
 }
@@ -529,6 +530,103 @@ Output: a per-scene sense table + the targeted additions.
 
 ═══ DRAFT ═══
 [INSERT DRAFT HERE]`;
+}
+
+function moduleQuietScene(): string {
+  return `Write (or rewrite) a QUIET SCENE — a scene that communicates almost entirely without dialogue: through voice quality, distance, timing, and presence. This is scene-level execution; pair with "Attachment & Repair Arc" for the relationship design behind it.
+
+PROSODY AS SIGNAL (voice quality speaks before words do):
+1. BASELINE COMPARISON — the strongest device: describe how the voice differs from THIS character's normal ("slower than his ward-round voice"), not generic prettiness.
+2. SLOWNESS + PAUSES — a held beat before answering reads as control, care, or fragility depending on context.
+3. PITCH/VOLUME DROP — lower and softer (not whispering) = armor coming down.
+4. UNNATURAL FLATNESS — a voice with no rise and fall reads as either a wall or a shutdown; let context decide which.
+5. MISMATCH — words say "I understand", the voice is too fast and tight: instant subtext.
+6. DELAYED SHIFT — the voice holds steady through the scene and only cracks after the other person leaves. The armor outlasting the moment IS the story.
+AVOID: "trembling voice" on repeat; emotion adjectives glued to voice ("angry voice", "sad voice"); voices described as beautiful.
+
+CO-REGULATION, STAGED (one calm nervous system steadies another — 5 beats):
+1. show A dysregulated (wired or shut down) → 2. B arrives CALM, no announcement → 3. small sensory contact: voice rhythm, steady presence, a placed object (a glass of water set down says "I'm here") — NOT touch-first → 4. no rushing, no fixing, no interrogating → 5. ONE small body shift shows it landed: a longer exhale, shoulders dropping a centimetre, reaching for the glass.
+WHAT KILLS IT: comfort speeches; demanding they talk; heavy touch too early (especially with an avoidant); healed-within-one-scene; "everything will be fine" without the weight of staying.
+
+NONVERBAL CHANNELS BEYOND THE BODY:
+- DISTANCE — half a step closer or further is a sentence; keeping respectful distance can say more than approaching.
+- TIMING — answering slowly, staying longer than duty requires, the pause before a door closes.
+- TOUCH AVOIDED — handing something over so fingers don't meet is communication, not absence of it.
+- OBJECTS — a coat draped on a chair, coffee left on a desk: presence that asks for nothing back.
+
+QUIET REPAIR (after a rupture, minimal words):
+- the one who WITHDREW returns first — making the other chase re-runs the pursue-withdraw loop;
+- name the impact, not the excuse ("my pulling away made this hard for you", not "I didn't mean it");
+- separate behavior from identity ("you went distant" not "you're cold");
+- then STAY, without demanding a response. One repair scene never finishes the job — repairs repeat.
+
+RULES FOR THE SCENE: dialogue budget ≤ 5 short lines; silence is a communication channel, not missing dialogue; end on a SMALL shift, not a resolution.
+
+Output: the quiet scene (or rewrite) + a 2-line margin note naming which prosody device and which co-regulation beat carried it.
+
+═══ SCENE / SITUATION TO WORK ON ═══
+[paste the scene, or describe who is dysregulated and who shows up]`;
+}
+
+function modulePsychArc(): string {
+  return `Design (or audit) a relationship arc using ATTACHMENT PSYCHOLOGY — real frameworks (Bowlby/Ainsworth attachment styles; Hazan & Shaver's adult-romance extension; "earned security" from adult-attachment research), used as behavior PREDICTORS, never as diagnosis labels pasted on characters.
+
+ATTACHMENT AS A BEHAVIOR ENGINE (pick per lead; predicts what they do when closeness increases):
+- SECURE — can be close without losing self. Rare in drama leads; common in the "safe base" side character.
+- ANXIOUS — reads tiny signals as rejection; needs reassurance but fears being a burden. Tells: over-interprets a short reply, waits by the phone, asks twice about small things.
+- AVOIDANT — distance = safety; work/professionalism as armor. Tells: goes formal when it gets personal, finds a duty reason to leave, works harder after a close moment.
+- FEARFUL-AVOIDANT — wants closeness AND fears it: approach → panic → push away → regret. The hot-cold cycle that fuels (and can cheapen) slow burn.
+PAIRING NOTE: avoidant × anxious creates the pursue-withdraw loop automatically — you don't need external obstacles every episode; the loop IS the obstacle.
+
+THE EARNED-SECURITY ARC (the believable healing path — for an avoidant lead):
+1. retreats when close (baseline) → 2. retreats, then feels the emptiness → 3. stays slightly longer than last time → 4. is seen at their weakest and is NOT punished for it → 5. tolerates closeness without fleeing — with RELAPSES between every stage.
+HARD RULES: no heal-by-kiss; no single big event that fixes everything; an avoidant who narrates their childhood wound fluently in episode 3 has broken character. Change is slow, quiet, and relapsing. Guilt ABOUT feeling (“I shouldn't feel this on duty”) usually outweighs the feeling itself — write the guilt.
+
+REPAIR SCENE TYPES (each is a scene you can actually stage):
+- CORRECTIVE EXPERIENCE — the old expectation is violated: they push, the other person neither leaves nor retaliates. Must happen under real emotion, not as a calm conversation.
+- CO-REGULATION — someone stays present through the storm without fixing, rushing, or interrogating. A quiet scene where presence does the work words can't.
+- MENTALIZATION BEAT — the character catches their own pattern mid-motion ("I'm about to walk away again — because I'm scared"), and for once chooses differently. Use sparingly; earning this beat takes chapters.
+
+NERVOUS-SYSTEM STATES AS BODY-LANGUAGE GROUND (a writing lens from polyvagal-informed therapy — note honestly: its neuroscience claims are contested; use it as craft vocabulary, not medical fact):
+- SAFE/CONNECTED: shoulders drop, voice has rhythm, eye contact easy, breath low and slow.
+- FIGHT/FLIGHT: jaw tight, shallow breath, clipped speech, fingers restless, weight shifts back.
+- SHUTDOWN: flat voice, delayed answers, empty gaze, minimal movement — the after-shift collapse of someone who was iron all day.
+High-pressure professionals oscillate: fight/flight on duty → shutdown alone afterward. That oscillation IS the character.
+
+Output: per lead — attachment pattern + 3 in-scene tells; the arc's current stage (1–5) and the next relapse; ONE repair scene staged concretely (type, trigger, what the other person does NOT do); and which nervous-system state each key scene starts and ends in.
+
+═══ LEADS + RELATIONSHIP PREMISE ═══
+[paste your leads and where the relationship currently stands]`;
+}
+
+function moduleHookCraft(): string {
+  return `Fix a chapter ENDING (or write one) using the emotional-hook craft of serial fiction — the ending is what makes a reader open the next episode.
+
+HOOK TYPES (pick what fits — hybrid is strongest):
+1. UNRESOLVED EMOTION — a feeling that never gets released: wants to speak, can't.
+2. QUIET REVELATION — a realization that presses down slowly instead of exploding.
+3. EMOTIONAL IRONY — the character does the opposite of what they feel ("rest well," says the man who just ordered her a double shift).
+4. QUESTION OF THE HEART — end on an unanswerable inner question.
+5. PHYSICAL ECHO — the body carries what was never said (a warm shoulder, a cold hand).
+HYBRID — small external event + emotional reaction + unresolved residue.
+
+RESTRAINT CRAFT (the engine of all of the above):
+- WHAT THEY DON'T DO beats what they do: skipping a nightly habit says more than a stare.
+- THE ALMOST MOMENT — nearly speaks, nearly touches, then stops. The closer to the act, the harder the stop lands.
+- BODY BETRAYS LAST — steady hands during the crisis; a tremor opening a water bottle after. Extremities leak first (fingers, shoulders), the face last.
+- FORMALITY AS A TELL — the more controlled a character feels, the more official their speech gets.
+- MICRO-CONFLICT — wants to ask / doesn't dare; wants closeness / keeps distance. Small frictions, repeated, out-tension big events in slow-burn.
+
+CONTRASTIVE EXAMPLE:
+  ✗ "She felt very sad. She didn't know what to do."
+  ✓ "She sat down on the cold steel chair, the lab report still crushed in her fist. She knew she should stand up and find him — but right now even standing felt like too much."
+
+REALISM RULES: tired professionals talk less, not prettier — cut poetic similes; use small occupational habits (re-sorting an already-sorted file, over-washing hands past protocol); silence and hesitation over heavy lines; a quiet ending is allowed when CHOSEN — say so in a margin note.
+
+Output: the rewritten ending (last 3–8 lines) + one margin note naming which hook type and restraint device you used and why.
+
+═══ CHAPTER ENDING (or scene) TO WORK ON ═══
+[paste the ending here]`;
 }
 
 function moduleImmersion(): string {
@@ -974,6 +1072,9 @@ export const MODULE_CATALOG: ModuleDef[] = [
   { id: "ANTI_SAFE", group: "craft", name: "Anti-Safe Pass", description: "Break safe/tidy AI defaults; raise real stakes; ban Thai AI-tell clichés.", usage: "Send a draft to make it riskier.", build: moduleAntiSafe },
   { id: "SENSORY", group: "craft", name: "Sensory Audit", description: "Per-scene 5-sense check (≥3) + targeted concrete additions.", usage: "Send a draft to ground it in the senses.", build: moduleSensoryAudit },
   { id: "IMMERSION", group: "craft", name: "Immersion / Deep-POV Pass", description: "Deep-POV rewrite: ground fast, cut filter verbs, add interiority, open one loop, end on momentum.", usage: "Send a scene to pull the reader inside it.", build: moduleImmersion },
+  { id: "HOOK_CRAFT", group: "craft", name: "Ending Hook & Restraint", description: "Emotional-hook typology (5 types + hybrid) and restraint craft — the almost-moment, what-they-don't-do, body-betrays-last — for chapter endings.", usage: "Send a chapter ending to sharpen its hook (or write one).", build: moduleHookCraft },
+  { id: "PSYCH_ARC", group: "craft", name: "Attachment & Repair Arc", description: "Attachment styles as behavior predictors, the earned-security arc (slow, relapsing), and repair scene types (corrective experience / co-regulation / mentalization).", usage: "Run when designing or auditing a slow-burn relationship arc.", build: modulePsychArc },
+  { id: "QUIET_SCENE", group: "craft", name: "Quiet Scene & Prosody", description: "Scenes that speak without dialogue: prosody devices (baseline shift, delayed crack), staged co-regulation, distance/timing/objects as channels, quiet repair.", usage: "Send a low-dialogue emotional scene to write or sharpen.", build: moduleQuietScene },
   { id: "TRANSLATE", group: "craft", name: "Faithful Translation", description: "Canon lorebook + terminology lock + negative prompts + micro-chunking — translate without AI drift/hallucination.", usage: "Use to translate a passage (e.g. Thai→English for Royal Road) faithfully.", build: moduleTranslate },
   { id: "SCENE_ART", group: "craft", name: "Scene Illustration Prompt", description: "Turns a scene into a consistent image prompt (style/subject/setting/mood/composition + negative).", usage: "Send a scene to get a ready image prompt (you run Midjourney/SD).", build: moduleSceneArt },
   { id: "CHAR_CHAT", group: "craft", name: "Character Chat System Prompt", description: "Build a canon-safe, in-voice system prompt to chat with a character (spoiler + knowledge guardrails).", usage: "Fill from the character bible; run in your own LLM to chat in-world.", build: moduleCharChat },

@@ -179,7 +179,7 @@ describe("generateAllPrompts — core", () => {
 
 describe("generateAllPrompts — module groups", () => {
   const counts: Record<Exclude<PromptGroup, "core">, number> = {
-    craft: 14,
+    craft: 17,
     nonfiction: 5,
     prose: 4,
     thai: 1,
@@ -200,10 +200,41 @@ describe("generateAllPrompts — module groups", () => {
     }
   });
 
-  it("includes all 54 optional modules when every group is on", () => {
+  it("includes all 57 optional modules when every group is on", () => {
     const all = MODULE_GROUPS.map((m) => m.key);
     const pack = generateAllPrompts(cfg(), all);
-    expect(pack.filter((p) => p.group !== "core").length).toBe(54);
+    expect(pack.filter((p) => p.group !== "core").length).toBe(57);
+  });
+
+  it("QUIET_SCENE ships prosody devices + co-regulation staging in both languages", () => {
+    const en = generateAllPrompts(cfg({ type: "novel" }), ["craft"]).find((p) => p.id === "QUIET_SCENE")!;
+    expect(en.prompt).toContain("BASELINE COMPARISON");
+    expect(en.prompt).toContain("DELAYED SHIFT");
+    expect(en.prompt).toContain("WHAT KILLS IT");
+    const th = generateAllPrompts(cfg({ type: "novel", language: "thai", promptLanguage: "th" }), ["craft"]).find((p) => p.id === "QUIET_SCENE")!;
+    expect(th.prompt).toContain("เทียบกับฐานเดิม");
+    expect(th.prompt).toContain("เสียงแตกช้ากว่าเหตุการณ์");
+    expect(th.prompt).toContain("ฝ่ายที่ \"ถอย\" ต้องเป็นฝ่ายกลับมาก่อน");
+  });
+
+  it("PSYCH_ARC uses attachment as predictor, flags contested science, bans insta-heal", () => {
+    const en = generateAllPrompts(cfg({ type: "novel" }), ["craft"]).find((p) => p.id === "PSYCH_ARC")!;
+    expect(en.prompt).toContain("never as diagnosis labels");
+    expect(en.prompt).toContain("no heal-by-kiss");
+    expect(en.prompt).toContain("contested"); // polyvagal honesty flag
+    const th = generateAllPrompts(cfg({ type: "novel", language: "thai", promptLanguage: "th" }), ["craft"]).find((p) => p.id === "PSYCH_ARC")!;
+    expect(th.prompt).toContain("earned security");
+    expect(th.prompt).toContain("ห้ามหายด้วยจูบ");
+    expect(th.prompt).toContain("ยังถูกโต้แย้ง"); // contested-science flag in Thai too
+  });
+
+  it("HOOK_CRAFT ships the hook typology in both languages", () => {
+    const en = generateAllPrompts(cfg({ type: "novel" }), ["craft"]).find((p) => p.id === "HOOK_CRAFT")!;
+    expect(en.prompt).toContain("THE ALMOST MOMENT");
+    const th = generateAllPrompts(cfg({ type: "novel", language: "thai", promptLanguage: "th" }), ["craft"]).find((p) => p.id === "HOOK_CRAFT")!;
+    expect(th.prompt).toContain("almost moment");
+    expect(th.prompt).toContain("สิ่งที่เขาไม่ทำ");
+    expect(th.prompt).toContain("✗"); // contrastive example present
   });
 
   it("saga group plans long-form 3–9 seasons with cross-season continuity", () => {

@@ -152,6 +152,8 @@ TENSION: ...  (fiction only)
 
 Keep STATE compact (≤ 250 words), newest facts first, plain facts only. Carry it forward chapter to chapter. If I paste a STATE block into a later prompt, treat it as the source of truth.
 
+⚠ STATE is a working tool, not book content — before compiling/publishing, strip every <<<STATE>>> block and any prompt remnants from the manuscript (in 2025 several published authors were caught with forgotten prompts printed in their books).
+
 ═══ OUTPUT FORMAT ═══
 - Write the chapter content directly (no meta-commentary, no preamble like "Here is the chapter")
 - Begin with the chapter title as a Markdown heading (## Chapter N: Title)
@@ -441,6 +443,8 @@ export function generateAnalysisPrompt(config: BookConfig): string {
 export function generateRevisionPrompt(config: BookConfig): string {
   let p = `You are a master ${BOOK_TYPES[config.type].label.toLowerCase()} editor revising a chapter draft based on analysis feedback.\n\n`;
   p += getRevisionRules() + "\n\n";
+  p += `═══ HUNT THESE FIRST (what human editors measurably fix most in AI prose — LAMP corpus, CHI 2025) ═══\n`;
+  p += `1. Awkward/overused word choice (~28% of edits)\n2. Weak or same-shaped sentence structure (~20%)\n3. Redundant exposition — restating what the reader was already told (~18%)\n4. Clichés and stock imagery (~17%)\n\n`;
   p += `═══ REVISION MODE: [SPECIFIED BY ANALYSIS] ═══\n\n`;
   p += `═══ SPECIFIC FIXES: [LISTED BY ANALYSIS] ═══\n\n`;
   p += `═══ ORIGINAL DRAFT ═══\n[INSERT DRAFT HERE]\n\n`;

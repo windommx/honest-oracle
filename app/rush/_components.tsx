@@ -11,6 +11,10 @@ import { buildEpub } from "@/lib/rush-engine/epub";
 import { consistencyLedger, storyBible, formatStoryBible, suggestThaiNames } from "@/lib/rush-engine/consistency";
 import { sensoryDensity, SENSE_LABEL, type Sense } from "@/lib/rush-engine/sensory";
 import { continuityRadar, sceneReadout } from "@/lib/rush-engine/radar";
+import { parseCodex, codexAudit, codexMermaid } from "@/lib/rush-engine/codex";
+import { analyzeSaga, type SagaBook } from "@/lib/rush-engine/saga";
+import { analyzeOpeners } from "@/lib/rush-engine/openers";
+import { findRestatements } from "@/lib/rush-engine/restatement";
 import { characterGraph } from "@/lib/rush-engine/relationships";
 import { renameTerm } from "@/lib/rush-engine/rename";
 import { checkThaiRegister } from "@/lib/rush-engine/register";
@@ -290,6 +294,277 @@ function RadarView({ text, lang, canon }: { text: string; lang: "th" | "en"; can
       )}
       <p className="text-[0.6rem] text-gray-500 mt-1">
         {th ? "นับเทียบกับ glossary ของคุณ ไม่ใช่คำตัดสิน · ประกาศการเปลี่ยนชื่อใน glossary เพื่อล้าง flag" : "Counts vs. your glossary, not a verdict · declare renames in the glossary to clear a flag."}
+      </p>
+    </div>
+  );
+}
+
+// Opener monotony — how often sentences/clauses start with the same word.
+// Reads the analyzed draft directly; same engine as `rush openers`.
+function OpenerView({ text, lang }: { text: string; lang: "th" | "en" }) {
+  const th = lang === "th";
+  const report = useMemo(() => analyzeOpeners(text, lang), [text, lang]);
+  if (report.units === 0) return null;
+  const pct = (r: number) => `${Math.round(r * 100)}%`;
+  return (
+    <div>
+      <h3 className="text-xs font-semibold tracking-widest text-gray-400 uppercase mb-2">
+        {th ? "คำขึ้นต้นประโยค/วรรค" : "Sentence / clause openers"}
+      </h3>
+      {report.monotone.length > 0 ? (
+        <div>
+          <p className="text-[0.65rem] text-gray-500 mb-1">{th ? "ขึ้นต้นซ้ำมาก (ลองสลับจังหวะ):" : "over-used openers (consider varying):"}</p>
+          <div className="flex flex-wrap gap-1.5">
+            {report.monotone.map((s) => (
+              <span key={s.opener} className="text-xs px-2 py-0.5 rounded border border-amber-400/40 text-amber-300">
+                {s.opener} ×{s.count} · {pct(s.ratio)}
+              </span>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <p className="text-xs text-green-400">
+          ✓ {th ? "ไม่มีคำขึ้นต้นที่ซ้ำเกินเกณฑ์ — จังหวะเปิดหลากหลายดี" : "No opener repeats past the threshold — varied openings."}
+        </p>
+      )}
+      <p className="text-[0.65rem] text-gray-500 mt-2 mb-1">{th ? "พบบ่อยสุด:" : "most frequent:"}</p>
+      <div className="flex flex-wrap gap-1.5">
+        {report.top.map((s) => (
+          <span key={s.opener} className="text-xs px-2 py-0.5 rounded border border-white/10 text-gray-400">
+            {s.opener} ×{s.count}
+          </span>
+        ))}
+      </div>
+      <p className="text-[0.6rem] text-gray-500 mt-2">
+        {th ? `${report.units} หน่วย · ${report.distinct} แบบ · นับได้ ไม่ใช่คำตัดสิน` : `${report.units} units · ${report.distinct} distinct · counts, not a verdict`}
+      </p>
+    </div>
+  );
+}
+
+// Verbatim restatements — the countable slice of "redundant exposition"
+// (top-3 human-editor fix in AI prose, LAMP corpus / CHI 2025).
+function RestatementView({ text, lang }: { text: string; lang: "th" | "en" }) {
+  const th = lang === "th";
+  const report = useMemo(() => findRestatements(text, lang), [text, lang]);
+  if (report.totalTokens < 40) return null;
+  return (
+    <div>
+      <h3 className="text-xs font-semibold tracking-widest text-gray-400 uppercase mb-2">
+        {th ? "เล่าซ้ำคำต่อคำ (verbatim)" : "Verbatim restatements"}
+      </h3>
+      {report.found.length === 0 ? (
+        <p className="text-xs text-green-400">✓ {th ? "ไม่พบวลียาวที่ซ้ำคำต่อคำ" : "No long word-for-word repeats."}</p>
+      ) : (
+        <div className="space-y-1">
+          {report.found.slice(0, 8).map((r) => (
+            <div key={r.phrase} className="text-xs text-gray-300">
+              <span className="text-amber-300">×{r.count}</span>
+              {r.chapters.length > 1 && <span className="text-gray-500"> ({th ? "บท" : "ch"} {r.chapters.join(",")})</span>}
+              <span className="text-gray-400"> “{r.phrase.length > 70 ? r.phrase.slice(0, 70) + "…" : r.phrase}”</span>
+            </div>
+          ))}
+        </div>
+      )}
+      <p className="text-[0.6rem] text-gray-500 mt-1.5">
+        {th
+          ? "จับเฉพาะซ้ำคำต่อคำ (≥6 คำ) — เล่าซ้ำแบบเปลี่ยนถ้อยคำต้องอ่านเอง · อิงงานวิจัย LAMP: การเล่าซ้ำคือ ~18% ของสิ่งที่บรรณาธิการมนุษย์แก้ใน prose ของ AI"
+          : "Word-for-word repeats only (≥6 tokens) — paraphrased redundancy needs a human read · grounded in LAMP: restatement is ~18% of human edits to AI prose."}
+      </p>
+    </div>
+  );
+}
+
+// Saga — series-level continuity across books. Self-contained (its own per-book
+// codex inputs); the same deterministic engine as `rush saga`.
+function SagaView({ lang }: { lang: "th" | "en" }) {
+  const th = lang === "th";
+  const [books, setBooks] = useState<Array<{ title: string; bible: string }>>([
+    { title: "", bible: "" },
+    { title: "", bible: "" },
+  ]);
+  const report = useMemo(() => {
+    // Number the default titles by SERIES position (post-filter), so leaving a
+    // middle book blank doesn't skip a number in the report.
+    const declared: SagaBook[] = books
+      .map((b) => ({ rawTitle: b.title.trim(), codex: parseCodex(b.bible) }))
+      .filter((b) => b.codex.entities.length > 0)
+      .map((b, i) => ({ title: b.rawTitle || `${th ? "เล่ม" : "Book"} ${i + 1}`, codex: b.codex }));
+    return declared.length >= 2 ? analyzeSaga(declared) : null;
+  }, [books, th]);
+
+  const set = (i: number, patch: Partial<{ title: string; bible: string }>) =>
+    setBooks((prev) => prev.map((b, j) => (j === i ? { ...b, ...patch } : b)));
+  const chip = (name: string, cls: string) => (
+    <span key={name} className={`text-xs px-2 py-0.5 rounded border ${cls}`}>{name}</span>
+  );
+
+  return (
+    <div>
+      <h3 className="text-xs font-semibold tracking-widest text-gray-400 uppercase mb-1">
+        {th ? "ความต่อเนื่องซีรีส์ (Saga — หลายเล่ม)" : "Series continuity (Saga — multi-book)"}
+      </h3>
+      <p className="text-[0.62rem] text-gray-600 mb-2">
+        {th ? "ประกาศคาสต์ของแต่ละเล่ม (เรียงตามลำดับซีรีส์) แล้วดูว่าใครถูกแนะนำใหม่ / สืบเนื่อง / หายไป และใครเป็นแกนซีรีส์" : "Declare each book's cast (in series order); see who is introduced / carried / dropped, and the series backbone."}
+      </p>
+      <div className="space-y-2">
+        {books.map((b, i) => (
+          <div key={i} className="flex gap-2 items-start">
+            <span className="text-[0.7rem] text-gray-500 mt-2 w-4 shrink-0 tabular-nums">{i + 1}</span>
+            <div className="flex-1 space-y-1">
+              <input
+                value={b.title}
+                onChange={(e) => set(i, { title: e.target.value })}
+                placeholder={th ? `ชื่อเล่ม ${i + 1}` : `Book ${i + 1} title`}
+                className="input text-xs w-full"
+              />
+              <textarea
+                value={b.bible}
+                onChange={(e) => set(i, { bible: e.target.value })}
+                placeholder={th ? "[ตัวละคร]\nอนันต์: ...\nมาลี: ..." : "[CHARACTERS]\nAnan: ...\nMali: ..."}
+                className="input min-h-[52px] resize-y font-mono text-[0.7rem] w-full"
+              />
+            </div>
+            {books.length > 2 && (
+              <button onClick={() => setBooks((p) => p.filter((_, j) => j !== i))} className="text-gray-600 hover:text-red-400 mt-2" aria-label="remove book">
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+        ))}
+      </div>
+      <button
+        onClick={() => setBooks((p) => [...p, { title: "", bible: "" }])}
+        className="mt-2 text-[0.65rem] text-[#c9a84c] hover:text-[#e6c86a]"
+      >
+        {th ? "+ เพิ่มเล่ม" : "+ add book"}
+      </button>
+
+      {report && (
+        <div className="mt-3 space-y-3">
+          {report.books.map((b) => (
+            <div key={b.index} className="border-l-2 border-[#c9a84c]/30 pl-2.5">
+              <p className="text-[0.7rem] text-gray-300 mb-1">[{b.index}] {b.title}</p>
+              <div className="flex flex-wrap gap-1.5">
+                {b.introduced.map((e) => chip(e.name, "border-emerald-400/40 text-emerald-300"))}
+                {b.carried.map((n) => chip(n, "border-sky-400/30 text-sky-300"))}
+                {b.dropped.map((n) => chip(`${n} ↓`, "border-amber-400/40 text-amber-300"))}
+              </div>
+            </div>
+          ))}
+          <div className="text-[0.68rem] text-gray-500 pt-1">
+            <p>{th ? "แกนซีรีส์ (อยู่ ≥2 เล่ม): " : "series backbone (≥2 books): "}<span className="text-gray-300">{report.recurring.join(", ") || "—"}</span></p>
+            <p className="mt-0.5">{th ? "ปรากฏเล่มเดียว: " : "single-book: "}<span className="text-gray-400">{report.standalone.join(", ") || "—"}</span></p>
+          </div>
+          <p className="text-[0.6rem] text-gray-500">
+            {th ? "สีเขียว=แนะนำใหม่ · ฟ้า=สืบเนื่อง · เหลือง↓=หายจากเล่มก่อน (สัญญาณ ไม่ใช่ error) · deterministic ไม่มี LLM" : "green=introduced · blue=carried · amber↓=dropped vs prev (a signal, not an error) · deterministic, no LLM"}
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Story Codex audit — declare the cast in sections, check THIS draft against it.
+// Same deterministic engine as `rush codex`; the codex textarea IS the canon.
+function CodexView({ text, lang }: { text: string; lang: "th" | "en" }) {
+  const [bible, setBible] = useState("");
+  const [copied, setCopied] = useState(false);
+  const codex = useMemo(() => parseCodex(bible), [bible]);
+  const audit = useMemo(() => codexAudit(codex, text, lang), [codex, text, lang]);
+  const mermaid = useMemo(() => codexMermaid(codex), [codex]);
+  const th = lang === "th";
+  return (
+    <div>
+      <h3 className="text-xs font-semibold tracking-widest text-gray-400 uppercase mb-2">
+        {th ? "ตรวจ Codex (เทียบคาสต์ที่ประกาศ)" : "Codex audit (vs. declared cast)"}
+      </h3>
+      <textarea
+        value={bible}
+        onChange={(e) => setBible(e.target.value)}
+        placeholder={th
+          ? "ประกาศคาสต์ใต้หัวข้อ — [ตัวละคร] / [สถานที่] / [สิ่งของ] / [ความสัมพันธ์]\nอนันต์: นักสืบ\nมาลี: น้องสาว"
+          : "Declare the cast under sections — [CHARACTERS] / [PLACES] / [ITEMS] / [RELATIONS]\nAnan: detective\nMali: sister"}
+        className="input min-h-[72px] resize-y font-mono text-[0.72rem] w-full"
+      />
+      {audit.canonSize === 0 ? (
+        <p className="text-[0.62rem] text-gray-600 mt-1">
+          {th ? "ยังไม่ได้ประกาศ entity — พิมพ์คาสต์ใต้หัวข้อ [ตัวละคร] ฯลฯ แล้วจะตรวจกับดราฟต์ให้" : "No entities declared yet — list a cast under [CHARACTERS] etc. to audit the draft."}
+        </p>
+      ) : (
+        <div className="space-y-2 mt-2">
+          <div>
+            <p className="text-[0.65rem] text-gray-500 mb-1">
+              {th ? `ปรากฏในดราฟต์ (${audit.present.length}/${audit.canonSize}):` : `Present in draft (${audit.present.length}/${audit.canonSize}):`}
+            </p>
+            <div className="flex flex-wrap gap-1.5">
+              {audit.present.length === 0 && <span className="text-xs text-gray-600">—</span>}
+              {audit.present.map((e) => (
+                <span key={e.name} className="text-xs px-2 py-0.5 rounded border border-emerald-400/40 text-emerald-300">{e.name}</span>
+              ))}
+            </div>
+          </div>
+          {audit.statusConflicts.length > 0 && (
+            <div>
+              <p className="text-[0.65rem] text-gray-500 mb-1">{th ? "⚠ สถานะขัดแย้ง — ตาย/หายตัว แต่ปรากฏ (ย้อนอดีต? ผี? หลุด?):" : "⚠ Status conflict — dead/missing yet appears (flashback? ghost? slip?):"}</p>
+              <div className="flex flex-wrap gap-1.5">
+                {audit.statusConflicts.map((e) => (
+                  <span key={e.name} className="text-xs px-2 py-0.5 rounded border border-rose-400/40 text-rose-300">{e.name} — {e.status}</span>
+                ))}
+              </div>
+            </div>
+          )}
+          {audit.forbiddenHits.length > 0 && (
+            <div>
+              <p className="text-[0.65rem] text-gray-500 mb-1">{th ? "🗣 voice guard — คำต้องห้ามปรากฏในดราฟต์ (ตรวจเองว่าใครพูด):" : "🗣 Voice guard — a never-says word occurs (check who says it):"}</p>
+              <div className="flex flex-wrap gap-1.5">
+                {audit.forbiddenHits.map((h) => (
+                  <span key={`${h.name}-${h.word}`} className="text-xs px-2 py-0.5 rounded border border-amber-400/40 text-amber-300">{h.name}: “{h.word}” ×{h.count}</span>
+                ))}
+              </div>
+            </div>
+          )}
+          {audit.variants.length > 0 && (
+            <div>
+              <p className="text-[0.65rem] text-gray-500 mb-1">{th ? "อาจสะกดเพี้ยน (เช็กความสอดคล้อง):" : "Possible misspellings (check consistency):"}</p>
+              <div className="flex flex-wrap gap-1.5">
+                {audit.variants.map((v) => (
+                  <span key={v.declared} className="text-xs px-2 py-0.5 rounded border border-amber-400/40 text-amber-300">{v.declared} ~ {v.found}</span>
+                ))}
+              </div>
+            </div>
+          )}
+          {audit.missing.length > 0 && (
+            <div>
+              <p className="text-[0.65rem] text-gray-500 mb-1">{th ? "ไม่ถูกอ้างถึง (ตั้งใจ หรือช่องว่าง continuity?):" : "Not referenced (intentional, or a continuity gap?):"}</p>
+              <div className="flex flex-wrap gap-1.5">
+                {audit.missing.map((e) => (
+                  <span key={e.name} className="text-xs px-2 py-0.5 rounded border border-gray-500/40 text-gray-400">{e.name}</span>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+      {mermaid && (
+        <details className="mt-2">
+          <summary className="text-[0.65rem] text-[#c9a84c] cursor-pointer hover:text-[#e6c86a]">
+            {th ? "กราฟความสัมพันธ์ (Mermaid — คัดลอกไปเรนเดอร์ที่ไหนก็ได้)" : "Relationship graph (Mermaid — copy & render anywhere)"}
+          </summary>
+          <div className="relative mt-1.5">
+            <button
+              onClick={() => { navigator.clipboard?.writeText(mermaid); setCopied(true); setTimeout(() => setCopied(false), 1200); }}
+              className="absolute top-1.5 right-1.5 flex items-center gap-1 text-[0.6rem] px-1.5 py-0.5 rounded border border-white/15 text-gray-300 hover:border-[#c9a84c]/50 bg-black/40"
+            >
+              {copied ? <Check className="w-3 h-3 text-green-400" /> : <Copy className="w-3 h-3" />}
+              {copied ? (th ? "คัดลอกแล้ว" : "copied") : (th ? "คัดลอก" : "copy")}
+            </button>
+            <pre className="text-[0.62rem] text-gray-400 bg-black/40 border border-white/10 rounded p-2 pr-16 overflow-x-auto font-mono whitespace-pre">{mermaid}</pre>
+          </div>
+        </details>
+      )}
+      <p className="text-[0.6rem] text-gray-500 mt-1">
+        {th ? "deterministic ล้วน ไม่มี LLM · นับได้ ไม่ใช่คำตัดสิน · 'ไม่ถูกอ้างถึง' เป็นสัญญาณ ไม่ใช่ error" : "Pure/deterministic, no LLM · counts, not a verdict · 'not referenced' is a signal, not an error."}
       </p>
     </div>
   );
@@ -1053,7 +1328,11 @@ export function ThaiAnalyzerModal({ onClose, initialText }: { onClose: () => voi
         {a && <div className="mt-4"><SensoryView text={dtext} lang="th" /></div>}
         {a && <div className="mt-4"><RegisterView text={dtext} protect={protect} /></div>}
         {a && <div className="mt-4"><RenameView text={dtext} lang="th" /></div>}
+        {a && <div className="mt-4"><OpenerView text={dtext} lang="th" /></div>}
+        {a && <div className="mt-4"><RestatementView text={dtext} lang="th" /></div>}
         {a && <div className="mt-4"><TranslationView source={dtext} /></div>}
+        {a && <div className="mt-4"><CodexView text={dtext} lang="th" /></div>}
+        {a && <div className="mt-4"><SagaView lang="th" /></div>}
         {scan.length > 1 && (
           <div className="mt-4">
             <GlossaryInput value={glossary} onChange={setGlossary} suggestions={nameSuggestions} />
@@ -1462,6 +1741,10 @@ export function ProseAnalyzerModal({ onClose, initialText }: { onClose: () => vo
           </div>
         )}
         {a && <div className="mt-4"><RenameView text={dtext} lang="en" /></div>}
+        {a && <div className="mt-4"><OpenerView text={dtext} lang="en" /></div>}
+        {a && <div className="mt-4"><RestatementView text={dtext} lang="en" /></div>}
+        {a && <div className="mt-4"><CodexView text={dtext} lang="en" /></div>}
+        {a && <div className="mt-4"><SagaView lang="en" /></div>}
         {scan.length > 1 && <ConsistencyView text={dtext} lang="en" />}
         {a && (
           <div className="mt-4 space-y-4 text-sm">

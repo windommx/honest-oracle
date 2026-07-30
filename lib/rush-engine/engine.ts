@@ -24,7 +24,13 @@ export * from "./radar";
 export * from "./narrative";
 export * from "./thai-structures";
 export * from "./codex";
+export * from "./saga";
+export * from "./openers";
+export * from "./restatement";
+export * from "./excess";
 export * from "./epistemics";
+export { estimateTokens } from "./text-util";
+export * from "./config-diff";
 export { TH_GROUP_LABEL } from "./th";
 
 import { buildArchitecture } from "./architecture";

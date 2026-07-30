@@ -87,3 +87,14 @@ export function diffTokens(a: string[], b: string[], join = " ", cap = 1500): Di
 export function wordDiff(before: string, after: string, cap = 1500): DiffOp[] | null {
   return diffTokens(before.split(/\s+/).filter(Boolean), after.split(/\s+/).filter(Boolean), " ", cap);
 }
+
+/** HEURISTIC token estimate for LLM prompts — chars-per-token ratios (Thai ≈1.65,
+ *  other ≈4), so Thai text costs roughly 2–2.5× English per word. This is an
+ *  approximation for sizing prompts in the UI, not a measurement: real counts
+ *  vary by model tokenizer. Always present it as "≈". */
+export function estimateTokens(text: string): number {
+  if (!text) return 0;
+  const thai = (text.match(/[฀-๿]/g) ?? []).length;
+  const other = text.length - thai;
+  return Math.ceil(thai / 1.65 + other / 4);
+}

@@ -141,3 +141,38 @@ function range(a: number, b: number): number[] {
   for (let i = a; i <= b; i++) out.push(i);
   return out;
 }
+
+// ── Ending-hook signal ────────────────────────────────────────────────
+//  Serial fiction lives on the next-episode hook. We can't measure "hook
+//  strength" (that would be a fake score) — but we CAN report which hook
+//  DEVICES are present in the ending: a question, an ellipsis/trailing cut,
+//  or tension lexicon. Presence facts, judgement left to the writer.
+
+const TENSION_TH = ["แต่", "ความลับ", "อันตราย", "กลัว", "หรือไม่", "ไม่มีวัน", "ยังไม่", "เงา", "สุดท้าย", "ก่อนที่"];
+const TENSION_EN = ["but", "secret", "danger", "fear", "never", "before", "until", "unless", "shadow", "last"];
+
+export interface HookSignal {
+  tailWords: number;                // size of the window actually inspected
+  hasQuestion: boolean;             // ? in the ending
+  hasEllipsis: boolean;             // … / ... trailing device
+  tensionWords: string[];           // tension-lexicon hits (deduped)
+  anyDevice: boolean;
+}
+
+/** Inspect the ENDING of a chapter (last ~400 chars) for hook devices.
+ *  Reports presence, not strength — a quiet ending can be deliberate. */
+export function hookSignal(text: string, lang: "th" | "en" = "th"): HookSignal {
+  const tail = text.slice(-400);
+  const hasQuestion = /[?？]/.test(tail);
+  const hasEllipsis = /(…|\.\.\.)/.test(tail);
+  const lexicon = lang === "th" ? TENSION_TH : TENSION_EN;
+  const hayTail = lang === "th" ? tail : tail.toLowerCase();
+  const tensionWords = lexicon.filter((w) => hayTail.includes(w));
+  return {
+    tailWords: tail.length,
+    hasQuestion,
+    hasEllipsis,
+    tensionWords,
+    anyDevice: hasQuestion || hasEllipsis || tensionWords.length > 0,
+  };
+}
