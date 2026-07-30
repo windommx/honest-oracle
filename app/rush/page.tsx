@@ -891,6 +891,9 @@ export default function RushPage() {
                   <span className="text-[#c9a84c]">Story Codex (GraphRAG):</span> ประกาศ entity ใต้หัวข้อ <code className="text-gray-400">[ตัวละคร] [สถานที่] [สิ่งของ] [ความสัมพันธ์]</code> →
                   สารบบทั้งเล่มฉีดเข้า master prompt ส่วนแต่ละบทจะได้เฉพาะ entity ที่ปรากฏใน beat บทนั้น + ตัวที่เชื่อมกัน (deterministic ไม่มี LLM แอบทำงาน)
                 </p>
+                <p className="text-[0.62rem] text-gray-600 mt-1 leading-relaxed">
+                  <span className="text-gray-400">กฎเขียน entry (จากแนวปฏิบัติที่เครื่องมือใหญ่ converge ตรงกัน):</span> เขียนเชิงบวกเสมอ (&quot;ตาบอด&quot; ไม่ใช่ &quot;มองไม่เห็น&quot; — คำปฏิเสธรั่วเข้า prose) · ข้อเท็จจริงสั้น ๆ ไม่ใช่ prose · เริ่มเล็กแล้วค่อยเติม · ความลับที่ยังไม่ควรโผล่ในเนื้อเรื่อง ใส่ใน <code className="text-gray-400">รู้แล้ว:</code> (knowledge lock) ไม่ใช่ในคำอธิบายตัวละคร
+                </p>
               </div>
 
               {prompts.length === 0 ? (

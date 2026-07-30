@@ -305,6 +305,27 @@ Target reading level: [e.g. grade 8 / general adult / academic]
 [INSERT DRAFT HERE]`;
 }
 
+function moduleCutPass(): string {
+  return `ADVERSARIAL CUT PASS — shrink a chapter by cutting, and CLASSIFY every cut so the writer learns their own patterns. Field measurement from a real 75k-word AI-assisted novel pipeline (NousResearch autonovel, 2026): the two biggest cut categories were OVER-EXPLAIN (~32% of cuts) and REDUNDANT (~26%) — hunt those first.
+
+Target: cut [N — default 500] words from the chapter below WITHOUT losing any plot fact, character beat, or planted setup.
+
+For every cut, output a line:
+  [CATEGORY] "first words of the cut…" (−X words) — one-line reason
+Categories:
+- OVER-EXPLAIN — explaining what the scene already showed, or explaining a subtext to death
+- REDUNDANT — restating information the reader already has (verbatim or paraphrased)
+- SCAFFOLDING — throat-clearing openings, stage-management ("she turned and then walked to…"), weather reports
+- HEDGE — qualifiers and softeners (rather, quite, somewhat, seemed to, began to)
+- ORNAMENT — decoration that does no double duty (no emotion/character/theme work)
+
+Rules: never cut a planted setup or its payoff; if a cut changes meaning, don't make it — flag it as [STUCK] with the reason instead; after cutting, output the revised chapter in full, then the cut list, then the totals per category.
+Known failure modes to avoid (also field-measured): don't overshoot the target by rewriting instead of cutting, and don't compress the chapter below the point where scenes lose room to breathe.
+
+═══ CHAPTER TO CUT ═══
+[paste the chapter + optional target word count]`;
+}
+
 function moduleLineEdit(): string {
   return `Perform a LINE EDIT — sentence-level craft, not content changes. Return the edited text plus a brief rationale list.
 
@@ -487,11 +508,16 @@ Use this as the "previously" block at the top of the next chapter prompt.
 }
 
 function moduleBrainstorm(): string {
-  return `Brainstorm options using VERBALIZED SAMPLING to defeat repetitive, "samey" output: ask for a spread of candidates WITH their likelihoods, which recovers diversity that alignment flattens.
+  return `Brainstorm options using VERBALIZED SAMPLING (Zhang et al. 2025, arXiv:2510.01171) — the measured prompt-only fix for mode collapse: sample from your response DISTRIBUTION with verbalized probabilities instead of giving the single most-typical answer. Author-reported gains: 1.6–2.1x semantic diversity in creative tasks with quality maintained (no independent replication yet — treat the exact multiplier as provisional; it also costs more tokens since you get k candidates per call).
 
-For the creative problem below, generate 8 distinct options. For each: the idea (1-2 lines) + an estimated probability/typicality (0-1) of a model defaulting to it. Then deliberately include 2-3 lower-probability, off-distribution options that are still on-brief.
+The paper's template, adapted:
+
+1. Generate 5 responses to the brief below, each inside its own block, each with a verbalized probability reflecting how likely YOU would be to produce it by default.
+2. Then generate 3 MORE responses sampled from the TAILS of your distribution — each must have probability BELOW 0.10: ideas you would almost never lead with, that still satisfy every constraint of the brief.
+3. Do not repeat structures, settings, or central images across the 8.
 
 Use for: titles, plot twists, character names, chapter angles, metaphors, hooks.
+Pick by taste from the full spread — the low-probability tail is usually where the non-samey option lives.
 
 ═══ BRAINSTORM BRIEF ═══
 [INSERT what to brainstorm + constraints]`;
@@ -1090,6 +1116,7 @@ export const MODULE_CATALOG: ModuleDef[] = [
   { id: "ANTI_SLOP", group: "prose", name: "Anti-AI-Slop Rewrite", description: "Strip generic LLM tells; vary rhythm; concretize.", usage: "Send any draft to de-slop.", build: moduleAntiSlop },
   { id: "READABILITY", group: "prose", name: "Readability Control", description: "Flesch-Kincaid report + level-controlled rewrite.", usage: "Send a draft + target level.", build: moduleReadability },
   { id: "LINE_EDIT", group: "prose", name: "Line Edit", description: "Filter words, adverbs, passive, clichés, repetition.", usage: "Send a draft for a sentence-level edit.", build: moduleLineEdit },
+  { id: "CUT_PASS", group: "prose", name: "Adversarial Cut Pass", description: "Cut N words with every cut classified (over-explain ~32% and redundant ~26% lead in field data) — plot facts and setups untouchable.", usage: "Send a finished chapter to tighten.", build: moduleCutPass },
   // thai
   { id: "THAI_QA", group: "thai", name: "Thai Language QA", description: "Register/ราชาศัพท์, sentence segmentation, transliteration consistency.", usage: "Send Thai-language drafts.", build: moduleThaiPack },
   // dialect

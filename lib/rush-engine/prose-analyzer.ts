@@ -15,7 +15,10 @@ export const SLOP_TERMS = [
   "crucial", "vibrant", "meticulous", "bustling", "whimsical", "nestled", "boasts",
   "embark", "unleash", "elevate", "seamless", "robust", "leverage", "myriad",
   // hollow formulas / phrases
-  "it's not just", "in a world where", "more than ever", "it's worth noting",
+  // "not just X, but Y" contrast crutch — the #1 LLM rhetorical tic per the
+  // autonovel field notes; slop-score weights this pattern family at 25%.
+  "it's not just", "isn't just", "wasn't just", "not merely", "not simply",
+  "in a world where", "more than ever", "it's worth noting",
   "needless to say", "at the end of the day", "game changer", "a testament to",
   "in today's", "when it comes to", "the fact that",
 ];

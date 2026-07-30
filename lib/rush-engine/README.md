@@ -81,6 +81,21 @@ From that one declaration (`config.storyBible`) the engine derives:
 All of these are surfaced in the web analyzer (`CodexView`, `SagaView`) and the CLI.
 Nothing is injected when no codex is declared, so existing prompt snapshots stay byte-identical.
 
+**Entry-writing rules** (converged practice across NovelAI/SillyTavern/Novelcrafter docs,
+plus positioning research):
+- Phrase facts **positively** ("ตาบอด", never "มองไม่เห็น") — negations leak into prose.
+- Terse standalone facts, not prose; start small and extend later.
+- Secrets that must not surface in the text yet belong in `รู้แล้ว:` (knowledge lock),
+  not in a character's description.
+- Where possible, echo the wording your chapters actually use — models lose reference
+  material fastest when it shares no vocabulary with the scene (NoLiMa, arXiv:2502.05167).
+- The digest deliberately puts hard constraints (status/knowledge/threads) BEFORE the
+  cast list: instruction-following research shows earlier rules are obeyed more reliably
+  (IFScale, arXiv:2507.11538).
+- Anti-drift is architectural here: every chapter gets a fresh full prompt, which is the
+  "re-anchor near the generation point" pattern practitioner tools implement with
+  Author's-Note injection — no extra mechanism needed.
+
 ## File map
 
 **Generation**
@@ -91,7 +106,7 @@ Nothing is injected when no codex is declared, so existing prompt snapshots stay
 | `standards.ts` | Quality standards, writing rules, citation guide, checklists |
 | `context.ts` · `architecture.ts` | Per-type global context + architecture (acts/tension/beats, chapter plans) |
 | `core-prompts.ts` · `th.ts` | Master / chapter / overview / analysis / front·back-matter prompts (EN + native Thai) |
-| `modules.ts` | 57 optional module builders across 10 groups (`MODULE_CATALOG` / `MODULE_GROUPS` / `defaultGroupsFor`) |
+| `modules.ts` | 58 optional module builders across 10 groups (`MODULE_CATALOG` / `MODULE_GROUPS` / `defaultGroupsFor`) |
 | `thai-structures.ts` | Authentic Thai/Asian narrative structures (kishōtenketsu, จักร ๆ วงศ์ ๆ, ชาดก, …) |
 | `starter.ts` | Guided starter sequence/groups |
 | `engine.ts` | Public **barrel** — re-exports everything + `generateAllPrompts` orchestrator |

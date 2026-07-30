@@ -600,8 +600,9 @@ Output the complete revised chapter (no commentary).",
 2. ISSUES TO ADDRESS: Unresolved questions, unsupported claims, tone inconsistencies, missing elements?
 3. INSTRUCTIONS FOR NEXT CHAPTER: What to build on, what to avoid repeating, what tone to maintain, specific improvements.
 4. QUALITY SCORES: Overall quality (0-1); ready for next chapter (yes/no); if no, what must be fixed first?
+5. FRESHNESS-DECAY CHECK (real AI-novel pipelines measure quality dropping after ~chapter 6): is this chapter falling into formula vs the early ones — repeated scene shapes, same opening/closing rhythms, recycled imagery? If yes, name the pattern the NEXT chapter must break.
 
-5. NON-FICTION-SPECIFIC: Thesis proof progress; evidence used; reader-journey milestone check; counter-arguments addressed.
+6. NON-FICTION-SPECIFIC: Thesis proof progress; evidence used; reader-journey milestone check; counter-arguments addressed.
 
 ═══ CHAPTER DRAFT TO ANALYZE ═══
 [INSERT COMPLETED CHAPTER HERE]",
@@ -1232,8 +1233,9 @@ Act 3: Climax & Resolution: บท 4-6 — Dark night, climax, resolution
 2. ปัญหาที่ต้องจัดการ: คำถามค้าง ข้ออ้างไร้หลักฐาน น้ำเสียงไม่สม่ำเสมอ องค์ประกอบที่ขาด
 3. คำสั่งสำหรับบทถัดไป: ต่อยอดอะไร เลี่ยงเล่าซ้ำอะไร คงโทนแบบไหน ปรับปรุงอะไร
 4. คะแนนคุณภาพ: ภาพรวม (0-1); พร้อมไปบทถัดไปไหม; ถ้าไม่ ต้องแก้อะไรก่อน
+5. เช็ค "ความสดเสื่อม" (freshness decay — pipeline นิยาย AI จริงวัดได้ว่าคุณภาพเริ่มตกหลังบทที่ ~6): บทนี้เริ่มติดสูตรเดิมเทียบกับบทแรก ๆ ไหม — โครงฉากซ้ำ จังหวะเปิด/ปิดซ้ำ ภาพเปรียบวนซ้ำ ถ้าใช่ ระบุแพทเทิร์นที่ต้องแหกในบทถัดไป
 
-5. เฉพาะนิยาย: สถานะตัวละครตอนจบบท; ระดับ/ทิศทางความตึงเครียด; ปมที่ค้าง; การปูเรื่อง (foreshadowing)
+6. เฉพาะนิยาย: สถานะตัวละครตอนจบบท; ระดับ/ทิศทางความตึงเครียด; ปมที่ค้าง; การปูเรื่อง (foreshadowing)
 
 ═══ ดราฟต์บทที่จะวิเคราะห์ ═══
 [วางบทที่เขียนเสร็จที่นี่]",
@@ -2233,8 +2235,9 @@ Output the complete revised chapter (no commentary).",
 2. ISSUES TO ADDRESS: Unresolved questions, unsupported claims, tone inconsistencies, missing elements?
 3. INSTRUCTIONS FOR NEXT CHAPTER: What to build on, what to avoid repeating, what tone to maintain, specific improvements.
 4. QUALITY SCORES: Overall quality (0-1); ready for next chapter (yes/no); if no, what must be fixed first?
+5. FRESHNESS-DECAY CHECK (real AI-novel pipelines measure quality dropping after ~chapter 6): is this chapter falling into formula vs the early ones — repeated scene shapes, same opening/closing rhythms, recycled imagery? If yes, name the pattern the NEXT chapter must break.
 
-5. NON-FICTION-SPECIFIC: Thesis proof progress; evidence used; reader-journey milestone check; counter-arguments addressed.
+6. NON-FICTION-SPECIFIC: Thesis proof progress; evidence used; reader-journey milestone check; counter-arguments addressed.
 
 ═══ CHAPTER DRAFT TO ANALYZE ═══
 [INSERT COMPLETED CHAPTER HERE]",
@@ -2427,6 +2430,31 @@ Preserve voice and meaning. Output: edited text, then a short bullet list of rep
 ═══ DRAFT ═══
 [INSERT DRAFT HERE]",
     "usage": "Send a draft for a sentence-level edit.",
+  },
+  {
+    "description": "Cut N words with every cut classified (over-explain ~32% and redundant ~26% lead in field data) — plot facts and setups untouchable.",
+    "group": "prose",
+    "id": "CUT_PASS",
+    "name": "Adversarial Cut Pass",
+    "prompt": "ADVERSARIAL CUT PASS — shrink a chapter by cutting, and CLASSIFY every cut so the writer learns their own patterns. Field measurement from a real 75k-word AI-assisted novel pipeline (NousResearch autonovel, 2026): the two biggest cut categories were OVER-EXPLAIN (~32% of cuts) and REDUNDANT (~26%) — hunt those first.
+
+Target: cut [N — default 500] words from the chapter below WITHOUT losing any plot fact, character beat, or planted setup.
+
+For every cut, output a line:
+  [CATEGORY] "first words of the cut…" (−X words) — one-line reason
+Categories:
+- OVER-EXPLAIN — explaining what the scene already showed, or explaining a subtext to death
+- REDUNDANT — restating information the reader already has (verbatim or paraphrased)
+- SCAFFOLDING — throat-clearing openings, stage-management ("she turned and then walked to…"), weather reports
+- HEDGE — qualifiers and softeners (rather, quite, somewhat, seemed to, began to)
+- ORNAMENT — decoration that does no double duty (no emotion/character/theme work)
+
+Rules: never cut a planted setup or its payoff; if a cut changes meaning, don't make it — flag it as [STUCK] with the reason instead; after cutting, output the revised chapter in full, then the cut list, then the totals per category.
+Known failure modes to avoid (also field-measured): don't overshoot the target by rewriting instead of cutting, and don't compress the chapter below the point where scenes lose room to breathe.
+
+═══ CHAPTER TO CUT ═══
+[paste the chapter + optional target word count]",
+    "usage": "Send a finished chapter to tighten.",
   },
 ]
 `;
@@ -3017,8 +3045,9 @@ Output the complete revised chapter (no commentary).",
 2. ISSUES TO ADDRESS: Unresolved questions, unsupported claims, tone inconsistencies, missing elements?
 3. INSTRUCTIONS FOR NEXT CHAPTER: What to build on, what to avoid repeating, what tone to maintain, specific improvements.
 4. QUALITY SCORES: Overall quality (0-1); ready for next chapter (yes/no); if no, what must be fixed first?
+5. FRESHNESS-DECAY CHECK (real AI-novel pipelines measure quality dropping after ~chapter 6): is this chapter falling into formula vs the early ones — repeated scene shapes, same opening/closing rhythms, recycled imagery? If yes, name the pattern the NEXT chapter must break.
 
-5. FICTION-SPECIFIC: Character states at chapter end; tension level and direction; unresolved plot threads; foreshadowing planted.
+6. FICTION-SPECIFIC: Character states at chapter end; tension level and direction; unresolved plot threads; foreshadowing planted.
 
 ═══ CHAPTER DRAFT TO ANALYZE ═══
 [INSERT COMPLETED CHAPTER HERE]",

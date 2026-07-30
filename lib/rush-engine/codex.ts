@@ -284,10 +284,16 @@ function renderThreads(codex: Codex, lang: "th" | "en"): string {
   return p;
 }
 
-/** Whole-book codex block ≈ GraphRAG global/community view (Thai). "" if empty. */
+/** Whole-book codex block ≈ GraphRAG global/community view (Thai). "" if empty.
+ *  ORDER IS EVIDENCE-DRIVEN (IFScale, arXiv:2507.11538 — primacy bias: earlier
+ *  rules are followed more reliably): hard constraints (status / knowledge /
+ *  threads) come FIRST, reference material (cast/relations) after. */
 export function codexDigestTh(codex: Codex): string {
   if (!hasCodex(codex)) return "";
   let p = `═══ Codex ของหนังสือ (สารบบต่อเนื่องทั้งเล่ม) ═══\n`;
+  p += renderStatusConstraints(codex, "th");
+  p += renderKnowledgeLock(codex, "th");
+  p += renderThreads(codex, "th");
   (["character", "place", "item"] as CodexEntityType[]).forEach((t) => {
     const es = codex.entities.filter((e) => e.type === t);
     if (es.length) p += `${TYPE_TH[t]} (${es.length}): ` + es.map((e) => e.desc ? `${e.name} — ${e.desc}` : e.name).join(" · ") + "\n";
@@ -302,19 +308,21 @@ export function codexDigestTh(codex: Codex): string {
     }).join("\n") + "\n";
   }
   if (codex.relations.length) p += `ความสัมพันธ์ (${codex.relations.length}):\n` + codex.relations.map((r) => `• ${renderRelation(r)}`).join("\n") + "\n";
-  p += renderKnowledgeLock(codex, "th");
-  p += renderStatusConstraints(codex, "th");
-  p += renderThreads(codex, "th");
   p += `กฎ: ถือ Codex นี้เป็นแหล่งความจริง คงชื่อ/ลักษณะ/ความสัมพันธ์ให้สอดคล้องตลอดเล่ม ห้ามขัดแย้ง`;
   if (deep.some((e) => e.voice)) p += ` ทุกบทพูดของตัวละครที่ระบุ "เสียง" ต้องคงเอกลักษณ์นั้น`;
+  if (deep.some((e) => e.forbidden)) p += ` สำหรับคำต้องห้าม (✗): แทนที่จะพยายาม "ไม่พูด" ให้เลือกใช้คำติดปาก/สำนวนตามเสียงที่ประกาศ (✓) แทนเสมอ`;
   p += `\n`;
   return p;
 }
 
-/** Whole-book codex block (English). "" if empty. */
+/** Whole-book codex block (English). "" if empty. Constraint-first ordering —
+ *  see codexDigestTh for the evidence rationale. */
 export function codexDigestEn(codex: Codex): string {
   if (!hasCodex(codex)) return "";
   let p = `═══ STORY CODEX (book-wide continuity index) ═══\n`;
+  p += renderStatusConstraints(codex, "en");
+  p += renderKnowledgeLock(codex, "en");
+  p += renderThreads(codex, "en");
   (["character", "place", "item"] as CodexEntityType[]).forEach((t) => {
     const es = codex.entities.filter((e) => e.type === t);
     if (es.length) p += `${TYPE_EN[t]}s (${es.length}): ` + es.map((e) => e.desc ? `${e.name} — ${e.desc}` : e.name).join(" · ") + "\n";
@@ -329,11 +337,9 @@ export function codexDigestEn(codex: Codex): string {
     }).join("\n") + "\n";
   }
   if (codex.relations.length) p += `Relations (${codex.relations.length}):\n` + codex.relations.map((r) => `• ${renderRelation(r)}`).join("\n") + "\n";
-  p += renderKnowledgeLock(codex, "en");
-  p += renderStatusConstraints(codex, "en");
-  p += renderThreads(codex, "en");
   p += `RULE: treat this codex as source of truth — keep names/traits/relations consistent, never contradict it.`;
   if (deep.some((e) => e.voice)) p += ` Every line of dialogue from a character with a declared "voice" must keep that voice.`;
+  if (deep.some((e) => e.forbidden)) p += ` For never-says words (✗): rather than trying to "not say" them, always reach for the declared catchphrases/voice (✓) instead.`;
   p += `\n`;
   return p;
 }

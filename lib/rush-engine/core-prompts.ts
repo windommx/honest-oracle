@@ -503,10 +503,11 @@ export function generateFeedbackChainPrompt(config: BookConfig): string {
   p += `2. ISSUES TO ADDRESS: Unresolved questions, unsupported claims, tone inconsistencies, missing elements?\n`;
   p += `3. INSTRUCTIONS FOR NEXT CHAPTER: What to build on, what to avoid repeating, what tone to maintain, specific improvements.\n`;
   p += `4. QUALITY SCORES: Overall quality (0-1); ready for next chapter (yes/no); if no, what must be fixed first?\n`;
+  p += `5. FRESHNESS-DECAY CHECK (real AI-novel pipelines measure quality dropping after ~chapter 6): is this chapter falling into formula vs the early ones — repeated scene shapes, same opening/closing rhythms, recycled imagery? If yes, name the pattern the NEXT chapter must break.\n`;
   if (config.type === "novel" || config.type === "memoir" || config.type === "kids") {
-    p += `\n5. FICTION-SPECIFIC: Character states at chapter end; tension level and direction; unresolved plot threads; foreshadowing planted.`;
+    p += `\n6. FICTION-SPECIFIC: Character states at chapter end; tension level and direction; unresolved plot threads; foreshadowing planted.`;
   } else {
-    p += `\n5. NON-FICTION-SPECIFIC: Thesis proof progress; evidence used; reader-journey milestone check; counter-arguments addressed.`;
+    p += `\n6. NON-FICTION-SPECIFIC: Thesis proof progress; evidence used; reader-journey milestone check; counter-arguments addressed.`;
   }
   p += `\n\n═══ CHAPTER DRAFT TO ANALYZE ═══\n[INSERT COMPLETED CHAPTER HERE]`;
   return p;

@@ -181,7 +181,7 @@ describe("generateAllPrompts — module groups", () => {
   const counts: Record<Exclude<PromptGroup, "core">, number> = {
     craft: 17,
     nonfiction: 5,
-    prose: 4,
+    prose: 5,
     thai: 1,
     dialect: 3,
     marketing: 5,
@@ -200,10 +200,28 @@ describe("generateAllPrompts — module groups", () => {
     }
   });
 
-  it("includes all 57 optional modules when every group is on", () => {
+  it("includes all 58 optional modules when every group is on", () => {
     const all = MODULE_GROUPS.map((m) => m.key);
     const pack = generateAllPrompts(cfg(), all);
-    expect(pack.filter((p) => p.group !== "core").length).toBe(57);
+    expect(pack.filter((p) => p.group !== "core").length).toBe(58);
+  });
+
+  it("CUT_PASS classifies cuts and protects setups, in both languages", () => {
+    const en = generateAllPrompts(cfg(), ["prose"]).find((p) => p.id === "CUT_PASS")!;
+    expect(en.prompt).toContain("OVER-EXPLAIN");
+    expect(en.prompt).toContain("never cut a planted setup");
+    const th = generateAllPrompts(cfg({ language: "thai", promptLanguage: "th" }), ["prose"]).find((p) => p.id === "CUT_PASS")!;
+    expect(th.prompt).toContain("อธิบายเกิน");
+    expect(th.prompt).toContain("ห้ามตัดการปูทาง");
+  });
+
+  it("BRAINSTORM carries the verbalized-sampling tail template with the honesty caveat", () => {
+    const en = generateAllPrompts(cfg(), ["advanced"]).find((p) => p.id === "BRAINSTORM")!;
+    expect(en.prompt).toContain("BELOW 0.10");
+    expect(en.prompt).toContain("no independent replication yet");
+    const th = generateAllPrompts(cfg({ language: "thai", promptLanguage: "th" }), ["advanced"]).find((p) => p.id === "BRAINSTORM")!;
+    expect(th.prompt).toContain("ต่ำกว่า 0.10");
+    expect(th.prompt).toContain("ยังไม่มี replication อิสระ");
   });
 
   it("QUIET_SCENE ships prosody devices + co-regulation staging in both languages", () => {

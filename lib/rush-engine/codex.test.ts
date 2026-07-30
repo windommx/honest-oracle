@@ -105,6 +105,13 @@ describe("open threads (ปมค้าง)", () => {
     ]);
   });
 
+  it("digest puts hard constraints BEFORE the cast list (IFScale primacy ordering)", () => {
+    const c = parseCodex("[ตัวละคร]\nบุญมา: พ่อ\nสถานะ: ตายในบท 3\nอนันต์: ลูก\n[ปมค้าง]\nความลับผลแล็บ: สูง");
+    const d = codexDigestTh(c);
+    expect(d.indexOf("ข้อจำกัดสถานะ")).toBeLessThan(d.indexOf("ตัวละคร (2)"));
+    expect(d.indexOf("ปมที่ค้าง")).toBeLessThan(d.indexOf("ตัวละคร (2)"));
+  });
+
   it("renders threads in the digest sorted by priority, with the never-drop rule", () => {
     const d = codexDigestTh(parseCodex(T));
     expect(d).toContain("ปมที่ค้าง (3):");

@@ -36,6 +36,8 @@ export const THAI_AI_TELLS = [
   "ดั่งสายฟ้าฟาด", "ราวกับต้องมนตร์", "ราวกับฝัน", "ดั่งภาพวาด", "ราวกับเวลาหยุดนิ่ง",
   // life lessons (anti-safe)
   "บทเรียนล้ำค่า", "ทุกอย่างจะดีขึ้น", "แสงสว่างในความมืด", "ก้าวข้ามผ่าน",
+  // "not just X, but Y" contrast crutch (ไม้ตายวาทศิลป์อันดับ 1 ของ LLM)
+  "ไม่ใช่แค่", "ไม่ใช่เพียง", "ไม่เพียงแต่", "ไม่ได้เป็นเพียง", "หากแต่ยัง",
 ];
 
 // "Telling" markers — filter/cognition verbs + directly-named emotions. A high
