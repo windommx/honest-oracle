@@ -66,6 +66,7 @@ function moduleStructureOutline(config: BookConfig): string {
   p += `5. BUT/THEREFORE AUDIT (Parker & Stone's rule): read the outline as a chain — every adjacent beat pair must connect with "THEREFORE" (causation) or "BUT" (reversal). Flag and fix every "AND THEN" joint: that is where a story stops being a story and becomes a list.\n`;
   p += `6. If the book braids multiple plotlines, mark each beat A/B/C (A = main line, carries most beats; B = parallel line that usually carries the THEME; C = light runner) and check no line goes silent for more than 3 consecutive chapters.\n\n`;
   p += `NOTE FROM STREAMING DATA (Netflix's own hook study): audiences almost never commit on the opener — episodes 2-4 do the hooking. Budget accordingly: the opening chapter earns attention, chapters 2-4 must CONVERT it.\n\n`;
+  p += `WHAT TRANSFERS FROM THE SCREEN (adaptation scholarship, McFarlane): beats, structure, and act shapes cross media — borrow them freely, as this module does. Narration, point of view, and interior thought do NOT exist on screen: they are the novel's home advantage. So structure like television, but SPEND the prose-only powers the screen can't touch — do not flatten interiority to imitate a screenplay.\n\n`;
   p += `FORMAT: output one line per chapter as "N. <beat>" (e.g. "1. ...", "2. ...") so it can be pasted into the Outline field and auto-mapped to each chapter prompt.`;
   return p;
 }

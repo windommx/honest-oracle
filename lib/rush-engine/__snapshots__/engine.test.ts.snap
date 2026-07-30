@@ -1309,7 +1309,9 @@ Act 3: Climax & Resolution: บท 4-6 — Dark night, climax, resolution
 5. ตรวจ BUT/THEREFORE (กฎ Parker & Stone): อ่าน outline เป็นลูกโซ่ — ทุกคู่ beat ที่ติดกันต้องเชื่อมด้วย "เพราะฉะนั้น" (เหตุ-ผล) หรือ "แต่" (พลิกผัน) ทำเครื่องหมายและแก้ทุกข้อต่อที่เป็น "แล้วก็" — ตรงนั้นคือจุดที่เรื่องเล่าหยุดเป็นเรื่องเล่าแล้วกลายเป็นรายการเหตุการณ์
 6. ถ้ามีหลายเส้นเรื่อง ให้ติดป้าย A/B/C ทุก beat (A = เส้นหลัก beat มากสุด; B = เส้นขนานที่มักถือแก่นเรื่อง; C = runner คลายเครียด) และเช็คว่าไม่มีเส้นไหนเงียบเกิน 3 บทติด
 
-ข้อมูลจาก streaming (Netflix hook study): ผู้อ่าน/ผู้ชมแทบไม่เคยติดที่ตอนเปิด — ตอน 2-4 คือตัวตรึงจริง: บทแรกซื้อความสนใจ บท 2-4 ต้องเปลี่ยนเป็นความผูกพัน",
+ข้อมูลจาก streaming (Netflix hook study): ผู้อ่าน/ผู้ชมแทบไม่เคยติดที่ตอนเปิด — ตอน 2-4 คือตัวตรึงจริง: บทแรกซื้อความสนใจ บท 2-4 ต้องเปลี่ยนเป็นความผูกพัน
+
+อะไรข้ามจากจอมาได้ (งานวิชาการด้าน adaptation, McFarlane): beat โครงเรื่อง และรูปองก์ ข้ามสื่อได้ — ยืมมาใช้เต็มที่แบบที่โมดูลนี้ทำ แต่ เสียงเล่า มุมมอง และความคิดในใจ ไม่มีอยู่บนจอ — นี่คือแต้มต่อเฉพาะของนิยาย ดังนั้น: วางโครงแบบทีวี แต่จงใช้พลังเฉพาะของ prose ที่จอแตะไม่ได้ อย่าลดทอนความคิดในใจเพื่อเลียนแบบบทหนัง",
     "usage": "รันก่อนเขียนเพื่อวางแผนทั้งเล่ม",
   },
   {
@@ -3145,6 +3147,8 @@ Chapters: 6 · ~3000 words each · english
 6. If the book braids multiple plotlines, mark each beat A/B/C (A = main line, carries most beats; B = parallel line that usually carries the THEME; C = light runner) and check no line goes silent for more than 3 consecutive chapters.
 
 NOTE FROM STREAMING DATA (Netflix's own hook study): audiences almost never commit on the opener — episodes 2-4 do the hooking. Budget accordingly: the opening chapter earns attention, chapters 2-4 must CONVERT it.
+
+WHAT TRANSFERS FROM THE SCREEN (adaptation scholarship, McFarlane): beats, structure, and act shapes cross media — borrow them freely, as this module does. Narration, point of view, and interior thought do NOT exist on screen: they are the novel's home advantage. So structure like television, but SPEND the prose-only powers the screen can't touch — do not flatten interiority to imitate a screenplay.
 
 FORMAT: output one line per chapter as "N. <beat>" (e.g. "1. ...", "2. ...") so it can be pasted into the Outline field and auto-mapped to each chapter prompt.",
     "usage": "Run before writing, to plan the whole book.",
