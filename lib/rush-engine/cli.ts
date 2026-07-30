@@ -20,6 +20,7 @@ import { parseCodex, codexAudit, codexCanon, formatCodexAudit, codexMermaid } fr
 import { analyzeSaga, formatSaga, type SagaBook } from "./saga";
 import { analyzeOpeners, formatOpeners } from "./openers";
 import { findRestatements } from "./restatement";
+import { excessVocabulary, formatExcess } from "./excess";
 
 export interface CliResult { stdout: string; stderr: string; code: number }
 
@@ -50,6 +51,7 @@ USAGE
   rush codex    <draft.md> --bible <bible.md> [--lang th|en]  (or: --bible <b> --graph)
   rush saga     --books "b1.md,b2.md,..." [--titles "A,B,..."] [--lang th|en]
   rush openers  <file.md> [--lang th|en]   (sentence/clause opener monotony)
+  rush excess   <suspect.md> --baseline <human.md> [--lang th|en] [--min n]
   rush scene    <file.md>   (Thai: real per-scene signals — no fake 0–100 scores)
   rush narrative <file.md> [--names "A,B"] [--motifs "x,y"]  (Thai: presence/pacing/motifs)
   rush help
@@ -73,6 +75,10 @@ COMMANDS
             spanning ≥2 books). Counts, not a verdict.
   openers   Sentence/clause opener monotony: how often lines start with the same word
             (He… He… / เขา… เขา…). Counts + share, not a verdict.
+  excess    Excess-vocabulary comparison (Kobak et al. 2025 method): which words are
+            over-represented in a suspect corpus vs your baseline corpus. The tool for
+            BUILDING an evidence-based Thai AI-tell list — ratios are facts, the
+            "tell" judgement (and the corpora) are yours.
   scene     Per-scene readout (Thai): words, clauses, rhythm cv, dialogue ratio, telling
             density, sensory/1k, AI-tells — real signals, never a fake 0–100 vibe score.
 
@@ -285,6 +291,18 @@ function cmdOpeners(file: string | undefined, flags: Record<string, string | tru
   return { stdout: formatOpeners(analyzeOpeners(r.text, lang), lang), stderr: "", code: 0 };
 }
 
+function cmdExcess(file: string | undefined, flags: Record<string, string | true>, read?: (p: string) => string): CliResult {
+  const baseFile = typeof flags.baseline === "string" ? flags.baseline : "";
+  if (!baseFile) return { stdout: "", stderr: 'excess needs --baseline <human.md> (the reference corpus)\n', code: 2 };
+  const suspect = readFile(file, read);
+  if ("code" in suspect) return suspect;
+  const base = readFile(baseFile, read);
+  if ("code" in base) return base;
+  const lang: "th" | "en" = flags.lang === "en" ? "en" : flags.lang === "th" ? "th" : /[฀-๿]/.test(suspect.text) ? "th" : "en";
+  const min = Math.max(2, parseInt(String(flags.min ?? ""), 10) || 5);
+  return { stdout: formatExcess(excessVocabulary(base.text, suspect.text, lang, min), lang), stderr: "", code: 0 };
+}
+
 function cmdScene(file: string | undefined, flags: Record<string, string | true>, read?: (p: string) => string): CliResult {
   const r = readFile(file, read);
   if ("code" in r) return r;
@@ -378,6 +396,7 @@ export function runCli(argv: string[], io?: { read?: (path: string) => string })
   if (cmd === "codex") return cmdCodex(positional[1], flags, io?.read);
   if (cmd === "saga") return cmdSaga(flags, io?.read);
   if (cmd === "openers") return cmdOpeners(positional[1], flags, io?.read);
+  if (cmd === "excess") return cmdExcess(positional[1], flags, io?.read);
   if (cmd === "scene") return cmdScene(positional[1], flags, io?.read);
   if (cmd === "narrative") return cmdNarrative(positional[1], flags, io?.read);
   return { stdout: "", stderr: `unknown command "${cmd}". try: rush help\n`, code: 2 };
