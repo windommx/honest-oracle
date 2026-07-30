@@ -69,6 +69,15 @@ TENSION: ...  (fiction only)
 
 Keep STATE compact (≤ 250 words), newest facts first, plain facts only. Carry it forward chapter to chapter. If I paste a STATE block into a later prompt, treat it as the source of truth.
 
+Worked example (format to follow — content is illustrative only):
+<<<STATE>>>
+CHARACTERS: Anan — detective, now knows the key opens the warehouse; distrusts Dr. Lee. Mali — still missing, last seen at the docks.
+WORLD/FACTS: the warehouse sits under pier 3; the gang meets on new-moon nights.
+TIMELINE: night 4 since the disappearance.
+OPEN THREADS: who sent the photo; why the ledger page was torn.
+TENSION: rising — first direct threat received.
+<<<END STATE>>>
+
 ⚠ STATE is a working tool, not book content — before compiling/publishing, strip every <<<STATE>>> block and any prompt remnants from the manuscript (in 2025 several published authors were caught with forgotten prompts printed in their books).
 
 ═══ OUTPUT FORMAT ═══
@@ -777,6 +786,15 @@ Act 3: Climax & Resolution: บท 4-6 — Dark night, climax, resolution
 <<<END STATE>>>
 
 เขียน STATE ให้กระชับ (≤ 250 คำ) ข้อเท็จจริงใหม่ขึ้นก่อน เป็นข้อเท็จจริงล้วน ส่งต่อจากบทสู่บท ถ้าผู้ใช้วางบล็อก STATE มาในพรอมป์ตถัดไป ให้ถือเป็นแหล่งความจริง
+
+ตัวอย่างที่กรอกแล้ว (ทำตามรูปแบบนี้ — เนื้อหาเป็นเพียงตัวอย่าง):
+<<<STATE>>>
+ตัวละคร: อนันต์ — นักสืบ ตอนนี้รู้แล้วว่ากุญแจเปิดโกดัง; ไม่ไว้ใจหมอลี · มาลี — ยังหายตัว พบร่องรอยล่าสุดที่ท่าเรือ
+โลก/ข้อเท็จจริง: โกดังอยู่ใต้ท่าที่ 3; แก๊งนัดพบคืนเดือนมืด
+เส้นเวลา: คืนที่ 4 หลังการหายตัว
+ปมที่ค้าง: ใครส่งรูปถ่ายมา; ทำไมหน้าบัญชีถูกฉีก
+ความตึงเครียด: ไต่ขึ้น — ได้รับคำขู่ตรงครั้งแรก
+<<<END STATE>>>
 
 ⚠ STATE เป็นเครื่องมือทำงาน ไม่ใช่เนื้อหาหนังสือ — ตอนรวมเล่ม/ตีพิมพ์ ต้องลบบล็อก <<<STATE>>> และร่องรอย prompt ทุกชิ้นออกจากต้นฉบับ (ปี 2025 มีนักเขียนหลายรายถูกจับได้เพราะลืม prompt ไว้ในเล่มพิมพ์จริง)
 
@@ -1742,6 +1760,15 @@ TENSION: ...  (fiction only)
 
 Keep STATE compact (≤ 250 words), newest facts first, plain facts only. Carry it forward chapter to chapter. If I paste a STATE block into a later prompt, treat it as the source of truth.
 
+Worked example (format to follow — content is illustrative only):
+<<<STATE>>>
+CHARACTERS: Anan — detective, now knows the key opens the warehouse; distrusts Dr. Lee. Mali — still missing, last seen at the docks.
+WORLD/FACTS: the warehouse sits under pier 3; the gang meets on new-moon nights.
+TIMELINE: night 4 since the disappearance.
+OPEN THREADS: who sent the photo; why the ledger page was torn.
+TENSION: rising — first direct threat received.
+<<<END STATE>>>
+
 ⚠ STATE is a working tool, not book content — before compiling/publishing, strip every <<<STATE>>> block and any prompt remnants from the manuscript (in 2025 several published authors were caught with forgotten prompts printed in their books).
 
 ═══ OUTPUT FORMAT ═══
@@ -2532,6 +2559,15 @@ TENSION: ...  (fiction only)
 <<<END STATE>>>
 
 Keep STATE compact (≤ 250 words), newest facts first, plain facts only. Carry it forward chapter to chapter. If I paste a STATE block into a later prompt, treat it as the source of truth.
+
+Worked example (format to follow — content is illustrative only):
+<<<STATE>>>
+CHARACTERS: Anan — detective, now knows the key opens the warehouse; distrusts Dr. Lee. Mali — still missing, last seen at the docks.
+WORLD/FACTS: the warehouse sits under pier 3; the gang meets on new-moon nights.
+TIMELINE: night 4 since the disappearance.
+OPEN THREADS: who sent the photo; why the ledger page was torn.
+TENSION: rising — first direct threat received.
+<<<END STATE>>>
 
 ⚠ STATE is a working tool, not book content — before compiling/publishing, strip every <<<STATE>>> block and any prompt remnants from the manuscript (in 2025 several published authors were caught with forgotten prompts printed in their books).
 

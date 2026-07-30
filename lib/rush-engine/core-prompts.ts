@@ -152,6 +152,15 @@ TENSION: ...  (fiction only)
 
 Keep STATE compact (≤ 250 words), newest facts first, plain facts only. Carry it forward chapter to chapter. If I paste a STATE block into a later prompt, treat it as the source of truth.
 
+Worked example (format to follow — content is illustrative only):
+<<<STATE>>>
+CHARACTERS: Anan — detective, now knows the key opens the warehouse; distrusts Dr. Lee. Mali — still missing, last seen at the docks.
+WORLD/FACTS: the warehouse sits under pier 3; the gang meets on new-moon nights.
+TIMELINE: night 4 since the disappearance.
+OPEN THREADS: who sent the photo; why the ledger page was torn.
+TENSION: rising — first direct threat received.
+<<<END STATE>>>
+
 ⚠ STATE is a working tool, not book content — before compiling/publishing, strip every <<<STATE>>> block and any prompt remnants from the manuscript (in 2025 several published authors were caught with forgotten prompts printed in their books).
 
 ═══ OUTPUT FORMAT ═══

@@ -33,7 +33,9 @@ describe("buildProviderRequest", () => {
     expect(req.headers["anthropic-version"]).toBeTruthy();
     const body = JSON.parse(req.body);
     expect(body.model).toBe("claude-opus-4-8");
-    expect(body.system).toBe("be terse");
+    // System is a cache-marked block array: the stable prefix gets 0.1× pricing
+    // on repeat runs (and the marker is a documented no-op below the minimum size).
+    expect(body.system).toEqual([{ type: "text", text: "be terse", cache_control: { type: "ephemeral" } }]);
     expect(body.messages).toEqual([{ role: "user", content: "hi" }]);
   });
 

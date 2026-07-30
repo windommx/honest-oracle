@@ -173,6 +173,17 @@ describe("generateAllPrompts — core", () => {
     const b = generateAllPrompts(cfg(), groups);
     expect(JSON.stringify(a)).toBe(JSON.stringify(b));
   });
+
+  it("MASTER is a byte-stable, cache-safe prefix (no volatile content)", () => {
+    // All three providers cache on exact byte prefixes — the master (used as the
+    // system prompt in Studio runs) must render identically every call and must
+    // never contain timestamps/dates that would silently bust the cache.
+    const c = cfg({ storyBible: "[ตัวละคร]\nอนันต์: นักสืบ" });
+    const m1 = generateAllPrompts(c, []).find((p) => p.id === "MASTER")!.prompt;
+    const m2 = generateAllPrompts({ ...c }, []).find((p) => p.id === "MASTER")!.prompt;
+    expect(m1).toBe(m2);
+    expect(m1).not.toMatch(/20\d{2}-\d{2}-\d{2}[T ]\d{2}:/); // no generated timestamps
+  });
 });
 
 // ── Modules ────────────────────────────────────────────────────

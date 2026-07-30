@@ -1506,6 +1506,7 @@ export function GuideModal({ onClose }: { onClose: () => void }) {
     "ขัดเกลาด้วย ANALYSIS → REVISION, เก็บงานด้วย Front/Back Matter",
     "ตรวจร้อยแก้วฟรีก่อนส่ง LLM: กดปุ่ม วิเคราะห์ไทย / Prose (EN) หาจุดอ่อน แล้วกดคัดลอก NIS audit ที่เกี่ยวพร้อมข้อความ → วางใน LLM เจาะเฉพาะจุด",
     "ตอนจะตีพิมพ์ ใช้กลุ่ม Marketing (Title, Blurb, KDP Metadata, Submission Pack)",
+    "เคล็ดจากงานวิจัย: เปิดแชทใหม่ต่อบทแทนการลากแชทเดียวยาว ๆ (บทสนทนายาวทำคุณภาพตกเฉลี่ย ~39% — arXiv:2505.06120) และอย่าคาดหวังให้โมเดลจำรายละเอียดที่ลึกเกิน ~32k token — บล็อก STATE + Codex ต่อบทของระบบนี้คือทางแก้ที่ตรงกับหลักฐาน",
   ];
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70" onClick={onClose}>

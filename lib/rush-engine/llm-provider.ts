@@ -117,7 +117,14 @@ export function buildProviderRequest(input: RunInput): ProviderRequest {
       body: JSON.stringify({
         model: input.model,
         max_tokens: maxTokens,
-        ...(input.system ? { system: input.system } : {}),
+        // The system prompt (master + codex digest) is the stable, byte-identical
+        // prefix across a book's chapter runs — mark it cacheable so repeat runs
+        // pay 0.1× input on it (write costs 1.25×; below the model's minimum
+        // cacheable size the marker is a documented no-op, so this is safe for
+        // short prompts too). Anthropic prompt-caching docs, fetched 2026-07.
+        ...(input.system
+          ? { system: [{ type: "text", text: input.system, cache_control: { type: "ephemeral" } }] }
+          : {}),
         messages: [{ role: "user", content: input.prompt }],
       }),
     };
