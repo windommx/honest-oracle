@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { findRestatements, formatRestatements } from "./restatement";
+import { findRestatements, formatRestatements, findNearRestatements, formatNearRestatements } from "./restatement";
 
 describe("findRestatements — English", () => {
   it("finds a long verbatim repeat and extends it to the maximal run", () => {
@@ -54,5 +54,42 @@ describe("formatRestatements", () => {
     expect(out).toContain("นับได้ ไม่ใช่คำตัดสิน");
     expect(out).toContain("paraphrase");
     expect(out).toContain("ไม่พบวลียาวที่ซ้ำคำต่อคำ");
+  });
+});
+
+describe("findNearRestatements — winnowing + exact verify", () => {
+  it("catches a passage repeated with a few words changed, and names the changes", () => {
+    const a = "the detective walked slowly through the empty warehouse holding the golden key while rain hammered the broken roof above his tired head tonight";
+    const b = "the detective walked slowly through the silent warehouse holding the golden key while rain hammered the broken roof above his weary head tonight";
+    const filler = "meanwhile the city slept and nothing else of consequence happened for a long stretch of quiet hours across the river district ";
+    const text = `${a}. ${filler.repeat(3)} ${b}.`;
+    const r = findNearRestatements(text, "en");
+    expect(r.found.length).toBeGreaterThan(0);
+    const hit = r.found[0];
+    expect(hit.sharedTokens / hit.totalTokens).toBeGreaterThanOrEqual(0.7);
+    expect(hit.changed.join(" ")).toMatch(/silent|weary/);
+  });
+
+  it("does not report unrelated text (verification gate holds)", () => {
+    const text = "one two three four five six seven eight nine ten. " +
+      "alpha beta gamma delta epsilon zeta eta theta iota kappa. ".repeat(6);
+    const r = findNearRestatements(text, "en");
+    // repeated identical filler is verbatim (excluded); nothing near-verbatim distinct
+    for (const f of r.found) expect(f.sharedTokens / f.totalTokens).toBeGreaterThanOrEqual(0.7);
+  });
+
+  it("is deterministic across runs (fixed hash, no randomness)", () => {
+    const text = "some passage about the harbor at night with lanterns swinging in the cold wind again. " +
+      "filler goes here for a while to separate the two occurrences of the passage in question. " +
+      "some passage about the harbor at night with lanterns swaying in the cold wind again.";
+    const r1 = JSON.stringify(findNearRestatements(text, "en"));
+    const r2 = JSON.stringify(findNearRestatements(text, "en"));
+    expect(r1).toBe(r2);
+  });
+
+  it("report states the verification honestly", () => {
+    const out = formatNearRestatements(findNearRestatements("สั้น", "th"), "th");
+    expect(out).toContain("exact verify");
+    expect(out).toContain("ตรวจด้วย token diff จริง");
   });
 });

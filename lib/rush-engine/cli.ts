@@ -19,7 +19,7 @@ import { splitChapters } from "./chapters";
 import { parseCodex, codexAudit, codexCanon, formatCodexAudit, codexMermaid } from "./codex";
 import { analyzeSaga, formatSaga, type SagaBook } from "./saga";
 import { analyzeOpeners, formatOpeners } from "./openers";
-import { findRestatements } from "./restatement";
+import { findRestatements, findNearRestatements } from "./restatement";
 import { excessVocabulary, formatExcess } from "./excess";
 
 export interface CliResult { stdout: string; stderr: string; code: number }
@@ -151,6 +151,18 @@ function cmdAnalyze(file: string | undefined, flags: Record<string, string | tru
       L.push(`  ×${r.count}${loc}  "${r.phrase.length > 70 ? r.phrase.slice(0, 70) + "…" : r.phrase}"`);
     }
     L.push("  (verbatim only — paraphrased redundancy needs a human read)");
+  }
+
+  // Near-verbatim repeats: winnowing fingerprints nominate candidate pairs; every
+  // pair is verified with an exact token diff before it can appear here.
+  const near = findNearRestatements(text, lang);
+  if (near.found.length) {
+    L.push("", "near-verbatim repeats (winnowed candidates, exact-verified):");
+    for (const r of near.found.slice(0, 5)) {
+      const loc = r.chaptersA !== r.chaptersB ? ` (ch ${r.chaptersA}→${r.chaptersB})` : "";
+      L.push(`  ${r.sharedTokens}/${r.totalTokens}${loc}  "${r.b.length > 60 ? r.b.slice(0, 60) + "…" : r.b}"`);
+      if (r.changed.length) L.push(`     changed: ${r.changed.join(", ")}`);
+    }
   }
 
   const led = consistencyLedger(text, lang);
