@@ -4,8 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import { X, Copy, Check, Download, Trash2 } from "lucide-react";
 import { MODULE_CATALOG, MODULE_GROUPS, type BookConfig, type PromptGroup } from "@/lib/rush-engine/engine";
 import { TH_MODULES } from "@/lib/rush-engine/th";
-import { analyzeThai, tokenizeThai, formatThaiReport, thaiDeltas, scanThaiManuscript } from "@/lib/rush-engine/thai-analyzer";
-import { analyzeProse, formatProseReport, proseDeltas, scanManuscript } from "@/lib/rush-engine/prose-analyzer";
+import { analyzeThai, tokenizeThai, formatThaiReport } from "@/lib/rush-engine/thai-analyzer";
+import { formatProseReport } from "@/lib/rush-engine/prose-analyzer";
 import { splitChapters } from "@/lib/rush-engine/chapters";
 import { buildEpub } from "@/lib/rush-engine/epub";
 import { consistencyLedger, storyBible, formatStoryBible, suggestThaiNames } from "@/lib/rush-engine/consistency";
@@ -13,8 +13,6 @@ import { sensoryDensity, SENSE_LABEL, type Sense } from "@/lib/rush-engine/senso
 import { continuityRadar, sceneReadout } from "@/lib/rush-engine/radar";
 import { parseCodex, codexAudit, codexMermaid } from "@/lib/rush-engine/codex";
 import { analyzeSaga, type SagaBook } from "@/lib/rush-engine/saga";
-import { analyzeOpeners } from "@/lib/rush-engine/openers";
-import { findRestatements } from "@/lib/rush-engine/restatement";
 import { characterGraph } from "@/lib/rush-engine/relationships";
 import { renameTerm } from "@/lib/rush-engine/rename";
 import { checkThaiRegister } from "@/lib/rush-engine/register";
@@ -24,6 +22,7 @@ import { characterArc, pacingProfile, motifTracker, type ChapterSignal } from "@
 import { downloadBlob } from "./_utils";
 import { wordDiff, diffTokens, type DiffOp } from "@/lib/rush-engine/text-util";
 import { listManuscripts, getManuscript, saveManuscript, deleteManuscript, storeNearQuota, type StoredManuscript } from "./_manuscript-store";
+import { useAnalysisTask } from "./_use-analysis";
 
 export const GROUP_COLORS: Record<PromptGroup, string> = {
   core: "border-[#c9a84c] text-[#c9a84c]",
@@ -303,8 +302,8 @@ function RadarView({ text, lang, canon }: { text: string; lang: "th" | "en"; can
 // Reads the analyzed draft directly; same engine as `rush openers`.
 function OpenerView({ text, lang }: { text: string; lang: "th" | "en" }) {
   const th = lang === "th";
-  const report = useMemo(() => analyzeOpeners(text, lang), [text, lang]);
-  if (report.units === 0) return null;
+  const report = useAnalysisTask("openers", text.trim() ? [text, lang] : null);
+  if (!report || report.units === 0) return null;
   const pct = (r: number) => `${Math.round(r * 100)}%`;
   return (
     <div>
@@ -346,8 +345,8 @@ function OpenerView({ text, lang }: { text: string; lang: "th" | "en" }) {
 // (top-3 human-editor fix in AI prose, LAMP corpus / CHI 2025).
 function RestatementView({ text, lang }: { text: string; lang: "th" | "en" }) {
   const th = lang === "th";
-  const report = useMemo(() => findRestatements(text, lang), [text, lang]);
-  if (report.totalTokens < 40) return null;
+  const report = useAnalysisTask("restatements", text.trim() ? [text, lang] : null);
+  if (!report || report.totalTokens < 40) return null;
   return (
     <div>
       <h3 className="text-xs font-semibold tracking-widest text-gray-400 uppercase mb-2">
@@ -1214,12 +1213,12 @@ export function ThaiAnalyzerModal({ onClose, initialText }: { onClose: () => voi
   const [copiedAudit, setCopiedAudit] = useState<string | null>(null);
   const dtext = useDebounced(text);
   const drevised = useDebounced(revised);
-  const a = useMemo(() => (dtext.trim() ? analyzeThai(dtext) : null), [dtext]);
-  const deltas = useMemo(
-    () => (dtext.trim() && drevised.trim() ? thaiDeltas(analyzeThai(dtext), analyzeThai(drevised)) : null),
-    [dtext, drevised]
-  );
-  const scan = useMemo(() => (dtext.trim() ? scanThaiManuscript(dtext) : []), [dtext]);
+  // Heavy passes (measured 90–215ms at 140k chars) run in the analysis worker;
+  // null while in flight — the same nullable shape the render already guards.
+  const a = useAnalysisTask("analyzeThai", dtext.trim() ? [dtext] : null);
+  const deltas = useAnalysisTask("thaiDeltas", dtext.trim() && drevised.trim() ? [dtext, drevised] : null);
+  const scanReport = useAnalysisTask("scanThai", dtext.trim() ? [dtext] : null);
+  const scan = useMemo(() => scanReport ?? [], [scanReport]);
   const [glossary, setGlossary] = usePersistedState("rush.analyzer.th.glossary");
   const protect = useMemo(() => parseGlossary(glossary), [glossary]);
   const nameSuggestions = useMemo(
@@ -1626,16 +1625,16 @@ export function ProseAnalyzerModal({ onClose, initialText }: { onClose: () => vo
   const [copiedAudit, setCopiedAudit] = useState<string | null>(null);
   const dtext = useDebounced(text);
   const drevised = useDebounced(revised);
-  const a = useMemo(() => (dtext.trim() ? analyzeProse(dtext) : null), [dtext]);
+  // Heavy passes run in the analysis worker (see _analysis-tasks.ts for the
+  // measured-threshold rule); null while in flight — render already guards.
+  const a = useAnalysisTask("analyzeProse", dtext.trim() ? [dtext] : null);
   useEffect(() => {
     if (initialText) setText(initialText);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  const deltas = useMemo(
-    () => (dtext.trim() && drevised.trim() ? proseDeltas(analyzeProse(dtext), analyzeProse(drevised)) : null),
-    [dtext, drevised]
-  );
-  const scan = useMemo(() => (dtext.trim() ? scanManuscript(dtext) : []), [dtext]);
+  const deltas = useAnalysisTask("proseDeltas", dtext.trim() && drevised.trim() ? [dtext, drevised] : null);
+  const scanReport = useAnalysisTask("scanProse", dtext.trim() ? [dtext] : null);
+  const scan = useMemo(() => scanReport ?? [], [scanReport]);
   // Indices of the weakest chapter per signal (to flag in the heatmap).
   const worst = useMemo(() => {
     if (scan.length < 2) return { ease: -1, slop: -1, cv: -1 };
