@@ -673,6 +673,10 @@ Do all five:
 
 Rules: no purple prose or cliché sensory filler; every added detail must do double duty (mood / character / theme). Do not add events that aren't implied by the draft.
 
+CONVERSION DRILL — for every line that NAMES an emotion ("she felt betrayed"), rewrite it as a behavior chain: 3-5 concrete actions + one prop + the setting doing work ("She took the couple photo from her wallet, tore it in two, and laid the halves on his side of the table"). The chain must read AS the emotion without the label. (This is the prose→screen conversion craft that duanju courses name as prose writers' #1 deficit — pointed back at prose.)
+PROP DISCIPLINE — one object, three appearances, changed each time, detonating once. A tracked prop carries what narration would over-explain (Chekhov's gun × rule of three).
+KEEP THE HOME ADVANTAGE — interiority is what prose has that the screen doesn't (adaptation scholarship). This drill targets lines where naming REPLACED showing; it is not a ban on inner life. Convert the weakest told lines, keep the interiority that earns its place.
+
 Output: the rewritten scene, then a 3-5 line changelog naming each filter word cut and each loop opened.
 
 ═══ DRAFT ═══
