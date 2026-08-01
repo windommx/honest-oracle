@@ -23,6 +23,7 @@ export * from "./relationships";
 export * from "./radar";
 export * from "./narrative";
 export * from "./thai-structures";
+export * from "./bootstraps";
 export * from "./codex";
 export * from "./saga";
 export * from "./openers";

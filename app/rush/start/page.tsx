@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { ArrowRight, ArrowLeft, Check } from "lucide-react";
-import { BOOK_TYPES, MODULE_GROUPS, defaultGroupsFor, NARRATIVE_STRUCTURES, type BookTypeKey } from "@/lib/rush-engine/engine";
+import { BOOK_TYPES, MODULE_GROUPS, defaultGroupsFor, NARRATIVE_STRUCTURES, BOOTSTRAPS, bootstrapQuery, structureById, type BookTypeKey } from "@/lib/rush-engine/engine";
 
 type GroupKey = (typeof MODULE_GROUPS)[number]["key"];
 const STEPS = ["ประเภท", "แนวย่อย + ภาษา", "ความยาว", "โมดูลเสริม", "สรุป"];
@@ -77,6 +77,30 @@ export default function RushStart() {
                   {type === key && <Check className="w-4 h-4 text-[#c9a84c] ml-auto" />}
                 </button>
               ))}
+            </div>
+
+            {/* bootstraps — 20 one-click starting points (skip the wizard entirely) */}
+            <div className="mt-10">
+              <h3 className="text-sm font-semibold text-gray-300 mb-1">หรือเริ่มเร็วจากแม่แบบตั้งต้น ({BOOTSTRAPS.length})</h3>
+              <p className="text-[0.68rem] text-gray-500 mb-3">กดแล้วได้ config ครบ (ประเภท·แนว·โครงเรื่อง·ความยาว) — ปรับต่อได้ทุกอย่างในหน้าถัดไป</p>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {BOOTSTRAPS.map((b) => (
+                  <Link
+                    key={b.id}
+                    href={`/rush?${bootstrapQuery(b)}`}
+                    className="rounded-lg border border-white/10 p-3 hover:border-[#c9a84c]/50 transition group"
+                  >
+                    <span className="flex items-center gap-2">
+                      <span className="text-base">{BOOK_TYPES[b.type].icon}</span>
+                      <span className="text-sm font-medium text-gray-100 group-hover:text-[#e6c86a]">{b.nameTh}</span>
+                    </span>
+                    <span className="block text-[0.65rem] text-gray-500 mt-1">{b.taglineTh}</span>
+                    <span className="block text-[0.6rem] text-gray-600 mt-1">
+                      {b.chapters} บท × {b.words.toLocaleString()} คำ{b.structure ? ` · ${structureById(b.structure)?.thai ?? b.structure}` : ""}
+                    </span>
+                  </Link>
+                ))}
+              </div>
             </div>
           </section>
         )}
