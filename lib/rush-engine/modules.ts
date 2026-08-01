@@ -474,6 +474,7 @@ function moduleKdpMeta(config: BookConfig): string {
 3. VERIFICATION CHECKLIST: for each keyword — how to validate it (type it into Amazon search; check autocomplete suggestions; confirm books rank for it; gauge competition). Mark any guess as "VERIFY".
 4. A 2-line A+ / comparison hook for the product page.
 5. AI DISCLOSURE note for the user (state it plainly, don't decide for them): under KDP's policy (framework since Sept 2023 — verify current wording in KDP help), AI-GENERATED content (text/images/translation created by AI, even if edited) must be disclosed to Amazon during publishing setup; AI-ASSISTED (you wrote it, AI helped edit/refine/brainstorm) requires no disclosure. Tell the user which side their workflow falls on is THEIR call to make honestly — and that platform rules change, so re-check at publish time.
+6. BESTSELLER-BADGE REALITY (teach it straight): Amazon's "#1 Best Seller" flag is computed PER CATEGORY from recent sales velocity, refreshed hourly — in a deep niche category, a handful of same-day sales can take #1. Two honest consequences: (a) it is an achievable launch tactic — pick the deepest categories that GENUINELY fit and concentrate launch-day sales; (b) other books' badges are weak evidence of quality or income, so never buy a tool or course on the strength of a badge screenshot. Never advise miscategorizing into an irrelevant niche to farm the flag — Amazon removes miscategorized titles and readers punish the mismatch.
 
 Be concrete; avoid generic single words.`;
 }

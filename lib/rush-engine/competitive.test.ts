@@ -20,6 +20,22 @@ describe("competitive matrix integrity", () => {
   });
 });
 
+describe("SuperCool row (AI-publishing-funnel rival)", () => {
+  it("carries review-tier provenance and only the marks reviews actually support", () => {
+    const sc = RIVALS.find((r) => r.id === "supercool")!;
+    expect(sc.source).toContain("user reviews"); // vendor claims cross-checked, never vendor-only
+    // reviews confirm drift/inconsistency on long books → no consistency machinery
+    expect(mark("consistency_auto", "supercool")).toBe("no");
+    // credit system on top of subscription = lock-in, the opposite of BYO-key
+    expect(mark("byo_key", "supercool")).toBe("no");
+    // what reviews DO confirm working: guided flow + one-click generation
+    expect(mark("starter_flow", "supercool")).toBe("yes");
+    expect(mark("ai_inline", "supercool")).toBe("yes");
+    // unverified vendor claims stay "unknown" — not charitably upgraded to "yes"
+    expect(mark("story_bible", "supercool")).toBe("unknown");
+  });
+});
+
 describe("soleProviders", () => {
   it("returns capabilities only Rush provides fully", () => {
     const ids = soleProviders().map((c) => c.id);
