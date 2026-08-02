@@ -17,6 +17,17 @@ export default function RushStart() {
   const [words, setWords] = useState(BOOK_TYPES.novel.default_words);
   const [groups, setGroups] = useState<GroupKey[]>(defaultGroupsFor("novel"));
   const [structure, setStructure] = useState<string>(""); // "" = โครงมาตรฐาน (3 องก์)
+  // Preset gallery filter — 70 presets need to be scannable, especially on mobile.
+  const [presetFilter, setPresetFilter] = useState<BookTypeKey | "all">("all");
+  const presetTypes = useMemo(() => {
+    const seen = new Set<BookTypeKey>();
+    for (const b of BOOTSTRAPS) seen.add(b.type);
+    return (Object.keys(BOOK_TYPES) as BookTypeKey[]).filter((k) => seen.has(k));
+  }, []);
+  const shownPresets = useMemo(
+    () => (presetFilter === "all" ? BOOTSTRAPS : BOOTSTRAPS.filter((b) => b.type === presetFilter)),
+    [presetFilter]
+  );
 
   // Picking a type resets the downstream defaults to that type's.
   const chooseType = (key: BookTypeKey) => {
@@ -79,12 +90,29 @@ export default function RushStart() {
               ))}
             </div>
 
-            {/* bootstraps — 20 one-click starting points (skip the wizard entirely) */}
+            {/* bootstraps — one-click starting points (skip the wizard entirely) */}
             <div className="mt-10">
               <h3 className="text-sm font-semibold text-gray-300 mb-1">หรือเริ่มเร็วจากแม่แบบตั้งต้น ({BOOTSTRAPS.length})</h3>
               <p className="text-[0.68rem] text-gray-500 mb-3">กดแล้วได้ config ครบ (ประเภท·แนว·โครงเรื่อง·ความยาว) — ปรับต่อได้ทุกอย่างในหน้าถัดไป</p>
+              <div className="flex flex-wrap gap-1.5 mb-3">
+                <button
+                  onClick={() => setPresetFilter("all")}
+                  className={`text-[0.68rem] px-2.5 py-1 rounded-full border transition ${presetFilter === "all" ? "border-[#c9a84c] bg-[#c9a84c]/10 text-[#e6c86a]" : "border-white/10 text-gray-400 hover:border-white/25"}`}
+                >
+                  ทั้งหมด ({BOOTSTRAPS.length})
+                </button>
+                {presetTypes.map((k) => (
+                  <button
+                    key={k}
+                    onClick={() => setPresetFilter(k)}
+                    className={`text-[0.68rem] px-2.5 py-1 rounded-full border transition ${presetFilter === k ? "border-[#c9a84c] bg-[#c9a84c]/10 text-[#e6c86a]" : "border-white/10 text-gray-400 hover:border-white/25"}`}
+                  >
+                    {BOOK_TYPES[k].icon} {BOOK_TYPES[k].label} ({BOOTSTRAPS.filter((b) => b.type === k).length})
+                  </button>
+                ))}
+              </div>
               <div className="grid gap-2 sm:grid-cols-2">
-                {BOOTSTRAPS.map((b) => (
+                {shownPresets.map((b) => (
                   <Link
                     key={b.id}
                     href={`/rush?${bootstrapQuery(b)}`}
