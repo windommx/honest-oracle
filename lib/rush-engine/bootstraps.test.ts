@@ -5,10 +5,10 @@ import { structureById } from "./thai-structures";
 import { generateAllPrompts } from "./engine";
 import type { BookConfig } from "./types";
 
-describe("bootstraps (20 one-click starting points)", () => {
-  it("ships exactly 20 presets with unique ids", () => {
-    expect(BOOTSTRAPS).toHaveLength(20);
-    expect(new Set(BOOTSTRAPS.map((b) => b.id)).size).toBe(20);
+describe("bootstraps (70 one-click starting points)", () => {
+  it("ships exactly 70 presets with unique ids", () => {
+    expect(BOOTSTRAPS).toHaveLength(70);
+    expect(new Set(BOOTSTRAPS.map((b) => b.id)).size).toBe(70);
   });
 
   it("every preset is valid against the registries it points into", () => {
