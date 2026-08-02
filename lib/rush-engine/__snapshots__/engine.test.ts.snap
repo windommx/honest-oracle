@@ -1651,6 +1651,20 @@ attachment ในฐานะเครื่องยนต์พฤติกร
 5. COMPOSITION — ชนิดช็อต + การจัดเฟรม (โคลสอัพ/ไวด์/over-shoulder)
 6. NEGATIVE PROMPT — สิ่งที่ต้องกันออก (ตัวละครเกิน ตัวอักษร ลายน้ำ ยุคผิด)
 
+ลำดับ prompt (Subject → Action → Environment → Cinematography → Quality & Style): ขึ้นต้นด้วยประธานรูปธรรม + กำลังทำอะไร แล้วค่อยวางฉาก มุมกล้อง และคำเก็บงานท้ายสุด — prompt ที่เรียงแบบนี้คุมโมเดลภาพได้ดีกว่ากองคำอารมณ์มาก
+
+จานสุนทรียะแนวจินตนาการ — คำแนวกว้าง ๆ ("futuristic city") คุมโมเดลไม่อยู่ ให้ระบุแนวย่อย + ใช้ visual language ของมัน:
+- Cyberpunk (เทคโนโลยีสูง ชีวิตต่ำ): นีออน ฝน โฮโลแกรม มหานคร
+- Solarpunk (อนาคตสีเขียว): สวนแนวตั้ง สถาปัตยกรรมโซลาร์ พลังงานสะอาด
+- Steampunk (จักรกลยุค Victorian): ทองเหลือง เฟือง ไอน้ำ เรือเหาะ
+- Dieselpunk (retro-future อุตสาหกรรมศตวรรษ 20): เหล็กกล้า ดีเซล โรงงาน อาร์ตเดโค
+- Biopunk (เทคโนโลยีชีวภาพ): พันธุกรรม ห้องแล็บ วิศวกรรมชีวภาพ
+- Space opera (สเกลมหากาพย์): ยานรบ กาแล็กซี อารยธรรมต่างดาว
+- Futuristic-sleek (ล้ำสมัยไม่ต้องมีปม): เมืองอัจฉริยะเรียบมินิมัล
+- Post-apocalyptic (หลังโลกล่ม): ซากปรักหักพัง ธรรมชาติทวงคืน การเอาชีวิตรอด
+- Sci-fi คลาสสิก: AI หุ่นยนต์ อวกาศ เทคโนโลยีล้ำยุค
+เลือกแนวเดียว แล้วล็อกไว้ใน STYLE ทั้งเล่ม — ภาพที่สลับจานสไตล์ไปมา คือเหตุที่หนังสือดูไม่เป็นเล่มเดียวกัน
+
 ส่งออก: prompt หนึ่งย่อหน้า + บรรทัด negative แยก คงหน้าตาตัวละครให้ตรงกับฉากก่อน ๆ (ใช้คำบรรยายเดิม)
 
 ═══ ฉาก ═══
@@ -3499,6 +3513,20 @@ Produce, for the scene below:
 4. MOOD & LIGHT — the emotional colour + light source (matches the scene's tone).
 5. COMPOSITION — shot type + framing (close-up / wide / over-shoulder).
 6. NEGATIVE PROMPT — what to exclude (extra characters, text, watermark, wrong era).
+
+PROMPT ORDER (Subject → Action → Environment → Cinematography → Quality & Style): lead with the concrete subject and what it is doing, then place it, then the camera, then finishing terms — a prompt ordered this way steers image models far better than a mood-word pile.
+
+SPECULATIVE-AESTHETIC PALETTE — a genre word alone ("futuristic city") is too broad to steer a model; name the SUB-aesthetic and use its visual language:
+- Cyberpunk (high tech, low life): neon, rain, holograms, megacity
+- Solarpunk (green optimism): vertical gardens, solar architecture, clean tech
+- Steampunk (Victorian machine-age): brass, gears, steam, airships
+- Dieselpunk (20th-c industrial retro-future): steel, diesel, factories, art deco
+- Biopunk (organic tech): genetics, labs, bioengineering
+- Space opera (epic scale): starships, galaxies, alien civilizations
+- Futuristic-sleek (no conflict implied): minimal smart-tech cityscapes
+- Post-apocalyptic (after the fall): ruins, reclaimed nature, survival
+- Classic sci-fi: AI, robots, space, advanced technology
+Pick ONE and lock it into STYLE for the whole book — mixing palettes across illustrations is how a book's art stops looking like one book.
 
 Output one paragraph prompt + a separate negative line. Keep character looks consistent with earlier scenes — reuse the same descriptors.
 

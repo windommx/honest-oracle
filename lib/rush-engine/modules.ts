@@ -722,6 +722,20 @@ Produce, for the scene below:
 5. COMPOSITION — shot type + framing (close-up / wide / over-shoulder).
 6. NEGATIVE PROMPT — what to exclude (extra characters, text, watermark, wrong era).
 
+PROMPT ORDER (Subject → Action → Environment → Cinematography → Quality & Style): lead with the concrete subject and what it is doing, then place it, then the camera, then finishing terms — a prompt ordered this way steers image models far better than a mood-word pile.
+
+SPECULATIVE-AESTHETIC PALETTE — a genre word alone ("futuristic city") is too broad to steer a model; name the SUB-aesthetic and use its visual language:
+- Cyberpunk (high tech, low life): neon, rain, holograms, megacity
+- Solarpunk (green optimism): vertical gardens, solar architecture, clean tech
+- Steampunk (Victorian machine-age): brass, gears, steam, airships
+- Dieselpunk (20th-c industrial retro-future): steel, diesel, factories, art deco
+- Biopunk (organic tech): genetics, labs, bioengineering
+- Space opera (epic scale): starships, galaxies, alien civilizations
+- Futuristic-sleek (no conflict implied): minimal smart-tech cityscapes
+- Post-apocalyptic (after the fall): ruins, reclaimed nature, survival
+- Classic sci-fi: AI, robots, space, advanced technology
+Pick ONE and lock it into STYLE for the whole book — mixing palettes across illustrations is how a book's art stops looking like one book.
+
 Output one paragraph prompt + a separate negative line. Keep character looks consistent with earlier scenes — reuse the same descriptors.
 
 ═══ SCENE ═══
