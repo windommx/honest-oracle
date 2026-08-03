@@ -117,6 +117,7 @@ function moduleWorldCodex(config: BookConfig): string {
 Organize into clear sections (include only what's relevant):
 - SETTING: places, geography, time period, atmosphere
 - RULES: how the world works (magic/tech/social rules) and their LIMITS (what is impossible)
+  Apply Sanderson's Laws here (his own essays, 2007-2013): FIRST — "an author's ability to solve conflict with magic is DIRECTLY PROPORTIONAL to how well the reader understands said magic" (unexplained power may create wonder, never solutions); SECOND — "Limitations > Powers" (what the magic CAN'T do is more interesting than what it can); THIRD — expand what you already have before adding something new (depth over breadth: connect the system to culture, economy, ecology). He calls them guidelines, not laws — violable on purpose, never by accident.
 - FACTIONS / GROUPS: names, goals, relationships
 - KEY OBJECTS / LORE: items, history, mythology
 - TIMELINE: the sequence of major events
@@ -317,6 +318,8 @@ Target reading level: [e.g. grade 8 / general adult / academic]
 function moduleCutPass(): string {
   return `ADVERSARIAL CUT PASS — shrink a chapter by cutting, and CLASSIFY every cut so the writer learns their own patterns. Field measurement from a real 75k-word AI-assisted novel pipeline (NousResearch autonovel, 2026): the two biggest cut categories were OVER-EXPLAIN (~32% of cuts) and REDUNDANT (~26%) — hunt those first.
 
+The tradition behind this pass: King's Formula — "2nd Draft = 1st Draft − 10%" (an anonymous editor's rejection-slip note King says changed how he rewrites; On Writing, 2000) — and Elmore Leonard's rule 10: "Try to leave out the part that readers tend to skip" — the thick paragraphs the eye slides over ("hooptedoodle," his word via Steinbeck). Leonard's summary rule doubles as this pass's exit test: "If it sounds like writing, I rewrite it."
+
 Target: cut [N — default 500] words from the chapter below WITHOUT losing any plot fact, character beat, or planted setup.
 
 For every cut, output a line:
@@ -337,6 +340,8 @@ Known failure modes to avoid (also field-measured): don't overshoot the target b
 
 function moduleLineEdit(): string {
   return `Perform a LINE EDIT — sentence-level craft, not content changes. Return the edited text plus a brief rationale list.
+
+VOICE-DRIFT GUARD (measured hazard: even "grammar-only" LLM revision passes level register toward formal, impersonal prose and strip first-person — arXiv:2604.22142): preserve the draft's register, contractions, sentence-length variance, and person. If a sentence is informal ON PURPOSE, grammar-correctness does not outrank voice — leave it.
 
 Fix:
 - Filter/whimper words: just, really, very, that, kind of, sort of, actually, simply
@@ -544,6 +549,7 @@ Rules:
 - Cut "theater": self-congratulation, melodrama, on-the-nose emotion, narrator moralizing.
 - Ban AI-tell emotion clichés — show through specific action/body instead. Thai examples to remove:
   "น้ำตาไหลริน", "หัวใจบีบรัด/สลาย", "รอยยิ้มอบอุ่น", "ความรู้สึกท่วมท้น", "ใจหายวาบ".
+- Ban STOCK AI NAMES AND FURNITURE — measured, not folklore: across 20,000 LLM-generated stories, 11 stock tokens (Elias, Elara, a lighthouse, a clockmaker...) appeared in 88.3% (arXiv:2605.26492); model outputs also cluster to near-identical responses at scale (NeurIPS 2025 "Artificial Hivemind"). If a name or setting feels like the model's first instinct, it is — demand the third or fourth alternative, or a Thai-specific one.
 - Prefer earned ambiguity over neat resolution where it serves the story; let consequences stand.
 
 Output: the revised passage, then 2-3 bullets on what you made riskier and the cost you added.
@@ -648,6 +654,12 @@ HYBRID — small external event + emotional reaction + unresolved residue.
 
 MID-CHAPTER ACT-OUTS (from TV act-break craft): long chapters deserve 1-2 internal cliffs — end a scene/section on a question the next section must answer. TV writers plan act-outs before anything else because the break determines the trajectory of everything preceding it.
 
+WHAT THE SCIENCE ACTUALLY SUPPORTS (each verified with replication status):
+- CURIOSITY IS AN INFORMATION GAP (Loewenstein 1994; Kang et al. 2009): curiosity peaks at PARTIAL knowledge — an inverted-U. Zero knowledge produces zero curiosity. So a hook GIVES information to open a gap; pure withholding is the amateur version.
+- CARING BEFORE DANGER (disposition theory, Zillmann): suspense = fear for a LIKED character. Danger to someone the reader hasn't invested in is noise, not tension.
+- SUSPENSE SURVIVES SPOILERS (Gerrig's anomalous suspense): readers feel suspense on rereads and even about known history — so foreshadowing and partial reveals are far safer than intuition says.
+- HONESTY CORRECTION: the popular claim that cliffhangers work because "unfinished tasks are remembered better" (Zeigarnik) FAILED a 2025 meta-analysis — do not teach it. What survives is the urge to RESUME an interrupted activity (Ovsiankina) — which is the better model of a cliffhanger anyway: the goal is not that they remember, it's that they come back.
+
 RESTRAINT CRAFT (the engine of all of the above):
 - WHAT THEY DON'T DO beats what they do: skipping a nightly habit says more than a stare.
 - THE ALMOST MOMENT — nearly speaks, nearly touches, then stops. The closer to the act, the harder the stop lands.
@@ -671,6 +683,14 @@ Output: the rewritten ending (last 3–8 lines) + one margin note naming which h
 
 function moduleImmersion(): string {
   return `Rewrite a scene to pull the reader INSIDE the POV character's experience (deep POV / "transportation"). Keep plot, facts, and dialogue meaning — change how close we are, not what happens.
+
+PSYCHIC DISTANCE (Gardner, The Art of Fiction, 1983 — the ladder this whole module climbs):
+  L1 "It was winter of the year 1853. A large man stepped out of a doorway."
+  L2 "Henry J. Warburton had never much cared for snowstorms."
+  L3 "Henry hated snowstorms."
+  L4 "God how he hated these damn snowstorms."
+  L5 "Snow. Under your collar, down inside your shoes, freezing and plugging up your miserable soul..."
+  Rule: SLIDE between levels, never jump (L1→L4 in one line reads amateur); open scenes wide (L1-2), go deepest (L4-5) at peak emotion, pull back to transition. What research can add (van Laer et al. 2014, meta of 76 studies): the three measured pull-the-reader-in levers are identifiable characters, an imaginable plot, and verisimilitude — exactly what the steps below build.
 
 Do all five:
 1. GROUND FAST — within the first 2-3 sentences, anchor the reader in place/body/moment with one concrete, specific detail (not a weather-report or throat-clear opening).
