@@ -649,6 +649,8 @@ RESTRAINT CRAFT (the engine of all of the above):
 - BODY BETRAYS LAST — steady hands during the crisis; a tremor opening a water bottle after. Extremities leak first (fingers, shoulders), the face last.
 - FORMALITY AS A TELL — the more controlled a character feels, the more official their speech gets.
 - MICRO-CONFLICT — wants to ask / doesn't dare; wants closeness / keeps distance. Small frictions, repeated, out-tension big events in slow-burn.
+- FRACTURED ACTION — a completed gesture states; an interrupted one implies. "Closed the door but didn't lock it" outlives "locked the door and left." Put one tiny bodily beat at the break point (a hand resting on the knob half a beat too long) — that half-beat outguns any line of dialogue.
+- RESIDUAL-SPACE CLOSE — end on what's LEFT, character already out of frame: the ring still under the cup, the light through the door gap, the ash the wind takes. An unfinished THING beats an unanswered QUESTION — objects keep resonating in the reader; questions just wait.
 
 CONTRASTIVE EXAMPLE:
   ✗ "She felt very sad. She didn't know what to do."
@@ -675,7 +677,7 @@ Do all five:
 Rules: no purple prose or cliché sensory filler; every added detail must do double duty (mood / character / theme). Do not add events that aren't implied by the draft.
 
 CONVERSION DRILL — for every line that NAMES an emotion ("she felt betrayed"), rewrite it as a behavior chain: 3-5 concrete actions + one prop + the setting doing work ("She took the couple photo from her wallet, tore it in two, and laid the halves on his side of the table"). The chain must read AS the emotion without the label. (This is the prose→screen conversion craft that duanju courses name as prose writers' #1 deficit — pointed back at prose.)
-PROP DISCIPLINE — one object, three appearances, changed each time, detonating once. A tracked prop carries what narration would over-explain (Chekhov's gun × rule of three).
+PROP DISCIPLINE — one object, three appearances, changed each time, detonating once. A tracked prop carries what narration would over-explain (Chekhov's gun × rule of three). The final change should be IRREVERSIBLE — burned, torn, mailed away, poured down the drain — because the moment of no return IS the emotional beat; a reversible change is just handling the prop.
 KEEP THE HOME ADVANTAGE — interiority is what prose has that the screen doesn't (adaptation scholarship). This drill targets lines where naming REPLACED showing; it is not a ban on inner life. Convert the weakest told lines, keep the interiority that earns its place.
 
 Output: the rewritten scene, then a 3-5 line changelog naming each filter word cut and each loop opened.
