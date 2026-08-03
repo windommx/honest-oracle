@@ -35,14 +35,14 @@ export interface Capability {
 // Rivals in a fixed column order. "rush" is included so the model is symmetric.
 export const RIVALS: Rival[] = [
   { id: "rush", name: "Rush Engine", kind: "prompt platform", pricing: "free / self-host", asOf: "2026-07", source: "codebase" },
-  { id: "novelcrafter", name: "NovelCrafter", kind: "web app (BYO-AI)", pricing: "subscription", asOf: "2026-01", source: "general knowledge" },
-  { id: "sudowrite", name: "Sudowrite", kind: "hosted AI writer", pricing: "sub + credits", asOf: "2026-01", source: "general knowledge" },
-  { id: "novelai", name: "NovelAI", kind: "hosted AI writer", pricing: "subscription", asOf: "2026-01", source: "general knowledge" },
+  { id: "novelcrafter", name: "NovelCrafter", kind: "web app (BYO-AI)", pricing: "$4-20/mo + BYO-AI", asOf: "2026-08", source: "official-doc + review snippets (proxy blocked full fetch)" },
+  { id: "sudowrite", name: "Sudowrite", kind: "hosted AI writer", pricing: "$19-59/mo + credits", asOf: "2026-08", source: "official-doc + review snippets (proxy blocked full fetch)" },
+  { id: "novelai", name: "NovelAI", kind: "hosted AI writer", pricing: "$10-25/mo", asOf: "2026-08", source: "official-doc + review snippets (proxy blocked full fetch)" },
   { id: "bookyai", name: "BookyAI", kind: "KDP desktop pipeline", pricing: "one-time", asOf: "2026-06", source: "user-supplied spec" },
   { id: "ai_novel_ws", name: "AI Novel Workspace", kind: "workshop + app (TH)", pricing: "฿7,900 course", asOf: "2026-07", source: "user-supplied images" },
-  { id: "squibler", name: "Squibler", kind: "writing app + AI", pricing: "subscription", asOf: "2026-01", source: "general knowledge" },
-  { id: "fictionary", name: "Fictionary", kind: "structural story editor", pricing: "subscription", asOf: "2026-01", source: "general knowledge" },
-  { id: "prowritingaid", name: "ProWritingAid", kind: "prose QA", pricing: "sub / lifetime", asOf: "2026-01", source: "general knowledge" },
+  { id: "squibler", name: "Squibler", kind: "writing app + AI", pricing: "free / $16-49/mo + credits", asOf: "2026-08", source: "review snippets, official page unreachable" },
+  { id: "fictionary", name: "Fictionary", kind: "structural story editor", pricing: "$14-49/mo", asOf: "2026-08", source: "official-page snippets" },
+  { id: "prowritingaid", name: "ProWritingAid", kind: "prose QA", pricing: "$120-144/yr / lifetime $399+", asOf: "2026-08", source: "official-help + review snippets" },
   { id: "raw_llm", name: "Raw ChatGPT / Claude", kind: "general chatbot", pricing: "sub / API", asOf: "2026-07", source: "general knowledge" },
   // SuperCool: marks come from vendor marketing cross-checked against user reviews
   // (2026-07). Reviews confirm: full-book generation from ~2 prompts works; hidden
@@ -64,19 +64,19 @@ export const INTENTIONAL_NONGOALS: Record<string, string> = {
 interface Row extends Capability { marks: string }
 const ROWS: Row[] = [
   //                                                            rush nc  su  nai boo aiw squ fic pwa raw sc
-  { id: "thai_native", label: "Thai-native prompts", moat: true, marks: "y  n  n  n  n  y  n  n  n  p  n" },
+  { id: "thai_native", label: "Thai-native prompts", moat: true, marks: "y  p  n  n  n  y  n  n  n  p  n" },
   { id: "thai_dialect", label: "Thai dialect voices (Isan/N/S)", moat: true, marks: "y  n  n  n  n  n  n  n  n  n  n" },
   { id: "deterministic", label: "Deterministic analysis (no LLM)", moat: true, marks: "y  p  n  n  p  n  n  p  y  n  n" },
   { id: "consistency_auto", label: "Auto cross-chapter consistency", moat: true, marks: "y  n  n  n  n  n  n  p  n  n  n" },
   { id: "sensory_density", label: "Measured sensory density", moat: true, marks: "y  n  n  n  n  n  n  n  p  n  n" },
-  { id: "story_bible", label: "Story bible / codex", marks: "y  y  y  y  u  p  p  p  n  n  u" },
+  { id: "story_bible", label: "Story bible / codex", marks: "y  y  y  y  u  p  y  p  n  n  u" },
   { id: "genre_promise", label: "Genre reader-promise guidance", marks: "y  n  p  n  n  y  p  p  n  p  u" },
   { id: "starter_flow", label: "Guided starter flow", marks: "y  p  p  n  p  y  p  n  n  n  y" },
-  { id: "saga", label: "Multi-season / saga planning", marks: "y  p  n  n  n  n  n  n  n  n  n" },
-  { id: "ai_inline", label: "Inline AI generation (one-click)", marks: "p  y  y  y  y  y  y  n  n  y  y" },
+  { id: "saga", label: "Multi-season / saga planning", moat: true, marks: "y  p  p  n  n  n  n  n  n  n  n" },
+  { id: "ai_inline", label: "Inline AI generation (one-click)", marks: "p  y  y  y  y  y  y  n  p  y  y" },
   { id: "byo_key", label: "BYO API key / no lock-in", moat: true, marks: "y  y  n  n  u  n  n  n  n  y  n" },
   { id: "privacy", label: "No server LLM cost / privacy", moat: true, marks: "y  p  n  n  p  n  n  n  p  n  n" },
-  { id: "epub", label: "EPUB export", marks: "y  p  n  n  y  n  p  n  n  n  u" },
+  { id: "epub", label: "EPUB export", marks: "y  n  n  n  y  n  y  n  n  n  u" },
   { id: "kdp", label: "KDP publishing (spine/metadata)", marks: "p  n  n  n  y  n  n  n  n  n  p" },
   { id: "bsr", label: "Market / BSR research", marks: "n  n  n  n  y  n  n  n  n  n  u" },
   { id: "prose_qa", label: "Prose QA (readability/AI-slop)", marks: "y  n  p  n  n  n  n  p  y  n  p" },

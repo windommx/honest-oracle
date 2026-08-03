@@ -97,11 +97,15 @@ describe("pressureRanking", () => {
 
 describe("staleFacts", () => {
   it("flags rivals older than the window and never Rush", () => {
-    const stale = staleFacts("2026-08", 6);
-    const ids = stale.map((r) => r.id);
-    expect(ids).toContain("novelcrafter"); // as-of 2026-01, >6mo before 2026-08
-    expect(ids).not.toContain("rush");
-    expect(ids).not.toContain("ai_novel_ws"); // as-of 2026-07, fresh
+    // 2026-08 sweep: all six previously-stale rivals were re-checked, so nothing
+    // older than 6 months remains (freshness is data, not a fixed rival list).
+    const now = staleFacts("2026-08", 6).map((r) => r.id);
+    expect(now).not.toContain("novelcrafter"); // re-checked 2026-08
+    expect(now).not.toContain("rush");
+    // far enough in the future, everything unrefreshed goes stale — except Rush, by design
+    const later = staleFacts("2027-06", 6).map((r) => r.id);
+    expect(later).toContain("novelcrafter");
+    expect(later).not.toContain("rush");
   });
 });
 
