@@ -214,10 +214,15 @@ function moduleEvidenceAudit(): string {
 
 Hierarchy (strongest → weakest): systematic review / meta-analysis > randomized controlled trial > cohort/longitudinal > case study > expert opinion > anecdote.
 
+REPLICATION CHECK (the layer most self-help sourcing skips): a claim can be RCT-grade AND dead — the grade tells you how it was tested, not whether it survived retesting. Worked example to teach from: the "power pose" hormonal claims (testosterone up, cortisol down; Carney, Cuddy & Yap 2010) failed a larger replication (Ranehill et al. 2015) and were publicly disavowed by the study's own first author in 2016 — yet they still circulate in wellness content today, often with the failed replication rewritten as a confirmation. For any load-bearing claim: search "<claim> replication" before citing.
+
+PRECISION RED FLAGS — the fingerprint of manufactured evidence: (a) suspiciously exact percentages tied to prestigious journals without a findable paper ("reduces anxiety 35%, JAMA 20XX"); (b) effect sizes far larger than the field's norm; (c) mechanisms stated as certainties ("raises testosterone 15-20%"); (d) a real technique carrying an invented number (the technique's realness launders the statistic). Rule: keep the technique if independently sourced, STRIP the number unless the primary paper is in hand.
+
 Output:
-1. EVIDENCE TABLE: each claim | the support it currently rests on | its grade on the hierarchy.
+1. EVIDENCE TABLE: each claim | the support it currently rests on | its grade on the hierarchy | replication status if known.
 2. GAP REPORT: claims propped up only by anecdote/expert-opinion that need stronger support.
-3. For each gap, suggest what kind of source would raise the grade.
+3. RED-FLAG LIST: every suspiciously precise number, with keep-technique/strip-number verdicts.
+4. For each gap, suggest what kind of source would raise the grade.
 (If the topic is history/memoir/philosophy where this hierarchy doesn't apply, say so and switch to source-credibility criteria: primary vs. secondary, bias, corroboration.)
 
 ═══ DRAFT ═══
