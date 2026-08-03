@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { ArrowRight, Check, ShieldCheck, Cpu, Languages, Scale } from "lucide-react";
-import { BOOK_TYPES, MODULE_GROUPS, type BookTypeKey } from "@/lib/rush-engine/engine";
+import { BOOK_TYPES, MODULE_GROUPS, MODULE_CATALOG, NARRATIVE_STRUCTURES, BOOTSTRAPS, type BookTypeKey } from "@/lib/rush-engine/engine";
 
 // Curated Thai one-liners per book type (marketing copy — the structural facts below come
 // straight from BOOK_TYPES so nothing here is invented).
@@ -41,6 +41,13 @@ export default function RushExplore() {
         <p className="mt-4 text-gray-400 max-w-2xl mx-auto">
           เลือกประเภท → สร้าง prompt pack ครบชุด → เอาไปใช้กับ LLM ตัวโปรด. บวกเครื่องมือวิเคราะห์ภาษาไทยที่นับได้จริง ไม่มีคะแนนเดา
         </p>
+        {/* live counts — computed from the engine registries, never hardcoded */}
+        <div className="mt-5 flex flex-wrap gap-2 justify-center text-[0.7rem] text-gray-400">
+          <span className="px-2.5 py-1 rounded-full border border-white/10">{Object.keys(BOOK_TYPES).length} ประเภทหนังสือ</span>
+          <span className="px-2.5 py-1 rounded-full border border-white/10">{MODULE_CATALOG.length} โมดูล prompt</span>
+          <span className="px-2.5 py-1 rounded-full border border-white/10">{NARRATIVE_STRUCTURES.length} โครงเรื่อง (รวมพื้นถิ่นไทย/เอเชีย)</span>
+          <span className="px-2.5 py-1 rounded-full border border-white/10">{BOOTSTRAPS.length} แม่แบบตั้งต้น</span>
+        </div>
         <div className="mt-7 flex flex-wrap gap-3 justify-center">
           <Link href="/rush/start" className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-[#c9a84c] text-black font-semibold hover:bg-[#e6c86a] transition">
             เริ่มสร้าง Prompt Pack <ArrowRight className="w-4 h-4" />
