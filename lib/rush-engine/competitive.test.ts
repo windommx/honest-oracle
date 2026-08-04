@@ -40,17 +40,21 @@ describe("soleProviders", () => {
   it("returns capabilities only Rush provides fully", () => {
     const ids = soleProviders().map((c) => c.id);
     expect(ids).toContain("thai_dialect");
-    expect(ids).toContain("consistency_auto");
     expect(ids).toContain("sensory_density");
     // thai_native is NOT sole — AI Novel Workspace is also Thai-native
     expect(ids).not.toContain("thai_native");
-    // Honest downgrades found when the field was widened to 15 rivals (2026-08):
-    // Plottr and Dabble ship full multi-book series bibles, so saga is no longer
-    // sole; Scrivener and Plottr are local-first with zero AI, so privacy isn't
-    // either. The moat that survived a 3x wider field is the Thai + measured-
-    // signal core, which is the honest version of the pitch.
-    expect(ids).not.toContain("saga");
-    expect(ids).not.toContain("privacy");
+    // Honest downgrades from widening the field to 20 rivals (2026-08). The matrix
+    // exists to falsify Rush's own pitch, so these are recorded, not absorbed:
+    //  · saga — Plottr and Dabble ship real multi-book series bibles
+    //  · privacy — Scrivener and Plottr are local-first with zero AI
+    //  · consistency_auto — AutoCrit's Series Analyzer does cross-book contradiction
+    //    tracking. It is LLM-based and paid where Rush's is deterministic and free,
+    //    but this model counts FEATURES, never weighted quality (see the header), so
+    //    the mark stands and the sole-provider claim goes.
+    for (const lost of ["saga", "privacy", "consistency_auto"]) expect(ids).not.toContain(lost);
+    // What survived a 2x wider field: the Thai layer and measured sensory density.
+    expect(ids).toEqual(expect.arrayContaining(["thai_dialect", "sensory_density"]));
+    expect(ids).toHaveLength(2);
   });
 });
 

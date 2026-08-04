@@ -58,6 +58,16 @@ export const RIVALS: Rival[] = [
   { id: "plottr", name: "Plottr", kind: "visual plotting/series bible", pricing: "$60-129/yr or $150-649 lifetime", asOf: "2026-08", source: "official posts + review snippets" },
   { id: "dabble", name: "Dabble", kind: "writing app (no AI)", pricing: "$9-29/mo or $699 lifetime", asOf: "2026-08", source: "official pages + review snippets" },
   { id: "livingwriter", name: "LivingWriter", kind: "writing app + bundled AI", pricing: "$14.99/mo, $144/yr, $699 lifetime", asOf: "2026-08", source: "official guides/changelog + reviews" },
+  // Batch B (2026-08): the prose-analysis and worldbuilding specialists — the tools
+  // that contest Rush's measured-signal claim most directly. Hemingway's core is pure
+  // formula (ARI + adverb/passive rules); AutoCrit ships a large deterministic report
+  // set AND an LLM layer incl. a real cross-book Series Analyzer; Marlowe is trained-
+  // model but explicitly non-generative; World Anvil ships no AI at all.
+  { id: "autocrit", name: "AutoCrit", kind: "fiction analysis + AI suite", pricing: "free / $180-360/yr / $399 lifetime", asOf: "2026-08", source: "official help-center + review snippets" },
+  { id: "marlowe", name: "Marlowe (Authors A.I.)", kind: "manuscript report service", pricing: "$29.95/report · $19.95/mo · $159/yr", asOf: "2026-08", source: "official pages + review snippets" },
+  { id: "grammarly", name: "Grammarly (Superhuman)", kind: "general writing assistant", pricing: "free / $12-30/mo", asOf: "2026-08", source: "official language list + trade press" },
+  { id: "hemingway", name: "Hemingway Editor", kind: "readability editor", pricing: "free / $19.99 desktop / $100-150/yr Plus", asOf: "2026-08", source: "official docs + review snippets" },
+  { id: "worldanvil", name: "World Anvil", kind: "worldbuilding wiki + manuscripts", pricing: "free / $4.50-12/mo / Sage $300/yr", asOf: "2026-08", source: "official KB/blog + review snippets" },
 ];
 
 const RID = RIVALS.map((r) => r.id);
@@ -72,26 +82,26 @@ export const INTENTIONAL_NONGOALS: Record<string, string> = {
 // moat = Rush's thesis; soft = qualitative dimension added to counter selection bias.
 interface Row extends Capability { marks: string }
 const ROWS: Row[] = [
-  //                                                            rush nc  su  nai boo aiw squ fic pwa raw sc  scr att plo dab lw
-  { id: "thai_native", label: "Thai-native prompts", moat: true, marks: "y  p  n  n  n  y  n  n  n  p  n  n  u  u  u  u" },
-  { id: "thai_dialect", label: "Thai dialect voices (Isan/N/S)", moat: true, marks: "y  n  n  n  n  n  n  n  n  n  n  n  n  n  n  n" },
-  { id: "deterministic", label: "Deterministic analysis (no LLM)", moat: true, marks: "y  p  n  n  p  n  n  p  y  n  n  y  n  n  p  p" },
-  { id: "consistency_auto", label: "Auto cross-chapter consistency", moat: true, marks: "y  n  n  n  n  n  n  p  n  n  n  n  n  n  n  p" },
-  { id: "sensory_density", label: "Measured sensory density", moat: true, marks: "y  n  n  n  n  n  n  n  p  n  n  n  n  n  n  n" },
-  { id: "story_bible", label: "Story bible / codex", marks: "y  y  y  y  u  p  y  p  n  n  u  p  n  y  y  y" },
-  { id: "genre_promise", label: "Genre reader-promise guidance", marks: "y  n  p  n  n  y  p  p  n  p  u  n  n  y  p  p" },
-  { id: "starter_flow", label: "Guided starter flow", marks: "y  p  p  n  p  y  p  n  n  n  y  p  p  y  y  y" },
-  { id: "saga", label: "Multi-season / saga planning", moat: true, marks: "y  p  p  n  n  n  n  n  n  n  n  p  p  y  y  u" },
-  { id: "ai_inline", label: "Inline AI generation (one-click)", marks: "p  y  y  y  y  y  y  n  p  y  y  n  n  n  n  y" },
-  { id: "byo_key", label: "BYO API key / no lock-in", moat: true, marks: "y  y  n  n  u  n  n  n  n  y  n  n  n  n  n  n" },
-  { id: "privacy", label: "No server LLM cost / privacy", moat: true, marks: "y  p  n  n  p  n  n  n  p  n  n  y  p  y  p  n" },
-  { id: "epub", label: "EPUB export", marks: "y  n  n  n  y  n  y  n  n  n  u  y  y  n  n  y" },
-  { id: "kdp", label: "KDP publishing (spine/metadata)", marks: "p  n  n  n  y  n  n  n  n  n  p  p  y  n  n  p" },
-  { id: "bsr", label: "Market / BSR research", marks: "n  n  n  n  y  n  n  n  n  n  u  n  n  n  n  n" },
-  { id: "prose_qa", label: "Prose QA (readability/AI-slop)", marks: "y  n  p  n  n  n  n  p  y  n  p  p  n  n  p  p" },
+  //                                                            rush nc  su  nai boo aiw squ fic pwa raw sc  scr att plo dab lw  aut mar gra hem wan
+  { id: "thai_native", label: "Thai-native prompts", moat: true, marks: "y  p  n  n  n  y  n  n  n  p  n  n  u  u  u  u  n  n  n  n  n" },
+  { id: "thai_dialect", label: "Thai dialect voices (Isan/N/S)", moat: true, marks: "y  n  n  n  n  n  n  n  n  n  n  n  n  n  n  n  n  n  n  n  n" },
+  { id: "deterministic", label: "Deterministic analysis (no LLM)", moat: true, marks: "y  p  n  n  p  n  n  p  y  n  n  y  n  n  p  p  y  p  p  y  n" },
+  { id: "consistency_auto", label: "Auto cross-chapter consistency", moat: true, marks: "y  n  n  n  n  n  n  p  n  n  n  n  n  n  n  p  y  n  n  n  n" },
+  { id: "sensory_density", label: "Measured sensory density", moat: true, marks: "y  n  n  n  n  n  n  n  p  n  n  n  n  n  n  n  n  n  n  n  n" },
+  { id: "story_bible", label: "Story bible / codex", marks: "y  y  y  y  u  p  y  p  n  n  u  p  n  y  y  y  p  n  n  n  y" },
+  { id: "genre_promise", label: "Genre reader-promise guidance", marks: "y  n  p  n  n  y  p  p  n  p  u  n  n  y  p  p  p  p  n  n  p" },
+  { id: "starter_flow", label: "Guided starter flow", marks: "y  p  p  n  p  y  p  n  n  n  y  p  p  y  y  y  y  n  n  n  y" },
+  { id: "saga", label: "Multi-season / saga planning", moat: true, marks: "y  p  p  n  n  n  n  n  n  n  n  p  p  y  y  u  y  n  n  n  y" },
+  { id: "ai_inline", label: "Inline AI generation (one-click)", marks: "p  y  y  y  y  y  y  n  p  y  y  n  n  n  n  y  y  n  y  y  n" },
+  { id: "byo_key", label: "BYO API key / no lock-in", moat: true, marks: "y  y  n  n  u  n  n  n  n  y  n  n  n  n  n  n  n  n  n  n  n" },
+  { id: "privacy", label: "No server LLM cost / privacy", moat: true, marks: "y  p  n  n  p  n  n  n  p  n  n  y  p  y  p  n  n  p  n  p  p" },
+  { id: "epub", label: "EPUB export", marks: "y  n  n  n  y  n  y  n  n  n  u  y  y  n  n  y  y  n  n  n  n" },
+  { id: "kdp", label: "KDP publishing (spine/metadata)", marks: "p  n  n  n  y  n  n  n  n  n  p  p  y  n  n  p  p  n  n  n  n" },
+  { id: "bsr", label: "Market / BSR research", marks: "n  n  n  n  y  n  n  n  n  n  u  n  n  n  n  n  p  n  n  n  n" },
+  { id: "prose_qa", label: "Prose QA (readability/AI-slop)", marks: "y  n  p  n  n  n  n  p  y  n  p  p  n  n  p  p  y  y  y  y  n" },
   // ── soft dimensions, added to counter the Rush-favouring selection above ──
-  { id: "mature_ux", label: "Mature, polished web app", soft: true, marks: "p  y  y  y  p  p  y  y  y  y  y  y  y  y  p  p" },
-  { id: "community", label: "Active user community", soft: true, marks: "n  y  y  y  u  p  p  p  y  y  y  y  y  y  y  u" },
+  { id: "mature_ux", label: "Mature, polished web app", soft: true, marks: "p  y  y  y  p  p  y  y  y  y  y  y  y  y  p  p  p  p  y  y  p" },
+  { id: "community", label: "Active user community", soft: true, marks: "n  y  y  y  u  p  p  p  y  y  y  y  y  y  y  u  y  p  p  n  y" },
 ];
 
 const MARK: Record<string, Record<string, Mark>> = {};
