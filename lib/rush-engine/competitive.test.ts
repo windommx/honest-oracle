@@ -42,9 +42,15 @@ describe("soleProviders", () => {
     expect(ids).toContain("thai_dialect");
     expect(ids).toContain("consistency_auto");
     expect(ids).toContain("sensory_density");
-    expect(ids).toContain("saga");
     // thai_native is NOT sole — AI Novel Workspace is also Thai-native
     expect(ids).not.toContain("thai_native");
+    // Honest downgrades found when the field was widened to 15 rivals (2026-08):
+    // Plottr and Dabble ship full multi-book series bibles, so saga is no longer
+    // sole; Scrivener and Plottr are local-first with zero AI, so privacy isn't
+    // either. The moat that survived a 3x wider field is the Thai + measured-
+    // signal core, which is the honest version of the pitch.
+    expect(ids).not.toContain("saga");
+    expect(ids).not.toContain("privacy");
   });
 });
 

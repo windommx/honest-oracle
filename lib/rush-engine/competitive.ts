@@ -49,6 +49,15 @@ export const RIVALS: Rival[] = [
   // credit costs on top of the subscription; drift/inconsistency on long books
   // (hence consistency_auto = no); "#1 Bestseller" badges are niche-category flags.
   { id: "supercool", name: "SuperCool (Famous Labs)", kind: "AI publishing funnel", pricing: "sub + credits", asOf: "2026-07", source: "vendor marketing + user reviews" },
+  // Batch A (2026-08): the incumbent writing apps + planners. Every first-party page
+  // was proxy-blocked, so marks rest on multi-source snippets incl. official docs/blogs.
+  // Notable: Scrivener ships real deterministic text stats (word frequency, linguistic
+  // focus) with zero AI; Plottr and Dabble publicly REFUSE generative AI.
+  { id: "scrivener", name: "Scrivener", kind: "desktop writing studio", pricing: "$59.99 one-time", asOf: "2026-08", source: "official blog/forum + review snippets" },
+  { id: "atticus", name: "Atticus", kind: "formatting + KDP pipeline", pricing: "$147 one-time", asOf: "2026-08", source: "official updates + review snippets" },
+  { id: "plottr", name: "Plottr", kind: "visual plotting/series bible", pricing: "$60-129/yr or $150-649 lifetime", asOf: "2026-08", source: "official posts + review snippets" },
+  { id: "dabble", name: "Dabble", kind: "writing app (no AI)", pricing: "$9-29/mo or $699 lifetime", asOf: "2026-08", source: "official pages + review snippets" },
+  { id: "livingwriter", name: "LivingWriter", kind: "writing app + bundled AI", pricing: "$14.99/mo, $144/yr, $699 lifetime", asOf: "2026-08", source: "official guides/changelog + reviews" },
 ];
 
 const RID = RIVALS.map((r) => r.id);
@@ -63,26 +72,26 @@ export const INTENTIONAL_NONGOALS: Record<string, string> = {
 // moat = Rush's thesis; soft = qualitative dimension added to counter selection bias.
 interface Row extends Capability { marks: string }
 const ROWS: Row[] = [
-  //                                                            rush nc  su  nai boo aiw squ fic pwa raw sc
-  { id: "thai_native", label: "Thai-native prompts", moat: true, marks: "y  p  n  n  n  y  n  n  n  p  n" },
-  { id: "thai_dialect", label: "Thai dialect voices (Isan/N/S)", moat: true, marks: "y  n  n  n  n  n  n  n  n  n  n" },
-  { id: "deterministic", label: "Deterministic analysis (no LLM)", moat: true, marks: "y  p  n  n  p  n  n  p  y  n  n" },
-  { id: "consistency_auto", label: "Auto cross-chapter consistency", moat: true, marks: "y  n  n  n  n  n  n  p  n  n  n" },
-  { id: "sensory_density", label: "Measured sensory density", moat: true, marks: "y  n  n  n  n  n  n  n  p  n  n" },
-  { id: "story_bible", label: "Story bible / codex", marks: "y  y  y  y  u  p  y  p  n  n  u" },
-  { id: "genre_promise", label: "Genre reader-promise guidance", marks: "y  n  p  n  n  y  p  p  n  p  u" },
-  { id: "starter_flow", label: "Guided starter flow", marks: "y  p  p  n  p  y  p  n  n  n  y" },
-  { id: "saga", label: "Multi-season / saga planning", moat: true, marks: "y  p  p  n  n  n  n  n  n  n  n" },
-  { id: "ai_inline", label: "Inline AI generation (one-click)", marks: "p  y  y  y  y  y  y  n  p  y  y" },
-  { id: "byo_key", label: "BYO API key / no lock-in", moat: true, marks: "y  y  n  n  u  n  n  n  n  y  n" },
-  { id: "privacy", label: "No server LLM cost / privacy", moat: true, marks: "y  p  n  n  p  n  n  n  p  n  n" },
-  { id: "epub", label: "EPUB export", marks: "y  n  n  n  y  n  y  n  n  n  u" },
-  { id: "kdp", label: "KDP publishing (spine/metadata)", marks: "p  n  n  n  y  n  n  n  n  n  p" },
-  { id: "bsr", label: "Market / BSR research", marks: "n  n  n  n  y  n  n  n  n  n  u" },
-  { id: "prose_qa", label: "Prose QA (readability/AI-slop)", marks: "y  n  p  n  n  n  n  p  y  n  p" },
+  //                                                            rush nc  su  nai boo aiw squ fic pwa raw sc  scr att plo dab lw
+  { id: "thai_native", label: "Thai-native prompts", moat: true, marks: "y  p  n  n  n  y  n  n  n  p  n  n  u  u  u  u" },
+  { id: "thai_dialect", label: "Thai dialect voices (Isan/N/S)", moat: true, marks: "y  n  n  n  n  n  n  n  n  n  n  n  n  n  n  n" },
+  { id: "deterministic", label: "Deterministic analysis (no LLM)", moat: true, marks: "y  p  n  n  p  n  n  p  y  n  n  y  n  n  p  p" },
+  { id: "consistency_auto", label: "Auto cross-chapter consistency", moat: true, marks: "y  n  n  n  n  n  n  p  n  n  n  n  n  n  n  p" },
+  { id: "sensory_density", label: "Measured sensory density", moat: true, marks: "y  n  n  n  n  n  n  n  p  n  n  n  n  n  n  n" },
+  { id: "story_bible", label: "Story bible / codex", marks: "y  y  y  y  u  p  y  p  n  n  u  p  n  y  y  y" },
+  { id: "genre_promise", label: "Genre reader-promise guidance", marks: "y  n  p  n  n  y  p  p  n  p  u  n  n  y  p  p" },
+  { id: "starter_flow", label: "Guided starter flow", marks: "y  p  p  n  p  y  p  n  n  n  y  p  p  y  y  y" },
+  { id: "saga", label: "Multi-season / saga planning", moat: true, marks: "y  p  p  n  n  n  n  n  n  n  n  p  p  y  y  u" },
+  { id: "ai_inline", label: "Inline AI generation (one-click)", marks: "p  y  y  y  y  y  y  n  p  y  y  n  n  n  n  y" },
+  { id: "byo_key", label: "BYO API key / no lock-in", moat: true, marks: "y  y  n  n  u  n  n  n  n  y  n  n  n  n  n  n" },
+  { id: "privacy", label: "No server LLM cost / privacy", moat: true, marks: "y  p  n  n  p  n  n  n  p  n  n  y  p  y  p  n" },
+  { id: "epub", label: "EPUB export", marks: "y  n  n  n  y  n  y  n  n  n  u  y  y  n  n  y" },
+  { id: "kdp", label: "KDP publishing (spine/metadata)", marks: "p  n  n  n  y  n  n  n  n  n  p  p  y  n  n  p" },
+  { id: "bsr", label: "Market / BSR research", marks: "n  n  n  n  y  n  n  n  n  n  u  n  n  n  n  n" },
+  { id: "prose_qa", label: "Prose QA (readability/AI-slop)", marks: "y  n  p  n  n  n  n  p  y  n  p  p  n  n  p  p" },
   // ── soft dimensions, added to counter the Rush-favouring selection above ──
-  { id: "mature_ux", label: "Mature, polished web app", soft: true, marks: "p  y  y  y  p  p  y  y  y  y  y" },
-  { id: "community", label: "Active user community", soft: true, marks: "n  y  y  y  u  p  p  p  y  y  y" },
+  { id: "mature_ux", label: "Mature, polished web app", soft: true, marks: "p  y  y  y  p  p  y  y  y  y  y  y  y  y  p  p" },
+  { id: "community", label: "Active user community", soft: true, marks: "n  y  y  y  u  p  p  p  y  y  y  y  y  y  y  u" },
 ];
 
 const MARK: Record<string, Record<string, Mark>> = {};
