@@ -736,6 +736,24 @@ Work 2-3 short paragraphs at a time (micro-chunking) so nothing drifts to the "a
 [INSERT SOURCE TEXT HERE]`;
 }
 
+function moduleThaiSound(): string {
+  return `THAI SOUND PASS — tune the SOUND layer of Thai prose: the rhythm and euphony devices Thai has that English craft books never cover. Return the revised passage + a short device log.
+
+PROVENANCE, stated honestly: Thai scholarship codifies this layer DESCRIPTIVELY (Kamchai Thonglor's classic grammar separates คำซ้อนเพื่อเสียง "euphonic doubling" from meaning-doubling; บรรทัดฐานภาษาไทย vol.4 codifies the register system; Chula stylistics theses analyze the poetic prose of Angkhan Kalayanapong) — but no prescriptive how-to manual exists. This module is a FIRST prescriptive codification built on those named sources; the craft rules are ours and are marked as such.
+
+Devices to apply (sparingly — sound serves sense):
+1. คำซ้อนเพื่อเสียง as a RHYTHM tool — euphonic pairs (ท้อแท้ อ้างว้าง แร้นแค้น เปล่าเปลี่ยว) slow and soften a line; use at emotional rests, cut them where pace must run. One per sentence maximum.
+2. สัมผัสใน (internal rhyme/alliteration) in prose — reserve for PEAK moments (a death, a vow, an ending line); more than ~one audible chime per paragraph turns prose into verse and breaks transportation.
+3. คำซ้ำ (reduplication) for texture and aspect (เดินช้า ๆ, ใจเต้นตึก ๆ) — sound-mimetic doubles ground the body in the scene; stacked doubles read childish.
+4. REGISTER AS INSTRUMENT (base: the official 5-level system, พิธีการ→กันเอง): narration usually holds one register; dialogue moves per character and per pressure — a character shifting UP in formality under emotion is a tell (same device as HOOK_CRAFT's formality tell, now at the language-level Thai actually marks).
+5. THE READ-ALOUD TEST (Le Guin's doctrine crosses languages: "The test of a sentence is, Does it sound right?"): read the passage aloud; wherever breath breaks mid-clause or two stressed syllables collide, rewrite that seam.
+
+Output: revised passage · device log (which device, where, why) · one line naming any place you REMOVED sound-play because it out-sang the scene.
+
+═══ THAI PASSAGE ═══
+[วางร้อยแก้วภาษาไทยที่นี่]`;
+}
+
 function moduleSceneArt(config: BookConfig): string {
   return `Turn a scene into a ready-to-paste IMAGE PROMPT (for Midjourney / SD / DALL·E — you run the image tool). Draw only from what the scene states; do not invent characters or objects that aren't there.
 
@@ -1169,6 +1187,7 @@ export const MODULE_CATALOG: ModuleDef[] = [
   { id: "ANTI_SAFE", group: "craft", name: "Anti-Safe Pass", description: "Break safe/tidy AI defaults; raise real stakes; ban Thai AI-tell clichés.", usage: "Send a draft to make it riskier.", build: moduleAntiSafe },
   { id: "SENSORY", group: "craft", name: "Sensory Audit", description: "Per-scene 5-sense check (≥3) + targeted concrete additions.", usage: "Send a draft to ground it in the senses.", build: moduleSensoryAudit },
   { id: "IMMERSION", group: "craft", name: "Immersion / Deep-POV Pass", description: "Deep-POV rewrite: ground fast, cut filter verbs, add interiority, open one loop, end on momentum.", usage: "Send a scene to pull the reader inside it.", build: moduleImmersion },
+  { id: "THAI_SOUND", group: "craft", name: "Thai Sound Pass", description: "The sound layer of Thai prose: euphonic คำซ้อน as rhythm, สัมผัสใน at peaks, reduplication, register as instrument, read-aloud test.", usage: "Send a Thai passage to tune its rhythm and euphony.", build: moduleThaiSound },
   { id: "HOOK_CRAFT", group: "craft", name: "Ending Hook & Restraint", description: "Emotional-hook typology (5 types + hybrid) and restraint craft — the almost-moment, what-they-don't-do, body-betrays-last — for chapter endings.", usage: "Send a chapter ending to sharpen its hook (or write one).", build: moduleHookCraft },
   { id: "PSYCH_ARC", group: "craft", name: "Attachment & Repair Arc", description: "Attachment styles as behavior predictors, the earned-security arc (slow, relapsing), and repair scene types (corrective experience / co-regulation / mentalization).", usage: "Run when designing or auditing a slow-burn relationship arc.", build: modulePsychArc },
   { id: "QUIET_SCENE", group: "craft", name: "Quiet Scene & Prosody", description: "Scenes that speak without dialogue: prosody devices (baseline shift, delayed crack), staged co-regulation, distance/timing/objects as channels, quiet repair.", usage: "Send a low-dialogue emotional scene to write or sharpen.", build: moduleQuietScene },

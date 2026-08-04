@@ -106,7 +106,7 @@ plus positioning research):
 | `standards.ts` | Quality standards, writing rules, citation guide, checklists |
 | `context.ts` · `architecture.ts` | Per-type global context + architecture (acts/tension/beats, chapter plans) |
 | `core-prompts.ts` · `th.ts` | Master / chapter / overview / analysis / front·back-matter prompts (EN + native Thai) |
-| `modules.ts` | 59 optional module builders across 10 groups (`MODULE_CATALOG` / `MODULE_GROUPS` / `defaultGroupsFor`) |
+| `modules.ts` | 60 optional module builders across 10 groups (`MODULE_CATALOG` / `MODULE_GROUPS` / `defaultGroupsFor`) |
 | `thai-structures.ts` | Authentic Thai/Asian narrative structures (kishōtenketsu, จักร ๆ วงศ์ ๆ, ชาดก, …) |
 | `starter.ts` | Guided starter sequence/groups |
 | `engine.ts` | Public **barrel** — re-exports everything + `generateAllPrompts` orchestrator |
@@ -160,7 +160,8 @@ that module instead of adding a sibling.
 | `HOOK_CRAFT` | How does a chapter END? (hook typology + restraint: almost-moment, what-they-don't-do, body-betrays-last, micro-conflict) |
 | `ANTI_SAFE` | How do we break tidy AI defaults? |
 | `SENSORY` | Are the five senses actually on the page? |
-| `IMMERSION` | How close is the reader to the POV? (deep POV) |
+| `IMMERSION` | How close is the reader to the POV? (deep POV, Gardner psychic-distance ladder) |
+| `THAI_SOUND` | How does the Thai *sound* layer work? (คำซ้อนเพื่อเสียง, สัมผัสใน, คำซ้ำ, register) |
 
 Topics that intentionally do NOT get their own module (they live inside the
 rows above): body language & restraint → `HOOK_CRAFT`/`QUIET_SCENE`; prosody &
