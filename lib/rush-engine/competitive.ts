@@ -86,15 +86,47 @@ const ROWS: Row[] = [
   { id: "thai_native", label: "Thai-native prompts", moat: true, marks: "y  p  n  n  n  y  n  n  n  p  n  n  u  u  u  u  n  n  n  n  n" },
   { id: "thai_dialect", label: "Thai dialect voices (Isan/N/S)", moat: true, marks: "y  n  n  n  n  n  n  n  n  n  n  n  n  n  n  n  n  n  n  n  n" },
   { id: "deterministic", label: "Deterministic analysis (no LLM)", moat: true, marks: "y  p  n  n  p  n  n  p  y  n  n  y  n  n  p  p  y  p  p  y  n" },
+  // AutoCrit keeps its "yes" — it ships a Series Analyzer aimed squarely at this — but
+  // the 2026-08 deep dive found the two tools are architecturally opposite, and the
+  // matrix counts features, not architecture, so the difference belongs here in prose:
+  //   AutoCrit EXTRACTS. No story bible exists for its analyzer to obey (its one
+  //   user-declared list, Manage Character Names, feeds a sentence-variety report, not
+  //   the consistency check). Output is LLM prose commentary per chapter, chunked at
+  //   200-10,000 words, generative in the consistency path — so non-deterministic by
+  //   construction; it ships version History for critiques, which is only needed when
+  //   reruns differ. A working book editor's real-manuscript test (Ground Crew, 2026)
+  //   reports it inventing scenes and missing a character who cannot speak. Timeline
+  //   output is a summary, not an adjudication of contradictions.
+  //   Rush DECLARES. codexAudit takes an author-written canon and reports countable
+  //   facts against it: present / spelling variants (Thai mark-aware) / missing /
+  //   status conflicts / forbidden-word hits / threads with no trace, with matched-out-
+  //   of-total counts. Pure function: same input, byte-identical output.
+  //   Neither is "better" by feature count. They answer different questions.
   { id: "consistency_auto", label: "Auto cross-chapter consistency", moat: true, marks: "y  n  n  n  n  n  n  p  n  n  n  n  n  n  n  p  y  n  n  n  n" },
   { id: "sensory_density", label: "Measured sensory density", moat: true, marks: "y  n  n  n  n  n  n  n  p  n  n  n  n  n  n  n  n  n  n  n  n" },
   { id: "story_bible", label: "Story bible / codex", marks: "y  y  y  y  u  p  y  p  n  n  u  p  n  y  y  y  p  n  n  n  y" },
   { id: "genre_promise", label: "Genre reader-promise guidance", marks: "y  n  p  n  n  y  p  p  n  p  u  n  n  y  p  p  p  p  n  n  p" },
   { id: "starter_flow", label: "Guided starter flow", marks: "y  p  p  n  p  y  p  n  n  n  y  p  p  y  y  y  y  n  n  n  y" },
+  // Plottr and Dabble genuinely earn this: one shared entity record per project file,
+  // so editing a character in book 3 updates book 1 (Plottr's known limitation is the
+  // flip side — you CANNOT vary an attribute per book). What the 2026-08 deep dive
+  // established as a clean negative for both: neither validates draft prose against
+  // the bible. Plottr structurally cannot — it holds no manuscript. Dabble holds the
+  // prose and the notes in one project and still ships no checker; auto-linking names
+  // in prose to notes is an open feature request from 2018. Both bibles are references
+  // a human reads. World Anvil is the same shape at larger scale.
   { id: "saga", label: "Multi-season / saga planning", moat: true, marks: "y  p  p  n  n  n  n  n  n  n  n  p  p  y  y  u  y  n  n  n  y" },
   { id: "ai_inline", label: "Inline AI generation (one-click)", marks: "p  y  y  y  y  y  y  n  p  y  y  n  n  n  n  y  y  n  y  y  n" },
   { id: "byo_key", label: "BYO API key / no lock-in", moat: true, marks: "y  y  n  n  u  n  n  n  n  y  n  n  n  n  n  n  n  n  n  n  n" },
-  { id: "privacy", label: "No server LLM cost / privacy", moat: true, marks: "y  p  n  n  p  n  n  n  p  n  n  y  p  y  p  n  n  p  n  p  p" },
+  // 2026-08 self-correction, found by auditing our own Studio route: the analyzer and
+  // prompt generation are 100% local (browser worker over IndexedDB), but Rush Studio
+  // RELAYS the manuscript through our server to the provider using the user's own key.
+  // Scrivener's claim is strictly stronger — "Scrivener does not do anything with your
+  // text in the background that would cause it to be sent anywhere from your machine to
+  // any other server" — so Rush drops to partial. Plottr also drops: Pro is
+  // cloud-authoritative (you cannot even open a file offline) and its AI features send
+  // story data to Plottr's servers and OpenAI, so only the classic offline tier is local.
+  { id: "privacy", label: "No server LLM cost / privacy", moat: true, marks: "p  p  n  n  p  n  n  n  p  n  n  y  p  p  p  n  n  p  n  p  p" },
   { id: "epub", label: "EPUB export", marks: "y  n  n  n  y  n  y  n  n  n  u  y  y  n  n  y  y  n  n  n  n" },
   { id: "kdp", label: "KDP publishing (spine/metadata)", marks: "p  n  n  n  y  n  n  n  n  n  p  p  y  n  n  p  p  n  n  n  n" },
   { id: "bsr", label: "Market / BSR research", marks: "n  n  n  n  y  n  n  n  n  n  u  n  n  n  n  n  p  n  n  n  n" },
