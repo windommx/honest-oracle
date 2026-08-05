@@ -53,8 +53,25 @@ export interface Rung {
 
 /** The ladder. ORDER IS SEMANTIC: earlier rungs win the primary slot. Ordered by how
  *  early the symptom must be fixed — a book with no structure cannot be line-edited into
- *  one, so foundation rungs sit above polish rungs. */
+ *  one, so foundation rungs sit above polish rungs.
+ *
+ *  IDS ARE STABLE AND DO NOT TRACK POSITION. A rung added later keeps its next-free id
+ *  and is inserted wherever it belongs (R21 sits first, below). Renumbering would be
+ *  tidier to read and would silently invalidate every id anyone has quoted in a bug
+ *  report or a note to themselves. Position is the semantics; the id is the handle. */
 export const SYMPTOM_LADDER: Rung[] = [
+  {
+    id: "R21",
+    th: "ตัน / คิดไม่ออก / นั่งมองหน้าจอเปล่า / ไอเดียซ้ำเดิม",
+    en: "Blocked — out of ideas, or every idea is the same idea",
+    keywords: ["ตัน", "คิดไม่ออก", "ไม่มีไอเดีย", "ไอเดียซ้ำ", "นึกไม่ออก", "เขียนไม่ออก", "หมดมุก", "blocked", "writer's block", "writers block", "stuck", "out of ideas", "no ideas"],
+    primary: "BRAINSTORM",
+    also: ["CONFLICT_MAP", "GENRE_CORE", "STRUCTURE"],
+    why:
+      "Sits above R1 because being blocked is upstream of being unoutlined — you cannot plan " +
+      "a book you cannot think about. Verbalized sampling spreads the options deliberately; " +
+      "the repetitive first idea is usually the mode of the distribution, not the best one.",
+  },
   {
     id: "R1",
     th: "ยังไม่มีโครง / ไม่รู้จะเริ่มยังไง / เขียนไปเรื่อย ๆ แล้วหลง",
@@ -72,6 +89,17 @@ export const SYMPTOM_LADDER: Rung[] = [
     primary: "WORLD_CODEX",
     also: ["NIS_PLOT", "SAGA_CONTINUITY"],
     why: "A contradiction is a canon problem, not a prose problem. Declare the canon first; the codex audit then counts the conflicts instead of guessing at them.",
+  },
+  {
+    id: "R22",
+    th: "เขียนมาถึงบทที่ 30 แล้วจำไม่ได้ว่าเกิดอะไรมาบ้าง",
+    en: "Deep into the draft and losing track of what already happened",
+    keywords: ["จำไม่ได้", "ลืมไปแล้วว่า", "เรื่องเก่า", "ย้อนไปอ่าน", "สรุปเรื่อง", "บทก่อนหน้า", "recap", "lost track", "what happened", "too long to remember"],
+    primary: "RECAP",
+    also: ["WORLD_CODEX", "SERIES_BIBLE"],
+    why:
+      "A carry-forward summary is the fix for a context window — the writer's or the model's. " +
+      "Distinct from R2: nothing contradicts yet, the writer simply cannot hold it all.",
   },
   {
     id: "R3",
@@ -147,6 +175,21 @@ export const SYMPTOM_LADDER: Rung[] = [
     primary: "NIS_FORESHADOW",
     also: ["WORLD_CODEX", "NIS_PLOT"],
     why: "Rush already tracks threads that are introduced and then never traced again — this rung points at that existing audit.",
+  },
+  {
+    id: "R23",
+    th: "แก่นเรื่องหลุด / เขียนไปเรื่อย ๆ จนลืมว่าจะพูดเรื่องอะไร / motif หายกลางเล่ม",
+    en: "The theme drifts — motifs appear early then vanish",
+    // "สาร" (message) was tried and removed: it is a substring of สารคดี (nonfiction),
+    // สารบัญ, สารพัด. Short Thai fragments buy robustness against particle insertion but
+    // cost precision — a fragment that lives inside common unrelated words must go.
+    keywords: ["แก่นเรื่อง", "แก่นหลุด", "ธีม", "motif", "theme", "สัญลักษณ์", "จะพูดเรื่องอะไร", "หายกลางเล่ม", "symbol"],
+    primary: "NIS_THEME",
+    also: ["NIS_FORESHADOW", "WORLD_CODEX"],
+    why:
+      "Rush counts theme-term occurrences per chapter, so 'the motif disappears after chapter 9' " +
+      "is a distribution you can look at — not a feeling. The judgment of whether it MATTERS " +
+      "stays with the writer; the engine only shows where the term went quiet.",
   },
   {
     id: "R11",
@@ -233,6 +276,42 @@ export const SYMPTOM_LADDER: Rung[] = [
     primary: "FACT_CHECK",
     also: ["EVIDENCE", "ARG_MAP"],
     why: "Claim-by-claim sourcing, plus the replication check for findings that circulate after failing to replicate.",
+  },
+  {
+    id: "R24",
+    th: "เขียนหนังสือสอน/how-to แต่คนอ่านแล้วทำตามไม่ได้",
+    en: "Instructional book that readers cannot actually follow",
+    keywords: ["สอน", "how-to", "howto", "ทำตามไม่ได้", "ไม่เข้าใจ", "คู่มือ", "อธิบายไม่ชัด", "แบบฝึกหัด", "teach", "tutorial", "instructional", "cannot follow"],
+    primary: "PEDAGOGY",
+    also: ["CASE_STUDY", "READABILITY", "ARG_MAP"],
+    why:
+      "Instructional failure is structural: no stated objective, no worked example, no retrieval " +
+      "practice. Those are present-or-absent facts about the chapter, checkable one by one.",
+  },
+  {
+    id: "R25",
+    th: "เขียนเสร็จแล้ว กำลังจะส่งพิมพ์ — ต้องตรวจอะไรบ้างก่อน",
+    en: "Manuscript finished — what must be checked before publishing",
+    // "เขียนเสร็จแล้ว" was tried and removed: it is equally true of R20 (finished, now
+    // sell it) and this rung sits higher, so it stole every marketing route. The signal
+    // that actually separates them is the CHECKING intent, not the finishing.
+    keywords: ["ก่อนส่งพิมพ์", "จะพิมพ์", "ตรวจก่อน", "เช็คก่อน", "ตรวจครั้งสุดท้าย", "ตรวจอะไรบ้าง", "pre-publish", "final check", "checklist", "before publishing", "ready to publish"],
+    primary: "QUALITY_GATE",
+    also: ["NIS_PLOT", "WORLD_CODEX", "ANTI_SLOP", "CUT_PASS"],
+    why:
+      "A pass/fail gate over checks that are each countable. It reports which checks failed and " +
+      "why — never a readiness score, because 'is this book good enough' is not a number.",
+  },
+  {
+    id: "R26",
+    th: "จะส่งสำนักพิมพ์ / หาบรรณาธิการ / เขียนจดหมายเสนอต้นฉบับ",
+    en: "Submitting to a publisher or agent",
+    keywords: ["สำนักพิมพ์", "บรรณาธิการ", "เสนอต้นฉบับ", "จดหมายเสนอ", "เรื่องย่อส่งสนพ", "query letter", "agent", "publisher", "synopsis", "submission"],
+    primary: "SUBMISSION",
+    also: ["BLURB", "TITLE"],
+    why:
+      "A query pack is a different artifact from retail copy: it addresses one professional reader, " +
+      "not a browsing shopper. R20 covers the shop listing; this covers the pitch.",
   },
   {
     id: "R20",

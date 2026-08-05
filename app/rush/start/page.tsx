@@ -56,7 +56,10 @@ export default function RushStart() {
       <div className="max-w-3xl mx-auto px-5 py-12">
         <div className="flex items-center justify-between mb-2">
           <p className="text-xs tracking-[0.2em] uppercase text-[#c9a84c] font-semibold">Rush Studio · สร้าง Prompt Pack</p>
-          <Link href="/rush/explore" className="text-xs text-gray-500 hover:text-gray-300">← ดู 8 ประเภท</Link>
+          <div className="flex items-center gap-3">
+            <Link href="/rush/fix" className="text-xs text-gray-500 hover:text-gray-300">ติดอยู่? หาจากอาการ</Link>
+            <Link href="/rush/explore" className="text-xs text-gray-500 hover:text-gray-300">← ดู 8 ประเภท</Link>
+          </div>
         </div>
 
         {/* stepper */}

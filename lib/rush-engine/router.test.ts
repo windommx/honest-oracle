@@ -10,6 +10,16 @@ describe("ladder integrity", () => {
     for (const id of routableModuleIds()) expect(known.has(id)).toBe(true);
   });
 
+  it("ids are stable handles, NOT positions — a later rung may sit early", () => {
+    // Renumbering on insert would invalidate every id anyone has quoted. Position carries
+    // the semantics (fix-this-first order); the id is only a handle. R21 (writer's block)
+    // was added after R20 and belongs above R1, so it sits first while keeping its id.
+    expect(SYMPTOM_LADDER[0].id).toBe("R21");
+    const nums = SYMPTOM_LADDER.map((r) => Number(r.id.slice(1)));
+    expect(nums).not.toEqual([...nums].sort((a, b) => a - b)); // deliberately unsorted
+    expect(Math.max(...nums)).toBe(SYMPTOM_LADDER.length); // no gaps: ids 1..n all present
+  });
+
   it("rung ids are unique and every rung carries keywords and a reason", () => {
     const ids = SYMPTOM_LADDER.map((r) => r.id);
     expect(new Set(ids).size).toBe(ids.length);
@@ -80,6 +90,20 @@ describe("symptom → module", () => {
     });
   }
 
+  const addedLater: [string, string][] = [
+    ["ตันมาก คิดไม่ออกเลย นั่งมองหน้าจอ", "BRAINSTORM"],
+    ["เขียนมาถึงบทที่ 30 แล้วจำไม่ได้ว่าเกิดอะไรมาบ้าง", "RECAP"],
+    ["แก่นเรื่องหลุด motif หายไปกลางเล่ม", "NIS_THEME"],
+    ["เขียนหนังสือสอน แต่คนอ่านแล้วทำตามไม่ได้", "PEDAGOGY"],
+    ["เขียนเสร็จแล้ว กำลังจะส่งพิมพ์ ต้องตรวจอะไรบ้าง", "QUALITY_GATE"],
+    ["จะส่งสำนักพิมพ์ ต้องเขียนจดหมายเสนอต้นฉบับ", "SUBMISSION"],
+  ];
+  for (const [symptom, expected] of addedLater) {
+    it(`"${symptom.slice(0, 34)}…" → ${expected}`, () => {
+      expect(route(symptom).primary?.rung.primary).toBe(expected);
+    });
+  }
+
   it("routes English symptoms too", () => {
     expect(route("all my characters sound alike").primary?.rung.primary).toBe("VOICE_SHEET");
     expect(route("the middle drags badly").primary?.rung.primary).toBe("NIS_PACING");
@@ -112,6 +136,22 @@ describe("competing rungs are disclosed, never swallowed", () => {
     expect(secondaryPrimaries).toContain("ANTI_SLOP"); // R13 also matched
     // and all three reach the caller
     expect(r.modules).toEqual(expect.arrayContaining(["VOICE_SHEET", "SCENE", "ANTI_SLOP"]));
+  });
+
+  it("a genuinely ambiguous sentence resolves by position and discloses the loser", () => {
+    // "เขียนไปเรื่อย" is a real no-outline signal (R1) and this sentence also names a
+    // theme problem (R23). Position decides — structure is fixed before theme — but the
+    // competing read is surfaced, so the writer can overrule the ladder.
+    const r = route("เขียนไปเรื่อยจนลืมว่าจะพูดเรื่องอะไร แก่นเรื่องหลุด");
+    expect(r.primary!.rung.primary).toBe("STRUCTURE");
+    expect(r.secondary.map((s) => s.rung.primary)).toContain("NIS_THEME");
+    expect(r.modules).toContain("NIS_THEME");
+  });
+
+  it("short Thai fragments do not fire inside unrelated words", () => {
+    // regressions that shipped once: "สาร" inside สารคดี, "เขียนเสร็จแล้ว" stealing R20
+    expect(route("สารคดี กลัวอ้างอิงไม่แน่น").primary?.rung.primary).toBe("FACT_CHECK");
+    expect(route("เขียนเสร็จแล้วแต่ขายไม่ออก ชื่อเรื่องแย่").primary?.rung.primary).toBe("BLURB");
   });
 
   it("secondary rungs stay in ladder order", () => {

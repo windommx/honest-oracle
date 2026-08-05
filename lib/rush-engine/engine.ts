@@ -30,9 +30,10 @@ export * from "./openers";
 export * from "./restatement";
 export * from "./excess";
 export * from "./epistemics";
+export * from "./router";
 export { estimateTokens } from "./text-util";
 export * from "./config-diff";
-export { TH_GROUP_LABEL } from "./th";
+export { TH_GROUP_LABEL, TH_META } from "./th";
 
 import { buildArchitecture } from "./architecture";
 import {

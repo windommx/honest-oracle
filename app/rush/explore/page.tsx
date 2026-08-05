@@ -52,6 +52,9 @@ export default function RushExplore() {
           <Link href="/rush/start" className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-[#c9a84c] text-black font-semibold hover:bg-[#e6c86a] transition">
             เริ่มสร้าง Prompt Pack <ArrowRight className="w-4 h-4" />
           </Link>
+          <Link href="/rush/fix" className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg border border-white/15 text-gray-200 hover:bg-white/5 transition">
+            เขียนอยู่แล้วแต่ติด — หาโมดูลจากอาการ
+          </Link>
           <a href="#types" className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg border border-white/15 text-gray-200 hover:bg-white/5 transition">
             ดู 8 ประเภท
           </a>
