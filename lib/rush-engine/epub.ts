@@ -104,12 +104,36 @@ export interface EpubInput {
   author?: string;
   language?: string;
   chapters: { title: string; text: string }[];
+  /** Last-modified stamp, XML Schema dateTime in UTC with a trailing Z
+   *  (e.g. "2026-08-05T09:30:00Z"). EPUB 3 requires exactly one of these in the
+   *  package metadata, and it is what a reading system uses to build the Release
+   *  Identifier. Anything not matching the required shape is ignored in favour of
+   *  EPUB_FALLBACK_MODIFIED — a malformed date is an EPUBCheck error too. */
+  modified?: string;
+}
+
+/** The stamp used when the caller supplies none.
+ *
+ *  buildEpub is pure: it has no clock, and a byte-determinism test pins that (same
+ *  book in → identical bytes out). So the default cannot be "now". A fixed epoch is
+ *  the standard resolution for reproducible builds — the same trade the SOURCE_DATE_EPOCH
+ *  convention makes — and it is honest as long as it is not mistaken for a real edit time.
+ *  Pass `modified` to stamp the actual one. */
+export const EPUB_FALLBACK_MODIFIED = "1970-01-01T00:00:00Z";
+
+/** XML Schema dateTime restricted to UTC, which is what EPUB 3 mandates. */
+const MODIFIED_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/;
+
+/** Normalize a caller-supplied stamp, falling back rather than emitting an invalid one. */
+export function epubModified(value?: string): string {
+  return value && MODIFIED_RE.test(value) ? value : EPUB_FALLBACK_MODIFIED;
 }
 
 /** Build a spec-valid EPUB3 as raw bytes. Pure & deterministic. */
 export function buildEpub(input: EpubInput): Uint8Array {
   const lang = input.language || "en";
   const author = input.author || "Unknown";
+  const modified = epubModified(input.modified);
   const uid = stableId(input.title + "|" + input.chapters.map((c) => c.title).join("|"));
   const chs = input.chapters.length ? input.chapters : [{ title: input.title, text: "" }];
 
@@ -125,7 +149,7 @@ export function buildEpub(input: EpubInput): Uint8Array {
   const navLis = files.map((f) => `<li><a href="${f.href}">${esc(f.title)}</a></li>`).join("");
 
   const opf = `<?xml version="1.0" encoding="UTF-8"?>
-<package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="bookid"><metadata xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:identifier id="bookid">urn:uuid:${uid}</dc:identifier><dc:title>${esc(input.title)}</dc:title><dc:creator>${esc(author)}</dc:creator><dc:language>${esc(lang)}</dc:language></metadata><manifest><item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/><item id="css" href="styles.css" media-type="text/css"/>${manifest}</manifest><spine>${spine}</spine></package>`;
+<package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="bookid"><metadata xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:identifier id="bookid">urn:uuid:${uid}</dc:identifier><dc:title>${esc(input.title)}</dc:title><dc:creator>${esc(author)}</dc:creator><dc:language>${esc(lang)}</dc:language><meta property="dcterms:modified">${modified}</meta></metadata><manifest><item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/><item id="css" href="styles.css" media-type="text/css"/>${manifest}</manifest><spine>${spine}</spine></package>`;
 
   const nav = `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE html>

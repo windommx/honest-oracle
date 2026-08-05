@@ -119,6 +119,9 @@ export default function DashboardPage() {
       title: m.title,
       language: m.lang,
       chapters: chs.map((c) => ({ title: c.title, text: c.body })),
+      // The engine has no clock by design; the export handler does. Stamping here keeps
+      // buildEpub pure while still shipping a real dcterms:modified (EPUB 3 requires one).
+      modified: new Date().toISOString().replace(/\.\d{3}Z$/, "Z"),
     });
     const url = URL.createObjectURL(new Blob([bytes.buffer as ArrayBuffer], { type: "application/epub+zip" }));
     const link = document.createElement("a");

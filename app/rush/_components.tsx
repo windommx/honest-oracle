@@ -94,6 +94,9 @@ function EpubButton({ text, lang }: { text: string; lang: "th" | "en" }) {
       title: chs[0].title === "Full text" ? "Manuscript" : chs[0].title,
       language: lang === "th" ? "th" : "en",
       chapters: chs.map((c) => ({ title: c.title, text: c.body })),
+      // The engine has no clock by design; the export handler does. Stamping here keeps
+      // buildEpub pure while still shipping a real dcterms:modified (EPUB 3 requires one).
+      modified: new Date().toISOString().replace(/\.\d{3}Z$/, "Z"),
     });
     const url = URL.createObjectURL(new Blob([bytes.buffer as ArrayBuffer], { type: "application/epub+zip" }));
     const link = document.createElement("a");
