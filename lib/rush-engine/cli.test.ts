@@ -191,3 +191,36 @@ describe("rush route", () => {
     expect(runCli(["help"]).stdout).toContain("rush route");
   });
 });
+
+describe("rush receipt", () => {
+  const th = "บทที่ 1\n\nเขายืนอยู่ตรงนั้น ฝนตกหนัก เขารู้สึกเศร้า\n";
+  const read = () => th;
+  it("prints tiers, instruments and the reproduce command", () => {
+    const r = runCli(["receipt", "d.md"], { read });
+    expect(r.code).toBe(0);
+    expect(r.stdout).toContain("ประจักษ์");
+    expect(r.stdout).toContain("Thai segmenter");
+    expect(r.stdout).toContain("npm run rush -- receipt d.md");
+  });
+  it("carries no date — the engine has no clock", () => {
+    const r = runCli(["receipt", "d.md"], { read });
+    expect(r.stdout).not.toMatch(/20\d{2}-\d{2}-\d{2}/);
+    expect(r.stdout).toContain("ไม่มีวันที่");
+  });
+  it("--verify re-derives and passes on a pure engine", () => {
+    const r = runCli(["receipt", "d.md", "--verify"], { read });
+    expect(r.code).toBe(0);
+    expect(r.stdout).toContain("PASS");
+    expect(r.stdout).toContain("drifted      0");
+  });
+  it("names the tokenizer that actually ran, per language", () => {
+    // Regression: the English path printed "Thai segmenter" because the registry entry
+    // names a family. For a receipt, an imprecise instrument is the defect itself.
+    const en = runCli(["receipt", "d.md"], { read: () => "He walked slowly. She felt sad.\n" });
+    expect(en.stdout).toContain("whitespace tokenizer");
+    expect(en.stdout).not.toContain("Thai segmenter");
+  });
+  it("is listed in help", () => {
+    expect(runCli(["help"]).stdout).toContain("rush receipt");
+  });
+});

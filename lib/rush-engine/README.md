@@ -40,6 +40,8 @@ unit-tests without a shell. The thin bin is `scripts/rush.ts` (`npm run rush -- 
 | `saga` | Series continuity across many book codices (`--books`, ordered): introduced / carried / dropped per book + the series backbone. |
 | `scene` | Per-scene readout (Thai): words, clauses, rhythm cv, dialogue ratio, telling density, sensory/1k, AI-tells — real signals, never a 0–100 vibe score. |
 | `narrative` | Presence / pacing / motif tracking (Thai). |
+| `route` | Describe the problem in your own words → the module to open, with the keywords that triggered it. |
+| `receipt` | Measurement receipt: every number + its epistemic tier + the instrument + the command to remake it. `--verify` re-derives and exits 1 on drift. |
 
 ```bash
 npm run rush -- prompts --type novel --genre thriller --lang th
@@ -119,6 +121,7 @@ plus positioning research):
 | `relationships.ts` · `narrative.ts` | Co-occurrence graph · character presence / pacing / motifs |
 | `rename.ts` · `register.ts` · `translation.ts` | Cross-chapter rename · Thai register (RI spellings) · Thai→EN term check |
 | `epistemics.ts` | The signal registry + refused constructs — the theory of knowledge, in code |
+| `provenance.ts` | The **receipt**: every reported number with its epistemic tier, the instrument that produced it, and the command that remakes it. Carries no timestamp — same input yields a byte-identical receipt forever, and that equality is the proof. `verifyReceipt` re-derives and diffs (`rush receipt <f> --verify`) |
 | `router.ts` | อาการ → โมดูล: an ordered keyword ladder (26 rungs / 372 keywords, R0 fallback; UI at `/rush/fix`) that turns a writer's own description of the problem into modules to open. Prints the matched keywords, lists competing rungs, returns nothing rather than force-fitting (`rush route "<อาการ>"`) |
 
 **Continuity** — `codex.ts` · `saga.ts` · `outline.ts`

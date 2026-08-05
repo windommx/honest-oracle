@@ -22,6 +22,7 @@ import { analyzeOpeners, formatOpeners } from "./openers";
 import { findRestatements, findNearRestatements } from "./restatement";
 import { excessVocabulary, formatExcess } from "./excess";
 import { route, formatRoute } from "./router";
+import { buildReceipt, verifyReceipt, formatReceipt, type Claim } from "./provenance";
 
 export interface CliResult { stdout: string; stderr: string; code: number }
 
@@ -56,6 +57,7 @@ USAGE
   rush scene    <file.md>   (Thai: real per-scene signals — no fake 0–100 scores)
   rush narrative <file.md> [--names "A,B"] [--motifs "x,y"]  (Thai: presence/pacing/motifs)
   rush route    "<อาการที่เจอ>"   (symptom → which of the 61 modules to open)
+  rush receipt  <file.md> [--lang th|en] [--verify]  (measurement receipt + re-derive check)
   rush help
 
 COMMANDS
@@ -83,6 +85,11 @@ COMMANDS
             "tell" judgement (and the corpora) are yours.
   scene     Per-scene readout (Thai): words, clauses, rhythm cv, dialogue ratio, telling
             density, sensory/1k, AI-tells — real signals, never a fake 0–100 vibe score.
+  receipt   Print a measurement receipt: every number with its epistemic tier (direct
+            count / derived / heuristic), the instrument that produced it, and the exact
+            command to remake it. Carries NO timestamp — the engine has no clock, so the
+            same file yields a byte-identical receipt forever, and that equality is the
+            proof. --verify re-derives and diffs; exit 1 on drift.
   route     Describe the problem in your own words ("จบบทแล้ววางได้", "ตัวละครพูดเหมือนกันหมด")
             and get the module to open. A fixed keyword ladder, not a model: it prints the
             words that triggered the route so you can check it, lists every competing rung
@@ -413,6 +420,64 @@ function cmdRoute(symptom: string): CliResult {
   return { stdout: formatRoute(symptom) + "\n", stderr: "", code: r.primary ? 0 : 1 };
 }
 
+/** Emit a measurement receipt: every number, its epistemic tier, the instrument that made
+ *  it, and the command that remakes it. --verify re-runs against a receipt's own fingerprint
+ *  and claim values, which is the half that turns the document into a check. */
+function cmdReceipt(file: string | undefined, flags: Record<string, string | true>, read?: (p: string) => string): CliResult {
+  const r = readFile(file, read);
+  if ("code" in r) return r;
+  const th = flags.lang === "th" || /[฀-๿]/.test(r.text);
+  const lang = th ? "th" : "en";
+  // The two analyzers report different things, and the receipt says which one ran rather
+  // than pretending to a shared shape. Only signals that analyzer actually produces are
+  // claimed — a receipt must never assert a number nobody computed.
+  const claims: Claim[] = [];
+  if (th) {
+    const a = analyzeThai(r.text);
+    claims.push(
+      { signal: "wordCount", value: a.wordCount, instrument: "Thai segmenter (newmm-class)" },
+      { signal: "charCount", value: a.charCount },
+      { signal: "uniqueWords", value: a.uniqueWords },
+      { signal: "sentenceCount", value: a.sentences.count },
+      { signal: "avgWords", value: a.sentences.avgWords },
+      { signal: "rhythmStdev", value: a.rhythm.stdev },
+      { signal: "rhythmCv", value: a.rhythm.cv },
+      { signal: "dialogueLines", value: a.dialogue.lines },
+      { signal: "dialogueRatio", value: a.dialogue.ratio },
+      { signal: "tellingCount", value: a.telling.count },
+      { signal: "echoes", value: a.echoes.length },
+      { signal: "aiTells", value: a.aiTells.length },
+    );
+  } else {
+    const a = analyzeProse(r.text);
+    claims.push(
+      { signal: "wordCount", value: a.wordCount, instrument: "whitespace tokenizer" },
+      { signal: "charCount", value: a.charCount },
+      { signal: "uniqueWords", value: a.uniqueWords },
+      { signal: "sentenceCount", value: a.sentences.count },
+      { signal: "avgWords", value: a.sentences.avgWords },
+      { signal: "rhythmStdev", value: a.rhythm.stdev },
+      { signal: "rhythmCv", value: a.rhythm.cv },
+      { signal: "tellingCount", value: a.telling.count },
+      { signal: "aiTells", value: a.slop.length },
+    );
+  }
+  const reproduce = `npm run rush -- receipt ${file} --lang ${lang}`;
+  const receipt = buildReceipt({ tool: th ? "analyzeThai" : "analyzeProse", text: r.text, claims, reproduce });
+
+  if (flags.verify) {
+    // Re-derive from the same file and diff against what the receipt asserts. A pure
+    // engine must report ok; anything else is a real finding, not a formality.
+    const v = verifyReceipt(receipt, r.text, claims);
+    const L = [`# verify — ${v.ok ? "PASS" : "FAIL"}`, "", `  same input   ${v.sameInput}`, `  matched      ${v.matched.length}`, `  drifted      ${v.drifted.length}`];
+    for (const d of v.drifted) L.push(`    ${d.signal}: ${d.was} → ${d.now}`);
+    if (v.missing.length) L.push(`  missing      ${v.missing.join(", ")}`);
+    if (v.added.length) L.push(`  added        ${v.added.join(", ")}`);
+    return { stdout: L.join("\n") + "\n", stderr: "", code: v.ok ? 0 : 1 };
+  }
+  return { stdout: formatReceipt(receipt) + "\n", stderr: "", code: 0 };
+}
+
 export function runCli(argv: string[], io?: { read?: (path: string) => string }): CliResult {
   const { positional, flags } = parseFlags(argv);
   const cmd = positional[0];
@@ -429,5 +494,6 @@ export function runCli(argv: string[], io?: { read?: (path: string) => string })
   if (cmd === "scene") return cmdScene(positional[1], flags, io?.read);
   if (cmd === "narrative") return cmdNarrative(positional[1], flags, io?.read);
   if (cmd === "route") return cmdRoute(positional.slice(1).join(" "));
+  if (cmd === "receipt") return cmdReceipt(positional[1], flags, io?.read);
   return { stdout: "", stderr: `unknown command "${cmd}". try: rush help\n`, code: 2 };
 }
