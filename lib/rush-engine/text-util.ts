@@ -116,3 +116,29 @@ export function minOf(arr: number[], empty = 0): number {
   for (let i = 0; i < arr.length; i++) if (i === 0 || arr[i] < m) m = arr[i];
   return m;
 }
+
+/** Count occurrences of `term` in `hay` that stand as a whole word — i.e. neither neighbour
+ *  is a word-continuation character (a Thai letter, a Latin letter, or a digit).
+ *
+ *  Thai has no spaces inside a phrase, so a raw `includes`/`split` count of a short name
+ *  fires INSIDE longer words: "สม" inside "สมชาย", "หมอ" (doctor) inside "หมอน" (pillow),
+ *  "แต่" (but) inside "แต่งงาน" (wedding). Intl.Segmenter is too inconsistent to build a
+ *  boundary on (it fragments "แอนนา" into แอ|น|นา). Asking directly whether the match is
+ *  flanked by word-continuation characters answers exactly the "is this a whole word"
+ *  question, and is the safe direction for a trust-critical flag: it can miss a name run
+ *  together with an adjacent Thai word (a false negative), never falsely accuse one.
+ *
+ *  `hay` and `term` should already be same-cased. Non-overlapping. Pure. */
+const WORD_CONT = /[฀-๿a-z0-9]/i;
+export function boundedCount(hay: string, term: string): number {
+  if (!term) return 0;
+  let count = 0;
+  let i = hay.indexOf(term);
+  while (i !== -1) {
+    const before = i > 0 ? hay[i - 1] : "";
+    const after = i + term.length < hay.length ? hay[i + term.length] : "";
+    if (!WORD_CONT.test(before) && !WORD_CONT.test(after)) count++;
+    i = hay.indexOf(term, i + term.length);
+  }
+  return count;
+}

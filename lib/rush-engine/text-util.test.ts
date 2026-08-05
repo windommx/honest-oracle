@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { countPhrases, wordDiff, diffTokens, estimateTokens, maxOf, minOf } from "./text-util";
+import { countPhrases, wordDiff, diffTokens, estimateTokens, maxOf, minOf, boundedCount } from "./text-util";
 
 describe("estimateTokens (heuristic)", () => {
   it("weights Thai chars ~2.4× heavier than Latin", () => {
@@ -65,5 +65,25 @@ describe("maxOf / minOf — spread-free, stack-safe", () => {
     expect(() => maxOf(big)).not.toThrow();
     expect(maxOf(big)).toBe(299999);
     expect(minOf(big)).toBe(0);
+  });
+});
+
+describe("boundedCount — whole-word occurrences, Thai-aware (audit fix)", () => {
+  it("does not fire inside a longer Thai word", () => {
+    expect(boundedCount("สมชายมา", "สม")).toBe(0);       // สม inside สมชาย
+    expect(boundedCount("พวกเขาแต่งงานกัน", "แต่")).toBe(0); // แต่ inside แต่งงาน
+    expect(boundedCount("เธอวางหมอนลง", "หมอ")).toBe(0);   // หมอ inside หมอน
+  });
+  it("fires on a standalone Thai word (space/boundary flanked)", () => {
+    expect(boundedCount("อนันต์ ฝันเห็น บุญมา ยืน", "บุญมา")).toBe(1);
+    expect(boundedCount("แอนนากับ แอน", "แอน")).toBe(1);   // the standalone one only
+  });
+  it("respects Latin word boundaries too", () => {
+    expect(boundedCount("anna reads", "ann")).toBe(0);      // ann inside anna
+    expect(boundedCount("ann and bob", "ann")).toBe(1);
+  });
+  it("is conservative by design: a name run together with an adjacent Thai word is missed", () => {
+    // Documented false-NEGATIVE — the safe direction for a trust-critical flag.
+    expect(boundedCount("ของหมอ", "หมอ")).toBe(0);
   });
 });

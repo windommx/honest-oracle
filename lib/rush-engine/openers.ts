@@ -39,7 +39,7 @@ function unitsEn(text: string): string[] {
     .filter(Boolean);
 }
 function openerEn(unit: string): string {
-  const m = unit.match(/[A-Za-z][A-Za-z']*/);
+  const m = unit.match(/[A-Za-z0-9][A-Za-z0-9']*/);
   return m ? m[0].toLowerCase() : "";
 }
 

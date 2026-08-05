@@ -20,6 +20,7 @@
 import { withinOneEdit, thaiMarkVariant } from "./consistency";
 import { tokenizeThai } from "./thai-analyzer";
 import { tokenizeProse } from "./prose-analyzer";
+import { boundedCount } from "./text-util";
 
 export type CodexEntityType = "character" | "place" | "item";
 export interface CodexEntity {
@@ -118,7 +119,7 @@ export function parseCodex(text: string | undefined): Codex {
 
     if (section === "relation") {
       // "A -> B: kind" (directed) or "A - B: kind" (undirected). kind optional.
-      const m = line.match(/^(.+?)\s*(->|—>|→|-|–|—)\s*(.+?)\s*(?::\s*(.*))?$/);
+      const m = line.match(/^(.+?)\s+(->|—>|→|-|–|—)\s+(.+?)\s*(?::\s*(.*))?$/);
       if (m) {
         const from = m[1].trim();
         const to = m[3].trim();
@@ -445,7 +446,7 @@ export interface CodexAudit {
   canonSize: number;
 }
 
-const GONE = /ตาย|เสียชีวิต|สิ้นชีวิต|หายตัว|สาบสูญ|dead|deceased|missing/i;
+const GONE = /ตาย|เสียชีวิต|สิ้นชีวิต|ถูกฆ่า|ถูกสังหาร|สังหาร|มรณะ|หายตัว|สาบสูญ|dead|deceased|killed|died|missing/i;
 
 /** Check a draft against the codex, reusing the existing near-miss detectors
  *  (withinOneEdit for Latin, thaiMarkVariant for Thai). Pure/deterministic. */
@@ -466,7 +467,11 @@ export function codexAudit(codex: Codex, draft: string, lang: "th" | "en"): Code
     if (hit) variants.push({ declared: e.name, found: hit });
     else missing.push(e);
   }
-  const statusConflicts = present.filter((e) => e.status && GONE.test(e.status));
+  // A dead/gone entity only conflicts if its name appears as a WHOLE WORD — a substring
+  // of a longer name (สม inside สมชาย) must not accuse a different, living character.
+  const statusConflicts = present.filter(
+    (e) => e.status && GONE.test(e.status) && boundedCount(hay, e.name.toLowerCase()) > 0
+  );
 
   // Voice guard: count occurrences of each declared คำต้องห้าม in the draft.
   const forbiddenHits: Array<{ name: string; word: string; count: number }> = [];
@@ -475,9 +480,7 @@ export function codexAudit(codex: Codex, draft: string, lang: "th" | "en"): Code
     for (const raw of e.forbidden.split(/[,、]/)) {
       const word = raw.trim();
       if (word.length < 2) continue;
-      let count = 0;
-      let idx = hay.indexOf(word.toLowerCase());
-      while (idx !== -1) { count++; idx = hay.indexOf(word.toLowerCase(), idx + word.length); }
+      const count = boundedCount(hay, word.toLowerCase());
       if (count > 0) forbiddenHits.push({ name: e.name, word, count });
     }
   }

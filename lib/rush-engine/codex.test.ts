@@ -357,3 +357,25 @@ describe("codexAudit — draft vs codex (counts, not a verdict)", () => {
     expect(out).toContain("ไม่ถูกอ้างถึง"); // เสือ, มาลี, etc.
   });
 });
+
+describe("Thai substring false-positives (audit fix)", () => {
+  it("does not raise a status conflict on a name that is only a substring of a living one", () => {
+    // สม (dead) must not be accused when only สมชาย (living, different character) appears.
+    const c = parseCodex("[ตัวละคร]\nสม: ยาม\nสถานะ: ตายในบท 2\nสมชาย: พระเอก");
+    expect(codexAudit(c, "สมชาย เดินเข้ามาในเมือง", "th").statusConflicts).toEqual([]);
+  });
+  it("does not count a forbidden word that only occurs inside a longer word", () => {
+    // หมอ (forbidden) must not fire inside หมอน (pillow).
+    const c = parseCodex("[ตัวละคร]\nแม่: แม่\nคำต้องห้าม: หมอ");
+    expect(codexAudit(c, "เธอวางหมอนลงบนเตียง", "th").forbiddenHits).toEqual([]);
+  });
+  it("parses a relation whose endpoints contain hyphens", () => {
+    // "Spider-Man" must not be split at its internal hyphen into from:"Spider".
+    const c = parseCodex("[RELATIONS]\nSpider-Man -> Green-Goblin: hunts");
+    expect(c.relations).toContainEqual({ from: "Spider-Man", to: "Green-Goblin", kind: "hunts", directed: true });
+  });
+  it("GONE vocabulary covers common phrasings", () => {
+    const c = parseCodex("[ตัวละคร]\nเสือ: วายร้าย\nสถานะ: ถูกฆ่าในบทที่ 9");
+    expect(codexAudit(c, "เสือ ปรากฏตัวอีกครั้ง", "th").statusConflicts.map((e) => e.name)).toEqual(["เสือ"]);
+  });
+});

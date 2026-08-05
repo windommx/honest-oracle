@@ -12,7 +12,7 @@ import { splitChapters } from "./chapters";
 import { maxOf, minOf } from "./text-util";
 
 const RE_ESCAPE = /[.*+?^${}()|[\]\\]/g;
-const countEn = (s: string, t: string) => (s.match(new RegExp(`\\b${t.replace(RE_ESCAPE, "\\$&")}\\b`, "g")) ?? []).length;
+const countEn = (s: string, t: string) => (s.match(new RegExp(`\\b${t.replace(RE_ESCAPE, "\\$&")}\\b`, "gi")) ?? []).length;
 const countTh = (s: string, t: string) => (t ? s.split(t).length - 1 : 0);
 
 function bodies(text: string): string[] {
