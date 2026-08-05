@@ -1510,6 +1510,39 @@ POV: [ ] · เป้าหมาย: [ ] · อุปสรรค: [ ] · ต�
     "usage": "ส่งฉากเพื่อดึงผู้อ่านเข้าไปข้างใน",
   },
   {
+    "description": "ตรวจพรีมิสไซไฟกับฟิสิกส์ 7 ข้อที่ต่อรองไม่ได้ แล้วขุดฉากที่ข้อจำกัดบังคับให้เกิด",
+    "group": "craft",
+    "id": "HARD_SF",
+    "name": "Hard-SF Constraint Pass",
+    "prompt": "ตรวจพรีมิสไซไฟกับฟิสิกส์ที่ต่อรองไม่ได้ แล้วขุด "ฉาก" ที่ข้อจำกัดแต่ละข้อบังคับให้เกิด วิทยานิพนธ์: ข้อจำกัดไม่ใช่กรง มันคือเครื่องยนต์ของเรื่อง (ตรรกะเดียวกับกฎข้อสองของ Sanderson ใน WORLD_CODEX — ขีดจำกัดน่าสนใจกว่าพลัง)
+
+เจ็ดข้อที่ไม่ยืดหยุ่น (ระบุว่าเรื่องคุณเชื่อฟังข้อไหน และข้อไหนที่ "ตั้งใจ" ละเมิด):
+1. ไม่มี FTL — เวลาเดินทาง = ระยะทาง ÷ ความเร็ว การเร่งมวลถึงความเร็วแสงต้องใช้พลังงานอนันต์ ดราม่า: เดินทาง 40 ปีแสง แปลว่าทุกคนที่คุณรู้จักตายไปแล้วเมื่อคุณถึง — การเดินทางเองคือความสูญเสีย
+2. ไม่มีสัญญาณเร็วกว่าแสง — ข้อความวิ่งที่ c "ทั้งไปและกลับ" ดราม่า: คำสั่งจากบ้านเก่าแล้วตั้งแต่มาถึง คำว่า "สวัสดี" ราคาสองเท่าของระยะทางเป็นปี จะเชื่อฟังคำสั่งที่ออกก่อนคุณเกิดไหม
+3. สมการจรวดเป็นเอกซ์โพเนนเชียล — Δv = vₑ·ln(m₀/m_f) เพิ่มความเร็วเป้าหมายสองเท่า ไม่ได้แปลว่าเชื้อเพลิงสองเท่า แต่อาจหลายร้อยเท่า นี่คือเหตุผลที่ยานข้ามดาวจริง ๆ เป็นถังเชื้อเพลิงเกือบทั้งลำ ดราม่า: ภารกิจเป็นเที่ยวเดียวเพราะเลขคณิต ไม่ใช่เพราะเลือก
+4. รังสีคือตัวละครหนึ่งตัว — อวกาศลึกมีอัตรารังสีราวพันเท่าพื้นหลังของโลก การกำบังนับเป็นมวลต่อพื้นที่ (g/cm²) และวัสดุที่มีไฮโดรเจนมาก (น้ำ พอลิเอทิลีน) กำบังดีกว่าตะกั่ว เพราะธาตุหนักสร้างอนุภาคทุติยภูมิซ้ำ น้ำที่ใช้กำบังคือน้ำดื่มด้วย — รูรั่วหนึ่งรูบังคับให้เลือก "กำบัง หรือ ดื่ม" ดราม่า: ทุกกรัมที่ป้องกัน คือกรัมที่เอาไปเป็นเชื้อเพลิงไม่ได้
+5. ปริมาณรังสีเป็นขั้นบันได ไม่ใช่ลูกบิด — เจ็บป่วยเล็กน้อย → ช่วงกลางที่รอดได้แต่โหดร้าย (สัปดาห์ของไขกระดูกล้ม ติดเชื้อ ผมร่วง) → เกือบตายแน่นอน ของขวัญสำหรับนักเขียนคือ "ระยะแฝง": ชั่วโมงถึงวันที่ผู้ป่วยรู้สึก "ปกติ" ทั้งที่ความเสียหายเกิดไปแล้ว ไม่ต้องมีใครบอกว่าเขากำลังจะตาย — ผู้อ่านรู้ก่อน
+6. Time dilation มีจริงแต่ขี้เกียจ — γ = 1/√(1−v²/c²) แทบไม่ขยับใต้ ~0.3c ที่หนึ่งในสิบของความเร็วแสง การเดินทาง 400 ปีต่างจากเวลาที่บ้านราวสองปี ดราม่า: มันไม่ใช่ทางหนีอย่างที่หนังทำให้เชื่อ — แต่สองปีก็พอให้รัฐบาลล้ม สงครามเริ่ม หรือภารกิจถูกลืม
+7. ความน่าจะเป็นทบต้น — ล้มเหลว 3% ต่อรอบ cryo คูณ 200 รอบ ไม่ใช่ 6% แต่คือรอดชีวิต 0.97²⁰⁰ ≈ 0.2% ระบบเสี่ยงซ้ำ ๆ ต้องคิดแบบคูณ ไม่งั้นยอดศพผิดสองชั้น ดราม่า: คณิตศาสตร์บังคับให้กัปตันเลือกว่าใครได้นอน
+
+วิธีทำ:
+ก. จัดระดับเรื่อง: ULTRA-HARD (ไม่มีปาฏิหาริย์) / HARD (ปาฏิหาริย์หนึ่งอย่างที่ตั้งชื่อได้ ที่เหลือเชื่อฟังหมด) / SOFT (เอาความเท่) ทั้งสามชอบธรรม — สิ่งที่ทำลายความไว้ใจคือ "ไม่ประกาศ"
+ข. ลิสต์ปาฏิหาริย์ทุกข้อที่เก็บไว้ หนึ่งข้อคือขนบของแนว สามข้อคือแฟนตาซีใส่ชุดอวกาศ
+ค. ข้อจำกัดที่เรื่อง "เชื่อฟัง" แต่ละข้อ เขียนฉากที่มันบังคับให้เกิด: ข้อจำกัด → ราคา → การเลือก → ฉาก
+ง. ทำเครื่องหมายตัวเลขที่ต้องคงเส้นคงวา (เวลาเดินทาง ปริมาณรังสี เชื้อเพลิง ดีเลย์) แล้วใส่ลง story codex ให้บทหลัง ๆ ขัดกันเองไม่ได้
+
+กฎความซื่อสัตย์เมื่อใช้วิทยาศาสตร์จริงในนิยาย:
+- ระบบจริงใช้ชื่อจริงและขีดจำกัดจริง ตรงไหนที่คุณต่อเติมเอง ให้ "บอกไว้ใน codex" ไม่ใช่บอกผู้อ่านกลางฉาก
+- สถานที่จริงมาพร้อมความไม่แน่นอนจริง: TRAPPIST-1 (39.6 ปีแสง ดาวแคระแดงเย็นจัด เจ็ดดาวเคราะห์) มีจริงและปล่อยแฟลร์บ่อยจริง — แต่ดาวเคราะห์พวกนั้นยังมีบรรยากาศอยู่ไหม เป็นเรื่องที่ยังถกกันอยู่ ไม่ใช่ข้อยุติ เขียนดาวที่คุณต้องการได้ แต่บันทึกใน codex ว่าอากาศบนนั้นเป็นของที่คุณแต่ง
+- ห้ามกุการอ้างอิง ตัวเลขปริมาณรังสี หรือเปอร์เซ็นต์การรอดชีวิต เพื่อให้ฟังดูเข้มงวด ตัวเลขที่ผู้อ่านตรวจสอบได้หนึ่งตัว มีค่ากว่าตัวเลขที่แค่ฟังดูแม่นสิบตัว
+
+ผลลัพธ์: ผลตรวจข้อจำกัด (ข้อไหนผูก ข้อไหนละเมิดและทำไม) · รายการปาฏิหาริย์ · ฉากที่ถูกบังคับหนึ่งฉากต่อข้อจำกัดที่ผูก · ตารางตัวเลขคงเส้นคงวาสำหรับ codex
+
+═══ พรีมิส / โน้ตโลก ═══
+[วางพรีมิสไซไฟที่นี่]",
+    "usage": "ส่งพรีมิสไซไฟเพื่อให้ข้อจำกัดสร้างดราม่า",
+  },
+  {
     "description": "ชั้นเสียงร้อยแก้วไทย: คำซ้อนเพื่อเสียง สัมผัสใน คำซ้ำ ระดับภาษา บททดสอบอ่านออกเสียง",
     "group": "craft",
     "id": "THAI_SOUND",
@@ -3420,6 +3453,39 @@ Output: the rewritten scene, then a 3-5 line changelog naming each filter word c
 ═══ DRAFT ═══
 [INSERT SCENE HERE]",
     "usage": "Send a scene to pull the reader inside it.",
+  },
+  {
+    "description": "Audit a sci-fi premise against seven non-negotiable physics constraints, then mine each for the scene it forces.",
+    "group": "craft",
+    "id": "HARD_SF",
+    "name": "Hard-SF Constraint Pass",
+    "prompt": "HARD-SF CONSTRAINT PASS — audit a science-fiction premise against physics that does not negotiate, then mine each constraint for the drama it generates. The thesis: a constraint is not a cage, it is the story's engine. (Same logic as Sanderson's Second Law in WORLD_CODEX — limitations are more interesting than powers.)
+
+THE SEVEN THAT DON'T BEND (state which ones your story obeys, and name every one you break ON PURPOSE):
+1. NO FTL. Travel time = distance / speed. Accelerating mass to c needs infinite energy (E = mc²/√(1-v²/c²)). Drama: a 40-light-year trip means everyone you knew is dead when you arrive — the journey itself is the loss.
+2. NO FTL SIGNAL. Messages travel at c, EACH WAY. Drama: an order from home is already old when it arrives; "hello" costs twice the distance in years. Obey a command that was issued before you were born?
+3. THE ROCKET EQUATION IS EXPONENTIAL. Δv = vₑ·ln(m₀/m_f). Doubling target speed does not double fuel — it can multiply it hundreds of times, which is why realistic interstellar ships are mostly tank. Drama: the mission is one-way not by choice but by arithmetic.
+4. RADIATION IS A CHARACTER. Deep space runs roughly a thousand times Earth's background rate; shielding is counted in mass-per-area (g/cm²), and hydrogen-rich material (water, polyethylene) beats lead — heavy elements shower secondary particles. Water shielding is also drinking water: a hull breach forces "shield or drink." Drama: every gram of protection is a gram of fuel you cannot spend.
+5. DOSE HAS BANDS, NOT A DIAL. Acute exposure is a staircase: mild sickness → a survivable-but-brutal middle (weeks of marrow failure, infection, hair loss) → near-certain death. The gift to a writer is the LATENT PHASE: hours to days where the patient feels FINE while the damage is already done. Nobody has to be told they are dying; the reader knows first.
+6. TIME DILATION IS REAL BUT LAZY. γ = 1/√(1-v²/c²) barely moves below ~0.3c — at a tenth of light speed a 400-year voyage differs from home time by about two years. Drama: it is NOT the escape hatch films pretend. Two years is still enough for a government to fall, a war to start, or the mission to be forgotten.
+7. PROBABILITY COMPOUNDS. A 3% failure per cold-sleep cycle over 200 cycles is not 6% total — survival is 0.97²⁰⁰ ≈ 0.2%. Any repeated-risk system must be modelled multiplicatively or the body count is fiction twice over. Drama: the math forces the captain to choose who sleeps.
+
+METHOD:
+A. Classify the story: ULTRA-HARD (no miracles) / HARD (one named miracle, everything else obeys) / SOFT (rule-of-cool). All three are legitimate — an unstated choice is what breaks trust.
+B. List every miracle you keep. One is a genre convention; three is fantasy wearing a spacesuit.
+C. For each constraint the story DOES obey, write the scene it forces. Constraint → cost → choice → scene.
+D. Flag numbers that must stay consistent (travel time, dose, fuel, delay) and put them in the story codex so later chapters cannot contradict them.
+
+HONESTY RULES FOR REAL SCIENCE IN FICTION:
+- Real systems get real names and real limits; where you extrapolate, SAY SO in the codex, not to the reader mid-scene.
+- Real places carry real uncertainty: TRAPPIST-1 (39.6 ly, ultracool red dwarf, seven planets) is real and flare-prone — but whether those planets kept atmospheres is contested, not settled. Write the planet you need; record in the codex that its air is your invention.
+- Never invent a citation, a dose figure, or a survival percentage to sound rigorous. A number a reader can check is worth ten that merely sound precise.
+
+Output: the constraint audit (which of the seven bind, which you break and why), the miracle list, one forced-scene per binding constraint, and the consistency table for the codex.
+
+═══ PREMISE / WORLD NOTES ═══
+[paste the sci-fi premise here]",
+    "usage": "Send a sci-fi premise to make its limits generate drama.",
   },
   {
     "description": "The sound layer of Thai prose: euphonic คำซ้อน as rhythm, สัมผัสใน at peaks, reduplication, register as instrument, read-aloud test.",

@@ -736,6 +736,35 @@ Work 2-3 short paragraphs at a time (micro-chunking) so nothing drifts to the "a
 [INSERT SOURCE TEXT HERE]`;
 }
 
+function moduleHardSF(): string {
+  return `HARD-SF CONSTRAINT PASS — audit a science-fiction premise against physics that does not negotiate, then mine each constraint for the drama it generates. The thesis: a constraint is not a cage, it is the story's engine. (Same logic as Sanderson's Second Law in WORLD_CODEX — limitations are more interesting than powers.)
+
+THE SEVEN THAT DON'T BEND (state which ones your story obeys, and name every one you break ON PURPOSE):
+1. NO FTL. Travel time = distance / speed. Accelerating mass to c needs infinite energy (E = mc²/√(1-v²/c²)). Drama: a 40-light-year trip means everyone you knew is dead when you arrive — the journey itself is the loss.
+2. NO FTL SIGNAL. Messages travel at c, EACH WAY. Drama: an order from home is already old when it arrives; "hello" costs twice the distance in years. Obey a command that was issued before you were born?
+3. THE ROCKET EQUATION IS EXPONENTIAL. Δv = vₑ·ln(m₀/m_f). Doubling target speed does not double fuel — it can multiply it hundreds of times, which is why realistic interstellar ships are mostly tank. Drama: the mission is one-way not by choice but by arithmetic.
+4. RADIATION IS A CHARACTER. Deep space runs roughly a thousand times Earth's background rate; shielding is counted in mass-per-area (g/cm²), and hydrogen-rich material (water, polyethylene) beats lead — heavy elements shower secondary particles. Water shielding is also drinking water: a hull breach forces "shield or drink." Drama: every gram of protection is a gram of fuel you cannot spend.
+5. DOSE HAS BANDS, NOT A DIAL. Acute exposure is a staircase: mild sickness → a survivable-but-brutal middle (weeks of marrow failure, infection, hair loss) → near-certain death. The gift to a writer is the LATENT PHASE: hours to days where the patient feels FINE while the damage is already done. Nobody has to be told they are dying; the reader knows first.
+6. TIME DILATION IS REAL BUT LAZY. γ = 1/√(1-v²/c²) barely moves below ~0.3c — at a tenth of light speed a 400-year voyage differs from home time by about two years. Drama: it is NOT the escape hatch films pretend. Two years is still enough for a government to fall, a war to start, or the mission to be forgotten.
+7. PROBABILITY COMPOUNDS. A 3% failure per cold-sleep cycle over 200 cycles is not 6% total — survival is 0.97²⁰⁰ ≈ 0.2%. Any repeated-risk system must be modelled multiplicatively or the body count is fiction twice over. Drama: the math forces the captain to choose who sleeps.
+
+METHOD:
+A. Classify the story: ULTRA-HARD (no miracles) / HARD (one named miracle, everything else obeys) / SOFT (rule-of-cool). All three are legitimate — an unstated choice is what breaks trust.
+B. List every miracle you keep. One is a genre convention; three is fantasy wearing a spacesuit.
+C. For each constraint the story DOES obey, write the scene it forces. Constraint → cost → choice → scene.
+D. Flag numbers that must stay consistent (travel time, dose, fuel, delay) and put them in the story codex so later chapters cannot contradict them.
+
+HONESTY RULES FOR REAL SCIENCE IN FICTION:
+- Real systems get real names and real limits; where you extrapolate, SAY SO in the codex, not to the reader mid-scene.
+- Real places carry real uncertainty: TRAPPIST-1 (39.6 ly, ultracool red dwarf, seven planets) is real and flare-prone — but whether those planets kept atmospheres is contested, not settled. Write the planet you need; record in the codex that its air is your invention.
+- Never invent a citation, a dose figure, or a survival percentage to sound rigorous. A number a reader can check is worth ten that merely sound precise.
+
+Output: the constraint audit (which of the seven bind, which you break and why), the miracle list, one forced-scene per binding constraint, and the consistency table for the codex.
+
+═══ PREMISE / WORLD NOTES ═══
+[paste the sci-fi premise here]`;
+}
+
 function moduleThaiSound(): string {
   return `THAI SOUND PASS — tune the SOUND layer of Thai prose: the rhythm and euphony devices Thai has that English craft books never cover. Return the revised passage + a short device log.
 
@@ -1187,6 +1216,7 @@ export const MODULE_CATALOG: ModuleDef[] = [
   { id: "ANTI_SAFE", group: "craft", name: "Anti-Safe Pass", description: "Break safe/tidy AI defaults; raise real stakes; ban Thai AI-tell clichés.", usage: "Send a draft to make it riskier.", build: moduleAntiSafe },
   { id: "SENSORY", group: "craft", name: "Sensory Audit", description: "Per-scene 5-sense check (≥3) + targeted concrete additions.", usage: "Send a draft to ground it in the senses.", build: moduleSensoryAudit },
   { id: "IMMERSION", group: "craft", name: "Immersion / Deep-POV Pass", description: "Deep-POV rewrite: ground fast, cut filter verbs, add interiority, open one loop, end on momentum.", usage: "Send a scene to pull the reader inside it.", build: moduleImmersion },
+  { id: "HARD_SF", group: "craft", name: "Hard-SF Constraint Pass", description: "Audit a sci-fi premise against seven non-negotiable physics constraints, then mine each for the scene it forces.", usage: "Send a sci-fi premise to make its limits generate drama.", build: moduleHardSF },
   { id: "THAI_SOUND", group: "craft", name: "Thai Sound Pass", description: "The sound layer of Thai prose: euphonic คำซ้อน as rhythm, สัมผัสใน at peaks, reduplication, register as instrument, read-aloud test.", usage: "Send a Thai passage to tune its rhythm and euphony.", build: moduleThaiSound },
   { id: "HOOK_CRAFT", group: "craft", name: "Ending Hook & Restraint", description: "Emotional-hook typology (5 types + hybrid) and restraint craft — the almost-moment, what-they-don't-do, body-betrays-last — for chapter endings.", usage: "Send a chapter ending to sharpen its hook (or write one).", build: moduleHookCraft },
   { id: "PSYCH_ARC", group: "craft", name: "Attachment & Repair Arc", description: "Attachment styles as behavior predictors, the earned-security arc (slow, relapsing), and repair scene types (corrective experience / co-regulation / mentalization).", usage: "Run when designing or auditing a slow-burn relationship arc.", build: modulePsychArc },

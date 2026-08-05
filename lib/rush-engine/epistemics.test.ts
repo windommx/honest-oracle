@@ -62,6 +62,15 @@ describe("the refused boundary", () => {
     expect(isRefused("wordCount")).toBe(false);
   });
 
+  it("refuses the predicted-reader-behaviour metrics external specs ship as measurements", () => {
+    // These arrived in a hard-SF generator spec printed beside adoptable physics.
+    // Each predicts what a reader who has not read the book will do — unfalsifiable
+    // at print time, and impossible to derive from the manuscript alone.
+    for (const id of ["predictedReadThrough", "cliffhangerEffectiveness", "nextChapterClickProbability", "aiSlopScore"]) {
+      expect(isRefused(id)).toBe(true);
+    }
+  });
+
   it("every refused construct names why it is refused", () => {
     for (const c of REFUSED_CONSTRUCTS) expect(c.why.length).toBeGreaterThan(10);
   });

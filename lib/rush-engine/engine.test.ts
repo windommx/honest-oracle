@@ -190,7 +190,7 @@ describe("generateAllPrompts — core", () => {
 
 describe("generateAllPrompts — module groups", () => {
   const counts: Record<Exclude<PromptGroup, "core">, number> = {
-    craft: 18,
+    craft: 19,
     nonfiction: 5,
     prose: 5,
     thai: 1,
@@ -211,10 +211,10 @@ describe("generateAllPrompts — module groups", () => {
     }
   });
 
-  it("includes all 60 optional modules when every group is on", () => {
+  it("includes all 61 optional modules when every group is on", () => {
     const all = MODULE_GROUPS.map((m) => m.key);
     const pack = generateAllPrompts(cfg(), all);
-    expect(pack.filter((p) => p.group !== "core").length).toBe(60);
+    expect(pack.filter((p) => p.group !== "core").length).toBe(61);
   });
 
   it("CUT_PASS classifies cuts and protects setups, in both languages", () => {
