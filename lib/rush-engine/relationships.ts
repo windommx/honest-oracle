@@ -13,6 +13,13 @@ import { splitChapters } from "./chapters";
 
 const RE_ESCAPE = /[.*+?^${}()|[\]\\]/g;
 const countEn = (s: string, term: string) => (s.match(new RegExp(`\\b${term.replace(RE_ESCAPE, "\\$&")}\\b`, "g")) ?? []).length;
+// KNOWN CEILING (Thai segmentation): a short cast name that is a substring of a longer
+// one (แอน inside แอนนา) is over-counted and can produce a phantom edge. A whole-word
+// count (boundedCount) was tried and REJECTED: Thai names appear run-together with
+// adjacent words constantly (no spaces), so requiring a boundary collapsed recall and
+// dropped real characters. Over-count is the lesser evil here — surface the connection,
+// let the writer read it. (codex statusConflicts CAN use boundedCount: a missed
+// "review this" flag is safer than a false one; a missed character on the board is not.)
 const countTh = (s: string, term: string) => (term ? s.split(term).length - 1 : 0);
 
 export interface CharNode { name: string; mentions: number; chapters: number[] }

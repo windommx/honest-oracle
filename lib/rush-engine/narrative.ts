@@ -168,6 +168,11 @@ export function hookSignal(text: string, lang: "th" | "en" = "th"): HookSignal {
   const hasEllipsis = /(…|\.\.\.)/.test(tail);
   const lexicon = lang === "th" ? TENSION_TH : TENSION_EN;
   const hayTail = lang === "th" ? tail : tail.toLowerCase();
+  // KNOWN CEILING (Thai): a substring includes fires แต่ ("but") inside แต่งงาน
+  // ("wedding"), so a calm ending can read as anyDevice=true. A whole-word count was
+  // rejected — Thai tension words appear run-together (แต่เธอ…) and boundaryed matching
+  // dropped the real ones. Presence-not-strength is already disclosed; a writer reads
+  // the flagged words and judges. Over-flag beats missing a real hook.
   const tensionWords = lexicon.filter((w) => hayTail.includes(w));
   return {
     tailWords: tail.length,
