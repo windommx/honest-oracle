@@ -228,8 +228,11 @@ describe("generateAllPrompts — module groups", () => {
 
   it("BRAINSTORM carries the verbalized-sampling tail template with the honesty caveat", () => {
     const en = generateAllPrompts(cfg(), ["advanced"]).find((p) => p.id === "BRAINSTORM")!;
-    expect(en.prompt).toContain("BELOW 0.10");
-    expect(en.prompt).toContain("no independent replication yet");
+    // Substance, not styling: the tail threshold must be instructed, in whatever case the
+    // prose uses. (This assertion previously pinned "BELOW 0.10" in caps and failed on a
+    // rewrite that kept the instruction and lowercased it — testing the shout, not the rule.)
+    expect(en.prompt).toMatch(/below 0\.10/i);
+    expect(en.prompt).toMatch(/unreplicated|no independent replication/i);
     const th = generateAllPrompts(cfg({ language: "thai", promptLanguage: "th" }), ["advanced"]).find((p) => p.id === "BRAINSTORM")!;
     expect(th.prompt).toContain("ต่ำกว่า 0.10");
     expect(th.prompt).toContain("ยังไม่มี replication อิสระ");

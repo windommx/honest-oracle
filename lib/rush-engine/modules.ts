@@ -231,19 +231,78 @@ Output:
 }
 
 function modulePedagogy(config: BookConfig): string {
-  return `Generate the PEDAGOGY layer for a chapter of "${config.title}" (textbook / how-to / instructional nonfiction).
+  return `PEDAGOGY LAYER for a chapter of "${config.title}" — instructional nonfiction (textbook / how-to / manual).
 
-Produce:
-1. LEARNING OBJECTIVES: 3-5 measurable objectives using Bloom's verbs (remember → understand → apply → analyze → evaluate → create), escalating across the book.
-2. WORKED EXAMPLE: one fully worked example demonstrating the chapter's key skill, step by step.
-3. RETRIEVAL PRACTICE: 4-6 end-of-chapter questions that force recall (not re-reading).
-4. SPACED CALLBACK: 1-2 questions that connect to a concept from an earlier chapter.
-5. KEY TAKEAWAYS: 3 one-line summaries.
+THE FAILURE THIS MODULE EXISTS TO FIX: the reader finishes the chapter, agrees with every sentence, and still cannot DO the thing. That is not a clarity problem and more explaining will not cure it. A chapter that ends in comprehension ends in nothing checkable; a chapter must end in a CAPABILITY the reader can demonstrate. Everything below is ordered by that.
 
-═══ CHAPTER TOPIC ═══
-[INSERT CHAPTER TOPIC / CONTENT HERE]`;
+Reader (write for this person, not for a general audience): ${config.reader}
+Book thesis the chapter must serve: ${config.thesis}
+Chapter budget: ~${config.wordsPerChapter} words, chapter ${"{n}"} of ${config.chapters}${config.subGenre ? ` · ${config.subGenre.replace(/_/g, " ")}` : ""}
+
+━━ STEP 1 · THE CAPABILITY SENTENCE (write this before any prose) ━━
+"After this chapter, ${config.reader} can [VERB] [OBJECT] [under these conditions] [to this standard]."
+The verb must name something an observer could watch happen. If the only verb that fits is understand / know / appreciate / be aware of, the chapter has a TOPIC, not a capability — go back and find the action the topic is for. Standard means a signal the reader can check alone: the output has these three parts, the number balances, the dough passes the windowpane test, the script runs without error.
+One capability per chapter. A chapter with four is four chapters.
+
+━━ STEP 2 · THE DEMONSTRATION TASK (write it SECOND, before the explanation) ━━
+The task that would prove the capability. State the inputs the reader will have, the artifact they will produce, and the SUCCESS SIGNAL that tells them it worked — plus the FAILURE SIGNAL, i.e. what a wrong result looks like. Then write the chapter backwards from this task and cut every paragraph that does not serve it.
+
+━━ STEP 3 · THE WORKED EXAMPLE, THEN THE FADE ━━
+Give the solution before you demand one. Novices learning from studied worked examples outperform novices told to solve the equivalent problems themselves — the worked example effect (Sweller & Cooper 1985; Sweller 1988, Cognitive Science 12(2), cognitive load theory). Produce THREE items in sequence, not one:
+  (a) FULL WORKED EXAMPLE — exact shape:
+        GIVEN: the concrete starting inputs, with real values. No "let x be a value".
+        GOAL: the finished artifact, described so the reader can recognise it.
+        STEP n: the action · the actual substitution or keystroke · WHY THIS STEP (one line — the rule it comes from)
+        WRONG TURN: the mistake most people make at this step, shown wrong, then corrected.
+        RESULT: the finished artifact in full, so the reader can compare theirs to it.
+      The WHY line is not decoration. Learners who explain each step's rationale to themselves gain more from examples than those who read them through (Chi et al. 1989, self-explanation effect) — the line exists to prompt that explanation.
+  (b) FADED TWIN — same procedure, new inputs, LAST step blank for the reader to complete. Then a version with the last two blank.
+  (c) FULL PROBLEM — new inputs, nothing given, answer at the back.
+Fade on purpose: the same guidance that helps a novice stops helping and can hurt once the reader has the schema (expertise reversal effect, Kalyuga, Ayres, Chandler & Sweller 2003). A book that worked-examples chapter 12 as heavily as chapter 1 is padding.
+
+━━ STEP 4 · RETRIEVAL PRACTICE (the end of the chapter, not an appendix) ━━
+Retrieval beats rereading for durable retention (Roediger & Karpicke 2006, Psychological Science 17(3):249-255; meta-analyses: Rowland 2014, Psychological Bulletin 140(6); Adesope, Trevisan & Sundararajan 2017, Review of Educational Research). Dunlosky et al. 2013 (Psychological Science in the Public Interest 14(1)) rate practice testing and distributed practice HIGH utility, and rereading and highlighting — the two things books actually train readers to do — LOW.
+Write 4-6 items in this exact shape:
+    CLOSED BOOK. (say it — the instruction is the intervention)
+    PROMPT: a question that requires PRODUCING the answer, not recognising it. No multiple choice.
+    ANSWER LENGTH: one sentence, or one worked line.
+    ANSWER + WHY: placed at the end of the chapter or the back of the book, never on the same spread.
+Cover all four item types: (1) state the term in your own words; (2) run the procedure on inputs never shown; (3) decide WHICH procedure applies to a described situation; (4) here is a broken example — find the error.
+One caveat to honour: Roediger & Karpicke found that on an IMMEDIATE test restudying actually beat testing; the advantage of retrieval appeared at a delay. So do not promise the reader an instant feeling of mastery, and put the real check after a gap.
+
+━━ STEP 5 · SPACING AND INTERLEAVING ━━
+SPACED CALLBACK: 1-2 items reaching back to an earlier chapter. Distributed practice beats massed practice, and the best gap grows with how long you want the material to last (Cepeda, Pashler, Vul, Wixted & Rohrer 2006, Psychological Bulletin 132 — 317 experiments; interstudy interval and retention interval act jointly). Practical schedule for a ${config.chapters}-chapter book: revisit each capability once about three chapters later, once near the end, and once in the closing chapter — as a task, never as a summary paragraph.
+INTERLEAVING, with its real limits: mixing problem types beats blocking them (Rohrer & Taylor 2007, Instructional Science 35). But the meta-analysis says it is conditional — a moderate overall effect (Brunmair & Richter 2019, Psychological Bulletin 145(11), Hedges' g ≈ 0.42) that is strong for visual/category material, small for mathematics, ambiguous for expository text, and REVERSED for word learning, where blocking won. Interleave discriminable procedures the reader will have to choose between; block a single procedure being installed for the first time.
+And expect it to feel worse: conditions that slow visible performance can improve durable learning — desirable difficulties (Bjork 1994; Soderstrom & Bjork 2015, Perspectives on Psychological Science 10(2)). Warn the reader in the book, or they will read your hard chapter as a badly written one.
+
+━━ DO NOT BUILD THE BOOK ON THESE ━━
+· LEARNING STYLES (visual / auditory / kinesthetic; "some readers are visual learners, so this chapter is illustrated"). The meshing claim — that matching instruction to a stated preference improves learning — requires a crossover interaction, and Pashler, McDaniel, Rohrer & Bjork (2008, Psychological Science in the Public Interest 9(3):105-119) found "no adequate evidence base to justify incorporating learning-styles assessments into general educational practice." Direct tests since (Rogowsky, Calhoun & Tallal 2015; and again with children, 2020) found no crossover. Preferences are real; the payoff is not. Vary format because the CONTENT wants a diagram, never because a reader "is a visual learner."
+· THE LEARNING PYRAMID / "we remember 10% of what we read, 20% of what we hear, 90% of what we teach." Traced: Edgar Dale's Cone of Experience (1946, 1954, 1969) contains NO percentages — Dale offered it as a classification from concrete to abstract, explicitly not a rank order of learning. The numbers were welded on later, circulated via Treichler (1967) and NTL Institute, which, asked for its evidence, replied that it no longer had and could not find the original research. Letrud & Hernes (2018, Cogent Education 5(1)) traced versions of the pyramid back more than 160 years and concluded it did not originate in empirical research at all. Never print these numbers. If your book's structure depends on them, the structure is decoration.
+· THE 10,000-HOUR RULE as a promise. Practice matters; the meta-analysis of deliberate practice across music, games, sports, education and professions (Macnamara, Hambrick & Oswald 2014, Psychological Science 25) found it explains far less of the variance in performance than the popular rule implies, and least of all in professional domains. Give the reader a practice schedule, not an hour count that guarantees mastery.
+· BLOOM'S TAXONOMY, used as a law. It is an organizing vocabulary (Bloom et al. 1956; revised Anderson & Krathwohl 2001), not an empirical finding, and the strict cumulative hierarchy is not supported — the revision itself relaxed it, and empirical probes of the revised taxonomy's internal assumptions find the knowledge-type and cognitive-process dimensions are not independent (Larsen, Endo, Yee, Do & Lo 2022, CBE—Life Sciences Education 21(4)). USE its verbs, because they force you to name an observable action. Do NOT claim your chapters climb a validated ladder.
+· COGNITIVE LOAD THEORY — take the instructional effects, hold the theory loosely. The worked example, split-attention, redundancy and expertise-reversal effects are replicated instructional findings. The underlying load construct is contested: critics note there is no independent measure of load, so it is often inferred from the very test scores it is meant to explain. Cite the effect, not the mechanism.
+
+━━ OUTPUT ━━
+1. CAPABILITY SENTENCE (one line, observable verb, stated standard).
+2. DEMONSTRATION TASK with success signal and failure signal.
+3. WORKED EXAMPLE in the GIVEN / GOAL / STEP+WHY / WRONG TURN / RESULT shape, then the faded twin, then the unaided problem.
+4. RETRIEVAL SET: 4-6 items in the CLOSED BOOK / PROMPT / ANSWER LENGTH / ANSWER+WHY shape, covering all four item types.
+5. SPACED CALLBACK: 1-2 items from named earlier chapters, plus where in the book each capability is revisited.
+6. CUT LIST: every part of the current draft that serves neither the demonstration task nor a retrieval item.
+7. PREREQUISITE CHECK: what the reader must already be able to do, and which earlier chapter installed it. If nothing did, say so — a chapter resting on an uninstalled prerequisite is the most common reason readers "can't follow."
+
+━━ HONESTY RULES ━━
+- NEVER cite a retention percentage you cannot trace to a named study you have in hand. "People remember X% of what they Y" has no sourceable origin (see the pyramid above); writing it makes every other claim in your book cheaper.
+- Cite instructional EFFECTS by paper and year, not by folk name. "Studies show" is not a citation; render real ones in ${config.citationStyle} and mark anything unverified [VERIFY].
+- Distinguish established from contested IN THE TEXT: retrieval practice and spacing are heavily replicated; interleaving is conditional on material; cognitive load theory's mechanism is disputed. A reader who later learns you flattened this stops trusting the parts that were true.
+- Do not promise outcomes ("master this in 30 days", "3x faster learning"). You cannot observe the reader; any number about their future performance is invented.
+- Emit NO scores. No difficulty rating, no comprehension score, no readability grade sold as learning, no predicted completion or mastery percentage. Report present-or-absent facts instead: capability sentence present/absent, worked example present/absent, retrieval items count, spaced callbacks count, prerequisites unmet (list).
+- What you can check from the chapter is whether the parts exist. Whether the reader learned is measured on readers, not on the manuscript — say so rather than estimating it.
+- If the chapter genuinely has no demonstrable capability (a history chapter, an orientation chapter), say THAT and drop the layer. Do not manufacture an exercise to fill the slot.
+
+═══ CHAPTER TOPIC / DRAFT ═══
+[INSERT CHAPTER TOPIC OR DRAFT HERE]`;
 }
-
 function moduleCaseStudy(): string {
   return `Build a CASE STUDY that makes an abstract concept concrete and credible. Use the SPAR structure.
 
@@ -490,21 +549,60 @@ Be concrete; avoid generic single words.`;
 }
 
 function moduleSubmission(config: BookConfig): string {
-  return `Produce a traditional-publishing SUBMISSION PACK for "${config.title}".
+  const fiction = isFictionType(config.type);
+  return `Produce a SUBMISSION PACK for "${config.title}" — the pitch aimed at ONE professional reader (an acquiring editor, or an agent in markets that use them). This is NOT retail copy: a shopper is browsing, this reader is deciding whether to spend a week of their life on your manuscript. Back-cover/store copy is a different artifact (see BLURB, KDP_META).
 
-Inputs to use: premise = ${config.thesis}; type = ${BOOK_TYPES[config.type].label}; audience = ${config.reader}; approx ${config.chapters * config.wordsPerChapter} words.
+PROJECT FACTS (use only these; do not invent credentials, sales, or prior publications):
+premise = ${config.thesis} · type = ${BOOK_TYPES[config.type].label} / ${config.subGenre.replace(/_/g, " ")} · reader = ${config.reader} · voice = ${config.voice} · manuscript language = ${config.language} · length ≈ ${config.chapters * config.wordsPerChapter} words in ${config.chapters} chapters
 
-Output four parts:
-1. QUERY LETTER (~250 words): hook paragraph (protagonist/concept + conflict + stakes), then metadata line (title, word count, genre, 2 comp titles), then a 2-line author bio slot.
-2. ONE-PAGE SYNOPSIS: present tense, the FULL arc including the ending (no teasing), key turning points named.
-3. FIVE COMP TITLES: published within ~3 years, same readership (avoid mega-bestsellers), each with one line on the shared element. Mark any you're unsure are recent — the user should verify.
-4. AUTHOR BIO: three versions — 50, 100, and 150 words.
+⚠ TWO MARKETS, TWO RULEBOOKS. State at the top of your output which one this pack targets.
+A) ENGLISH-LANGUAGE TRADE (US/UK): the query-letter → agent → publisher route below is THAT market's convention. It is a convention, not a law of publishing.
+B) THAI PUBLISHERS: in Thailand the author-representation agent model is reported as effectively absent — Thailand-based literary agencies work mainly on TRANSLATION RIGHTS (buying foreign titles for Thai publishers, selling Thai titles abroad), not on representing a Thai author to a Thai publisher. The normal route is DIRECT to the publisher (สำนักพิมพ์), usually by e-mail to the editorial desk, plus two other routes that matter: an open call / contest (การประกวดต้นฉบับ) and being picked up from an online serial platform (readAwrite, Dek-D, Fictionlog and similar). Thai publishers that publish submission pages typically specify their own file spec — Word file, A4, Cordia/Angsana-class font at 14 pt, a เรื่องย่อ of at most ~2 A4 pages, and a short ประวัตินักเขียน. TREAT EVERY SUCH DETAIL AS A PATTERN, NOT AS THE RULE: before sending anything, open the publisher's own "ส่งต้นฉบับ / เปิดรับต้นฉบับ" page and copy ITS spec exactly. Where their spec and this module disagree, THEIR SPEC WINS. If a publisher publishes no submission page, that silence is information — ask them, do not assume a Western template applies.
 
-[INSERT any author credentials / comp ideas here]`;
+Produce these artifacts, in this order:
+
+1. QUERY LETTER / จดหมายเสนอต้นฉบับ (~250–350 words, one page, five slots in this order)
+   a. ADDRESS + WHY THIS READER — one sentence naming why this publisher/imprint/agent fits THIS book. Leave it as a fill-in slot: [ทำไมถึงส่งให้ที่นี่ — อ้างอิงหนังสือในเครือที่คุณอ่านจริง]. Do NOT fabricate the reason.
+   b. HOOK — 150–200 words: protagonist (or, for nonfiction, the question), the concrete situation, the conflict, what is at stake, and the choice the book turns on. Concrete nouns; no theme talk, no backstory, no rhetorical questions.
+   c. METADATA LINE — title, ${BOOK_TYPES[config.type].label}, subgenre, word count (${config.chapters * config.wordsPerChapter} words, rounded), language, comps, and whether the manuscript is COMPLETE. ${fiction ? "For fiction from an unpublished author the manuscript must be finished before you query — say so plainly." : "For nonfiction, what is usually sold is a PROPOSAL plus sample chapters, not a finished book — say which you have."}
+   d. BIO — 2 sentences, relevant credentials only (see 4).
+   e. CLOSE — what is attached, exactly as the recipient's guidelines asked for it.
+
+2. ONE-PAGE SYNOPSIS / เรื่องย่อ (~500 words; Thai publishers often cap at 2 A4 pages — obey theirs)
+   Third person, PRESENT tense, regardless of the book's own tense and person. The whole arc, in order, with the turning points named, WHO CHANGES and how — AND THE ENDING SPELLED OUT. A submission synopsis is not a teaser; withholding the ending is the most common reason it fails its job. Name only characters that matter to the spine (a synopsis crowded with names reads as an unfocused book). ${fiction ? "" : "For nonfiction, give the argument's spine instead of a plot: claim → evidence chain → what the reader can do differently by the end."}
+
+3. COMPS / หนังสือเทียบเคียง — 3 to 5 candidates, ranked, each with ONE line naming the shared element
+   What a comp is FOR: it is a market argument, not a compliment. It tells the reader "here is the shelf, here is the audience, here is roughly how it sells." An acquiring editor builds a profit-and-loss estimate from comparable titles, so an unusable comp costs you the argument.
+   A USEFUL comp is: (i) recently published — roughly the last 2–3 years; (ii) recognisable to that specific reader — for a Thai publisher that means a Thai-market title, ideally one on their own or a rival's list, NOT a New York bestseller; (iii) matched on tone/voice/readership rather than on plot furniture; (iv) a book you have actually read.
+   A HARMFUL comp is: a mega-seller or classic ("the next Harry Potter", "เหมือน…ที่ขายล้านเล่ม") — it reads as a claim about your sales, not about your book; a title over ~5–10 years old (it argues the market has already moved on); a film or series used as the only comp (a screen comp shows tone but proves nothing about book buyers — use at most one, as a secondary); two comps that are the same book twice (they should triangulate, e.g. one for voice, one for structure, one for audience); anything you have not read.
+   For every candidate output: TITLE · author · year · publisher/imprint if known · the one shared element · confidence. Mark anything you are not certain is real and recent as "VERIFY — check in a bookshop, on the publisher's catalogue, or on the retailer page before sending."
+
+4. AUTHOR BIO / ประวัตินักเขียน — three versions: 50, 100, 150 words, third person
+   Include only: publication credits, relevant professional or lived expertise that gives you standing to write THIS book, prizes actually won, and — for nonfiction — platform stated as verifiable facts (audience size, column, teaching, community) rather than adjectives. Exclude: age, unrelated jobs, "I have loved writing since I was a child", and any credential the author has not supplied. If the author gives you nothing, output the bio as a labelled EMPTY SLOT with a list of what to fill in. ${fiction ? "For fiction, having no credits is normal — say nothing rather than padding." : "For nonfiction, platform is part of what is being bought; a thin platform is a fact to state, not to disguise."}
+
+5. ${fiction ? "PACKAGE CHECK — the pages themselves: send exactly what was asked for (some ask 10 pages, some 3 chapters, some 10,000 words, some the whole file), from the actual opening — never a later chapter you like better." : "NONFICTION PROPOSAL SKELETON — overview (1–2 pages, the sales case), annotated chapter outline (~300 words per chapter, so shape is visible), audience and market, comps, platform/marketing, author bio, and 1–2 sample chapters written to finished quality."}
+
+6. AFTER YOU SEND — vocabulary and expectations, stated honestly
+   PARTIAL request = they want more pages, usually a set number of opening pages. FULL request = they want the entire manuscript. Neither is an offer; both are normal steps. Response practice varies enormously and some recipients publish a "no response means no" policy. THE ONLY AUTHORITY ON TIMING IS THE RECIPIENT'S OWN STATED WINDOW — read it, write it in your tracker, and follow up only after it has passed. This module will not tell you an average wait, a reply rate, or an acceptance rate, because no honest single number exists for them.
+
+7. MONEY AND SAFETY — read this before you send anything
+   Yog's Law (coined by author James D. Macdonald): MONEY FLOWS TOWARD THE AUTHOR. A publisher or agent who acquires your book pays you; you do not pay them to be considered. The Association of American Literary Agents' Canon of Ethics forbids member agents from charging reading fees to evaluate work for possible representation — so a "reading fee", "evaluation fee", "marketing contribution" or "submission fee" for consideration is the loudest possible warning sign.
+   WATCHDOG, NAMED: Writer Beware — founded 1998, sponsored by SFWA (Science Fiction and Fantasy Writers Association), at writerbeware.blog — documents fee-charging agents, predatory vanity operations, ghostwriting-and-marketing scams, and impersonation of real publishers and real editors. Check any company that solicits YOU there first. Solicitation is itself a flag: legitimate publishers rarely cold-call an unpublished author to praise their manuscript.
+   FOR THAI AUTHORS: paying a printer or a จ้างพิมพ์ / self-publishing service is a legitimate purchase of a service — but it is a purchase, not an acquisition, and anyone presenting it as "the publisher accepted your book" is misrepresenting it. I could not identify a Thai-language equivalent of Writer Beware, so do this instead: check that the company's books are physically in bookshops and listed by real distributors, ask other authors on their list, and get the terms (print run, royalty, rights, duration) in writing before signing.
+   You do NOT need to register copyright before submitting: under Thailand's Copyright Act B.E. 2537 copyright exists automatically from creation, without registration (the Department of Intellectual Property's จดแจ้ง filing is an evidentiary record, not the source of the right). Anyone who says you must pay to protect your manuscript before sending it is selling something.
+
+HONESTY RULES (these override everything above):
+- NEVER invent an agent's name, an agency, an imprint, an editor, or a publisher's submission policy. If a real recipient is needed, output a labelled slot and the instruction to verify on that party's own website.
+- NEVER invent a response-time statistic, an acceptance rate, a reply rate, or "your chances" — these are not knowable from a manuscript and Rush does not print them.
+- NEVER invent a comp title, its year, or its publisher. A plausible-sounding book that does not exist destroys the letter's credibility instantly; mark every unverified comp "VERIFY".
+- Do not present English-language agent conventions as universal. Where this pack's advice and the recipient's own stated guidelines differ, the recipient wins — say so in the output.
+- State the manuscript's real word count from the facts above; do not round toward a genre "sweet spot" you did not measure.
+- If the author supplied no credentials, the bio stays an empty slot. Do not manufacture a biography.
+- No score, no rating, no readiness percentage for the pack. Report what each artifact contains and what is still missing.
+
+═══ AUTHOR CREDENTIALS · TARGET PUBLISHER/AGENT (paste their stated guidelines verbatim) · COMP IDEAS ═══
+[INSERT HERE — ถ้ามีหน้า "เปิดรับต้นฉบับ" ของสำนักพิมพ์ ให้วางข้อความจริงมาทั้งหมด]`;
 }
-
-// ── ADVANCED modules ───────────────────────────────────────────
-
 function moduleRollingRecap(config: BookConfig): string {
   const lo = Math.max(120, Math.round(config.wordsPerChapter / 12));
   const hi = Math.max(200, Math.round(config.wordsPerChapter / 6));
@@ -570,24 +668,70 @@ This module produces a summary. A summary cannot count, cannot compare spellings
 ${config.storyBible ? config.storyBible : "[not declared yet — §5 will be empty until it is]"}`;
 }
 
-function moduleBrainstorm(): string {
-  return `Brainstorm options using VERBALIZED SAMPLING (Zhang et al. 2025, arXiv:2510.01171) — the measured prompt-only fix for mode collapse: sample from your response DISTRIBUTION with verbalized probabilities instead of giving the single most-typical answer. Author-reported gains: 1.6–2.1x semantic diversity in creative tasks with quality maintained (no independent replication yet — treat the exact multiplier as provisional; it also costs more tokens since you get k candidates per call).
+function moduleBrainstorm(config: BookConfig): string {
+  const genre = config.subGenre ? config.subGenre.replace(/_/g, " ") : "(genre not set)";
+  return `UNSTICK + GENERATE — name the KIND of stuck first, then run the one procedure that fits it. "Blocked" is not one condition. The blank-page fix does nothing for a mid-draft stall, and generating harder is the wrong move for a writer who already knows what happens. Diagnose, then generate.
 
-The paper's template, adapted:
+Book: ${config.title || "(untitled)"} · ${config.type} · ${genre}
+Premise / thesis: ${config.thesis || "[one line — what this book is]"}
+Reader: ${config.reader || "[who this is for]"}
+${config.outline ? "An outline is loaded — check any stall against it BEFORE inventing new material." : "No outline is loaded — if the diagnosis lands on B and the cause is structural, stop and run STRUCTURE instead."}
 
-1. Generate 5 responses to the brief below, each inside its own block, each with a verbalized probability reflecting how likely YOU would be to produce it by default.
-2. Then generate 3 MORE responses sampled from the TAILS of your distribution — each must have probability BELOW 0.10: ideas you would almost never lead with, that still satisfy every constraint of the brief.
-3. Do not repeat structures, settings, or central images across the 8.
+STEP 0 — DIAGNOSE (say which one you picked, in one line, before generating anything):
+  A. BLANK PAGE — nothing exists yet; there is no draft to be stuck inside.
+  B. MID-DRAFT STALL — it was moving, now the cursor sits still in a specific scene.
+  C. SAMEY — ideas arrive fine, and they are all the same idea wearing different coats.
+  D. KNOW-IT / CAN'T-WRITE-IT — the events are clear in your head; the prose will not come.
+If the brief matches two, run them in order A→B→C→D and say why. If it matches none, say so and ask one question — do not run a procedure that does not fit.
 
-Use for: titles, plot twists, character names, chapter angles, metaphors, hooks.
-Pick by taste from the full spread — the low-probability tail is usually where the non-samey option lives.
+──────────────────────────────────────────────────────────────
+A. BLANK PAGE — build raw material before you ask for a story.
+1. NOUN LIST, 10 minutes, no adjectives, no sentences: 20 concrete nouns from the writer's own life, fears and obsessions — places, objects, sounds, jobs, smells. (Bradbury's practice in "Zen in the Art of Writing": THE LAKE. THE NIGHT. THE CRICKETS. THE RAVINE. THE ATTIC. THE TRAPDOOR. He treated the lists as a warehouse, not as ideas.) A noun that embarrasses the writer stays on the list.
+2. FORCED PAIRS: pair nouns that are FAR apart on the list (item 3 × item 17), never neighbours. Ten pairs, one line each on what story that pair implies. This is Boden's COMBINATIONAL creativity — unfamiliar combinations of familiar ideas — and it is the cheapest of the three kinds to run on demand.
+3. CONSTRAINT CARD: impose one arbitrary external constraint and rewrite the three best pairs under it (Eno & Schmidt's Oblique Strategies, 1975 — 113 cards; the mechanic is an imposed constraint, not inspiration: "Honor thy error as a hidden intention", "Work at a different speed", "Use an old idea"). Invent constraints in that spirit; do not quote cards you cannot source.
+4. Output: the 20 nouns, the 10 pairs, 3 constrained versions. Nothing is chosen yet — choosing this early is what empties the page.
 
-═══ BRAINSTORM BRIEF ═══
-[INSERT what to brainstorm + constraints]`;
+B. MID-DRAFT STALL — the stall is usually a wrong turn, not a failure at the cursor.
+1. WALK BACK THREE DECISIONS: list the last three choices the story actually made (who acted, who conceded, what got revealed). For each, write the ROAD NOT TAKEN in one line. Most stalls sit one to three scenes upstream of where the writing stopped — the page you cannot write is often the page after a scene that dodged its conflict.
+2. SCENE WANT TEST: in one sentence — what does the POV character want in THIS scene, and who or what says no? If that sentence cannot be written, the problem is design, not prose: say so plainly and route to CONFLICT_MAP or STRUCTURE instead of generating.
+3. RE-ENTER, DON'T RESTART: re-enter from the branch you named in step 1 — rewrite forward from that decision. Do not rewrite the opening.
+4. SCHEDULE THE RETURN. Boice (1983, Behaviour Research and Therapy) followed three groups of nine blocked academic writers over ten weeks: the group held to scheduled, contingent writing produced the most pages AND recorded the most creative ideas; those who waited to feel inspired ("voluntary abstinence") recorded the fewest. Small study, academics not novelists — but it points one way: the schedule feeds the ideas, not the reverse.
+
+C. SAMEY — this is fixation, and it is running in both of you.
+1. QUARANTINE THE FIRST LIST: write down the ideas already generated, then BAN them. Jansson & Smith (Design Studies, 1991) gave designers an example solution containing an obvious flaw; the designers reproduced the flaw's features even after it was pointed out. Your own first list, and the model's first list, are that example.
+2. GENERATE THREE INDEPENDENT PASSES BEFORE POOLING — each from a different framing (e.g. genre-native / opposite-genre / the antagonist's version), each written without looking at the others, and only then compare. This is borrowed by analogy from the nominal-group finding (Diehl & Stroebe, JPSP 1987): individuals generating separately and pooling afterwards out-produce a group generating together, mostly because taking turns blocks production. The transfer to one writer plus one model is an ANALOGY, not a measured result — say so if you cite it.
+3. RUN THE SPREAD PROTOCOL BELOW, then keep going: the serial-order effect (Beaty & Silvia, 2012) is one of the more robust findings in idea generation — later responses in a session tend to be more original than earlier ones. The tenth idea is not the tired one; it is usually the reason you did the exercise.
+4. LABEL EACH SURVIVING IDEA by Boden type — COMBINATIONAL (two familiar things joined), EXPLORATORY (a new corner of the same conceptual space), TRANSFORMATIONAL (a defining rule of the space is dropped or altered). If every survivor is exploratory, the sameness has not been broken yet.
+
+D. KNOW-IT / CAN'T-WRITE-IT — this is a translating failure, not an idea failure.
+Flower & Hayes (CCC, 1981) separate PLANNING, TRANSLATING and REVIEWING as recursive processes under a monitor. Here planning is done; translating is jammed, usually because reviewing is running on top of it.
+1. STOP REVIEWING WHILE DRAFTING. Rose (CCC, 1980; think-aloud with ten UCLA undergraduates — small and qualitative, and it reads true) found blocked writers ran rigid rules and re-edited the opening mid-draft, while non-blockers held flexible plans. Ban editing the first paragraph until the scene is finished, out loud, as a rule for this sitting.
+2. SHRINK THE UNIT: write only the first physical action, or one line of dialogue and its reply. One unit, then stop and look.
+3. SUMMARY-THEN-CONVERT: write the scene as a flat five-sentence summary — this is allowed to be ugly — then convert one sentence at a time into scene. Ugly-on-purpose is the point; it removes the thing being blocked on.
+4. CHANGE THE CHAIR: write 200 words of the same scene from another character's POV, or in a tense/person you will not keep. Throw it away and write the real one.
+
+──────────────────────────────────────────────────────────────
+THE SPREAD PROTOCOL (use whenever the ask is "give me options" — titles, twists, names, chapter angles, hooks, metaphors):
+LLMs collapse to the middle of their own distribution. Zhang et al., 2025 (arXiv:2510.01171, "Verbalized Sampling") trace this to typicality bias in preference data — annotators favour familiar text — and give a prompt-only fix: ask for several responses WITH verbalized probabilities, and sample the tails. Their abstract reports 1.6–2.1x diversity gains on creative-writing tasks (the project's own repo advertises "2-3x" across all tasks; the two figures are not the same claim — treat both as author-reported and unreplicated).
+1. Produce 5 options, each in its own block, each with the probability YOU would assign to producing it by default.
+2. Then produce 3 more sampled from the TAILS — each with probability below 0.10 — that still satisfy every stated constraint.
+3. No two of the 8 may share a central image, setting, or structural move. If you cannot reach 8 genuinely different, produce fewer and say the constraint set is too tight to spread.
+4. At least one option must be TRANSFORMATIONAL (breaks a rule the premise assumed) and at least one must recombine two elements already inside this book.
+5. Present the spread. Do not rank it. Name the trade-off each option buys and what it costs; the writer chooses.
+
+IF TWO STRUCTURED PASSES BOTH FAIL — stop and incubate. Sio & Ormerod's meta-analysis (Psychological Bulletin, 2009; 117 studies) found a real but modest average incubation benefit (the effect size is not reproduced here: it reached me only through secondary sources, so it is not a number this module will print) — larger for divergent-thinking tasks, and larger when the break is filled with a LOW-demand activity (a walk, dishes) rather than another demanding task or nothing at all; a longer preparation phase before the break gave a bigger effect. So: incubation after real work is a documented aid, incubation instead of work is procrastination with a citation. Osborn's two original principles (Applied Imagination, 1953) still set the floor for every pass above — defer judgment, go for quantity.
+
+HONESTY RULES — what NOT to fake:
+- The verbalized probabilities are the model's self-report of how DEFAULT an option feels. They are not measurements, not quality, not reader preference. Never average them, never rank by them, never present them as evidence of anything else.
+- No option gets a score, a x/10, a "commercial potential", a predicted read-through, or a guess at what readers will click. Rush refuses those constructs by design (see REFUSED_CONSTRUCTS) — a number here would be a taste judgment wearing a lab coat.
+- Never claim an idea is original or unprecedented; that is unverifiable. If an option resembles a work you can NAME, name it and let the writer decide.
+- The four kinds of stuck are a routing heuristic, not a diagnosis. Do not tell a writer why they are blocked, and do not offer psychological or clinical explanations.
+- Cite only what you can source. Do not invent Oblique Strategies cards, Bradbury list items, study numbers, or effect sizes. Where a finding is transferred by analogy (group brainstorming → one writer + one model), say "by analogy" in the output.
+- If the brief is too thin to generate against, say what is missing and ask for it. Eight confident ideas for a book you invented are worse than one question.
+
+═══ WHAT YOU ARE STUCK ON ═══
+[Say which kind of stuck (A/B/C/D) if you know, then paste the scene, the brief, or the constraints]`;
 }
-
-// Inspired by Novel Studio's Constraint DNA (anti-safe, sensory minimum, tension, quality gate).
-
 function moduleAntiSafe(): string {
   return `Apply the ANTI-SAFE pass. LLMs default to emotionally safe, tidy, reassuring prose — break that while keeping the story coherent.
 
@@ -900,22 +1044,85 @@ Output: the per-scene tension table + a short list of fixes.
 
 function moduleQualityGate(config: BookConfig): string {
   const thai = config.language === "thai" || config.language === "bilingual";
-  return `Run a pre-publish QUALITY GATE on a finished chapter/draft. Judge each gate PASS or FAIL with a specific reason grounded in the text — never pass a gate without evidence.
+  const fiction = config.type === "novel" || config.type === "memoir" || config.type === "kids";
+  const sourced = config.type === "nonfiction" || config.type === "textbook" || config.type === "howto";
+  const targetWords = config.chapters * config.wordsPerChapter;
+  return `PRE-PUBLICATION GATE for "${config.title}" — declared shape: ${config.chapters} chapters × ${config.wordsPerChapter} words ≈ ${targetWords} total.
 
-Gates:
-1. CONTINUITY — does it contradict any established fact / the story bible / the latest STATE?
-2. SENSORY — at least 3 senses present in each scene?
-3. ANTI-SAFE — no tidy/comforting resolution; the conflict carries real cost; no AI-tell emotion clichés?
-4. VOICE — consistent with the book's voice and (fiction) each character's distinct voice?
-5. ${config.type === "novel" || config.type === "memoir" ? "HOOK — does the chapter end with forward momentum?" : "EVIDENCE — claims supported; no unsupported assertions?"}
-${thai ? "6. THAI — register consistent, no unnecessary English, transliteration consistent?\n" : ""}
-Output JSON:
-{ "gates": [ { "name": "...", "pass": true/false, "reason": "..." } ], "overall_pass": true/false, "must_fix": [ "..." ] }
+WHAT THIS IS. A pre-flight check, run last, over things that are COUNTABLE or VERIFIABLE. Every check states three things: WHAT WAS COUNTED · the THRESHOLD THE AUTHOR DECLARED · PASS or FAIL.
+A FAIL must name its location — chapter number, file, heading or quoted line. No location, no FAIL.
+A check whose threshold the author never declared is reported "no threshold declared — not judged": never quietly passed, and never given a number by you.
 
-═══ DRAFT ═══
-[INSERT CHAPTER DRAFT HERE]`;
+WHAT THIS IS NOT — the editing-stage ladder this gate does not replace. Editors Canada's Professional Editorial Standards define four stages, in order from the content's first iteration to its last:
+  STRUCTURAL — shaping the overall organization and content for the intended audience, medium and purpose. Catches: wrong order, a hole in the argument, a subplot that goes nowhere.
+  STYLISTIC — clarifying meaning, and coherence and flow at paragraph and sentence level.
+  COPY EDITING — spelling, usage, grammar, punctuation, and consistency within the text.
+  PROOFREADING — all elements of content and formatting checked for correctness, completeness and adherence to the style guide. The CIEP puts it the same way: the final surface-level check.
+This gate is NONE of the four. It runs AFTER them and catches what a human eye reliably misses: a broken file, a missing metadata field, a chapter that never got pasted in, a character the codex says died in ch.5 who speaks in ch.30.
+If those stages have not happened, say so at the top of the report — a clean gate must never be allowed to imply an edited book.
+
+STEP 0 — COLLECT THE DECLARATIONS, before checking anything: chapter count (${config.chapters}) · words per chapter (${config.wordsPerChapter}) · acceptable deviation · ${sourced ? `citation style (${config.citationStyle}) and whether every claim needs a source` : "the canon (story bible / codex) that is the source of truth"} · the front/back-matter list · output format (EPUB / print PDF / both) · the retail metadata fields.
+${config.storyBible ? "A story bible/codex IS supplied — treat it as the canon of record." : "NO story bible/codex is supplied — the canon checks below cannot run. Report them NOT RUN, never passed."}
+A missing declaration makes its check NOT RUN. Never supply the missing threshold yourself.
+
+═══ PART 1 · HARD BLOCKERS — the only things this gate may DECIDE ═══
+These break distribution or are objectively wrong. Each is PASS or FAIL: no discussion, no weighting, no partial credit.
+
+B1 · FILE VALIDITY (if an EPUB ships). Run EPUBCheck — the official conformance checker for EPUB publications, maintained by the DAISY Consortium on behalf of W3C; EPUB 3 files are validated against EPUB 3.3.
+  Severities it emits: FATAL · ERROR · WARNING · INFO · USAGE. Any FATAL or ERROR = FAIL, quoting the message id and the file it names. WARNING/USAGE = report only, never blocking.
+  State the EPUBCheck version used. If it was not actually run, this check is NOT RUN — never assert a clean validation you did not see.
+
+B2 · REQUIRED METADATA. EPUB 3.3 package-document minimum: dc:title, dc:identifier and dc:language, plus exactly one dcterms:modified of the form YYYY-MM-DDThh:mm:ssZ (UTC, "Z"-terminated), with the package's unique-identifier attribute pointing at that dc:identifier.
+  Each present = PASS; absent = FAIL naming the element. Run this even on a file Rush itself built — a builder can omit a required field, and the gate's job is to catch that.
+  Retail metadata: the published field limits Rush already encodes in kdpMetadataChecks() — title ≤ 200 chars · description 100–4,000 · ≤ 7 keywords of ≤ 50 chars · 1–3 categories. Report counted length vs limit per field.
+  Each format sold (paperback / hardcover / ebook) is a separate product and needs its OWN ISBN; one ISBN reused across two formats = FAIL.
+
+B3 · COMPLETENESS. Chapters present vs the declared ${config.chapters} — mismatch = FAIL, naming the missing numbers. Nav/TOC entries vs chapter files must be 1:1: an entry pointing at nothing, or a chapter absent from the TOC, = FAIL, name it.
+  Leftover placeholders — [TBD] · [INSERT · [VERIFY] · TODO · XXX · lorem — are a literal string count; each hit = FAIL with chapter and quoted line.
+  Front/back matter: everything on the author's declared list must be present (declared-but-absent = FAIL). Conventional order (Chicago) runs half title → title page → copyright page → dedication → epigraph → contents → foreword → preface → acknowledgments → introduction; back: appendix → notes → glossary → bibliography → index.
+  Present-but-out-of-order = REPORT, not FAIL: order is convention, and this gate does not fail a book on convention.
+
+B4 · CANON CONTRADICTIONS — orchestrate Rush's deterministic analyzers instead of re-reading by eye.
+  codexAudit() → statusConflicts (an entity whose declared status is dead/หายตัว yet appears in the draft: FAIL unless the author marks that scene a flashback) · variants (a declared name spelled a second way: FAIL, print both spellings) · forbiddenHits (a word a character must never say, with its count — the tool cannot attribute a speaker, so the author confirms who said it) · present/missing canon · threadsNoTrace (a high/critical open thread with no keyword trace).
+  continuityRadar() → canon names that never appear, plus off-canon names used ≥3×. consistencyLedger() → spelling-variant clusters and introduced-then-dropped terms, with chapter numbers.
+  A mutually exclusive PAIR of facts (two ages, two dates, two deaths for one person) = FAIL, and you must quote both halves. A one-sided heuristic flag is NOT a blocker — send it to Part 2.
+
+B5 · PRINT SPEC (if print ships). kdpReadiness() computes pages from word count and trim, spine width (pages ÷ PPI), the cover canvas including 0.125" bleed, and the binding minimum: 24 pages paperback, 75 hardcover. Under the minimum = FAIL.
+  Everything else here is an ESTIMATE — label it as one and confirm it in the vendor previewer; a print-ready CMYK interior cannot be produced or verified in a browser.
+
+B6 · RIGHTS. Count unresolved permission markers on quoted lyrics/poetry/long excerpts and third-party images. Unresolved = FAIL. You may count the markers; you may NOT rule on fair use — say so in the report.
+${sourced ? `
+B7 · SOURCES. Every citation must resolve to a complete entry in ${config.citationStyle} form; a citation with no matching entry, or an entry naming no locatable source, = FAIL with the claim quoted. An unsupported claim is a [VERIFY] under B3, not a blocker — and never invent a source to close one.
+` : ""}
+═══ PART 2 · AUTHOR JUDGMENT — this gate may only MEASURE ═══
+Pacing, voice, impact and "is it good" have no valid operation on the text, so the gate cannot decide them. Report the measurement, name the instrument, hand the decision back. Never turn one into a verdict, never average them into anything.
+- pacingProfile() — per-act averages of words / dialogue ratio / telling / sensory, plus its disclosed threshold flags.
+- characterArc() — per-chapter mention series per character, gaps (vanishes then returns), exitsEarly.
+- motifTracker() — per-chapter distribution of each declared theme term, and the longest absent run.
+${fiction ? "- hookSignal() — which ending devices are PRESENT in each chapter's tail (question / ellipsis / tension lexicon). Presence, never strength: a quiet ending can be deliberate.\n" : ""}- analyzeOpeners() — repeated sentence/clause openers: the count and the share of units.
+- sensoryDensity() — per-sense counts, density per 1,000 words, and which senses were never used.
+- ${thai ? "analyzeThai()" : "analyzeProse()"} — rhythm cv, telling ratio, dialogue ratio, echoes/near-repeats, AI-cliché lexicon hits, and exact mechanical counts (double spaces, repeated words).${thai ? "\n- checkThaiRegister() — loanword/informal spellings with a standard-form suggestion; proper nouns are skipped, so a coined name is never \"wrong\"." : ""}
+- excessVocabulary() — runs only if the author supplies a baseline corpus; without two corpora it is NOT RUN.
+- Word count: measured total vs the declared ≈ ${targetWords}; report the deviation as a number. It is a FAIL only where the author declared a hard cap (a platform or publisher limit); otherwise it is a measurement.
+
+═══ OUTPUT ═══
+1. STATUS: BLOCKED (n hard blockers) or CLEARED-OF-BLOCKERS — nothing else. "Cleared of blockers" means every Part-1 check passed; it is not an opinion that the book is ready.
+2. BLOCKER TABLE: check id · what was counted · the author's threshold · PASS/FAIL · location.
+3. MEASUREMENTS: each Part-2 signal with its number and its instrument, unjudged.
+4. NOT RUN: every check that lacked an input or a declared threshold, and what is missing.
+5. OUT OF SCOPE, stated plainly: whether the prose is good, whether the four editing stages were done well, whether the facts are true, whether the rights are legally clear, and how readers will respond.
+
+HONESTY RULES:
+- No readiness score. No "publication-ready %". No x/10, no 0–100, no letter grade, no predicted read-through, no projected rating — not even "roughly". If asked for one, refuse and return the blocker count plus the failing locations.
+- Why a number here would be WORSE than useless: the whole value of this gate is that every finding is LOCATED and fixable ("ch.12 has no dc:language"; "อรุณ dies in ch.5 and speaks in ch.30"). A score deletes the location, cannot be re-derived from the manuscript, and drifts run to run — it measures the judge, not the book.
+  Worse, it converts a hard blocker into a rounding error: "94% ready" reads as permission to skip the 6% that is the EPUB that will not open. And once a number exists someone optimizes it, which optimizes the guess instead of the book.
+- Never claim a check ran that did not run. EPUBCheck, the print previewer and legal review are outside this prompt; NOT RUN is a valid and required answer.
+- Never invent a chapter number, line, message id, page count or ISBN to make a finding look precise. Quote what is in the text, or report that you could not locate it.
+- Heuristics stay labelled heuristic: passive-voice detection, off-canon tokens, threadsNoTrace and Thai segmentation can all mis-fire. Say "review this", never "this is wrong".
+
+═══ MATERIAL TO CHECK ═══
+[PASTE the manuscript or assembled book, plus: the codex/story bible · the front/back-matter list · the metadata fields · the EPUBCheck output if you have it]`;
 }
-
 function moduleSeriesBible(config: BookConfig): string {
   return `Build and maintain a SERIES BIBLE for "${config.title}" — the canon ledger that keeps a multi-book series consistent ACROSS volumes, not just across chapters.
 
@@ -1151,22 +1358,79 @@ End with: the findings tally, then the one told moment most worth dramatizing. R
 [INSERT MANUSCRIPT HERE]`;
 }
 
-function moduleNisTheme(): string {
-  return `Run a THEME & MOTIF audit. First state the book's controlling theme in one sentence (as evidenced by the text, not as you'd wish it).
+function moduleNisTheme(config: BookConfig): string {
+  return `Run a THEME & MOTIF AUDIT on "${config.title}" (${config.chapters} chapters · ${config.subGenre.replace(/_/g, " ")}).
+Theme is not a word to sprinkle. It is the ARGUMENT the book makes through what happens to people who choose things. You audit the argument. You do not count how spiritual the vocabulary sounds.
 
-Then build a MOTIF TABLE: each recurring image/symbol/motif → every instance (chapter + quote) → whether it pays into the theme or is decorative.
-Flag: (a) motifs introduced once and dropped, (b) on-the-nose thematic statements (a character or narrator stating the theme outright), (c) an ending that doesn't earn the theme.
+SEPARATE THE THREE THINGS WRITERS CONFLATE — do this before anything else, and keep the columns apart for the whole audit:
+- MOTIF = a concrete recurring thing you could photograph or hear. A ring, a locked drawer, rain, a name nobody says. Term borrowed into literature from Wagner criticism: "Leitmotiv" was first printed by F. W. Jähns (1871) and made current by Hans von Wolzogen's 1876 guide to the Ring; Wagner himself never authorised it, preferring Grundthema / Hauptmotiv. Thomas Mann carried the device into the novel (Buddenbrooks, 1901 — hands, teeth, the sea, Grünlich's golden-blond whiskers). A motif is an INSTRUMENT. It has no opinion.
+- THEME = the proposition the events argue. Not "loyalty" — "loyalty" is a topic, and a topic cannot be true or false.
+- MORAL = the lesson someone is supposed to take home. A moral is what the book would say if it stopped trusting the reader.
+Most "my theme is gone" complaints are a book that has topics and motifs and no proposition.
+
+STEP 1 — STATE THE CONTROLLING IDEA AS A FALSIFIABLE PROPOSITION.
+One sentence, from the text as written, not the text as hoped for. Use the shape the craft literature agrees on even where its authors disagree about everything else:
+  VALUE + CAUSE — "X ends up <positive/negative> BECAUSE <the thing that caused it>" (Robert McKee, Story, 1997: the controlling idea is one sentence naming the value charge at the end of the story and the primary cause of that charge).
+  Lajos Egri (The Art of Dramatic Writing, 1946) demands the same sentence earlier and calls it the PREMISE — something the play sets out to PROVE ("Great love defies even death"), with characters who by their nature must be driven to the choices that prove it.
+  John Truby (The Anatomy of Story, 2007) calls the whole apparatus the MORAL ARGUMENT and insists it is made by STRUCTURE — by hero and opponent taking particular means toward a goal — not by dialogue. His "theme line" is the argument compressed to one sentence and then split into oppositions the two sides carry.
+These are craft DOCTRINES, not findings. Nobody has demonstrated they are true. Use the sentence shape because it is testable, not because it is proven.
+FALSIFIABILITY TEST: write the OPPOSITE proposition. If no competent adult could hold the opposite, you have a platitude ("love is important"), not an argument. Rewrite until the opposite is a position a reasonable person could defend — that is the position your antagonist must argue in scenes, not in a speech.
+Compare the stated proposition with the book's declared thesis: "${config.thesis}". If they differ, report BOTH and say which the manuscript actually argues. The draft wins.
+
+STEP 2 — CLASSIFY EVERY SCENE AS ARGUES / CONTRADICTS / SILENT.
+For each scene, one row: { chapter, scene, verdict: argues | contradicts | silent, evidence: "the decision or consequence that carries it (quote)" }.
+- ARGUES = a character's costly choice, or its consequence, makes the proposition more credible. Talking about the theme is not arguing it. A speech is evidence about the speaker.
+- CONTRADICTS = the events make the proposition less credible — usually because the world lets someone have the good outcome without paying the stated cause.
+- SILENT = neither. Most scenes are silent and that is normal; a book where every scene argues is a tract.
+Then read the pattern, not the totals:
+  ZERO contradicting scenes → the opposition is a strawman and the argument is unearned (Truby's split-into-oppositions failure). Fix by strengthening the opponent's case, never by adding a line that states the theme.
+  Contradicting scenes clustered in the last third → the ending disproves the book. Decide which one you meant.
+  A run of ${Math.max(3, Math.round(config.chapters / 5))}+ consecutive silent chapters → the argument is dormant. Dormant is a fact; whether it is a problem is your call, and depends on whether the plot is doing work you intend to cash later.
+
+STEP 3 — MOTIF INVENTORY, ONE ROW PER INSTANCE.
+{ motif, chapter, quote (short), what it stands next to, what it means HERE }.
+The load-bearing craft rule for why an image can carry an emotion at all is T. S. Eliot's OBJECTIVE CORRELATIVE ("Hamlet and His Problems", 1919): "a set of objects, a situation, a chain of events which shall be the formula of that particular emotion; such that when the external facts, which must terminate in sensory experience, are given, the emotion is immediately evoked." The motif is the formula; if you also state the emotion, you have paid twice for one thing.
+For planted objects that must discharge, obey the promise rule and cite it accurately: Chekhov, letter to A. S. Lazarev (Gruzinsky), 1 November 1889 — "One must not put a loaded rifle on the stage if no one is thinking of firing it… it is wrong to make promises you don't mean to keep." (The famous "hung on the wall in act one… fired in act two" version is Gurlyand's 1904 memoir of Chekhov's conversation, not Chekhov's own writing. Use the letter.)
+
+STEP 4 — READ RUSH'S PER-CHAPTER MOTIF DISTRIBUTION BEFORE YOU JUDGE ANYTHING.
+Rush's motifTracker gives you, per term: total occurrences, the per-chapter count series, chaptersPresent, and longestAbsentRun. Paste it in.
+WHAT THE DISTRIBUTION PROVES: exactly where that STRING occurs and where it does not. "This term appears 14 times, stops after chapter 9, silent for 6 chapters" is a count anyone can re-derive from the same text. It is not a feeling and not up for argument.
+WHAT IT CANNOT PROVE — state these limits in your report, do not quietly rely on the number:
+  (a) It counts a string, not an idea. "the ring" is counted; "it", "the thing he still carried", and every paraphrase are not. A motif can be fully present in a chapter that scores zero.
+  (b) It cannot tell a thematic hit from an incidental one — a mirror in a rear-view mirror still counts.
+  (c) Thai matching is substring-based, so a term that lives inside a longer word inflates its own count. Check a sample of hits by eye before trusting a total.
+  (d) It cannot tell you whether the silence MATTERS. A motif that stops in chapter 9 because the object was destroyed in chapter 9 is correct. Only the manuscript answers that.
+  (e) It says nothing about readers. See the honesty rules.
+
+STEP 5 — THE TWO OPPOSITE FAILURES, EACH WITH ITS OWN TEST.
+GONE SILENT (dropped motif). Take every term with a long zero-run. For each ask, from the text: does the object still exist in the story world during the silence? If it was destroyed, sold, buried, or left behind, the silence is correct — report it and move on. If it is still in the character's pocket and simply stopped being noticed, that is a drop: name the chapter where a reappearance would cost nothing.
+HEAVY-HANDED (motif turned into a stamp). Four tests, all runnable on the page:
+  1. DELETION — cut the instance. If the scene loses nothing except that the meaning got less obvious, the instance was decoration.
+  2. CO-NAMING — count the instances that sit in the same paragraph as an abstract noun naming the theme (freedom, forgiveness, อิสรภาพ, การให้อภัย). That co-occurrence IS countable. Every one of them is the image and the caption in the same frame.
+  3. VARIATION — does the motif mean something DIFFERENT on its last appearance than on its first? Recurrence with variation is the Mann/Wagner practice; recurrence without variation is a stamp.
+  4. LIFT-OUT — find any line that could be printed on the cover as the book's message. Flannery O'Connor ("Writing Short Stories", in Mystery and Manners, 1969): "When you can state the theme of a story, when you can separate it from the story itself, then you can be sure the story is not a very good one." Her position is a strong claim, not a law — but a liftable line is at minimum a place where the book stopped trusting ${config.reader || "the reader"}.
+HONEST ABOUT THE ASYMMETRY: WHERE a term appears is a count. WHETHER it is too much is a judgment — yours, made in front of the evidence. I searched for empirical work on motif density and found none: there is no established number of repetitions at which an image becomes heavy-handed. Anyone who gives you that number invented it.
+
+STEP 6 — THE ENDING PAYS THE PROPOSITION OR IT DOES NOT.
+Find the last decisive choice in the book. Does its consequence make the STEP 1 proposition more credible, less credible, or neither? Quote it. An ending that argues a different proposition than the body is not automatically broken — it may be the better book — but it must be a decision, so name which proposition you are keeping.
+
+OUTPUT, in this order: (1) the controlling idea as one falsifiable sentence + its stated opposite; (2) the scene table (argues/contradicts/silent) with the pattern read; (3) the motif inventory; (4) the distribution read-out with its limits restated; (5) dropped motifs and heavy-handed instances, each with the test that caught it; (6) the ending verdict; (7) the ONE change that would sharpen the argument most, and what it would cost.
 
 ${NIS_RULES}
 
-End with: the findings tally (motifs planted-then-dropped, on-the-nose statements, ending mismatches), then the single change that would sharpen the theme most. Rush's motifTracker gives the per-chapter distribution of each theme term — cite where a term goes quiet. Never output a thematic-resonance score: epistemics.ts refuses that construct by name.
+HONESTY RULES (obey literally):
+- Report a finding only if you can quote the text that proves it — chapter + short quote. No quote, no finding.
+- Never invent a motif the writer did not put there, and never invent a citation, a percentage, or a study. If the manuscript is clean on a check, say it is clean.
+- Distinguish COUNTS from JUDGMENTS in every line you write. "Appears in ch. 1-9, absent 10-15" is a count. "The motif dies too early" is your judgment; label it as one.
+- NEVER OUTPUT A "THEMATIC RESONANCE SCORE", a thematic-coherence score, a 0-100 or x/10 theme rating, or any number predicting whether readers will get the point. Rush refuses thematicResonance by name (epistemics.ts, REFUSED_CONSTRUCTS): "resonance" has no operation, so a number for it measures the judge, not the book. The motif distribution replaces it, and the distribution is the whole of what can be counted here.
+- Do not predict reader response. What little empirical work exists points the other way: Kurtz & Schober (Poetics, 2001) had 16 avid readers state the theme of two microfictions and found the stated themes diverged substantially, with theme looking like a late act of interpretation rather than something computed automatically while reading; Narvaez et al. (Reading Psychology, 1998) found children's stated moral themes often departed from the author's intent. Both studies are small and use short texts — I found no study of theme detection in novel-length fiction. Treat "will readers get it" as unmeasured, not as measured-and-fine.
 
 ═══ MANUSCRIPT ═══
-[INSERT MANUSCRIPT HERE]`;
+[INSERT MANUSCRIPT HERE]
+
+═══ RUSH MOTIF DISTRIBUTION (paste from the Narrative panel / CLI) ═══
+[term · total · per-chapter counts · chapters present · longest silent run]`;
 }
-
-// ── SAGA — long-form multi-season (3–9 seasons/parts) ──────────
-
 export function moduleWritersRoom(config: BookConfig): string {
   return `Run a SOLO WRITERS' ROOM to break your season/book the way TV rooms do (the documented practice: blue-sky -> arcing -> the board -> breaking -> outline; in the Breaking Bad room ~75% of the writing happened at this stage). You play every chair; I referee the process.
 

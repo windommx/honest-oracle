@@ -56,7 +56,8 @@ describe("ladder integrity", () => {
     "ช้าง",                        // contained "ช้า" (slow) → routed to NIS_PACING
     "อุปมา", "ปมด้อย",             // contained "ปม" (plot knot) → routed to NIS_FORESHADOW
     "ตันหยง", "กัปตัน", "กัปตันมากับเรือ",  // contained "ตัน" (blocked) — กัปตัน also defeats "ตันมาก"
-    "สารบัญ", "สารพัด",            // the "สาร" family that produced the first shipped collision
+    "สารพัด", "สาระแน",            // the "สาร" family that produced the first shipped collision
+    //  (สารบัญ left out on purpose: it is now a legitimate R25 keyword — a pre-publish check covers the ToC)
     "จังหวัด", "ชื่อเสียง", "สอบถาม", "ประกาศ", "ท้องถิ่น",
   ];
 

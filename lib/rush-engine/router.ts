@@ -64,7 +64,7 @@ export const SYMPTOM_LADDER: Rung[] = [
     id: "R21",
     th: "ตัน / คิดไม่ออก / นั่งมองหน้าจอเปล่า / ไอเดียซ้ำเดิม",
     en: "Blocked — out of ideas, or every idea is the same idea",
-    keywords: ["ไอเดียตัน", "สมองตัน", "พล็อตตัน", "เขียนตัน", "คิดไม่ออก", "ไม่มีไอเดีย", "ไอเดียซ้ำ", "นึกไม่ออก", "เขียนไม่ออก", "มองหน้าจอ", "หมดมุก", "blocked", "writer's block", "writers block", "stuck", "out of ideas", "no ideas"],
+    keywords: ["ไอเดียตัน", "สมองตัน", "พล็อตตัน", "เขียนตัน", "สมองตื้อ", "คิดไม่ออก", "เขียนไม่ลง", "อะไรไม่ออก", "พล็อตไม่ออก", "มโนไม่ออก", "นึกภาพไม่ออก", "เขียนค้าง", "ดองต้นฉบับ", "เขียนแล้วลบ", "ต่อไม่ถูก", "ต้นชนปลาย", "กระดาษเปล่า", "ไม่รู้จะเขียน", "มุกซ้ำ", "พล็อตซ้ำ", "ไอเดียเดิม", "blank page", "creative block", "idea block", "can't start", "cant start", "dead end", "same idea", "uninspired", "stalled", "ไม่มีไอเดีย", "ไอเดียซ้ำ", "นึกไม่ออก", "เขียนไม่ออก", "มองหน้าจอ", "หมดมุก", "blocked", "writer's block", "writers block", "stuck", "out of ideas", "no ideas"],
     primary: "BRAINSTORM",
     also: ["CONFLICT_MAP", "GENRE_CORE", "STRUCTURE"],
     why:
@@ -94,7 +94,7 @@ export const SYMPTOM_LADDER: Rung[] = [
     id: "R22",
     th: "เขียนมาถึงบทที่ 30 แล้วจำไม่ได้ว่าเกิดอะไรมาบ้าง",
     en: "Deep into the draft and losing track of what already happened",
-    keywords: ["จำไม่ได้", "ลืมไปแล้วว่า", "เรื่องเก่า", "ย้อนไปอ่าน", "สรุปเรื่อง", "บทก่อนหน้า", "recap", "lost track", "what happened", "too long to remember"],
+    keywords: ["จำไม่ได้", "ลืมไปแล้วว่า", "เรื่องเก่า", "ย้อนไปอ่าน", "สรุปเรื่อง", "บทก่อนหน้า", "จำไม่ไหว", "จำชื่อไม่ได้", "จำรายละเอียด", "ใครเป็นใคร", "ไล่อ่าน", "กลับไปอ่าน", "ย้อนกลับไปดู", "ตอนก่อนหน้า", "สรุปเนื้อ", "สรุปย้อนหลัง", "ทวนเรื่อง", "ปะติดปะต่อ", "จับต้นชนปลาย", "ตัวละครเยอะ", "ลืมพล็อต", "recap", "lost track", "what happened", "too long to remember", "previously on", "story so far", "catch up", "keep track", "running summary", "cant remember", "can't remember"],
     primary: "RECAP",
     also: ["WORLD_CODEX", "SERIES_BIBLE"],
     why:
@@ -183,7 +183,7 @@ export const SYMPTOM_LADDER: Rung[] = [
     // "สาร" (message) was tried and removed: it is a substring of สารคดี (nonfiction),
     // สารบัญ, สารพัด. Short Thai fragments buy robustness against particle insertion but
     // cost precision — a fragment that lives inside common unrelated words must go.
-    keywords: ["แก่นเรื่อง", "แก่นหลุด", "ธีม", "motif", "theme", "สัญลักษณ์", "จะพูดเรื่องอะไร", "หายกลางเล่ม", "symbol"],
+    keywords: ["แก่นเรื่อง", "แก่นหลุด", "แกนเรื่อง", "ไม่มีแก่น", "ธีม", "จะสื่ออะไร", "หลงประเด็น", "หลุดประเด็น", "ไม่มีประเด็น", "คติสอนใจ", "สั่งสอนคนอ่าน", "เล่าไปทำไม", "โผล่ครั้งเดียว", "จบแล้วไม่ได้อะไร", "motif", "theme", "themes", "thematic", "leitmotif", "symbol", "symbolism", "controlling idea", "moral of the story", "preachy", "didactic", "สัญลักษณ์", "จะพูดเรื่องอะไร", "หายกลางเล่ม"],
     primary: "NIS_THEME",
     also: ["NIS_FORESHADOW", "WORLD_CODEX"],
     why:
@@ -281,7 +281,7 @@ export const SYMPTOM_LADDER: Rung[] = [
     id: "R24",
     th: "เขียนหนังสือสอน/how-to แต่คนอ่านแล้วทำตามไม่ได้",
     en: "Instructional book that readers cannot actually follow",
-    keywords: ["สอน", "how-to", "howto", "ทำตามไม่ได้", "ไม่เข้าใจ", "คู่มือ", "อธิบายไม่ชัด", "แบบฝึกหัด", "teach", "tutorial", "instructional", "cannot follow"],
+    keywords: ["สอน", "how-to", "howto", "ฮาวทู", "ทำตามไม่ได้", "ทำตามไม่ถูก", "ทำตามยาก", "แต่ทำไม่ได้", "แล้วทำไม่ได้", "ทำจริงไม่ได้", "ทำไม่เป็น", "อ่านแล้วงง", "ต้องทำอะไรต่อ", "ขั้นตอนไม่ชัด", "ไม่มีขั้นตอน", "ข้ามขั้นตอน", "ไม่มีตัวอย่าง", "มีแต่ทฤษฎี", "นามธรรมเกิน", "นำไปใช้ไม่ได้", "ไม่เข้าใจ", "คู่มือ", "อธิบายไม่ชัด", "แบบฝึกหัด", "teach", "tutorial", "instructional", "cannot follow"],
     primary: "PEDAGOGY",
     also: ["CASE_STUDY", "READABILITY", "ARG_MAP"],
     why:
@@ -295,7 +295,7 @@ export const SYMPTOM_LADDER: Rung[] = [
     // "เขียนเสร็จแล้ว" was tried and removed: it is equally true of R20 (finished, now
     // sell it) and this rung sits higher, so it stole every marketing route. The signal
     // that actually separates them is the CHECKING intent, not the finishing.
-    keywords: ["ก่อนส่งพิมพ์", "จะพิมพ์", "ตรวจก่อน", "เช็คก่อน", "ตรวจครั้งสุดท้าย", "ตรวจอะไรบ้าง", "pre-publish", "final check", "checklist", "before publishing", "ready to publish"],
+    keywords: ["ก่อนส่งพิมพ์", "ก่อนตีพิมพ์", "จะพิมพ์", "ตรวจก่อน", "เช็คก่อน", "ตรวจครั้งสุดท้าย", "ตรวจอะไรบ้าง", "ตรวจทาน", "พิสูจน์อักษร", "ตรวจปรู๊ฟ", "ตรวจคำผิด", "ส่งโรงพิมพ์", "จัดรูปเล่ม", "สารบัญ", "หน้าลิขสิทธิ์", "หน้าปกใน", "เช็กลิสต์", "เช็คลิสต์", "ตกหล่น", "pre-publish", "final check", "checklist", "before publishing", "ready to publish"],
     primary: "QUALITY_GATE",
     also: ["NIS_PLOT", "WORLD_CODEX", "ANTI_SLOP", "CUT_PASS"],
     why:
@@ -306,7 +306,7 @@ export const SYMPTOM_LADDER: Rung[] = [
     id: "R26",
     th: "จะส่งสำนักพิมพ์ / หาบรรณาธิการ / เขียนจดหมายเสนอต้นฉบับ",
     en: "Submitting to a publisher or agent",
-    keywords: ["สำนักพิมพ์", "บรรณาธิการ", "เสนอต้นฉบับ", "จดหมายเสนอ", "เรื่องย่อส่งสนพ", "query letter", "agent", "publisher", "synopsis", "submission"],
+    keywords: ["สำนักพิมพ์", "สนพ", "บรรณาธิการ", "เสนอต้นฉบับ", "ส่งต้นฉบับ", "รับต้นฉบับ", "รับพิจารณา", "จดหมายเสนอ", "เรื่องย่อส่งสนพ", "เอเจนต์", "ส่งประกวด", "ค่าลิขสิทธิ์", "ประวัตินักเขียน", "query letter", "cover letter", "query letter", "agent", "publisher", "synopsis", "submission"],
     primary: "SUBMISSION",
     also: ["BLURB", "TITLE"],
     why:

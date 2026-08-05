@@ -691,17 +691,77 @@ Output:
     "group": "nonfiction",
     "id": "PEDAGOGY",
     "name": "Pedagogy Pack",
-    "prompt": "Generate the PEDAGOGY layer for a chapter of "The Test Book" (textbook / how-to / instructional nonfiction).
+    "prompt": "PEDAGOGY LAYER for a chapter of "The Test Book" — instructional nonfiction (textbook / how-to / manual).
 
-Produce:
-1. LEARNING OBJECTIVES: 3-5 measurable objectives using Bloom's verbs (remember → understand → apply → analyze → evaluate → create), escalating across the book.
-2. WORKED EXAMPLE: one fully worked example demonstrating the chapter's key skill, step by step.
-3. RETRIEVAL PRACTICE: 4-6 end-of-chapter questions that force recall (not re-reading).
-4. SPACED CALLBACK: 1-2 questions that connect to a concept from an earlier chapter.
-5. KEY TAKEAWAYS: 3 one-line summaries.
+THE FAILURE THIS MODULE EXISTS TO FIX: the reader finishes the chapter, agrees with every sentence, and still cannot DO the thing. That is not a clarity problem and more explaining will not cure it. A chapter that ends in comprehension ends in nothing checkable; a chapter must end in a CAPABILITY the reader can demonstrate. Everything below is ordered by that.
 
-═══ CHAPTER TOPIC ═══
-[INSERT CHAPTER TOPIC / CONTENT HERE]",
+Reader (write for this person, not for a general audience): QA engineers
+Book thesis the chapter must serve: A premise worth testing
+Chapter budget: ~3000 words, chapter {n} of 6 · diy
+
+━━ STEP 1 · THE CAPABILITY SENTENCE (write this before any prose) ━━
+"After this chapter, QA engineers can [VERB] [OBJECT] [under these conditions] [to this standard]."
+The verb must name something an observer could watch happen. If the only verb that fits is understand / know / appreciate / be aware of, the chapter has a TOPIC, not a capability — go back and find the action the topic is for. Standard means a signal the reader can check alone: the output has these three parts, the number balances, the dough passes the windowpane test, the script runs without error.
+One capability per chapter. A chapter with four is four chapters.
+
+━━ STEP 2 · THE DEMONSTRATION TASK (write it SECOND, before the explanation) ━━
+The task that would prove the capability. State the inputs the reader will have, the artifact they will produce, and the SUCCESS SIGNAL that tells them it worked — plus the FAILURE SIGNAL, i.e. what a wrong result looks like. Then write the chapter backwards from this task and cut every paragraph that does not serve it.
+
+━━ STEP 3 · THE WORKED EXAMPLE, THEN THE FADE ━━
+Give the solution before you demand one. Novices learning from studied worked examples outperform novices told to solve the equivalent problems themselves — the worked example effect (Sweller & Cooper 1985; Sweller 1988, Cognitive Science 12(2), cognitive load theory). Produce THREE items in sequence, not one:
+  (a) FULL WORKED EXAMPLE — exact shape:
+        GIVEN: the concrete starting inputs, with real values. No "let x be a value".
+        GOAL: the finished artifact, described so the reader can recognise it.
+        STEP n: the action · the actual substitution or keystroke · WHY THIS STEP (one line — the rule it comes from)
+        WRONG TURN: the mistake most people make at this step, shown wrong, then corrected.
+        RESULT: the finished artifact in full, so the reader can compare theirs to it.
+      The WHY line is not decoration. Learners who explain each step's rationale to themselves gain more from examples than those who read them through (Chi et al. 1989, self-explanation effect) — the line exists to prompt that explanation.
+  (b) FADED TWIN — same procedure, new inputs, LAST step blank for the reader to complete. Then a version with the last two blank.
+  (c) FULL PROBLEM — new inputs, nothing given, answer at the back.
+Fade on purpose: the same guidance that helps a novice stops helping and can hurt once the reader has the schema (expertise reversal effect, Kalyuga, Ayres, Chandler & Sweller 2003). A book that worked-examples chapter 12 as heavily as chapter 1 is padding.
+
+━━ STEP 4 · RETRIEVAL PRACTICE (the end of the chapter, not an appendix) ━━
+Retrieval beats rereading for durable retention (Roediger & Karpicke 2006, Psychological Science 17(3):249-255; meta-analyses: Rowland 2014, Psychological Bulletin 140(6); Adesope, Trevisan & Sundararajan 2017, Review of Educational Research). Dunlosky et al. 2013 (Psychological Science in the Public Interest 14(1)) rate practice testing and distributed practice HIGH utility, and rereading and highlighting — the two things books actually train readers to do — LOW.
+Write 4-6 items in this exact shape:
+    CLOSED BOOK. (say it — the instruction is the intervention)
+    PROMPT: a question that requires PRODUCING the answer, not recognising it. No multiple choice.
+    ANSWER LENGTH: one sentence, or one worked line.
+    ANSWER + WHY: placed at the end of the chapter or the back of the book, never on the same spread.
+Cover all four item types: (1) state the term in your own words; (2) run the procedure on inputs never shown; (3) decide WHICH procedure applies to a described situation; (4) here is a broken example — find the error.
+One caveat to honour: Roediger & Karpicke found that on an IMMEDIATE test restudying actually beat testing; the advantage of retrieval appeared at a delay. So do not promise the reader an instant feeling of mastery, and put the real check after a gap.
+
+━━ STEP 5 · SPACING AND INTERLEAVING ━━
+SPACED CALLBACK: 1-2 items reaching back to an earlier chapter. Distributed practice beats massed practice, and the best gap grows with how long you want the material to last (Cepeda, Pashler, Vul, Wixted & Rohrer 2006, Psychological Bulletin 132 — 317 experiments; interstudy interval and retention interval act jointly). Practical schedule for a 6-chapter book: revisit each capability once about three chapters later, once near the end, and once in the closing chapter — as a task, never as a summary paragraph.
+INTERLEAVING, with its real limits: mixing problem types beats blocking them (Rohrer & Taylor 2007, Instructional Science 35). But the meta-analysis says it is conditional — a moderate overall effect (Brunmair & Richter 2019, Psychological Bulletin 145(11), Hedges' g ≈ 0.42) that is strong for visual/category material, small for mathematics, ambiguous for expository text, and REVERSED for word learning, where blocking won. Interleave discriminable procedures the reader will have to choose between; block a single procedure being installed for the first time.
+And expect it to feel worse: conditions that slow visible performance can improve durable learning — desirable difficulties (Bjork 1994; Soderstrom & Bjork 2015, Perspectives on Psychological Science 10(2)). Warn the reader in the book, or they will read your hard chapter as a badly written one.
+
+━━ DO NOT BUILD THE BOOK ON THESE ━━
+· LEARNING STYLES (visual / auditory / kinesthetic; "some readers are visual learners, so this chapter is illustrated"). The meshing claim — that matching instruction to a stated preference improves learning — requires a crossover interaction, and Pashler, McDaniel, Rohrer & Bjork (2008, Psychological Science in the Public Interest 9(3):105-119) found "no adequate evidence base to justify incorporating learning-styles assessments into general educational practice." Direct tests since (Rogowsky, Calhoun & Tallal 2015; and again with children, 2020) found no crossover. Preferences are real; the payoff is not. Vary format because the CONTENT wants a diagram, never because a reader "is a visual learner."
+· THE LEARNING PYRAMID / "we remember 10% of what we read, 20% of what we hear, 90% of what we teach." Traced: Edgar Dale's Cone of Experience (1946, 1954, 1969) contains NO percentages — Dale offered it as a classification from concrete to abstract, explicitly not a rank order of learning. The numbers were welded on later, circulated via Treichler (1967) and NTL Institute, which, asked for its evidence, replied that it no longer had and could not find the original research. Letrud & Hernes (2018, Cogent Education 5(1)) traced versions of the pyramid back more than 160 years and concluded it did not originate in empirical research at all. Never print these numbers. If your book's structure depends on them, the structure is decoration.
+· THE 10,000-HOUR RULE as a promise. Practice matters; the meta-analysis of deliberate practice across music, games, sports, education and professions (Macnamara, Hambrick & Oswald 2014, Psychological Science 25) found it explains far less of the variance in performance than the popular rule implies, and least of all in professional domains. Give the reader a practice schedule, not an hour count that guarantees mastery.
+· BLOOM'S TAXONOMY, used as a law. It is an organizing vocabulary (Bloom et al. 1956; revised Anderson & Krathwohl 2001), not an empirical finding, and the strict cumulative hierarchy is not supported — the revision itself relaxed it, and empirical probes of the revised taxonomy's internal assumptions find the knowledge-type and cognitive-process dimensions are not independent (Larsen, Endo, Yee, Do & Lo 2022, CBE—Life Sciences Education 21(4)). USE its verbs, because they force you to name an observable action. Do NOT claim your chapters climb a validated ladder.
+· COGNITIVE LOAD THEORY — take the instructional effects, hold the theory loosely. The worked example, split-attention, redundancy and expertise-reversal effects are replicated instructional findings. The underlying load construct is contested: critics note there is no independent measure of load, so it is often inferred from the very test scores it is meant to explain. Cite the effect, not the mechanism.
+
+━━ OUTPUT ━━
+1. CAPABILITY SENTENCE (one line, observable verb, stated standard).
+2. DEMONSTRATION TASK with success signal and failure signal.
+3. WORKED EXAMPLE in the GIVEN / GOAL / STEP+WHY / WRONG TURN / RESULT shape, then the faded twin, then the unaided problem.
+4. RETRIEVAL SET: 4-6 items in the CLOSED BOOK / PROMPT / ANSWER LENGTH / ANSWER+WHY shape, covering all four item types.
+5. SPACED CALLBACK: 1-2 items from named earlier chapters, plus where in the book each capability is revisited.
+6. CUT LIST: every part of the current draft that serves neither the demonstration task nor a retrieval item.
+7. PREREQUISITE CHECK: what the reader must already be able to do, and which earlier chapter installed it. If nothing did, say so — a chapter resting on an uninstalled prerequisite is the most common reason readers "can't follow."
+
+━━ HONESTY RULES ━━
+- NEVER cite a retention percentage you cannot trace to a named study you have in hand. "People remember X% of what they Y" has no sourceable origin (see the pyramid above); writing it makes every other claim in your book cheaper.
+- Cite instructional EFFECTS by paper and year, not by folk name. "Studies show" is not a citation; render real ones in none and mark anything unverified [VERIFY].
+- Distinguish established from contested IN THE TEXT: retrieval practice and spacing are heavily replicated; interleaving is conditional on material; cognitive load theory's mechanism is disputed. A reader who later learns you flattened this stops trusting the parts that were true.
+- Do not promise outcomes ("master this in 30 days", "3x faster learning"). You cannot observe the reader; any number about their future performance is invented.
+- Emit NO scores. No difficulty rating, no comprehension score, no readability grade sold as learning, no predicted completion or mastery percentage. Report present-or-absent facts instead: capability sentence present/absent, worked example present/absent, retrieval items count, spaced callbacks count, prerequisites unmet (list).
+- What you can check from the chapter is whether the parts exist. Whether the reader learned is measured on readers, not on the manuscript — say so rather than estimating it.
+- If the chapter genuinely has no demonstrable capability (a history chapter, an orientation chapter), say THAT and drop the layer. Do not manufacture an exercise to fill the slot.
+
+═══ CHAPTER TOPIC / DRAFT ═══
+[INSERT CHAPTER TOPIC OR DRAFT HERE]",
     "usage": "Run per chapter for textbook/how-to.",
   },
   {
@@ -2449,17 +2509,77 @@ Output:
     "group": "nonfiction",
     "id": "PEDAGOGY",
     "name": "Pedagogy Pack",
-    "prompt": "Generate the PEDAGOGY layer for a chapter of "The Test Book" (textbook / how-to / instructional nonfiction).
+    "prompt": "PEDAGOGY LAYER for a chapter of "The Test Book" — instructional nonfiction (textbook / how-to / manual).
 
-Produce:
-1. LEARNING OBJECTIVES: 3-5 measurable objectives using Bloom's verbs (remember → understand → apply → analyze → evaluate → create), escalating across the book.
-2. WORKED EXAMPLE: one fully worked example demonstrating the chapter's key skill, step by step.
-3. RETRIEVAL PRACTICE: 4-6 end-of-chapter questions that force recall (not re-reading).
-4. SPACED CALLBACK: 1-2 questions that connect to a concept from an earlier chapter.
-5. KEY TAKEAWAYS: 3 one-line summaries.
+THE FAILURE THIS MODULE EXISTS TO FIX: the reader finishes the chapter, agrees with every sentence, and still cannot DO the thing. That is not a clarity problem and more explaining will not cure it. A chapter that ends in comprehension ends in nothing checkable; a chapter must end in a CAPABILITY the reader can demonstrate. Everything below is ordered by that.
 
-═══ CHAPTER TOPIC ═══
-[INSERT CHAPTER TOPIC / CONTENT HERE]",
+Reader (write for this person, not for a general audience): QA engineers
+Book thesis the chapter must serve: A premise worth testing
+Chapter budget: ~3000 words, chapter {n} of 6 · self help
+
+━━ STEP 1 · THE CAPABILITY SENTENCE (write this before any prose) ━━
+"After this chapter, QA engineers can [VERB] [OBJECT] [under these conditions] [to this standard]."
+The verb must name something an observer could watch happen. If the only verb that fits is understand / know / appreciate / be aware of, the chapter has a TOPIC, not a capability — go back and find the action the topic is for. Standard means a signal the reader can check alone: the output has these three parts, the number balances, the dough passes the windowpane test, the script runs without error.
+One capability per chapter. A chapter with four is four chapters.
+
+━━ STEP 2 · THE DEMONSTRATION TASK (write it SECOND, before the explanation) ━━
+The task that would prove the capability. State the inputs the reader will have, the artifact they will produce, and the SUCCESS SIGNAL that tells them it worked — plus the FAILURE SIGNAL, i.e. what a wrong result looks like. Then write the chapter backwards from this task and cut every paragraph that does not serve it.
+
+━━ STEP 3 · THE WORKED EXAMPLE, THEN THE FADE ━━
+Give the solution before you demand one. Novices learning from studied worked examples outperform novices told to solve the equivalent problems themselves — the worked example effect (Sweller & Cooper 1985; Sweller 1988, Cognitive Science 12(2), cognitive load theory). Produce THREE items in sequence, not one:
+  (a) FULL WORKED EXAMPLE — exact shape:
+        GIVEN: the concrete starting inputs, with real values. No "let x be a value".
+        GOAL: the finished artifact, described so the reader can recognise it.
+        STEP n: the action · the actual substitution or keystroke · WHY THIS STEP (one line — the rule it comes from)
+        WRONG TURN: the mistake most people make at this step, shown wrong, then corrected.
+        RESULT: the finished artifact in full, so the reader can compare theirs to it.
+      The WHY line is not decoration. Learners who explain each step's rationale to themselves gain more from examples than those who read them through (Chi et al. 1989, self-explanation effect) — the line exists to prompt that explanation.
+  (b) FADED TWIN — same procedure, new inputs, LAST step blank for the reader to complete. Then a version with the last two blank.
+  (c) FULL PROBLEM — new inputs, nothing given, answer at the back.
+Fade on purpose: the same guidance that helps a novice stops helping and can hurt once the reader has the schema (expertise reversal effect, Kalyuga, Ayres, Chandler & Sweller 2003). A book that worked-examples chapter 12 as heavily as chapter 1 is padding.
+
+━━ STEP 4 · RETRIEVAL PRACTICE (the end of the chapter, not an appendix) ━━
+Retrieval beats rereading for durable retention (Roediger & Karpicke 2006, Psychological Science 17(3):249-255; meta-analyses: Rowland 2014, Psychological Bulletin 140(6); Adesope, Trevisan & Sundararajan 2017, Review of Educational Research). Dunlosky et al. 2013 (Psychological Science in the Public Interest 14(1)) rate practice testing and distributed practice HIGH utility, and rereading and highlighting — the two things books actually train readers to do — LOW.
+Write 4-6 items in this exact shape:
+    CLOSED BOOK. (say it — the instruction is the intervention)
+    PROMPT: a question that requires PRODUCING the answer, not recognising it. No multiple choice.
+    ANSWER LENGTH: one sentence, or one worked line.
+    ANSWER + WHY: placed at the end of the chapter or the back of the book, never on the same spread.
+Cover all four item types: (1) state the term in your own words; (2) run the procedure on inputs never shown; (3) decide WHICH procedure applies to a described situation; (4) here is a broken example — find the error.
+One caveat to honour: Roediger & Karpicke found that on an IMMEDIATE test restudying actually beat testing; the advantage of retrieval appeared at a delay. So do not promise the reader an instant feeling of mastery, and put the real check after a gap.
+
+━━ STEP 5 · SPACING AND INTERLEAVING ━━
+SPACED CALLBACK: 1-2 items reaching back to an earlier chapter. Distributed practice beats massed practice, and the best gap grows with how long you want the material to last (Cepeda, Pashler, Vul, Wixted & Rohrer 2006, Psychological Bulletin 132 — 317 experiments; interstudy interval and retention interval act jointly). Practical schedule for a 6-chapter book: revisit each capability once about three chapters later, once near the end, and once in the closing chapter — as a task, never as a summary paragraph.
+INTERLEAVING, with its real limits: mixing problem types beats blocking them (Rohrer & Taylor 2007, Instructional Science 35). But the meta-analysis says it is conditional — a moderate overall effect (Brunmair & Richter 2019, Psychological Bulletin 145(11), Hedges' g ≈ 0.42) that is strong for visual/category material, small for mathematics, ambiguous for expository text, and REVERSED for word learning, where blocking won. Interleave discriminable procedures the reader will have to choose between; block a single procedure being installed for the first time.
+And expect it to feel worse: conditions that slow visible performance can improve durable learning — desirable difficulties (Bjork 1994; Soderstrom & Bjork 2015, Perspectives on Psychological Science 10(2)). Warn the reader in the book, or they will read your hard chapter as a badly written one.
+
+━━ DO NOT BUILD THE BOOK ON THESE ━━
+· LEARNING STYLES (visual / auditory / kinesthetic; "some readers are visual learners, so this chapter is illustrated"). The meshing claim — that matching instruction to a stated preference improves learning — requires a crossover interaction, and Pashler, McDaniel, Rohrer & Bjork (2008, Psychological Science in the Public Interest 9(3):105-119) found "no adequate evidence base to justify incorporating learning-styles assessments into general educational practice." Direct tests since (Rogowsky, Calhoun & Tallal 2015; and again with children, 2020) found no crossover. Preferences are real; the payoff is not. Vary format because the CONTENT wants a diagram, never because a reader "is a visual learner."
+· THE LEARNING PYRAMID / "we remember 10% of what we read, 20% of what we hear, 90% of what we teach." Traced: Edgar Dale's Cone of Experience (1946, 1954, 1969) contains NO percentages — Dale offered it as a classification from concrete to abstract, explicitly not a rank order of learning. The numbers were welded on later, circulated via Treichler (1967) and NTL Institute, which, asked for its evidence, replied that it no longer had and could not find the original research. Letrud & Hernes (2018, Cogent Education 5(1)) traced versions of the pyramid back more than 160 years and concluded it did not originate in empirical research at all. Never print these numbers. If your book's structure depends on them, the structure is decoration.
+· THE 10,000-HOUR RULE as a promise. Practice matters; the meta-analysis of deliberate practice across music, games, sports, education and professions (Macnamara, Hambrick & Oswald 2014, Psychological Science 25) found it explains far less of the variance in performance than the popular rule implies, and least of all in professional domains. Give the reader a practice schedule, not an hour count that guarantees mastery.
+· BLOOM'S TAXONOMY, used as a law. It is an organizing vocabulary (Bloom et al. 1956; revised Anderson & Krathwohl 2001), not an empirical finding, and the strict cumulative hierarchy is not supported — the revision itself relaxed it, and empirical probes of the revised taxonomy's internal assumptions find the knowledge-type and cognitive-process dimensions are not independent (Larsen, Endo, Yee, Do & Lo 2022, CBE—Life Sciences Education 21(4)). USE its verbs, because they force you to name an observable action. Do NOT claim your chapters climb a validated ladder.
+· COGNITIVE LOAD THEORY — take the instructional effects, hold the theory loosely. The worked example, split-attention, redundancy and expertise-reversal effects are replicated instructional findings. The underlying load construct is contested: critics note there is no independent measure of load, so it is often inferred from the very test scores it is meant to explain. Cite the effect, not the mechanism.
+
+━━ OUTPUT ━━
+1. CAPABILITY SENTENCE (one line, observable verb, stated standard).
+2. DEMONSTRATION TASK with success signal and failure signal.
+3. WORKED EXAMPLE in the GIVEN / GOAL / STEP+WHY / WRONG TURN / RESULT shape, then the faded twin, then the unaided problem.
+4. RETRIEVAL SET: 4-6 items in the CLOSED BOOK / PROMPT / ANSWER LENGTH / ANSWER+WHY shape, covering all four item types.
+5. SPACED CALLBACK: 1-2 items from named earlier chapters, plus where in the book each capability is revisited.
+6. CUT LIST: every part of the current draft that serves neither the demonstration task nor a retrieval item.
+7. PREREQUISITE CHECK: what the reader must already be able to do, and which earlier chapter installed it. If nothing did, say so — a chapter resting on an uninstalled prerequisite is the most common reason readers "can't follow."
+
+━━ HONESTY RULES ━━
+- NEVER cite a retention percentage you cannot trace to a named study you have in hand. "People remember X% of what they Y" has no sourceable origin (see the pyramid above); writing it makes every other claim in your book cheaper.
+- Cite instructional EFFECTS by paper and year, not by folk name. "Studies show" is not a citation; render real ones in none and mark anything unverified [VERIFY].
+- Distinguish established from contested IN THE TEXT: retrieval practice and spacing are heavily replicated; interleaving is conditional on material; cognitive load theory's mechanism is disputed. A reader who later learns you flattened this stops trusting the parts that were true.
+- Do not promise outcomes ("master this in 30 days", "3x faster learning"). You cannot observe the reader; any number about their future performance is invented.
+- Emit NO scores. No difficulty rating, no comprehension score, no readability grade sold as learning, no predicted completion or mastery percentage. Report present-or-absent facts instead: capability sentence present/absent, worked example present/absent, retrieval items count, spaced callbacks count, prerequisites unmet (list).
+- What you can check from the chapter is whether the parts exist. Whether the reader learned is measured on readers, not on the manuscript — say so rather than estimating it.
+- If the chapter genuinely has no demonstrable capability (a history chapter, an orientation chapter), say THAT and drop the layer. Do not manufacture an exercise to fill the slot.
+
+═══ CHAPTER TOPIC / DRAFT ═══
+[INSERT CHAPTER TOPIC OR DRAFT HERE]",
     "usage": "Run per chapter for textbook/how-to.",
   },
   {
@@ -3810,17 +3930,58 @@ Be concrete; avoid generic single words.",
     "group": "marketing",
     "id": "SUBMISSION",
     "name": "Agent Submission Pack",
-    "prompt": "Produce a traditional-publishing SUBMISSION PACK for "The Test Book".
+    "prompt": "Produce a SUBMISSION PACK for "The Test Book" — the pitch aimed at ONE professional reader (an acquiring editor, or an agent in markets that use them). This is NOT retail copy: a shopper is browsing, this reader is deciding whether to spend a week of their life on your manuscript. Back-cover/store copy is a different artifact (see BLURB, KDP_META).
 
-Inputs to use: premise = A premise worth testing; type = Novel / Fiction; audience = QA engineers; approx 18000 words.
+PROJECT FACTS (use only these; do not invent credentials, sales, or prior publications):
+premise = A premise worth testing · type = Novel / Fiction / thriller · reader = QA engineers · voice = storytelling · manuscript language = english · length ≈ 18000 words in 6 chapters
 
-Output four parts:
-1. QUERY LETTER (~250 words): hook paragraph (protagonist/concept + conflict + stakes), then metadata line (title, word count, genre, 2 comp titles), then a 2-line author bio slot.
-2. ONE-PAGE SYNOPSIS: present tense, the FULL arc including the ending (no teasing), key turning points named.
-3. FIVE COMP TITLES: published within ~3 years, same readership (avoid mega-bestsellers), each with one line on the shared element. Mark any you're unsure are recent — the user should verify.
-4. AUTHOR BIO: three versions — 50, 100, and 150 words.
+⚠ TWO MARKETS, TWO RULEBOOKS. State at the top of your output which one this pack targets.
+A) ENGLISH-LANGUAGE TRADE (US/UK): the query-letter → agent → publisher route below is THAT market's convention. It is a convention, not a law of publishing.
+B) THAI PUBLISHERS: in Thailand the author-representation agent model is reported as effectively absent — Thailand-based literary agencies work mainly on TRANSLATION RIGHTS (buying foreign titles for Thai publishers, selling Thai titles abroad), not on representing a Thai author to a Thai publisher. The normal route is DIRECT to the publisher (สำนักพิมพ์), usually by e-mail to the editorial desk, plus two other routes that matter: an open call / contest (การประกวดต้นฉบับ) and being picked up from an online serial platform (readAwrite, Dek-D, Fictionlog and similar). Thai publishers that publish submission pages typically specify their own file spec — Word file, A4, Cordia/Angsana-class font at 14 pt, a เรื่องย่อ of at most ~2 A4 pages, and a short ประวัตินักเขียน. TREAT EVERY SUCH DETAIL AS A PATTERN, NOT AS THE RULE: before sending anything, open the publisher's own "ส่งต้นฉบับ / เปิดรับต้นฉบับ" page and copy ITS spec exactly. Where their spec and this module disagree, THEIR SPEC WINS. If a publisher publishes no submission page, that silence is information — ask them, do not assume a Western template applies.
 
-[INSERT any author credentials / comp ideas here]",
+Produce these artifacts, in this order:
+
+1. QUERY LETTER / จดหมายเสนอต้นฉบับ (~250–350 words, one page, five slots in this order)
+   a. ADDRESS + WHY THIS READER — one sentence naming why this publisher/imprint/agent fits THIS book. Leave it as a fill-in slot: [ทำไมถึงส่งให้ที่นี่ — อ้างอิงหนังสือในเครือที่คุณอ่านจริง]. Do NOT fabricate the reason.
+   b. HOOK — 150–200 words: protagonist (or, for nonfiction, the question), the concrete situation, the conflict, what is at stake, and the choice the book turns on. Concrete nouns; no theme talk, no backstory, no rhetorical questions.
+   c. METADATA LINE — title, Novel / Fiction, subgenre, word count (18000 words, rounded), language, comps, and whether the manuscript is COMPLETE. For fiction from an unpublished author the manuscript must be finished before you query — say so plainly.
+   d. BIO — 2 sentences, relevant credentials only (see 4).
+   e. CLOSE — what is attached, exactly as the recipient's guidelines asked for it.
+
+2. ONE-PAGE SYNOPSIS / เรื่องย่อ (~500 words; Thai publishers often cap at 2 A4 pages — obey theirs)
+   Third person, PRESENT tense, regardless of the book's own tense and person. The whole arc, in order, with the turning points named, WHO CHANGES and how — AND THE ENDING SPELLED OUT. A submission synopsis is not a teaser; withholding the ending is the most common reason it fails its job. Name only characters that matter to the spine (a synopsis crowded with names reads as an unfocused book). 
+
+3. COMPS / หนังสือเทียบเคียง — 3 to 5 candidates, ranked, each with ONE line naming the shared element
+   What a comp is FOR: it is a market argument, not a compliment. It tells the reader "here is the shelf, here is the audience, here is roughly how it sells." An acquiring editor builds a profit-and-loss estimate from comparable titles, so an unusable comp costs you the argument.
+   A USEFUL comp is: (i) recently published — roughly the last 2–3 years; (ii) recognisable to that specific reader — for a Thai publisher that means a Thai-market title, ideally one on their own or a rival's list, NOT a New York bestseller; (iii) matched on tone/voice/readership rather than on plot furniture; (iv) a book you have actually read.
+   A HARMFUL comp is: a mega-seller or classic ("the next Harry Potter", "เหมือน…ที่ขายล้านเล่ม") — it reads as a claim about your sales, not about your book; a title over ~5–10 years old (it argues the market has already moved on); a film or series used as the only comp (a screen comp shows tone but proves nothing about book buyers — use at most one, as a secondary); two comps that are the same book twice (they should triangulate, e.g. one for voice, one for structure, one for audience); anything you have not read.
+   For every candidate output: TITLE · author · year · publisher/imprint if known · the one shared element · confidence. Mark anything you are not certain is real and recent as "VERIFY — check in a bookshop, on the publisher's catalogue, or on the retailer page before sending."
+
+4. AUTHOR BIO / ประวัตินักเขียน — three versions: 50, 100, 150 words, third person
+   Include only: publication credits, relevant professional or lived expertise that gives you standing to write THIS book, prizes actually won, and — for nonfiction — platform stated as verifiable facts (audience size, column, teaching, community) rather than adjectives. Exclude: age, unrelated jobs, "I have loved writing since I was a child", and any credential the author has not supplied. If the author gives you nothing, output the bio as a labelled EMPTY SLOT with a list of what to fill in. For fiction, having no credits is normal — say nothing rather than padding.
+
+5. PACKAGE CHECK — the pages themselves: send exactly what was asked for (some ask 10 pages, some 3 chapters, some 10,000 words, some the whole file), from the actual opening — never a later chapter you like better.
+
+6. AFTER YOU SEND — vocabulary and expectations, stated honestly
+   PARTIAL request = they want more pages, usually a set number of opening pages. FULL request = they want the entire manuscript. Neither is an offer; both are normal steps. Response practice varies enormously and some recipients publish a "no response means no" policy. THE ONLY AUTHORITY ON TIMING IS THE RECIPIENT'S OWN STATED WINDOW — read it, write it in your tracker, and follow up only after it has passed. This module will not tell you an average wait, a reply rate, or an acceptance rate, because no honest single number exists for them.
+
+7. MONEY AND SAFETY — read this before you send anything
+   Yog's Law (coined by author James D. Macdonald): MONEY FLOWS TOWARD THE AUTHOR. A publisher or agent who acquires your book pays you; you do not pay them to be considered. The Association of American Literary Agents' Canon of Ethics forbids member agents from charging reading fees to evaluate work for possible representation — so a "reading fee", "evaluation fee", "marketing contribution" or "submission fee" for consideration is the loudest possible warning sign.
+   WATCHDOG, NAMED: Writer Beware — founded 1998, sponsored by SFWA (Science Fiction and Fantasy Writers Association), at writerbeware.blog — documents fee-charging agents, predatory vanity operations, ghostwriting-and-marketing scams, and impersonation of real publishers and real editors. Check any company that solicits YOU there first. Solicitation is itself a flag: legitimate publishers rarely cold-call an unpublished author to praise their manuscript.
+   FOR THAI AUTHORS: paying a printer or a จ้างพิมพ์ / self-publishing service is a legitimate purchase of a service — but it is a purchase, not an acquisition, and anyone presenting it as "the publisher accepted your book" is misrepresenting it. I could not identify a Thai-language equivalent of Writer Beware, so do this instead: check that the company's books are physically in bookshops and listed by real distributors, ask other authors on their list, and get the terms (print run, royalty, rights, duration) in writing before signing.
+   You do NOT need to register copyright before submitting: under Thailand's Copyright Act B.E. 2537 copyright exists automatically from creation, without registration (the Department of Intellectual Property's จดแจ้ง filing is an evidentiary record, not the source of the right). Anyone who says you must pay to protect your manuscript before sending it is selling something.
+
+HONESTY RULES (these override everything above):
+- NEVER invent an agent's name, an agency, an imprint, an editor, or a publisher's submission policy. If a real recipient is needed, output a labelled slot and the instruction to verify on that party's own website.
+- NEVER invent a response-time statistic, an acceptance rate, a reply rate, or "your chances" — these are not knowable from a manuscript and Rush does not print them.
+- NEVER invent a comp title, its year, or its publisher. A plausible-sounding book that does not exist destroys the letter's credibility instantly; mark every unverified comp "VERIFY".
+- Do not present English-language agent conventions as universal. Where this pack's advice and the recipient's own stated guidelines differ, the recipient wins — say so in the output.
+- State the manuscript's real word count from the facts above; do not round toward a genre "sweet spot" you did not measure.
+- If the author supplied no credentials, the bio stays an empty slot. Do not manufacture a biography.
+- No score, no rating, no readiness percentage for the pack. Report what each artifact contains and what is still missing.
+
+═══ AUTHOR CREDENTIALS · TARGET PUBLISHER/AGENT (paste their stated guidelines verbatim) · COMP IDEAS ═══
+[INSERT HERE — ถ้ามีหน้า "เปิดรับต้นฉบับ" ของสำนักพิมพ์ ให้วางข้อความจริงมาทั้งหมด]",
     "usage": "Run for traditional submission.",
   },
 ]
