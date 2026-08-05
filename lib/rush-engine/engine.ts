@@ -32,6 +32,7 @@ export * from "./excess";
 export * from "./epistemics";
 export * from "./router";
 export * from "./provenance";
+export * from "./citations";
 export { estimateTokens } from "./text-util";
 export * from "./config-diff";
 export { TH_GROUP_LABEL, TH_META } from "./th";

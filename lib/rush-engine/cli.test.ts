@@ -224,3 +224,27 @@ describe("rush receipt", () => {
     expect(runCli(["help"]).stdout).toContain("rush receipt");
   });
 });
+
+describe("rush cite", () => {
+  it("prints the ledger grouped by verification tier", () => {
+    const r = runCli(["cite"]);
+    expect(r.code).toBe(0);
+    expect(r.stdout).toContain("ตรวจแค่ไหน ไม่ใช่ดีแค่ไหน");
+    expect(r.stdout).toContain("ไม่ได้เปิดหน้าเอกสาร");
+  });
+  it("--recheck lists weakest first and excludes disputed", () => {
+    const r = runCli(["cite", "--recheck"]);
+    expect(r.stdout.indexOf("[memory]")).toBeLessThan(r.stdout.indexOf("[index]"));
+    expect(r.stdout).not.toContain("[disputed]");
+    expect(r.stdout).toMatch(/still want a primary source/);
+  });
+  it("--module filters, and says 'unaudited' rather than 'none' when empty", () => {
+    expect(runCli(["cite", "--module", "RECAP"]).stdout).toContain("BooookScore");
+    const none = runCli(["cite", "--module", "TRANSLATE"]);
+    expect(none.code).toBe(1);
+    expect(none.stderr).toContain("unaudited");
+  });
+  it("is listed in help", () => {
+    expect(runCli(["help"]).stdout).toContain("rush cite");
+  });
+});

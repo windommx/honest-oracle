@@ -23,6 +23,7 @@ import { findRestatements, findNearRestatements } from "./restatement";
 import { excessVocabulary, formatExcess } from "./excess";
 import { route, formatRoute } from "./router";
 import { buildReceipt, verifyReceipt, formatReceipt, type Claim } from "./provenance";
+import { formatCitationLedger, recheckQueue, citationsFor, CITATIONS } from "./citations";
 
 export interface CliResult { stdout: string; stderr: string; code: number }
 
@@ -58,6 +59,7 @@ USAGE
   rush narrative <file.md> [--names "A,B"] [--motifs "x,y"]  (Thai: presence/pacing/motifs)
   rush route    "<อาการที่เจอ>"   (symptom → which of the 61 modules to open)
   rush receipt  <file.md> [--lang th|en] [--verify]  (measurement receipt + re-derive check)
+  rush cite     [--module <ID>] [--recheck]   (citation ledger: how strongly each source was checked)
   rush help
 
 COMMANDS
@@ -90,6 +92,12 @@ COMMANDS
             command to remake it. Carries NO timestamp — the engine has no clock, so the
             same file yields a byte-identical receipt forever, and that equality is the
             proof. --verify re-derives and diffs; exit 1 on drift.
+  cite      The citation ledger. Every registered source with its VERIFICATION tier —
+            opened the paper / confirmed via a search index / from memory / disputed.
+            The tier says how strongly it was CHECKED, never how good the work is.
+            --module <ID> filters to one module; --recheck lists the weakest first.
+            The registry is partial and reports its own coverage rather than implying
+            it covers every reference the modules make.
   route     Describe the problem in your own words ("จบบทแล้ววางได้", "ตัวละครพูดเหมือนกันหมด")
             and get the module to open. A fixed keyword ladder, not a model: it prints the
             words that triggered the route so you can check it, lists every competing rung
@@ -478,6 +486,30 @@ function cmdReceipt(file: string | undefined, flags: Record<string, string | tru
   return { stdout: formatReceipt(receipt) + "\n", stderr: "", code: 0 };
 }
 
+/** The citation ledger — the same tiering epistemics applies to numbers, applied to sources. */
+function cmdCite(flags: Record<string, string | true>): CliResult {
+  if (typeof flags.module === "string") {
+    const rows = citationsFor(flags.module);
+    if (!rows.length) return { stdout: "", stderr: `no registered citations for "${flags.module}" — unaudited, which is not the same as none\n`, code: 1 };
+    const L = [`# ${flags.module} — ${rows.length} registered source(s)`, ""];
+    for (const c of rows) {
+      L.push(`[${c.tier}] ${c.who} (${c.year}) — ${c.work}`);
+      L.push(`   ${c.claim}`);
+      if (c.note) L.push(`   note: ${c.note}`);
+      L.push("");
+    }
+    return { stdout: L.join("\n"), stderr: "", code: 0 };
+  }
+  if (flags.recheck) {
+    const q = recheckQueue();
+    const L = ["# re-check queue — weakest verification first", "", "(disputed entries are excluded: their tier describes the CLAIM, not how it was checked)", ""];
+    for (const c of q) L.push(`[${c.tier}] ${c.who} (${c.year}) — ${c.work}  → ${c.usedIn.join(", ")}`);
+    L.push("", `${q.length} of ${CITATIONS.length} registered citations still want a primary source.`);
+    return { stdout: L.join("\n") + "\n", stderr: "", code: 0 };
+  }
+  return { stdout: formatCitationLedger() + "\n", stderr: "", code: 0 };
+}
+
 export function runCli(argv: string[], io?: { read?: (path: string) => string }): CliResult {
   const { positional, flags } = parseFlags(argv);
   const cmd = positional[0];
@@ -495,5 +527,6 @@ export function runCli(argv: string[], io?: { read?: (path: string) => string })
   if (cmd === "narrative") return cmdNarrative(positional[1], flags, io?.read);
   if (cmd === "route") return cmdRoute(positional.slice(1).join(" "));
   if (cmd === "receipt") return cmdReceipt(positional[1], flags, io?.read);
+  if (cmd === "cite") return cmdCite(flags);
   return { stdout: "", stderr: `unknown command "${cmd}". try: rush help\n`, code: 2 };
 }
