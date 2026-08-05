@@ -168,3 +168,26 @@ describe("runCli", () => {
     expect(r.stdout).toContain("อัปเดต");
   });
 });
+
+describe("rush route", () => {
+  it("routes a Thai symptom and shows the audit trail", () => {
+    const r = runCli(["route", "จบบทแล้ววางได้ ไม่มีใครอ่านต่อ"]);
+    expect(r.code).toBe(0);
+    expect(r.stdout).toContain("HOOK_CRAFT");
+    expect(r.stdout).toContain("คำที่ทำให้เข้าขั้นนี้");
+  });
+  it("exits 1 on no match (grep convention) and refuses to guess", () => {
+    const r = runCli(["route", "วันนี้อากาศดี"]);
+    expect(r.code).toBe(1);
+    expect(r.stdout).toContain("R0");
+    expect(r.stdout).not.toMatch(/เปิดตัวนี้ก่อน/);
+  });
+  it("errors with usage when the symptom is missing", () => {
+    const r = runCli(["route"]);
+    expect(r.code).toBe(2);
+    expect(r.stderr).toContain("rush route");
+  });
+  it("is listed in help", () => {
+    expect(runCli(["help"]).stdout).toContain("rush route");
+  });
+});

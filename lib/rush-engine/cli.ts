@@ -21,6 +21,7 @@ import { analyzeSaga, formatSaga, type SagaBook } from "./saga";
 import { analyzeOpeners, formatOpeners } from "./openers";
 import { findRestatements, findNearRestatements } from "./restatement";
 import { excessVocabulary, formatExcess } from "./excess";
+import { route, formatRoute } from "./router";
 
 export interface CliResult { stdout: string; stderr: string; code: number }
 
@@ -54,6 +55,7 @@ USAGE
   rush excess   <suspect.md> --baseline <human.md> [--lang th|en] [--min n]
   rush scene    <file.md>   (Thai: real per-scene signals — no fake 0–100 scores)
   rush narrative <file.md> [--names "A,B"] [--motifs "x,y"]  (Thai: presence/pacing/motifs)
+  rush route    "<อาการที่เจอ>"   (symptom → which of the 61 modules to open)
   rush help
 
 COMMANDS
@@ -81,6 +83,11 @@ COMMANDS
             "tell" judgement (and the corpora) are yours.
   scene     Per-scene readout (Thai): words, clauses, rhythm cv, dialogue ratio, telling
             density, sensory/1k, AI-tells — real signals, never a fake 0–100 vibe score.
+  route     Describe the problem in your own words ("จบบทแล้ววางได้", "ตัวละครพูดเหมือนกันหมด")
+            and get the module to open. A fixed keyword ladder, not a model: it prints the
+            words that triggered the route so you can check it, lists every competing rung
+            instead of hiding them, and returns NOTHING when nothing matches rather than
+            guessing the nearest module.
 
 TYPES     ${Object.keys(BOOK_TYPES).join(", ")}
 `;
@@ -396,6 +403,16 @@ function cmdNarrative(file: string | undefined, flags: Record<string, string | t
   return { stdout: L.join("\n") + "\n", stderr: "", code: 0 };
 }
 
+/** Symptom → module. Exit 1 on no match, following grep's convention: the run succeeded,
+ *  the search found nothing. Callers can branch on it without parsing the text. */
+function cmdRoute(symptom: string): CliResult {
+  if (!symptom.trim()) {
+    return { stdout: "", stderr: `rush route "<อาการที่เจอ>"\nเช่น: rush route "จบบทแล้ววางได้ ไม่มีใครอ่านต่อ"\n`, code: 2 };
+  }
+  const r = route(symptom);
+  return { stdout: formatRoute(symptom) + "\n", stderr: "", code: r.primary ? 0 : 1 };
+}
+
 export function runCli(argv: string[], io?: { read?: (path: string) => string }): CliResult {
   const { positional, flags } = parseFlags(argv);
   const cmd = positional[0];
@@ -411,5 +428,6 @@ export function runCli(argv: string[], io?: { read?: (path: string) => string })
   if (cmd === "excess") return cmdExcess(positional[1], flags, io?.read);
   if (cmd === "scene") return cmdScene(positional[1], flags, io?.read);
   if (cmd === "narrative") return cmdNarrative(positional[1], flags, io?.read);
+  if (cmd === "route") return cmdRoute(positional.slice(1).join(" "));
   return { stdout: "", stderr: `unknown command "${cmd}". try: rush help\n`, code: 2 };
 }

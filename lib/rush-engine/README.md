@@ -119,6 +119,7 @@ plus positioning research):
 | `relationships.ts` · `narrative.ts` | Co-occurrence graph · character presence / pacing / motifs |
 | `rename.ts` · `register.ts` · `translation.ts` | Cross-chapter rename · Thai register (RI spellings) · Thai→EN term check |
 | `epistemics.ts` | The signal registry + refused constructs — the theory of knowledge, in code |
+| `router.ts` | อาการ → โมดูล: an ordered keyword ladder (R1–R20, R0 fallback) that turns a writer's own description of the problem into modules to open. Prints the matched keywords, lists competing rungs, returns nothing rather than force-fitting (`rush route "<อาการ>"`) |
 
 **Continuity** — `codex.ts` · `saga.ts` · `outline.ts`
 **Publishing** — `kdp.ts` (trim/page math) · `competitive.ts` (capability matrix)
