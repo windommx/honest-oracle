@@ -2,6 +2,7 @@
 import { describe, it, expect, afterEach } from "vitest";
 import { render, screen, fireEvent, cleanup } from "@testing-library/react";
 import RushFix from "./fix/page";
+import { route } from "@/lib/rush-engine/engine";
 
 afterEach(cleanup);
 
@@ -48,9 +49,22 @@ describe("/rush/fix — symptom router page", () => {
     expect(screen.getByText("ANTI_SLOP")).toBeTruthy();
   });
 
+  it("every sample chip routes — no chip can land the user on R0", () => {
+    // Regression: chips used to be built from the first " / " segment of a rung label,
+    // which the ladder never guaranteed would match. Tightening one keyword silently
+    // turned a chip into a dead end. Chips now carry the whole label, and this asserts
+    // that for ALL of them, not just the one that broke.
+    render(<RushFix />);
+    const chips = screen.getAllByRole("button");
+    expect(chips.length).toBeGreaterThan(0);
+    for (const chip of chips) {
+      expect(route(chip.textContent ?? "").primary, `chip "${chip.textContent}" routes to R0`).not.toBeNull();
+    }
+  });
+
   it("clicking a sample chip fills the box and routes", () => {
     render(<RushFix />);
-    fireEvent.click(screen.getByRole("button", { name: /ตัน/ }));
+    fireEvent.click(screen.getByRole("button", { name: /ตันมาก|ไอเดียซ้ำเดิม/ }));
     expect(screen.getByText("BRAINSTORM")).toBeTruthy();
   });
 

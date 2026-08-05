@@ -51,12 +51,16 @@ export default function RushFix() {
             <p className="text-[0.68rem] text-gray-600 mb-2">หรือกดอาการที่ใกล้เคียง:</p>
             <div className="flex flex-wrap gap-1.5">
               {samples.map((r) => (
+                // The WHOLE label, never a segment. Only whole labels are guaranteed to
+                // route back to their own rung (router.test.ts pins that); a segment like
+                // "ตัน" can stop matching the moment a keyword is tightened, and the chip
+                // would then land the user on R0.
                 <button
                   key={r.id}
-                  onClick={() => setSymptom(r.th.split(" / ")[0])}
+                  onClick={() => setSymptom(r.th)}
                   className="text-[0.68rem] px-2.5 py-1 rounded-full border border-white/10 text-gray-400 hover:border-[#c9a84c]/60 hover:text-[#e6c86a] transition text-left"
                 >
-                  {r.th.split(" / ")[0]}
+                  {r.th}
                 </button>
               ))}
             </div>

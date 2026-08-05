@@ -32,6 +32,49 @@ describe("ladder integrity", () => {
     }
   });
 
+  it("every rung's own label routes back to itself — the anti-theft net", () => {
+    // A rung whose canonical phrasing routes somewhere else is broken by construction:
+    // the label is what the UI shows as a sample chip, so the user clicks it and lands
+    // in the wrong place. This is also the guard that catches a NEW rung's keywords
+    // stealing an OLD rung's route — the failure mode that has bitten this ladder three
+    // times (สาร inside สารคดี, "เขียนเสร็จแล้ว" taking R20, "น่าเบื่อ" taking R12).
+    //
+    // Whole labels only. Labels enumerate ("ชื่อ / สถานที่ / ไทม์ไลน์ ไม่ตรงกันข้ามบท" is one
+    // predicate over three nouns), so splitting on " / " would assert that bare nouns
+    // route — a demand the ladder deliberately does not meet.
+    for (const r of SYMPTOM_LADDER) {
+      expect(route(r.th).primary?.rung.id, `${r.id} "${r.th}" was stolen or matched nothing`).toBe(r.id);
+    }
+  });
+
+  // A curated regression corpus, NOT a claim of completeness. Thai keywords match as
+  // substrings, so a short fragment can fire inside a common word from another domain.
+  // Every entry here is a real Thai word that DID fire, or was checked because it shares
+  // a fragment with a keyword. The list grows when a collision is found — that is its job.
+  const HAZARD_WORDS = [
+    "ปกติ", "ปกครอง", "ปกป้อง",   // contained "ปก" (cover) → routed to BLURB
+    "ช้าง",                        // contained "ช้า" (slow) → routed to NIS_PACING
+    "อุปมา", "ปมด้อย",             // contained "ปม" (plot knot) → routed to NIS_FORESHADOW
+    "ตันหยง",                      // contained "ตัน" (blocked); a plausible Thai character name
+    "สารบัญ", "สารพัด",            // the "สาร" family that produced the first shipped collision
+    "จังหวัด", "ชื่อเสียง", "สอบถาม", "ประกาศ", "ท้องถิ่น",
+  ];
+
+  it("no keyword fires inside a common unrelated Thai word", () => {
+    for (const w of HAZARD_WORDS) {
+      const r = route(w);
+      expect(r.primary, `"${w}" wrongly routed to ${r.primary?.rung.id} via "${r.primary?.matched.join(",")}"`).toBeNull();
+    }
+  });
+
+  it("records the one collision we accept, with its reason", () => {
+    // "อืด" (sluggish) fires inside ท้องอืด (bloated stomach). Kept deliberately: "อืด" is
+    // the natural Thai word for a sagging middle, and a digestive complaint will not appear
+    // in a manuscript-symptom description. Recorded rather than hidden — if this ever bites,
+    // the fix is to qualify it ("เรื่องอืด") exactly as ช้า/ตัน/ปม/ปก were qualified above.
+    expect(route("ท้องอืด").primary?.rung.primary).toBe("NIS_PACING");
+  });
+
   it("no rung lists its own primary in also or runFirst", () => {
     for (const r of SYMPTOM_LADDER) {
       expect(r.also).not.toContain(r.primary);
