@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
-  CITATIONS, citation, citationsFor, disputed, recheckQueue, coverage, formatCitationLedger,
+  CITATIONS, citation, citationsFor, disputed, recheckQueue, coverage, countYearMentions, formatCitationLedger,
 } from "./citations";
 import { MODULE_CATALOG, MODULE_GROUPS } from "./modules";
 import { generateAllPrompts, type BookConfig } from "./engine";
@@ -85,13 +85,24 @@ describe("queries", () => {
 });
 
 describe("honest self-report", () => {
-  it("coverage states it is partial and never hardcodes the denominator", () => {
-    const c = coverage(70);
+  it("coverage counts the denominator live from real prompt text, over-counting on purpose", () => {
+    // The denominator is computed from the actual generated prompts, never a constant, so
+    // it cannot drift into looking flattering as modules grow.
+    const text = ALL.map((p) => p.prompt).join("\n");
+    const c = coverage(text);
     expect(c.registered).toBe(CITATIONS.length);
-    expect(c.totalYearMentions).toBe(70);
     expect(c.note).toMatch(/PARTIAL/);
+    expect(c.note).toMatch(/over-count/i);
     // the gap is real and must not be dressed up as complete
-    expect(c.registered).toBeLessThan(c.totalYearMentions);
+    expect(c.registered).toBeLessThan(c.mentionsEstimate);
+  });
+
+  it("countYearMentions is deterministic and catches years + arXiv ids", () => {
+    expect(countYearMentions("Eliot 1919 and Gardner 1983")).toBe(2);
+    expect(countYearMentions("see arXiv:2510.01171")).toBe(1); // arXiv id whose lead digits are not a year
+    expect(countYearMentions("Chang 2024, arXiv:2310.00785")).toBe(2); // a year AND an arxiv id
+    const t = "Roediger 2006; Brunmair 2019";
+    expect(countYearMentions(t)).toBe(countYearMentions(t)); // pure
   });
 
   it("most of the registry is index-tier, reflecting the blocked network", () => {

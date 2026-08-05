@@ -5,7 +5,7 @@
 // ║  bin (scripts/rush.ts) wires process.argv + node:fs to it.         ║
 // ╚══════════════════════════════════════════════════════════════════╝
 
-import { BOOK_TYPES, defaultGroupsFor, generateAllPrompts, type BookConfig, type BookTypeKey, type PromptGroup } from "./engine";
+import { BOOK_TYPES, MODULE_GROUPS, defaultGroupsFor, generateAllPrompts, type BookConfig, type BookTypeKey, type PromptGroup } from "./engine";
 import { analyzeThai } from "./thai-analyzer";
 import { analyzeProse } from "./prose-analyzer";
 import { sensoryDensity, SENSE_LABEL, type Sense } from "./sensory";
@@ -23,7 +23,7 @@ import { findRestatements, findNearRestatements } from "./restatement";
 import { excessVocabulary, formatExcess } from "./excess";
 import { route, formatRoute } from "./router";
 import { buildReceipt, verifyReceipt, formatReceipt, type Claim } from "./provenance";
-import { formatCitationLedger, recheckQueue, citationsFor, CITATIONS } from "./citations";
+import { formatCitationLedger, recheckQueue, citationsFor, CITATIONS, coverage } from "./citations";
 
 export interface CliResult { stdout: string; stderr: string; code: number }
 
@@ -507,7 +507,14 @@ function cmdCite(flags: Record<string, string | true>): CliResult {
     L.push("", `${q.length} of ${CITATIONS.length} registered citations still want a primary source.`);
     return { stdout: L.join("\n") + "\n", stderr: "", code: 0 };
   }
-  return { stdout: formatCitationLedger() + "\n", stderr: "", code: 0 };
+  // Live coverage: the denominator is counted from the ACTUAL generated prompts across
+  // every module group, not a constant — so the ratio cannot drift into looking flattering
+  // as modules grow. It is a heuristic over-count, labelled as such by coverage().
+  const cfg: BookConfig = { type: "novel", title: "-", thesis: "-", reader: "-", voice: "storytelling", chapters: 12, wordsPerChapter: 2000, subGenre: "thriller", citationStyle: "none", language: "english" } as unknown as BookConfig;
+  const text = generateAllPrompts(cfg, MODULE_GROUPS.map((m) => m.key)).map((p) => p.prompt).join("\n");
+  const cov = coverage(text);
+  const foot = ["", `— coverage: ${cov.registered} registered / ~${cov.mentionsEstimate} citation-shaped references (heuristic over-count)`, `  ${cov.note}`];
+  return { stdout: formatCitationLedger() + foot.join("\n") + "\n", stderr: "", code: 0 };
 }
 
 export function runCli(argv: string[], io?: { read?: (path: string) => string }): CliResult {

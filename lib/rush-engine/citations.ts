@@ -300,20 +300,37 @@ export function recheckQueue(): Citation[] {
     .sort((a, b) => TIER_ORDER.indexOf(a.tier) - TIER_ORDER.indexOf(b.tier));
 }
 
+/** Count citation-shaped references in a body of prompt text. Deterministic, pure.
+ *
+ *  This is itself a saññā-tier number (a heuristic label, not a direct count — see
+ *  epistemics.ts): it tallies year tokens and arXiv ids, which OVER-counts, because a
+ *  year used as data ("set in 2025") looks the same as a year in a citation. It is the
+ *  denominator of a coverage RATIO, where over-counting is the safe direction — it makes
+ *  coverage look worse, never better. Labelled an estimate everywhere it surfaces so it
+ *  is never mistaken for a paccakkha count. */
+export function countYearMentions(text: string): number {
+  const years = text.match(/\b(?:18|19|20)\d{2}\b/g)?.length ?? 0;
+  // arXiv ids without a year of their own (e.g. arXiv:2510.01171 → 2510 is NOT 18/19/20xx)
+  // are real references the year regex misses, so add them.
+  const arxiv = text.match(/arXiv:\d{4}\.\d{4,5}/gi)?.length ?? 0;
+  return years + arxiv;
+}
+
 /** How much of the citation surface this registry actually covers.
  *
- *  `registered` is a fact. `totalYearMentions` is the count of year-bearing references in
- *  the module source, passed in by the caller that can see the file — it is deliberately
- *  NOT hardcoded here, because a stale hardcoded denominator would make coverage look
- *  better than it is as the modules grow. */
-export function coverage(totalYearMentions: number): { registered: number; totalYearMentions: number; note: string } {
+ *  `registered` is a fact. `mentionsEstimate` is a HEURISTIC over-count of citation-shaped
+ *  references in the supplied text — computed live by countYearMentions, never hardcoded,
+ *  because a stale constant would make coverage look better than it is as the modules grow.
+ *  It over-counts on purpose: a coverage ratio should err toward looking incomplete. */
+export function coverage(text: string): { registered: number; mentionsEstimate: number; note: string } {
   return {
     registered: CITATIONS.length,
-    totalYearMentions,
+    mentionsEstimate: countYearMentions(text),
     note:
-      "PARTIAL by construction. This registry holds the citations that have been audited, " +
-      "not every reference the modules make. An unregistered citation is not thereby wrong — " +
-      "it is unaudited, which is a different and honestly weaker claim.",
+      "PARTIAL by construction, and the denominator is a heuristic OVER-count (a saññā-tier " +
+      "estimate, not a direct count). This registry holds the citations that have been " +
+      "audited, not every reference the modules make. An unregistered citation is not thereby " +
+      "wrong — it is unaudited, which is a different and honestly weaker claim.",
   };
 }
 
