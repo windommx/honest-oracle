@@ -72,6 +72,11 @@ export interface Receipt {
   /** Claims refused outright (a construct on REFUSED_CONSTRUCTS reached the receipt
    *  layer). Kept visible with the reason so the attempt is on the record. */
   rejected: { signal: string; why: string }[];
+  /** The same signal submitted more than once. The FIRST value is kept in `claims`; the
+   *  rest are recorded here. A receipt is an unambiguous record, so one signal cannot hold
+   *  two values — storing both would be a contradiction, and it broke verifyReceipt, whose
+   *  re-run Map kept only the last of the duplicates and compared against that. */
+  duplicates: { signal: string; kept: number | string; dropped: number | string }[];
   /** The exact command that regenerates this receipt. */
   reproduce: string;
 }
@@ -106,20 +111,32 @@ export function buildReceipt(opts: {
   const unclassified: string[] = [];
   const rejected: { signal: string; why: string }[] = [];
   const badOverrides: { signal: string; claimed: string; registry: string }[] = [];
+  const duplicates: { signal: string; kept: number | string; dropped: number | string }[] = [];
+  const seen = new Map<string, number | string>();
 
   for (const c of opts.claims) {
+    // A signal already recorded cannot take a second value — a receipt is an unambiguous
+    // record. Keep the first, surface the rest. (Before this, both survived into claims and
+    // verifyReceipt's re-run Map silently compared against whichever came last.)
+    if (seen.has(c.signal)) {
+      duplicates.push({ signal: c.signal, kept: seen.get(c.signal)!, dropped: c.value });
+      continue;
+    }
     if (isRefused(c.signal)) {
       rejected.push({
         signal: c.signal,
         why: "on REFUSED_CONSTRUCTS — a latent construct with no valid operation; it cannot be certified because it was never measured",
       });
+      seen.set(c.signal, c.value);
       continue;
     }
     const s = classifySignal(c.signal);
     if (!s) {
       unclassified.push(c.signal);
+      seen.set(c.signal, c.value);
       continue;
     }
+    seen.set(c.signal, c.value);
     let instrument = s.instrument;
     if (c.instrument) {
       if (s.instrument.includes(c.instrument)) instrument = c.instrument;
@@ -143,6 +160,7 @@ export function buildReceipt(opts: {
     unclassified,
     rejected,
     badOverrides,
+    duplicates,
     reproduce: opts.reproduce,
   };
 }
@@ -224,6 +242,12 @@ export function formatReceipt(r: Receipt): string {
     L.push("## เครื่องมือที่แจ้งไม่ตรงทะเบียน — ไม่ใช้ค่าที่แจ้ง");
     L.push("");
     for (const b of r.badOverrides) L.push(`- \`${b.signal}\` — แจ้งว่า "${b.claimed}" แต่ทะเบียนระบุ "${b.registry}"`);
+    L.push("");
+  }
+  if (r.duplicates.length) {
+    L.push("## สัญญาณซ้ำ — เก็บค่าแรก ตัวที่เหลือขึ้นบัญชีไว้");
+    L.push("");
+    for (const d of r.duplicates) L.push(`- \`${d.signal}\` — เก็บ ${d.kept} · ทิ้ง ${d.dropped} (สัญญาณเดียวมีสองค่าไม่ได้)`);
     L.push("");
   }
   if (r.unclassified.length) {

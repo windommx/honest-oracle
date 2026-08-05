@@ -78,7 +78,20 @@ describe("classification — a number only gets the warrant it is entitled to", 
   it("drops nothing — every submitted claim lands in exactly one bucket", () => {
     const submitted = [...CLAIMS, { signal: "vibeLevel", value: 7 }, { signal: REFUSED_CONSTRUCTS[0].id, value: 1 }];
     const r = mk(submitted);
-    expect(r.claims.length + r.unclassified.length + r.rejected.length).toBe(submitted.length);
+    expect(r.claims.length + r.unclassified.length + r.rejected.length + r.duplicates.length).toBe(submitted.length);
+  });
+
+  it("a signal submitted twice keeps the first value and records the rest, never a contradiction", () => {
+    // Adversarial-audit finding in this module's own code: two claims for the same signal
+    // both used to survive into `claims`, and verifyReceipt's re-run Map then compared
+    // against whichever came last — an order-dependent, contradictory record.
+    const r = mk([{ signal: "wordCount", value: 1 }, { signal: "wordCount", value: 2 }]);
+    expect(r.claims.filter((c) => c.signal === "wordCount")).toHaveLength(1);
+    expect(r.claims.find((c) => c.signal === "wordCount")!.value).toBe(1); // first wins
+    expect(r.duplicates).toEqual([{ signal: "wordCount", kept: 1, dropped: 2 }]);
+    // and a re-run of the deduped claim verifies cleanly instead of "drifting" 2→1
+    expect(verifyReceipt(r, TEXT, [{ signal: "wordCount", value: 1 }]).drifted).toEqual([]);
+    expect(formatReceipt(r)).toContain("สัญญาณซ้ำ");
   });
 });
 
