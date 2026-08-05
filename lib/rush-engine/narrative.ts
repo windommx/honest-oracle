@@ -9,6 +9,7 @@
 // ╚══════════════════════════════════════════════════════════════════╝
 
 import { splitChapters } from "./chapters";
+import { maxOf, minOf } from "./text-util";
 
 const RE_ESCAPE = /[.*+?^${}()|[\]\\]/g;
 const countEn = (s: string, t: string) => (s.match(new RegExp(`\\b${t.replace(RE_ESCAPE, "\\$&")}\\b`, "g")) ?? []).length;
@@ -99,8 +100,8 @@ export function pacingProfile(chapters: ChapterSignal[]): PacingProfile {
   const mid = acts[1];
   if (overallWords && mid.avgWords < overallWords * 0.7) flags.push(`บทกลางสั้นกว่าค่าเฉลี่ยเล่ม ${Math.round((1 - mid.avgWords / overallWords) * 100)}% (อาจ pacing หย่อนกลางเรื่อง)`);
   if (overallWords && acts[0].avgWords > overallWords * 1.3) flags.push("องก์เปิดยาวกว่าค่าเฉลี่ยมาก (อาจ front-load เยอะ)");
-  const maxDlg = Math.max(...acts.map((a) => a.avgDialogue));
-  const minDlg = Math.min(...acts.map((a) => a.avgDialogue));
+  const maxDlg = maxOf(acts.map((a) => a.avgDialogue));
+  const minDlg = minOf(acts.map((a) => a.avgDialogue));
   if (maxDlg - minDlg >= 25) flags.push(`สัดส่วนบทพูดสวิงระหว่างองก์ ${minDlg}%→${maxDlg}% (ตรวจสมดุลฉาก action/บทสนทนา)`);
   return { acts, flags };
 }

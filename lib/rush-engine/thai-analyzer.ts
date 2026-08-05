@@ -4,7 +4,7 @@
 // ╚══════════════════════════════════════════════════════════════════╝
 
 import { splitChapters } from "./chapters";
-import { countPhrases } from "./text-util";
+import { countPhrases, maxOf } from "./text-util";
 
 export const THAI_STOPWORDS = new Set([
   "ที่", "และ", "เป็น", "ของ", "ใน", "มี", "ไม่", "ได้", "จะ", "ก็", "ให้", "แต่", "กับ", "นี้",
@@ -194,7 +194,7 @@ export function analyzeThai(text: string): ThaiAnalysis {
   const sentences = {
     count: sentenceLens.length,
     avgWords: sentenceLens.length ? Math.round(words.length / sentenceLens.length) : 0,
-    longest: sentenceLens.length ? Math.max(...sentenceLens) : 0,
+    longest: maxOf(sentenceLens),
   };
 
   // Rhythm: how much sentence length VARIES. Uniform length reads flat/AI-slop and
@@ -266,7 +266,7 @@ export function analyzeThai(text: string): ThaiAnalysis {
 
   return {
     wordCount: words.length,
-    charCount: text.replace(/\s/g, "").length,
+    charCount: Array.from(text.replace(/\s/g, "")).length,
     uniqueWords: freq.size,
     sentences,
     rhythm,

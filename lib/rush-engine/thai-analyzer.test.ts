@@ -158,3 +158,14 @@ describe("analyzeThai", () => {
     expect(THAI_AI_TELLS.length).toBeGreaterThan(5);
   });
 });
+
+describe("large-manuscript robustness (regression)", () => {
+  // The crash was Math.max(...clauseLens) overflowing past ~123k clauses on a book-length
+  // manuscript; the fix is maxOf(), unit-tested at 300k in text-util.test.ts (fast). The
+  // full-analyzer path is not re-exercised here because 130k tokens through Intl.Segmenter
+  // costs ~10s — the segmenter, not the bug — and would only re-prove the unit test slowly.
+  it("counts astral characters as one code point, not two UTF-16 units", () => {
+    expect(analyzeThai("😀😀😀").charCount).toBe(3);
+    expect(analyzeThai("ไทย").charCount).toBe(3); // Thai (BMP) unchanged
+  });
+});

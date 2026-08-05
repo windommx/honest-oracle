@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { countPhrases, wordDiff, diffTokens, estimateTokens } from "./text-util";
+import { countPhrases, wordDiff, diffTokens, estimateTokens, maxOf, minOf } from "./text-util";
 
 describe("estimateTokens (heuristic)", () => {
   it("weights Thai chars ~2.4× heavier than Latin", () => {
@@ -45,5 +45,25 @@ describe("wordDiff", () => {
     const ops = diffTokens(["เธอ", "เดิน", "มา"], ["เธอ", "วิ่ง", "มา"], "")!;
     expect(ops.some((o) => o.type === "add" && o.text === "วิ่ง")).toBe(true);
     expect(ops.some((o) => o.type === "del" && o.text === "เดิน")).toBe(true);
+  });
+});
+
+describe("maxOf / minOf — spread-free, stack-safe", () => {
+  it("match Math.max/min on ordinary arrays", () => {
+    expect(maxOf([3, 1, 4, 1, 5, 9, 2])).toBe(9);
+    expect(minOf([3, 1, 4, 1, 5, 9, 2])).toBe(1);
+    expect(maxOf([-5, -2, -9])).toBe(-2);
+  });
+  it("return the fallback on empty", () => {
+    expect(maxOf([])).toBe(0);
+    expect(minOf([], 999)).toBe(999);
+  });
+  it("survive an array that overflows Math.max(...spread)", () => {
+    // Math.max(...arr) throws RangeError past ~123k elements in V8. This is the reachable
+    // crash: a long Thai manuscript's clause-length array. maxOf must not throw.
+    const big = Array.from({ length: 300000 }, (_, i) => i);
+    expect(() => maxOf(big)).not.toThrow();
+    expect(maxOf(big)).toBe(299999);
+    expect(minOf(big)).toBe(0);
   });
 });

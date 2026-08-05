@@ -98,3 +98,21 @@ export function estimateTokens(text: string): number {
   const other = text.length - thai;
   return Math.ceil(thai / 1.65 + other / 4);
 }
+
+/** max / min over an array without the spread operator.
+ *
+ *  `Math.max(...arr)` passes every element as a call ARGUMENT, and a large enough array
+ *  (~123k in current V8) overflows the call stack — throwing RangeError and losing the
+ *  whole result. A tokenizer's clause-length array reaches that on a long Thai manuscript,
+ *  where clauses track token count. Reduce has no such ceiling. Empty → the supplied
+ *  fallback (default 0), matching the `arr.length ? … : 0` guards these replace. */
+export function maxOf(arr: number[], empty = 0): number {
+  let m = empty;
+  for (let i = 0; i < arr.length; i++) if (i === 0 || arr[i] > m) m = arr[i];
+  return m;
+}
+export function minOf(arr: number[], empty = 0): number {
+  let m = empty;
+  for (let i = 0; i < arr.length; i++) if (i === 0 || arr[i] < m) m = arr[i];
+  return m;
+}
