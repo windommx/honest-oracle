@@ -64,7 +64,7 @@ describe("/rush/fix — symptom router page", () => {
 
   it("clicking a sample chip fills the box and routes", () => {
     render(<RushFix />);
-    fireEvent.click(screen.getByRole("button", { name: /ตันมาก|ไอเดียซ้ำเดิม/ }));
+    fireEvent.click(screen.getByRole("button", { name: /ไอเดียซ้ำเดิม/ }));
     expect(screen.getByText("BRAINSTORM")).toBeTruthy();
   });
 

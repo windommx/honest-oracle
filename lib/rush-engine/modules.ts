@@ -505,21 +505,69 @@ Output four parts:
 
 // ── ADVANCED modules ───────────────────────────────────────────
 
-function moduleRollingRecap(): string {
-  return `Maintain a ROLLING RECAP (chain-of-density) — a compact running summary carried into the next chapter so the model keeps continuity without re-reading everything.
+function moduleRollingRecap(config: BookConfig): string {
+  const lo = Math.max(120, Math.round(config.wordsPerChapter / 12));
+  const hi = Math.max(200, Math.round(config.wordsPerChapter / 6));
+  return `ROLLING RECAP — maintain a carry-forward STATE BLOCK for "${config.title}" (${BOOK_TYPES[config.type].label}, ${config.chapters} chapters) so chapter N+1 can be written without re-reading chapters 1..N. This is a continuity instrument, not a blurb. It is written for the next drafting session, not for ${config.reader}.
 
-Given the prior recap + the chapter just finished, output an updated recap that is:
-- Fixed length (~150-200 words), entity-dense (names, places, facts, open threads)
-- Newest developments first; drop anything no longer load-bearing
-- Plain facts only, no prose flourish
+THE ONE IDEA THIS MODULE IS BUILT ON: a recap has TWO halves with opposite rules. One half must survive compression untouched; the other half exists to be compressed. Most rolling summaries fail because they treat a death and a rainstorm as the same kind of sentence.
 
-Use this as the "previously" block at the top of the next chapter prompt.
+━━ PART 1 · WHAT MUST NEVER BE LOST (verbatim ledger — extractive, never paraphrased) ━━
+Copy these out of the source text in the words the source used. Do not smooth them, do not merge them, do not shorten them to make room. If the block is too long, cut PART 2, never PART 1.
+  L1 NAMES & SPELLING — every proper name exactly as spelled on the page (people, places, items, titles, ranks). A name that drifts one letter is a new character to a reader.
+  L2 DATES, AGES & THE CLOCK — calendar dates, elapsed time, "three days later", ages, deadlines, seasons.
+  L3 BODIES — injuries, illnesses, scars, pregnancies, DEATHS. Who is dead, in which chapter, witnessed by whom.
+  L4 PROMISES, OATHS & DEBTS — who owes whom what, who swore what, what the price was, when it comes due.
+  L5 OBJECTS — who currently HOLDS each significant object, and where it physically is.
+  L6 KNOWLEDGE STATE — who knows which secret, and the chapter in which they learned it. The most common continuity break in a long draft is a character acting on information nobody gave them.
+  L7 POSITIONS — where each on-page character physically is at the end of this chapter.
+Every ledger line ends with a CHAPTER STAMP: [ch.N]. The stamp is the whole anti-drift mechanism — see PART 3.
 
-═══ PRIOR RECAP ═══
-[INSERT PRIOR RECAP OR "(none)"]
+━━ PART 2 · WHAT MAY BE COMPRESSED (digest — abstractive, rewritten every time) ━━
+Mood, weather, description, interiority, subplot texture, the shape of an argument, how a scene felt. Compress this hard; it can be regenerated from the ledger plus the source if needed, and losing it costs nothing a later chapter depends on.
+Budget: ${lo}-${hi} words of plain prose, newest material first. No style, no foreshadowing, no teasing.
+
+━━ PART 3 · THE ANTI-DRIFT RULE (the rule this module exists for) ━━
+Iterative summarization is lossy in one direction: each pass drops specifics and returns generalities, and once a specific is gone the next pass cannot know it is missing. Book-length summarization has been studied as two distinct prompting workflows — hierarchically merging chunk summaries, and incrementally updating a running summary (Chang, Lo, Goyal & Iyyer, "BooookScore", ICLR 2024, arXiv:2310.00785). Their reported trade-off is the reason this module is shaped the way it is: incremental updating scores LOWER on BooookScore (their coherence metric — the proportion of sentences carrying none of the error types they catalogue) but yields a HIGHER level of detail than hierarchical merging. Detail is exactly what continuity needs and coherence is exactly what a ledger does not need. So:
+  RULE 1 — PART 1 is NEVER regenerated from the previous recap. Ledger lines are only ADDED, or EDITED by a chapter that shows the change on the page. A summary of a summary may not touch them.
+  RULE 2 — PART 2 IS regenerated each chapter, but from PART 1 + the new chapter, never from the previous PART 2.
+  RULE 3 — the CHAPTER STAMP is what makes RULE 1 auditable: any line can be re-checked against its source chapter without re-reading the book. A line with no stamp is not canon, it is a memory.
+  RULE 4 — a contradiction is never silently resolved. If ch.31 says the knife is in the river and [ch.12] says she kept it, write BOTH stamped lines and mark them ⚠CONFLICT. The writer decides; the recap only reports.
+Density technique for PART 2 ONLY: the Chain of Density prompt (Adams, Fabbri, Ladhak, Lehman & Elhadad, 2023, arXiv:2309.04269) rewrites a summary repeatedly at FIXED LENGTH, each pass fusing in missing salient entities. Use that move on PART 2 — hold the word budget, raise the entity count. Never use it on PART 1: PART 1 is not summarized at all.
+
+━━ PART 4 · THE FIXED SHAPE (so ch.31's recap is comparable to ch.30's) ━━
+Emit exactly this skeleton every time, same order, same headers, empty sections kept and marked "—". A recap whose shape changes cannot be diffed, and a recap that cannot be diffed hides what a chapter changed. This is the same reason a TV series bible is a standing document rather than a fresh memo per episode (the Star Trek: The Next Generation Writers'/Directors' Guide, Gerrold & Roddenberry, 1987, is the canonical published example), and the same reason the Story Grid Foolscap and its per-scene spreadsheet (Coyne) ask identical questions of every scene.
+
+  STATE BLOCK — "${config.title}" — after ch.[N]
+  §1 LEDGER (stamped, verbatim)   L1..L7 above, one line each entry
+  §2 OPEN THREADS                 promise made [ch.N] → still unpaid → where it must land
+  §3 DIGEST                       the compressible prose, within budget
+  §4 DELTA vs ch.[N-1]            +added / ~changed / ⚠CONFLICT — this section is the whole point of the fixed shape
+  §5 CANNOT VERIFY HERE           see PART 5
+
+━━ PART 5 · HAND OFF — what a summary is structurally unable to check ━━
+This module produces a summary. A summary cannot count, cannot compare spellings, and cannot prove absence. Rush already does those deterministically, and this module MUST route to them instead of guessing:
+  → Put §1 L1/L3/L6 into the DECLARED story bible, in the labelled sections parseCodex() reads — [CHARACTERS]/ตัวละคร, [PLACES]/สถานที่, [ITEMS]/สิ่งของ, [THREADS]/ปมค้าง, with the สถานะ / รู้แล้ว / ห้ามพูด trait lines. Rush does NOT auto-extract entities from prose on purpose: undeclared means uncounted.
+  → Then run codexAudit(codex, draft, lang), which returns re-derivable counts: present, variants (near-miss spellings — the L1 drift case), missing, statusConflicts (a character whose declared status is dead/หายตัว yet named in this chapter — the L3 case), forbiddenHits, threadsNoTrace (declared threads with no keyword trace in this chapter — the §2 case), canonSize.
+  → For a multi-book series, analyzeSaga() reports per book: introduced / carried / dropped-vs-previous, plus the recurring backbone. "Dropped" is a signal to look at, not an error.
+  Write into §5 only what those tools flagged, quoted as counts. Never write a continuity conclusion the recap itself reached.
+
+━━ HONESTY RULES ━━
+- The recap is evidence of WHAT WAS WRITTEN. It is not evidence that the book is consistent. Those are different claims and only the second one requires codexAudit.
+- Never put a fact in §1 that the source text does not state. An inference belongs in §3 marked [INFERRED], never in the stamped ledger.
+- Never resolve a contradiction to make the block tidy. ⚠CONFLICT stays until the writer rules on it.
+- Abstractive rewriting can introduce content unsupported by the source (Maynez, Narayan, Bohnet & McDonald, "On Faithfulness and Factuality in Abstractive Summarization", ACL 2020). That is precisely why PART 1 is extractive and PART 2 is quarantined from it.
+- Do not score anything. No continuity score, no 0-100, no x/10, no "how well the reader will remember". Those are judgments wearing a number. Counts and stamps only.
+- If a chapter is missing and you are asked to recap over the gap, say the gap is there. Do not bridge it with plausible narrative.
+
+═══ PRIOR STATE BLOCK ═══
+[paste the previous STATE BLOCK, or "(none — this is ch.1)"]
 
 ═══ CHAPTER JUST FINISHED ═══
-[INSERT CHAPTER HERE]`;
+[paste the full chapter text — the SOURCE, not a summary of it]
+
+═══ DECLARED STORY BIBLE (for the hand-off in PART 5) ═══
+${config.storyBible ? config.storyBible : "[not declared yet — §5 will be empty until it is]"}`;
 }
 
 function moduleBrainstorm(): string {
@@ -994,7 +1042,9 @@ Only report findings you can point to in the text — no fabricated issues, no f
 const NIS_RULES = `GROUNDING RULES (mandatory):
 - Report a finding ONLY if you can quote the exact text that proves it (cite chapter + a short quote).
 - Never invent issues; if the manuscript is clean on a check, say so.
-- The 0-100 score is a SUMMARY of the findings, not a vibe: state how you derived it (e.g. -10 per high-severity, -3 per low). Show the findings; the number is secondary.`;
+- Close with a FINDINGS TALLY, never a score: count the findings by severity (high/med/low) and by type. The tally is re-derivable — anyone can recount it from the list above. A 0-100 number is not.
+- Do NOT emit any 0-100 score, x/10 rating, or "overall" figure, even one you show the arithmetic for. Deriving "-10 per high-severity" from findings does not make the result a measurement: the severities were judgments, and averaging judgments produces a number that measures the judge. Rush refuses these constructs by name (epistemics.ts REFUSED_CONSTRUCTS) and this audit is not an exception to that.
+- Rank instead of scoring: name the single most important fix and why it outranks the others. A ranked list carries the same decision value and claims nothing it cannot support.`;
 
 function moduleNisPlot(): string {
   return `You are a developmental editor running a PLOT-HOLE & CONTINUITY audit on a manuscript.
@@ -1005,7 +1055,7 @@ For each finding output: { type: timeline | causality | knowledge | object-perma
 
 ${NIS_RULES}
 
-End with: a 0-100 continuity score (with how you derived it) and the top 3 must-fix items.
+End with: the findings tally, then the top 3 must-fix items in order. Cross-check the timeline and knowledge-state findings against Rush's codexAudit, which counts statusConflicts and threadsNoTrace deterministically — where the audit disagrees with you, the audit is the countable one.
 
 ═══ MANUSCRIPT ═══
 [INSERT MANUSCRIPT / CHAPTERS HERE]`;
@@ -1020,7 +1070,7 @@ Also note any character whose VOICE drifts (starts sounding like the others).
 
 ${NIS_RULES}
 
-End with: a 0-100 consistency score per main character + overall, and the riskiest drift to fix first.
+End with: the findings tally per main character, then the riskiest drift to fix first. Rush's characterArc gives the per-chapter presence series and exit/gap flags for the same characters — read your findings against that series rather than summarizing them into a number.
 
 ═══ MANUSCRIPT (+ character bible if you have one) ═══
 [INSERT MANUSCRIPT HERE]`;
@@ -1036,7 +1086,7 @@ Output: a per-chapter pace table (with the signal that drove each call) + flagge
 
 ${NIS_RULES}
 
-End with: a 0-100 pacing score and the single chapter most in need of tightening.
+End with: the findings tally per act, then the single chapter most in need of tightening. Rush's pacingProfile reports per-act measured averages against the book's own mean with a disclosed threshold — quote those numbers instead of inventing one.
 
 ═══ MANUSCRIPT ═══
 [INSERT MANUSCRIPT HERE]`;
@@ -1052,7 +1102,7 @@ Output a table: setup (chapter + quote) → payoff (chapter + quote) | UNPAID | 
 
 ${NIS_RULES}
 
-End with: a 0-100 setup-payoff score and the most jarring unseeded reveal to fix.
+End with: the findings tally split into planted-never-paid and paid-never-planted, then the most jarring unseeded reveal. Rush's codexAudit reports threadsNoTrace — declared threads with no trace in a chapter — which is the countable half of this check.
 
 ═══ MANUSCRIPT ═══
 [INSERT MANUSCRIPT HERE]`;
@@ -1067,7 +1117,7 @@ Output per finding: { chapter, problem, evidence (quote the stretch), severity, 
 
 ${NIS_RULES}
 
-End with: a 0-100 dialogue score and the worst talking-heads scene to break up.
+End with: the findings tally by type, then the worst talking-heads scene to break up. Rush measures dialogue ratio per scene deterministically; cite that figure for the scenes you flag.
 
 ═══ DIALOGUE / CHAPTER ═══
 [INSERT TEXT HERE]`;
@@ -1080,7 +1130,7 @@ Flag per finding: { type: head-hop (POV jumps to another character mid-scene) | 
 
 ${NIS_RULES}
 
-End with: a 0-100 POV-discipline score and the single worst head-hop to fix first.
+End with: the findings tally by type, then the single worst head-hop to fix first. Every finding must carry the quote that proves it — a POV break is locatable in the text, so there is no need to summarize it into a figure.
 
 ═══ MANUSCRIPT ═══
 [INSERT MANUSCRIPT HERE]`;
@@ -1095,7 +1145,7 @@ Balance rule: telling is correct for transitions, time-skips, and compressing th
 
 ${NIS_RULES}
 
-End with: a 0-100 show/tell balance score and the one told moment most worth dramatizing.
+End with: the findings tally, then the one told moment most worth dramatizing. Rush counts filter verbs and named emotions per 100 words; quote that measured density rather than scoring the balance.
 
 ═══ MANUSCRIPT ═══
 [INSERT MANUSCRIPT HERE]`;
@@ -1109,7 +1159,7 @@ Flag: (a) motifs introduced once and dropped, (b) on-the-nose thematic statement
 
 ${NIS_RULES}
 
-End with: a 0-100 thematic-coherence score and the single change that would sharpen the theme most.
+End with: the findings tally (motifs planted-then-dropped, on-the-nose statements, ending mismatches), then the single change that would sharpen the theme most. Rush's motifTracker gives the per-chapter distribution of each theme term — cite where a term goes quiet. Never output a thematic-resonance score: epistemics.ts refuses that construct by name.
 
 ═══ MANUSCRIPT ═══
 [INSERT MANUSCRIPT HERE]`;

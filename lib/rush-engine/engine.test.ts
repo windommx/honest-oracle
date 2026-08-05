@@ -440,3 +440,63 @@ describe("catalog integrity", () => {
     expect(missing).toEqual([]);
   });
 });
+
+// ── The refused-score boundary, enforced across every shipped prompt ──────────
+//
+// This test exists because the engine was caught violating its own central claim.
+// epistemics.ts REFUSED_CONSTRUCTS refuses narrativeConsistencyScore, characterArcCoherence,
+// thematicResonance and pacingBalanceScore BY NAME — while eight shipped NIS modules (and
+// their Thai twins) instructed the LLM to "End with: a 0-100 <that exact construct> score".
+// A shared NIS_RULES block even taught the arithmetic ("-10 per high-severity"), which is
+// the pseudo-precision move the engine calls out everywhere else.
+//
+// Refusing to COMPUTE a score while shipping a prompt that ASKS for one is the same claim
+// with an extra step. The guard below is written over generated prompt text, so it holds
+// for every module, every language, and anything added later.
+describe("no shipped prompt requests a refused score", () => {
+  const NEGATED = /\b(?:do not|don'?t|never|no)\b|ห้าม|ไม่ใช่|ปฏิเสธ/i;
+
+  function offendingLines(text: string): string[] {
+    const bad: string[] = [];
+    for (const raw of text.split(/\n|\\n/)) {
+      const line = raw.trim();
+      // A score DEMAND looks like a 0-100 / x/10 figure. A score PROHIBITION says so in the
+      // same line. Splitting on the line keeps the honesty rules (which must mention the
+      // banned thing in order to ban it) from tripping the guard.
+      if (!/0\s*[-–]\s*100|\b\d+\s*\/\s*(?:10|100)\b/.test(line)) continue;
+      if (NEGATED.test(line)) continue;
+      bad.push(line.slice(0, 140));
+    }
+    return bad;
+  }
+
+  const cfgs = [cfg(), { ...cfg(), language: "thai" as const }];
+
+  it("no module in either language asks for a 0-100 or x/10 score", () => {
+    const all = MODULE_GROUPS.map((m) => m.key);
+    const found: string[] = [];
+    for (const c of cfgs) {
+      for (const p of generateAllPrompts(c, all)) {
+        for (const line of offendingLines(p.prompt)) found.push(`[${p.id}] ${line}`);
+      }
+    }
+    expect(found, `prompts still demand a score:\n${found.join("\n")}`).toEqual([]);
+  });
+
+  it("the NIS audits still close with something — a tally, not a number", () => {
+    // Guard against fixing the above by simply deleting the closing instruction.
+    const all = MODULE_GROUPS.map((m) => m.key);
+    const nis = generateAllPrompts(cfg(), all).filter((p) => p.id.startsWith("NIS_"));
+    expect(nis.length).toBeGreaterThan(0);
+    for (const p of nis) expect(p.prompt, `${p.id} lost its closing instruction`).toMatch(/findings tally/i);
+  });
+
+  it("every construct REFUSED_CONSTRUCTS names is absent as a demand", () => {
+    const all = MODULE_GROUPS.map((m) => m.key);
+    const text = cfgs.flatMap((c) => generateAllPrompts(c, all).map((p) => p.prompt)).join("\n");
+    for (const line of text.split(/\n|\\n/)) {
+      if (NEGATED.test(line)) continue;
+      expect(line).not.toMatch(/thematic[- ]resonance score|readiness score|publication[- ]ready\s*%/i);
+    }
+  });
+});

@@ -64,7 +64,7 @@ export const SYMPTOM_LADDER: Rung[] = [
     id: "R21",
     th: "ตัน / คิดไม่ออก / นั่งมองหน้าจอเปล่า / ไอเดียซ้ำเดิม",
     en: "Blocked — out of ideas, or every idea is the same idea",
-    keywords: ["ตันมาก", "ตันสุด", "ไอเดียตัน", "เขียนตัน", "คิดไม่ออก", "ไม่มีไอเดีย", "ไอเดียซ้ำ", "นึกไม่ออก", "เขียนไม่ออก", "มองหน้าจอ", "หมดมุก", "blocked", "writer's block", "writers block", "stuck", "out of ideas", "no ideas"],
+    keywords: ["ไอเดียตัน", "สมองตัน", "พล็อตตัน", "เขียนตัน", "คิดไม่ออก", "ไม่มีไอเดีย", "ไอเดียซ้ำ", "นึกไม่ออก", "เขียนไม่ออก", "มองหน้าจอ", "หมดมุก", "blocked", "writer's block", "writers block", "stuck", "out of ideas", "no ideas"],
     primary: "BRAINSTORM",
     also: ["CONFLICT_MAP", "GENRE_CORE", "STRUCTURE"],
     why:

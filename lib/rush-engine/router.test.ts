@@ -55,7 +55,7 @@ describe("ladder integrity", () => {
     "ปกติ", "ปกครอง", "ปกป้อง",   // contained "ปก" (cover) → routed to BLURB
     "ช้าง",                        // contained "ช้า" (slow) → routed to NIS_PACING
     "อุปมา", "ปมด้อย",             // contained "ปม" (plot knot) → routed to NIS_FORESHADOW
-    "ตันหยง",                      // contained "ตัน" (blocked); a plausible Thai character name
+    "ตันหยง", "กัปตัน", "กัปตันมากับเรือ",  // contained "ตัน" (blocked) — กัปตัน also defeats "ตันมาก"
     "สารบัญ", "สารพัด",            // the "สาร" family that produced the first shipped collision
     "จังหวัด", "ชื่อเสียง", "สอบถาม", "ประกาศ", "ท้องถิ่น",
   ];
@@ -134,7 +134,7 @@ describe("symptom → module", () => {
   }
 
   const addedLater: [string, string][] = [
-    ["ตันมาก คิดไม่ออกเลย นั่งมองหน้าจอ", "BRAINSTORM"],
+    ["ไอเดียตันมาก คิดไม่ออกเลย นั่งมองหน้าจอ", "BRAINSTORM"],
     ["เขียนมาถึงบทที่ 30 แล้วจำไม่ได้ว่าเกิดอะไรมาบ้าง", "RECAP"],
     ["แก่นเรื่องหลุด motif หายไปกลางเล่ม", "NIS_THEME"],
     ["เขียนหนังสือสอน แต่คนอ่านแล้วทำตามไม่ได้", "PEDAGOGY"],
