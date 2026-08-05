@@ -93,3 +93,31 @@ describe("findNearRestatements — winnowing + exact verify", () => {
     expect(out).toContain("ตรวจด้วย token diff จริง");
   });
 });
+
+describe("containment dedup keeps the more-frequent short repeat (audit regression)", () => {
+  it("does not drop a phrase that repeats MORE often than the longer phrase containing it", () => {
+    // P occurs 3×, Q = P + tail occurs 2×. P has an occurrence outside every Q, so it is a
+    // genuine independent repeat — and the more frequent one. The old guard used `>` and
+    // silently dropped it, leaving only Q; an editor lost the phrase that repeats most.
+    const P = "the golden key opened the vault";
+    const Q = P + " under midnight";
+    const text = `${Q}. Later ${Q}. Then separately ${P}. The end.`;
+    const phrases = findRestatements(text, "en").found;
+    const p = phrases.find((x) => x.phrase === P);
+    const q = phrases.find((x) => x.phrase === Q);
+    expect(p, "the ×3 phrase must survive").toBeTruthy();
+    expect(p!.count).toBe(3);
+    expect(q!.count).toBe(2);
+  });
+
+  it("still drops a phrase fully covered with EQUAL count (no double-report)", () => {
+    // When the short phrase only ever appears inside the long one (same count), it IS
+    // redundant and should be dropped — the fix must not over-report.
+    const long = "a very long repeated clause here";
+    const text = `${long}. Again ${long}.`;
+    const phrases = findRestatements(text, "en").found.map((x) => x.phrase);
+    // the full phrase is reported; a strict sub-phrase with the same 2× coverage is not
+    expect(phrases).toContain(long);
+    expect(phrases).not.toContain("very long repeated clause");
+  });
+});

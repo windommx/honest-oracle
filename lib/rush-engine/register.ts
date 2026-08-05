@@ -9,7 +9,6 @@
 // ╚══════════════════════════════════════════════════════════════════╝
 
 import { countPhrases } from "./text-util";
-import { tokenizeThai } from "./thai-analyzer";
 
 export interface RegisterRule { term: string; suggest: string; note?: string }
 export interface RegisterFinding { term: string; suggest: string; note?: string; count: number }
@@ -46,8 +45,10 @@ export function checkThaiRegister(text: string, opts?: { skip?: string[]; extra?
   const rules = Array.from(byTerm.values());
   if (!rules.length) return [];
 
-  const tokens = tokenizeThai(text);
-  const counts = countPhrases(text, rules.map((r) => r.term), { tokens });
+  // Substring match, like every other Thai lexicon check (aiTells, tellWords). Passing
+  // { tokens } forced EXACT-TOKEN matching, and Intl.Segmenter splits a loanword differently
+  // in prose than in isolation, so common informal words (ไอเดีย, คอมเมนต์) silently scored 0.
+  const counts = countPhrases(text, rules.map((r) => r.term));
   const countOf = new Map(counts.map((c) => [c.phrase, c.count]));
   return rules
     .map((r) => ({ ...r, count: countOf.get(r.term) ?? 0 }))
