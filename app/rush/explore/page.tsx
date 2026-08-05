@@ -55,6 +55,9 @@ export default function RushExplore() {
           <Link href="/rush/fix" className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg border border-white/15 text-gray-200 hover:bg-white/5 transition">
             เขียนอยู่แล้วแต่ติด — หาโมดูลจากอาการ
           </Link>
+          <Link href="/rush/honesty" className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg border border-white/15 text-gray-200 hover:bg-white/5 transition">
+            ทำไมเชื่อตัวเลขเราได้ — ชั้นความซื่อสัตย์
+          </Link>
           <a href="#types" className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg border border-white/15 text-gray-200 hover:bg-white/5 transition">
             ดู 8 ประเภท
           </a>
