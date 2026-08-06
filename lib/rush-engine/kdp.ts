@@ -121,6 +121,41 @@ export function kdpReadiness(input: { words: number; trim?: TrimSize; paper?: Pa
 
 /** Paste-ready KDP submission package as Markdown: computed print specs + the metadata
  *  checklist. Honest about the one thing a browser can't do (print-ready interior PDF). */
+/** Amazon KDP's AI-content DISCLOSURE guidance — the honest inverse of "detection evasion".
+ *
+ *  Amazon does not ban AI content; it requires DISCLOSURE of AI-GENERATED text/images/
+ *  translations that appear in the book, and requires NO disclosure for AI-ASSISTED workflow
+ *  tasks (brainstorm, grammar, research, refining human-written text). The disclosure is for
+ *  Amazon's internal use, is not shown on the product page, and per Amazon does not affect
+ *  royalties or ranking. This is guidance toward complying honestly — never toward evading a
+ *  detector, which is both against KDP terms and the opposite of this engine's whole point.
+ *
+ *  Source: Amazon KDP "Artificial Intelligence (AI) Content" guidelines, cross-checked
+ *  against multiple 2026 summaries (as of 2026-08). Verify the live KDP Help page before
+ *  publishing — the policy has tightened through 2025–2026 and can change. */
+export const KDP_AI_DISCLOSURE = {
+  asOf: "2026-08",
+  source: "Amazon KDP AI Content guidelines + 2026 secondary summaries (verify live KDP Help)",
+  /** Appears IN the book → you must declare it during the upload interview. */
+  mustDisclose: [
+    "ข้อความที่ AI สร้าง (แม้คุณจะแก้ไขภายหลัง) — AI-generated text",
+    "ปก/ภาพประกอบที่ AI สร้าง — AI-generated images",
+    "คำแปลที่ AI แปล — AI translation",
+  ],
+  /** Workflow help that never becomes book content → no disclosure. */
+  noDisclosure: [
+    "ใช้ AI ระดมไอเดีย/วางโครง (brainstorm, outline)",
+    "ตรวจแก้ไวยากรณ์/สะกด (grammar, spell-check)",
+    "ให้ AI แนะนำการแก้ข้อความที่คุณเขียนเอง",
+    "ใช้ AI ค้นข้อมูล (ถ้าคุณตรวจแหล่งเอง)",
+  ],
+  /** How Rush's OWN output maps onto the line — stated plainly, not hidden. */
+  rushNote:
+    "Rush สร้าง prompt + วิเคราะห์แบบนับได้ ตัวมันเองไม่ได้เขียนเนื้อในเล่ม: ถ้าคุณเอา prompt ไปให้ LLM " +
+    "เขียนข้อความแล้วใช้เป็นเนื้อในเล่ม = AI-generated ต้อง disclose; ถ้าคุณเขียนเองแล้วใช้ Rush ช่วยวิเคราะห์/แก้ = AI-assisted ไม่ต้อง disclose. " +
+    "ไม่ว่าทางไหน ให้ประกาศตามจริง — Rush ไม่สอนวิธีหลบเครื่องตรวจ (ผิดกฎ KDP และขัดกับหลักการทั้งหมดของเครื่องมือนี้).",
+} as const;
+
 export function formatKdpPackage(input: { words: number; trim?: TrimSize; paper?: PaperWeight; binding?: "paperback" | "hardcover"; meta?: KdpMeta }): string {
   const r = kdpReadiness(input);
   const trim = input.trim ?? "6x9";
@@ -134,6 +169,13 @@ export function formatKdpPackage(input: { words: number; trim?: TrimSize; paper?
   L.push("## Readiness checklist");
   for (const c of r.checks) L.push(`- [${c.ok ? "x" : " "}] ${c.rule} — ${c.note}`);
   L.push("", `**${r.ready ? "พร้อมส่ง (ตามที่ตรวจได้)" : "ยังไม่พร้อม — ดูข้อที่ยังไม่ติ๊ก"}**`);
+  L.push("", "## การเปิดเผยเนื้อหา AI (นโยบาย Amazon จริง — ไม่ใช่การหลบเครื่องตรวจ)");
+  L.push(`_อ้างอิง: ${KDP_AI_DISCLOSURE.source} (ณ ${KDP_AI_DISCLOSURE.asOf}) — ตรวจหน้า KDP Help สดก่อนตีพิมพ์_`);
+  L.push("", "**ต้องเปิดเผย (อยู่ในเล่ม):**");
+  for (const x of KDP_AI_DISCLOSURE.mustDisclose) L.push(`- ${x}`);
+  L.push("", "**ไม่ต้องเปิดเผย (งานช่วยเบื้องหลัง):**");
+  for (const x of KDP_AI_DISCLOSURE.noDisclosure) L.push(`- ${x}`);
+  L.push("", `> ${KDP_AI_DISCLOSURE.rushNote}`);
   L.push("", "> ข้อจำกัดที่ซื่อสัตย์: หน้านี้คำนวณสเปกและตรวจ metadata แบบ deterministic แต่ **ไฟล์เนื้อในพร้อมพิมพ์ (PDF/CMYK)** ต้องทำในโปรแกรมจัดหน้า/เดสก์ท็อป — เบราว์เซอร์ทำ CMYK ที่แม่นยำไม่ได้");
   return L.join("\n");
 }

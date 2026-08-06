@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { spineWidth, estimatePages, coverCanvas, kdpReadiness, kdpMetadataChecks, formatKdpPackage, KDP_LIMITS } from "./kdp";
+import { spineWidth, estimatePages, coverCanvas, kdpReadiness, kdpMetadataChecks, formatKdpPackage, KDP_LIMITS, KDP_AI_DISCLOSURE } from "./kdp";
 
 describe("KDP math", () => {
   it("computes spine width from pages ÷ PPI", () => {
@@ -96,5 +96,21 @@ describe("kdpReadiness guards invalid inputs (audit fix)", () => {
   });
   it("valid inputs still pass", () => {
     expect(kdpReadiness({ words: 30000 }).ready).toBe(true);
+  });
+});
+
+describe("KDP AI disclosure guidance (honest inverse of detection-evasion)", () => {
+  it("distinguishes must-disclose (AI-generated in the book) from AI-assisted workflow", () => {
+    expect(KDP_AI_DISCLOSURE.mustDisclose.some((x) => /AI-generated text|AI สร้าง/.test(x))).toBe(true);
+    expect(KDP_AI_DISCLOSURE.noDisclosure.some((x) => /grammar|brainstorm|ระดมไอเดีย/.test(x))).toBe(true);
+    expect(KDP_AI_DISCLOSURE.source).toBeTruthy();
+    expect(KDP_AI_DISCLOSURE.asOf).toMatch(/^\d{4}-\d{2}$/);
+  });
+  it("never advises evading a detector, and carries the source", () => {
+    expect(KDP_AI_DISCLOSURE.rushNote).toMatch(/ไม่.*หลบ|ประกาศตามจริง/);
+    const md = formatKdpPackage({ words: 30000 });
+    expect(md).toContain("นโยบาย Amazon จริง");
+    expect(md).toContain("ต้องเปิดเผย");
+    expect(md).not.toMatch(/originality\.ai|gptzero|หลบเครื่องตรวจให้ผ่าน/i);
   });
 });
