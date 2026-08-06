@@ -24,7 +24,8 @@ import {
 } from "lucide-react";
 import { titleCase, copyText, slug, downloadBlob } from "./_utils";
 import { GROUP_COLORS, Field, Stat, FilterChip, GuideModal, ThaiAnalyzerModal, ProseAnalyzerModal } from "./_components";
-import { getManuscript } from "./_manuscript-store";
+import { getManuscript, listManuscripts } from "./_manuscript-store";
+import { FirstRunOrientation, OnRamps } from "./_first-run";
 import {
   BOOK_TYPES,
   MODULE_GROUPS,
@@ -130,12 +131,17 @@ export default function RushPage() {
   }
 
   const hydratedRef = useRef(false);
+  // A visitor is 'new' only on real signals: no deep-link config (?type/?project) and
+  // no drafts already stored. Guessing wrong here would nag a returning writer.
+  const [isNewcomer, setIsNewcomer] = useState(false);
 
   useEffect(() => {
     refreshProjects();
     const params = new URLSearchParams(window.location.search);
     const pid = params.get("project");
     const typeParam = params.get("type");
+    const deepLinked = !!(pid || typeParam);
+    void listManuscripts().then((ms: unknown[]) => setIsNewcomer(!deepLinked && ms.length === 0));
     if (pid) loadProject(pid);
     else if (typeParam && typeParam in BOOK_TYPES) {
       // Deep-link from the /rush/explore landing or the /rush/start wizard:
@@ -561,12 +567,16 @@ export default function RushPage() {
 
       <div className="pt-24 pb-16 px-4">
         <div className="max-w-7xl mx-auto">
+          <FirstRunOrientation show={isNewcomer} />
           <div className="mb-6">
             <h1 className="text-3xl font-bold gold-gradient">Rush Engine — Book Prompt Generator</h1>
             <p className="text-gray-400 mt-2 text-sm">
               สร้างชุด prompt ครบเซ็ตสำหรับแต่งหนังสือทุกประเภท — คัดลอกไปใช้กับ LLM ตัวไหนก็ได้ (ChatGPT / Claude / Gemini)
               <span className="block text-[0.7rem] text-gray-600 mt-1">แพลตฟอร์มสร้าง “prompt” — ไม่ใช่ตัวเขียน AI · ไม่ต้องมี API key · ไม่มีค่า token</span>
             </p>
+            <div className="mt-2.5">
+              <OnRamps />
+            </div>
             <button
               onClick={loadExample}
               className="mt-3 text-xs px-3 py-1.5 rounded-lg border border-[#c9a84c]/40 text-[#c9a84c] hover:bg-[#c9a84c]/10 transition-colors"
