@@ -35,6 +35,12 @@ export const GOLD_BRIGHT = "#e6c86a";
 /** Deep accent — gradient stop only (never a standalone fill). */
 export const GOLD_DEEP = "#a08030";
 
+/** Default foreground on the dark surface. */
+export const FOREGROUND = "#ffffff";
+
+/** Darker accent shade — theme scale only (tailwind gold.dark), never a page fill. */
+export const GOLD_DARK = "#a8893d";
+
 /** Print/paper foreground — the manuscript preview only, where the surface is light. */
 export const PAPER = "#f0ece4";
 
@@ -63,6 +69,8 @@ export const PALETTE = {
   GOLD,
   GOLD_BRIGHT,
   GOLD_DEEP,
+  GOLD_DARK,
+  FOREGROUND,
   PAPER,
   MUTED,
   TIER_DIRECT,

@@ -536,7 +536,10 @@ export default function RushPage() {
             <Crown className="w-7 h-7 text-[#c9a84c]" />
             <span className="text-lg font-semibold gold-gradient">NaraSuite</span>
           </Link>
-          <div className="flex items-center gap-2 text-sm text-gray-300">
+          {/* Five gold pills with no breakpoint overflowed a phone. Wrapping + a smaller
+              gap keeps every action reachable on a narrow screen instead of pushing some
+              off-canvas — many Thai writers are mobile-first. */}
+          <div className="flex flex-wrap items-center justify-end gap-1.5 sm:gap-2 text-sm text-gray-300">
             <Link href="/rush/dashboard" className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#c9a84c]/30 text-[#c9a84c] hover:border-[#c9a84c] transition-colors text-xs">
               <LayoutGrid className="w-3.5 h-3.5" />
               แดชบอร์ด
@@ -557,7 +560,7 @@ export default function RushPage() {
               <HelpCircle className="w-3.5 h-3.5" />
               วิธีใช้
             </button>
-            <span className="flex items-center gap-2">
+            <span className="hidden lg:flex items-center gap-2">
               <BookOpen className="w-4 h-4 text-[#c9a84c]" />
               Rush Engine
             </span>

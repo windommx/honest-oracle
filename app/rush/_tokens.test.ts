@@ -38,6 +38,17 @@ describe("design tokens — consistency is enforced, not merely intended", () =>
     expect(offenders, `hex outside PALETTE:\n${offenders.join("\n")}`).toEqual([]);
   });
 
+  it("tailwind.config.ts carries no stale palette value", () => {
+    // Blind spot in this guard's first version: it scanned app/rush/*.tsx and globals.css
+    // only, so tailwind.config kept the PRE-consolidation background (#08080e) and the
+    // third gold (#d4b96a) after both were removed everywhere else. A theme config that
+    // disagrees with the palette is drift with extra steps.
+    const cfg = readFileSync(join(process.cwd(), "tailwind.config.ts"), "utf8");
+    for (const hex of hexesIn(cfg)) {
+      expect(ALLOWED_HEX.has(hex), `tailwind.config.ts has non-canonical ${hex}`).toBe(true);
+    }
+  });
+
   it("globals.css :root mirrors the TS tokens — the two cannot drift apart", () => {
     const css = readFileSync(GLOBALS, "utf8");
     const root = css.slice(css.indexOf(":root"), css.indexOf("}", css.indexOf(":root")));

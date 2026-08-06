@@ -10,11 +10,11 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        background: "#08080e",
+        background: "#0a0a0f",
         foreground: "#ffffff",
         gold: {
           DEFAULT: "#c9a84c",
-          light: "#d4b96a",
+          light: "#e6c86a",
           dark: "#a8893d",
         },
         border: "rgba(201, 168, 76, 0.2)",
