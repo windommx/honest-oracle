@@ -93,7 +93,7 @@ export default function RushExplore() {
                       <p className="text-[0.65rem] uppercase tracking-wide text-gray-500 mb-1.5">แนวย่อย</p>
                       <div className="flex flex-wrap gap-1.5">
                         {t.sub_genres.map((g) => (
-                          <span key={g} className="text-[0.68rem] px-2 py-0.5 rounded-full border border-[#c9a84c]/30 text-[#d8b45a]">{g.replace(/_/g, " ")}</span>
+                          <span key={g} className="text-[0.68rem] px-2 py-0.5 rounded-full border border-[#c9a84c]/30 text-[#e6c86a]">{g.replace(/_/g, " ")}</span>
                         ))}
                       </div>
                     </div>
@@ -126,7 +126,7 @@ export default function RushExplore() {
           {HOW.map((h) => (
             <div key={h.title} className="rounded-2xl border border-white/10 bg-white/[0.02] p-5">
               <div className="flex items-center gap-2.5 mb-2">
-                <span className="grid place-items-center w-9 h-9 rounded-lg bg-[#c9a84c]/15 text-[#d8b45a]"><h.icon className="w-5 h-5" /></span>
+                <span className="grid place-items-center w-9 h-9 rounded-lg bg-[#c9a84c]/15 text-[#e6c86a]"><h.icon className="w-5 h-5" /></span>
                 <h3 className="font-semibold text-gray-100">{h.title}</h3>
               </div>
               <p className="text-sm text-gray-400 leading-relaxed">{h.body}</p>

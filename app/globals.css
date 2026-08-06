@@ -5,9 +5,15 @@
 @import url('https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
 
 :root {
-  --background: #08080e;
+  /* Canonical palette — mirrored in app/rush/_tokens.ts, kept in sync by a test.
+     --background was #08080e while 5 pages hardcoded #0a0a0f, so the page
+     background shifted as you navigated. One value now. */
+  --background: #0a0a0f;
+  --surface: #12121a;
   --foreground: #ffffff;
   --gold: #c9a84c;
+  --gold-bright: #e6c86a;
+  --gold-deep: #a08030;
 }
 
 * {
@@ -35,13 +41,15 @@ a {
 }
 
 .gold-gradient {
-  background: linear-gradient(135deg, #c9a84c 0%, #d4b96a 50%, #c9a84c 100%);
+  /* Uses the canonical vars so the gradient can never drift from the palette. */
+  background: linear-gradient(135deg, var(--gold) 0%, var(--gold-bright) 50%, var(--gold) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
 .gold-border {
+  /* --gold at 30%; kept literal because relative-color syntax is modern-browser-only */
   border: 1px solid rgba(201, 168, 76, 0.3);
 }
 

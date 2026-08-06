@@ -523,7 +523,7 @@ export default function RushPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#08080e]">
+    <div className="min-h-screen bg-[#0a0a0f]">
       <nav className="fixed top-0 left-0 right-0 z-50 glass-card">
         <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
           <Link href="/" className="flex items-center gap-2">
@@ -752,7 +752,7 @@ export default function RushPage() {
                 <Stat value={String(prompts.length)} label="Prompts" />
               </div>
 
-              <button onClick={generate} className="w-full py-3 bg-[#c9a84c] text-black font-semibold rounded-xl hover:bg-[#d4b96a] transition-colors flex items-center justify-center gap-2">
+              <button onClick={generate} className="w-full py-3 bg-[#c9a84c] text-black font-semibold rounded-xl hover:bg-[#e6c86a] transition-colors flex items-center justify-center gap-2">
                 <Sparkles className="w-4 h-4" />
                 Generate Prompts
               </button>
@@ -821,7 +821,7 @@ export default function RushPage() {
                 </div>
               )}
 
-              {notice && <div className="mt-4 p-3 bg-[#c9a84c]/10 border border-[#c9a84c]/30 rounded-xl text-[#d4b96a] text-xs">{notice}</div>}
+              {notice && <div className="mt-4 p-3 bg-[#c9a84c]/10 border border-[#c9a84c]/30 rounded-xl text-[#e6c86a] text-xs">{notice}</div>}
               {error && (
                 <div className="mt-3 p-3 bg-red-500/10 border border-red-500/30 rounded-xl flex items-start gap-2 text-red-400 text-sm">
                   <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
@@ -950,7 +950,7 @@ export default function RushPage() {
                             <div className="px-5 pb-5">
                               <p className="text-[0.7rem] text-gray-500 mb-1">{p.description}</p>
                               <p className="text-[0.65rem] text-gray-600 italic mb-3">Usage: {p.usage}</p>
-                              <pre className="bg-[#08080e] border border-white/5 rounded-lg p-4 text-xs leading-6 text-gray-300 whitespace-pre-wrap max-h-[480px] overflow-y-auto">
+                              <pre className="bg-[#0a0a0f] border border-white/5 rounded-lg p-4 text-xs leading-6 text-gray-300 whitespace-pre-wrap max-h-[480px] overflow-y-auto">
                                 {p.prompt}
                               </pre>
                             </div>
@@ -982,7 +982,7 @@ export default function RushPage() {
         :global(.input) {
           width: 100%;
           padding: 8px 10px;
-          background: #08080e;
+          background: #0a0a0f;
           border: 1px solid rgba(255, 255, 255, 0.1);
           color: #f0ece4;
           font-size: 0.85rem;

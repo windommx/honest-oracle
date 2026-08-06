@@ -131,7 +131,7 @@ export default function StudioPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#08080e]">
+    <div className="min-h-screen bg-[#0a0a0f]">
       <nav className="fixed top-0 left-0 right-0 z-50 glass-card">
         <div className="max-w-5xl mx-auto px-4 py-4 flex justify-between items-center">
           <Link href="/" className="flex items-center gap-2">
@@ -197,7 +197,7 @@ export default function StudioPage() {
               <button
                 onClick={run}
                 disabled={loading}
-                className="w-full py-2.5 bg-[#c9a84c] text-black font-semibold rounded-xl hover:bg-[#d4b96a] transition-colors flex items-center justify-center gap-2 text-sm disabled:opacity-50"
+                className="w-full py-2.5 bg-[#c9a84c] text-black font-semibold rounded-xl hover:bg-[#e6c86a] transition-colors flex items-center justify-center gap-2 text-sm disabled:opacity-50"
               >
                 {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
                 {loading ? "กำลังรัน…" : "รัน"}
@@ -211,7 +211,7 @@ export default function StudioPage() {
                 <span className="text-[0.7rem] text-gray-400">ผลลัพธ์</span>
                 {output && (
                   <div className="flex items-center gap-2">
-                    <select value={saveLang} onChange={(e) => setSaveLang(e.target.value as "th" | "en")} className="text-[0.65rem] bg-[#08080e] border border-white/10 rounded px-1.5 py-0.5 text-gray-300">
+                    <select value={saveLang} onChange={(e) => setSaveLang(e.target.value as "th" | "en")} className="text-[0.65rem] bg-[#0a0a0f] border border-white/10 rounded px-1.5 py-0.5 text-gray-300">
                       <option value="th">ไทย</option>
                       <option value="en">EN</option>
                     </select>
@@ -222,7 +222,7 @@ export default function StudioPage() {
                   </div>
                 )}
               </div>
-              <div className="bg-[#0d0d15] border border-white/10 rounded-xl p-4 text-sm text-gray-200 whitespace-pre-wrap min-h-[420px] max-h-[600px] overflow-y-auto">
+              <div className="bg-[#12121a] border border-white/10 rounded-xl p-4 text-sm text-gray-200 whitespace-pre-wrap min-h-[420px] max-h-[600px] overflow-y-auto">
                 {output || <span className="text-gray-600">ผลลัพธ์จะแสดงที่นี่ — บันทึกเป็นต้นฉบับเพื่อนำไปวิเคราะห์/รัน NIS ต่อ</span>}
               </div>
             </div>

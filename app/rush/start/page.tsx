@@ -67,7 +67,7 @@ export default function RushStart() {
           {STEPS.map((s, i) => (
             <div key={s} className="flex-1">
               <div className={`h-1 rounded-full ${i <= step ? "bg-[#c9a84c]" : "bg-white/10"}`} />
-              <p className={`text-[0.62rem] mt-1.5 ${i === step ? "text-[#d8b45a]" : "text-gray-600"}`}>{i + 1}. {s}</p>
+              <p className={`text-[0.62rem] mt-1.5 ${i === step ? "text-[#e6c86a]" : "text-gray-600"}`}>{i + 1}. {s}</p>
             </div>
           ))}
         </div>

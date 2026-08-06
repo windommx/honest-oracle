@@ -54,7 +54,7 @@ export default function SharePage({ params }: { params: Promise<{ token: string 
   }
 
   return (
-    <div className="min-h-screen bg-[#08080e]">
+    <div className="min-h-screen bg-[#0a0a0f]">
       <nav className="fixed top-0 left-0 right-0 z-50 glass-card">
         <div className="max-w-5xl mx-auto px-4 py-4 flex justify-between items-center">
           <Link href="/" className="flex items-center gap-2">
@@ -100,7 +100,7 @@ export default function SharePage({ params }: { params: Promise<{ token: string 
                       </div>
                       {open && (
                         <div className="px-5 pb-5">
-                          <pre className="bg-[#08080e] border border-white/5 rounded-lg p-4 text-xs leading-6 text-gray-300 whitespace-pre-wrap max-h-[480px] overflow-y-auto">
+                          <pre className="bg-[#0a0a0f] border border-white/5 rounded-lg p-4 text-xs leading-6 text-gray-300 whitespace-pre-wrap max-h-[480px] overflow-y-auto">
                             {p.prompt}
                           </pre>
                         </div>

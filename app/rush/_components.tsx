@@ -1069,7 +1069,7 @@ function Heatmap({ title, headers, rows, note, onRowClick }: {
 function DiffView({ ops }: { ops: DiffOp[] | null }) {
   if (!ops) return <p className="text-[0.65rem] text-gray-500 mt-2">ข้อความยาวเกินไปสำหรับ inline diff — ดูที่ตาราง metric ด้านบน / Too long for inline diff.</p>;
   return (
-    <div className="mt-2 text-xs leading-6 bg-[#08080e] border border-white/5 rounded-lg p-3 max-h-[200px] overflow-y-auto whitespace-pre-wrap">
+    <div className="mt-2 text-xs leading-6 bg-[#0a0a0f] border border-white/5 rounded-lg p-3 max-h-[200px] overflow-y-auto whitespace-pre-wrap">
       {ops.map((op, i) =>
         op.type === "same" ? (
           <span key={i} className="text-gray-500">{op.text} </span>
@@ -1155,7 +1155,7 @@ function ManuscriptBar({ lang, text, onLoad }: { lang: "th" | "en"; text: string
         value={selected}
         onChange={(e) => load(e.target.value)}
         aria-label={lang === "th" ? "โหลดฉบับที่บันทึก" : "Load saved manuscript"}
-        className="text-xs bg-[#08080e] border border-white/10 rounded px-2 py-1 text-gray-300 max-w-[180px]"
+        className="text-xs bg-[#0a0a0f] border border-white/10 rounded px-2 py-1 text-gray-300 max-w-[180px]"
       >
         <option value="">{lang === "th" ? `— โหลดฉบับ (${items.length}) —` : `— Load saved (${items.length}) —`}</option>
         {items.map((m) => (
@@ -1171,7 +1171,7 @@ function ManuscriptBar({ lang, text, onLoad }: { lang: "th" | "en"; text: string
         value={name}
         onChange={(e) => setName(e.target.value)}
         placeholder={lang === "th" ? "ชื่อฉบับ…" : "name…"}
-        className="text-xs bg-[#08080e] border border-white/10 rounded px-2 py-1 text-gray-300 w-28"
+        className="text-xs bg-[#0a0a0f] border border-white/10 rounded px-2 py-1 text-gray-300 w-28"
       />
       <button onClick={save} className="text-[0.65rem] px-2.5 py-1 rounded border border-[#c9a84c]/40 text-[#c9a84c] hover:bg-[#c9a84c]/10">
         {lang === "th" ? "บันทึกฉบับ" : "Save draft"}

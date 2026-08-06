@@ -83,7 +83,7 @@ export default function RushFix() {
                 {result.primary.rung.id} · เปิดตัวนี้ก่อน
               </p>
               <p className="text-lg font-bold text-gray-100">{meta(result.primary.rung.primary).name}</p>
-              <p className="text-[0.7rem] font-mono text-[#d8b45a] mb-2">{result.primary.rung.primary}</p>
+              <p className="text-[0.7rem] font-mono text-[#e6c86a] mb-2">{result.primary.rung.primary}</p>
               <p className="text-[0.78rem] text-gray-300 mb-3">{meta(result.primary.rung.primary).desc}</p>
               <p className="text-[0.8rem] leading-relaxed text-gray-400 mb-3">{result.primary.rung.why}</p>
               <p className="text-[0.68rem] text-gray-600">
@@ -146,7 +146,7 @@ export default function RushFix() {
 
             <Link
               href="/rush/start"
-              className="inline-flex items-center gap-2 rounded-xl bg-[#c9a84c] px-5 py-2.5 text-sm font-semibold text-[#0a0a0f] hover:bg-[#d8b45a] transition"
+              className="inline-flex items-center gap-2 rounded-xl bg-[#c9a84c] px-5 py-2.5 text-sm font-semibold text-[#0a0a0f] hover:bg-[#e6c86a] transition"
             >
               สร้าง Prompt Pack ที่มีโมดูลเหล่านี้ <ArrowRight className="w-4 h-4" />
             </Link>
