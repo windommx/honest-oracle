@@ -47,11 +47,23 @@ function lsRead(): StoredManuscript[] {
   }
 }
 
-function lsWrite(list: StoredManuscript[]): void {
+/** Returns whether the write actually landed. A quota-exceeded write MUST be observable —
+ *  swallowing it silently is how a writer's draft vanishes on reload. */
+function lsWrite(list: StoredManuscript[]): boolean {
   try {
     window.localStorage.setItem(LEGACY_KEY, JSON.stringify(list));
+    return true;
   } catch {
-    /* quota / unavailable — ignore */
+    return false; // quota / unavailable — caller decides what to do
+  }
+}
+
+/** Thrown when a manuscript could not be persisted to EITHER store (both full/unavailable).
+ *  The draft is NOT saved; the caller must tell the user rather than pretend success. */
+export class ManuscriptNotSavedError extends Error {
+  constructor() {
+    super("Manuscript was not saved: both IndexedDB and localStorage failed (storage full or unavailable).");
+    this.name = "ManuscriptNotSavedError";
   }
 }
 
@@ -148,20 +160,23 @@ export async function saveManuscript(input: { id?: string; title: string; lang: 
   if (d) {
     try {
       await migrateOnce(d);
-      // Strictly newer than every existing record so "newest first" is deterministic
-      // even when two saves land in the same millisecond.
-      const newest = await d.manuscripts.orderBy("updatedAt").last();
-      const record: StoredManuscript = {
-        id: input.id ?? newId(),
-        title: input.title,
-        lang: input.lang,
-        text: input.text,
-        updatedAt: Math.max(Date.now(), (newest?.updatedAt ?? 0) + 1),
-      };
-      await d.manuscripts.put(record);
-      return record;
+      // Read-max + put in ONE rw transaction so two concurrent saves cannot read the same
+      // "newest" and mint the SAME updatedAt — IndexedDB serializes rw txns on the store, so
+      // the second sees the first's put. Outside a transaction the two collide (audit finding).
+      return await d.transaction("rw", d.manuscripts, async () => {
+        const newest = await d.manuscripts.orderBy("updatedAt").last();
+        const record: StoredManuscript = {
+          id: input.id ?? newId(),
+          title: input.title,
+          lang: input.lang,
+          text: input.text,
+          updatedAt: Math.max(Date.now(), (newest?.updatedAt ?? 0) + 1),
+        };
+        await d.manuscripts.put(record);
+        return record;
+      });
     } catch {
-      /* fall through */
+      /* Dexie failed (quota / unavailable) — try the localStorage fallback below. */
     }
   }
   const list = lsRead();
@@ -176,7 +191,9 @@ export async function saveManuscript(input: { id?: string; title: string; lang: 
   const idx = list.findIndex((m) => m.id === record.id);
   if (idx >= 0) list[idx] = record;
   else list.push(record);
-  lsWrite(list);
+  // If BOTH stores failed, the draft is gone. Do NOT return a record that was never
+  // persisted — the caller would show "saved" and the writer would lose it on reload.
+  if (!lsWrite(list)) throw new ManuscriptNotSavedError();
   return record;
 }
 

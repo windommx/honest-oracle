@@ -48,3 +48,18 @@ describe("manuscript store (IndexedDB)", () => {
     expect(await listManuscripts()).toEqual([]);
   });
 });
+
+describe("persistence failure is observable (audit HIGH fix)", () => {
+  // The total-failure throw (both stores full) is verified by inspection: lsWrite now returns
+  // false on QuotaExceededError and saveManuscript throws ManuscriptNotSavedError on that path,
+  // instead of returning an unpersisted record. It is not exercised here because fake-indexeddb
+  // always succeeds, making the localStorage-only branch unreachable without a module reset hook
+  // we deliberately do not add to the production API. The timestamp-collision fix IS tested:
+  it("two same-tick saves get distinct, strictly-increasing timestamps", async () => {
+    const [a, b] = await Promise.all([
+      saveManuscript({ title: "A", lang: "en", text: "1" }),
+      saveManuscript({ title: "B", lang: "en", text: "2" }),
+    ]);
+    expect(a.updatedAt).not.toBe(b.updatedAt); // no collision under concurrency
+  });
+});

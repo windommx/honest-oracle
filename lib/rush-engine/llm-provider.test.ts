@@ -104,3 +104,24 @@ describe("PROVIDERS", () => {
     expect(PROVIDERS.every((p) => p.models.length > 0)).toBe(true);
   });
 });
+
+describe("recommendProvider never returns undefined (audit fix)", () => {
+  it("falls back to the full pool when available is empty or all-unknown", () => {
+    // An empty/all-invalid `available` used to yield {provider: undefined}, which
+    // buildProviderRequest silently treats as OpenAI — a non-OpenAI user's key to the
+    // wrong host. Now a valid Provider is always returned (the type promises one).
+    expect(recommendProvider({ contextChars: 1000, available: [] }).provider).toBeTruthy();
+    expect(recommendProvider({ contextChars: 1000, available: ["nope" as never] }).provider).toBeTruthy();
+    const p = recommendProvider({ contextChars: 1000, available: [] }).provider;
+    expect(["anthropic", "openai", "gemini", "groq"]).toContain(p);
+  });
+});
+
+describe("buildProviderRequest escapes the Gemini model in the URL (audit fix)", () => {
+  it("a model with URL-special characters cannot break out of the path", () => {
+    const r = buildProviderRequest({ provider: "gemini", model: "gemini?key=EVIL x", apiKey: "sk-REAL", prompt: "hi" });
+    expect(r.url).not.toContain("gemini?key=EVIL"); // not an unescaped second query param
+    expect(r.url).toContain("gemini%3Fkey%3DEVIL%20x");
+    expect(r.url).toContain("key=sk-REAL"); // the real key is still the only real query param
+  });
+});

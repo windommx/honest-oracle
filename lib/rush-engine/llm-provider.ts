@@ -50,7 +50,12 @@ export type Priority = "cheap" | "balanced" | "premium";
  *  guidance, not a live load-balancer (we have no per-provider telemetry). */
 export function recommendProvider(opts: { contextChars: number; priority?: Priority; available?: Provider[] }): { provider: Provider; reason: string } {
   const priority = opts.priority ?? "balanced";
-  const pool = (opts.available ?? PROVIDERS.map((p) => p.id)).filter((p) => PROVIDER_PROFILE[p]);
+  const requested = (opts.available ?? PROVIDERS.map((p) => p.id)).filter((p) => PROVIDER_PROFILE[p]);
+  // An explicit `available` that filters to nothing (empty, or all-unknown ids) would leave
+  // no candidate and return provider:undefined — which buildProviderRequest silently treats
+  // as OpenAI, shipping a non-OpenAI user's key to the wrong host. Fall back to the full
+  // pool so a valid Provider is ALWAYS returned (the type promises one).
+  const pool = requested.length ? requested : PROVIDERS.map((p) => p.id);
   const WEIGHTS: Record<Priority, { q: number; c: number; s: number }> = {
     cheap: { q: 0.2, c: 0.5, s: 0.3 },
     balanced: { q: 0.4, c: 0.3, s: 0.3 },
@@ -132,7 +137,7 @@ export function buildProviderRequest(input: RunInput): ProviderRequest {
   if (input.provider === "gemini") {
     // Google Generative Language API. Key goes in the query string (server-side only).
     return {
-      url: `https://generativelanguage.googleapis.com/v1beta/models/${input.model}:generateContent?key=${encodeURIComponent(input.apiKey)}`,
+      url: `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(input.model)}:generateContent?key=${encodeURIComponent(input.apiKey)}`,
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
         ...(input.system ? { systemInstruction: { parts: [{ text: input.system }] } } : {}),

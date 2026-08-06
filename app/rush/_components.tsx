@@ -1119,7 +1119,17 @@ function ManuscriptBar({ lang, text, onLoad }: { lang: "th" | "en"; text: string
   const save = async () => {
     if (!text.trim()) return;
     const title = name.trim() || `${lang === "th" ? "ฉบับ" : "Draft"} ${new Date().toLocaleString()}`;
-    const rec = await saveManuscript({ title, lang, text });
+    let rec;
+    try {
+      rec = await saveManuscript({ title, lang, text });
+    } catch {
+      // Both stores failed (storage full) — the draft was NOT saved. Tell the writer
+      // instead of pretending success, and point them at the .md download as a lifeboat.
+      window.alert(lang === "th"
+        ? "บันทึกไม่สำเร็จ — พื้นที่เก็บของเบราว์เซอร์เต็ม ฉบับนี้ยังไม่ถูกบันทึก กรุณาดาวน์โหลด .md เก็บไว้ แล้วลบฉบับเก่าออกก่อน"
+        : "Save failed — the browser's storage is full, so this draft was NOT saved. Download the .md to keep it, then delete old drafts.");
+      return;
+    }
     setName("");
     refresh();
     setSelected(rec.id);
