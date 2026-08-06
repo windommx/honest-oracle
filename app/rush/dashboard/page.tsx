@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { toast } from "../_toast";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -66,7 +67,7 @@ export default function DashboardPage() {
         const { url } = await res.json();
         if (url) { window.location.href = url; return; }
       } else if (res.status === 501) {
-        alert("ระบบบิลยังไม่ได้ตั้งค่า (ต้องใส่ STRIPE_PRICE_ID_PRO) — ดูขั้นตอนใน README");
+        toast("ระบบบิลยังไม่ได้ตั้งค่า (ต้องใส่ STRIPE_PRICE_ID_PRO) — ดูขั้นตอนใน README", { variant: "error" });
       } else if (res.status === 401) {
         setNeedLogin(true);
       }

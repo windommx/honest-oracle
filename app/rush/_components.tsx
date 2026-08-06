@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { toast } from "./_toast";
 import { X, Copy, Check, Download, Trash2 } from "lucide-react";
 import { MODULE_CATALOG, MODULE_GROUPS, type BookConfig, type PromptGroup } from "@/lib/rush-engine/engine";
 import { TH_MODULES } from "@/lib/rush-engine/th";
@@ -1125,18 +1126,20 @@ function ManuscriptBar({ lang, text, onLoad }: { lang: "th" | "en"; text: string
     } catch {
       // Both stores failed (storage full) — the draft was NOT saved. Tell the writer
       // instead of pretending success, and point them at the .md download as a lifeboat.
-      window.alert(lang === "th"
+      toast(lang === "th"
         ? "บันทึกไม่สำเร็จ — พื้นที่เก็บของเบราว์เซอร์เต็ม ฉบับนี้ยังไม่ถูกบันทึก กรุณาดาวน์โหลด .md เก็บไว้ แล้วลบฉบับเก่าออกก่อน"
-        : "Save failed — the browser's storage is full, so this draft was NOT saved. Download the .md to keep it, then delete old drafts.");
+        : "Save failed — the browser's storage is full, so this draft was NOT saved. Download the .md to keep it, then delete old drafts.", { variant: "error" });
       return;
     }
     setName("");
     refresh();
     setSelected(rec.id);
+    // A mature app confirms the save instead of leaving the writer guessing.
+    toast(lang === "th" ? `บันทึก "${rec.title}" แล้ว` : `Saved "${rec.title}"`, { variant: "success" });
     if (await storeNearQuota()) {
-      window.alert(lang === "th"
+      toast(lang === "th"
         ? "พื้นที่เก็บฉบับใกล้เต็ม (~70% ของเพดานเบราว์เซอร์) — แนะนำลบฉบับเก่า หรือดาวน์โหลด .md เก็บไว้ก่อน"
-        : "Draft storage is near the browser's ceiling (~70%) — delete old drafts or download .md backups.");
+        : "Draft storage is near the browser's ceiling (~70%) — delete old drafts or download .md backups.", { variant: "info" });
     }
   };
   const remove = async () => {
