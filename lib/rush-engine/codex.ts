@@ -147,6 +147,10 @@ export function parseCodex(text: string | undefined): Codex {
     const name = (colon >= 0 ? line.slice(0, colon) : line).trim();
     const desc = colon >= 0 ? line.slice(colon + 1).trim() : "";
     if (!name) continue;
+    // A colon-less line that is long or contains sentence punctuation is prose that landed
+    // under a section header, not an entity name. Skip it rather than register a whole
+    // paragraph as an entity whose "name" is the paragraph (garbage in the digest).
+    if (colon < 0 && (name.length > 60 || (name.match(/[.!?。]/g) ?? []).length >= 2)) continue;
 
     // Depth trait for the character above ("อยาก: …", "voice: …") — attaches to
     // the last character instead of declaring an entity named "อยาก".

@@ -64,10 +64,29 @@ import {
 } from "./th";
 import type { BookConfig, GeneratedPrompt, PromptGroup } from "./types";
 
+/** Neutralize the engine's control tokens in a user free-text field, so a title/thesis/
+ *  storyBible cannot forge STATE fences or ═══ section rules inside a generated prompt.
+ *  Pure and idempotent; leaves ordinary text untouched. */
+function neutralizeControlTokens(s: string | undefined): string {
+  return (s ?? "")
+    .replace(/<<<\s*(\/?\s*(?:END\s+)?STATE)\s*>>>/gi, "[$1]") // fake STATE fences → inert
+    .replace(/[═]{2,}/g, "──");                                 // fake ═══ section rules
+}
+
 /** Build the complete prompt pack. Core writing prompts are always included;
  *  optional module `groups` append their modules. When promptLanguage === "th",
  *  native Thai builders are used (no regex post-processing). Pure / client-safe. */
-export function generateAllPrompts(config: BookConfig, groups: Exclude<PromptGroup, "core">[] = []): GeneratedPrompt[] {
+export function generateAllPrompts(input: BookConfig, groups: Exclude<PromptGroup, "core">[] = []): GeneratedPrompt[] {
+  // Neutralize the engine's OWN control tokens in user-supplied free-text fields before they
+  // are interpolated. A title/thesis/storyBible containing the STATE fences or a ═══ section
+  // rule would otherwise forge fake structure and collide with the master's "strip every
+  // <<<STATE>>> block before publishing" contract. Deterministic; a no-op for normal text.
+  const config: BookConfig = {
+    ...input,
+    title: neutralizeControlTokens(input.title),
+    thesis: neutralizeControlTokens(input.thesis),
+    ...(input.storyBible ? { storyBible: neutralizeControlTokens(input.storyBible) } : {}),
+  };
   const th = config.promptLanguage === "th";
   const architecture = buildArchitecture(config);
   const prompts: GeneratedPrompt[] = [];

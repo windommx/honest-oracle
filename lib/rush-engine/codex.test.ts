@@ -379,3 +379,13 @@ describe("Thai substring false-positives (audit fix)", () => {
     expect(codexAudit(c, "เสือ ปรากฏตัวอีกครั้ง", "th").statusConflicts.map((e) => e.name)).toEqual(["เสือ"]);
   });
 });
+
+describe("prose paragraph under a section header is not registered as an entity (audit fix)", () => {
+  it("skips a colon-less run-on line but keeps real names, including single-period ones", () => {
+    const c = parseCodex("[CHARACTERS]\nAlice went to the store. She was very tired that day.\nBob: friend\nSt. John: knight");
+    const names = c.entities.map((e) => e.name);
+    expect(names).toContain("Bob");
+    expect(names).toContain("St. John");           // one period → still a name
+    expect(names.some((n) => n.includes("went to the store"))).toBe(false); // prose skipped
+  });
+});
