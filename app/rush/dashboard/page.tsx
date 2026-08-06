@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   Crown, BookOpen, FileText, Share2, HardDrive, Type, Plus, RefreshCw, Search,
-  LayoutGrid, List, Lock, Globe, Trash2, ArrowRight, Play, Wand2, Sparkles, Loader2, BookDown,
+  LayoutGrid, List, Lock, Globe, Trash2, ArrowRight, Play, Wand2, Sparkles, Loader2, BookDown, CloudOff,
 } from "lucide-react";
 import { BOOK_TYPES, buildEpub, type BookConfig, type BookTypeKey } from "@/lib/rush-engine/engine";
 import { splitChapters } from "@/lib/rush-engine/chapters";
@@ -46,6 +46,7 @@ export default function DashboardPage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [needLogin, setNeedLogin] = useState(false);
+  const [loadError, setLoadError] = useState(false);
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
   const [sort, setSort] = useState<Sort>("recent");
@@ -80,6 +81,7 @@ export default function DashboardPage() {
 
   async function loadProjects() {
     setLoading(true);
+    setLoadError(false);
     try {
       const res = await fetch("/api/rush/projects");
       if (res.status === 401) setNeedLogin(true);
@@ -88,9 +90,15 @@ export default function DashboardPage() {
         const data = await res.json();
         setProjects(data.projects ?? []);
         setPlan(data.plan ?? "free");
+      } else {
+        // A non-OK response is a FAILED LOAD, not an empty shelf.
+        setLoadError(true);
       }
     } catch {
-      /* offline */
+      // Offline / network error. Do NOT fall through to the empty state: rendering
+      // "you have no saved books" when we simply could not reach the server tells the
+      // writer something false about their own work. Say we could not load, and offer retry.
+      setLoadError(true);
     } finally {
       setLoading(false);
     }
@@ -102,16 +110,25 @@ export default function DashboardPage() {
   }, []);
 
   async function del(id: string) {
+    // Optimistic removal — but a FAILED delete must not leave the book merely hidden.
+    // Put it back and say so, rather than letting the user believe it is gone.
+    const prev = projects;
     setProjects((p) => p.filter((x) => x.id !== id));
     try {
-      await fetch(`/api/rush/projects/${id}`, { method: "DELETE" });
+      const res = await fetch(`/api/rush/projects/${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error(String(res.status));
     } catch {
-      /* best-effort */
+      setProjects(prev);
+      toast("ลบไม่สำเร็จ — หนังสือยังอยู่ ลองใหม่อีกครั้ง", { variant: "error" });
     }
   }
   const delManuscript = async (id: string) => {
-    await deleteManuscript(id);
-    setManuscripts(await listManuscripts());
+    try {
+      await deleteManuscript(id);
+      setManuscripts(await listManuscripts());
+    } catch {
+      toast("ลบต้นฉบับในเครื่องไม่สำเร็จ — ต้นฉบับยังอยู่", { variant: "error" });
+    }
   };
   const exportEpub = (m: StoredManuscript) => {
     const chs = splitChapters(m.text).filter((c) => c.body.trim());
@@ -279,7 +296,23 @@ export default function DashboardPage() {
             </div>
           )}
 
-          {!loading && !needLogin && projects.length === 0 && (
+          {!loading && !needLogin && loadError && (
+            <div className="glass-card rounded-3xl p-10 text-center">
+              <CloudOff className="w-10 h-10 mx-auto mb-3 text-rose-400/50" />
+              <p className="text-slate-300">โหลดรายการหนังสือไม่สำเร็จ</p>
+              <p className="text-xs text-slate-500 mt-1.5">
+                นี่<strong>ไม่ได้</strong>แปลว่าคุณไม่มีหนังสือ — แค่ตอนนี้เราติดต่อเซิร์ฟเวอร์ไม่ได้ ต้นฉบับที่เก็บในเครื่องยังอยู่ครบ
+              </p>
+              <button
+                onClick={loadProjects}
+                className="inline-flex items-center gap-1.5 mt-4 text-sm px-4 py-2 rounded-lg border border-[#c9a84c]/40 text-[#c9a84c] hover:bg-[#c9a84c]/10 transition"
+              >
+                <RefreshCw className="w-4 h-4" /> ลองอีกครั้ง
+              </button>
+            </div>
+          )}
+
+          {!loading && !needLogin && !loadError && projects.length === 0 && (
             <div className="glass-card rounded-3xl p-10 text-center text-slate-500">
               <BookOpen className="w-10 h-10 mx-auto mb-3 text-[#c9a84c]/40" />
               <p>ยังไม่มีหนังสือที่บันทึกไว้</p>
@@ -287,7 +320,7 @@ export default function DashboardPage() {
             </div>
           )}
 
-          {!loading && projects.length > 0 && visible.length === 0 && (
+          {!loading && !loadError && projects.length > 0 && visible.length === 0 && (
             <p className="text-center text-slate-600 text-sm py-12">ไม่พบหนังสือที่ตรงกับการค้นหา</p>
           )}
 

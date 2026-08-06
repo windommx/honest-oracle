@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { toast } from "../_toast";
 import Link from "next/link";
 import { Crown, BookOpen, Play, Loader2, Save, Check, KeyRound } from "lucide-react";
 import { PROVIDERS, type Provider } from "@/lib/rush-engine/llm-provider";
@@ -117,10 +118,16 @@ export default function StudioPage() {
 
   function saveOutput() {
     if (!output.trim()) return;
-    void saveManuscript({ title: `Studio ${new Date().toLocaleString()}`, lang: saveLang, text: output }).then(() => {
-      setSaved(true);
-      setTimeout(() => setSaved(false), 2000);
-    });
+    void saveManuscript({ title: `Studio ${new Date().toLocaleString()}`, lang: saveLang, text: output })
+      .then(() => {
+        setSaved(true);
+        setTimeout(() => setSaved(false), 2000);
+      })
+      // saveManuscript now throws when BOTH stores are full. Without this catch the promise
+      // rejects unhandled and the writer sees NOTHING — they think the save worked.
+      .catch(() => {
+        toast("บันทึกไม่สำเร็จ — พื้นที่เก็บของเบราว์เซอร์เต็ม ผลลัพธ์นี้ยังไม่ถูกบันทึก คัดลอกเก็บไว้ก่อน", { variant: "error" });
+      });
   }
 
   return (
