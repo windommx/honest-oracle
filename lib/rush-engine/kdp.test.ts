@@ -74,3 +74,27 @@ describe("KDP metadata compliance", () => {
     expect(md).toContain("CMYK"); // honest about what a browser can't do
   });
 });
+
+describe("kdpReadiness guards invalid inputs (audit fix)", () => {
+  it("an unknown paper stock is not reported publish-ready with a NaN spine", () => {
+    const r = kdpReadiness({ words: 30000, paper: "40_white" as never });
+    expect(r.ready).toBe(false);
+    expect(Number.isFinite(r.spine.inches)).toBe(true); // no NaN
+    expect(r.checks.find((c) => c.rule === "Known paper stock")!.ok).toBe(false);
+  });
+  it("an unknown trim size fails a check instead of crashing", () => {
+    const r = kdpReadiness({ words: 30000, trim: "9x9" as never });
+    expect(r.ready).toBe(false);
+    expect(Number.isFinite(r.pages)).toBe(true);
+    expect(r.checks.find((c) => c.rule === "Known trim size")!.ok).toBe(false);
+  });
+  it("a non-finite word count fails, with finite pages", () => {
+    const r = kdpReadiness({ words: NaN });
+    expect(r.ready).toBe(false);
+    expect(Number.isFinite(r.pages)).toBe(true);
+    expect(r.checks.find((c) => c.rule === "Word count present")!.ok).toBe(false);
+  });
+  it("valid inputs still pass", () => {
+    expect(kdpReadiness({ words: 30000 }).ready).toBe(true);
+  });
+});

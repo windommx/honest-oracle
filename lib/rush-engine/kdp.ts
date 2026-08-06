@@ -23,21 +23,27 @@ export const BLEED_IN = 0.125;
 export const MIN_PAGES_PAPERBACK = 24;
 export const MIN_PAGES_HARDCOVER = 75;
 
-/** Spine width. KDP: pages ÷ PPI = inches. Returns inches + mm (2-dp). */
+/** Spine width. KDP: pages ÷ PPI = inches. Returns inches + mm (2-dp).
+ *  An unknown paper stock falls back to 60_cream rather than dividing by undefined → NaN;
+ *  kdpReadiness surfaces the invalid stock as a failed check so the fallback is never silent. */
 export function spineWidth(pageCount: number, paper: PaperWeight = "60_cream"): { inches: number; mm: number } {
-  const inches = pageCount / PPI[paper];
+  const ppi = PPI[paper] ?? PPI["60_cream"];
+  const inches = pageCount / ppi;
   return { inches: Math.round(inches * 1000) / 1000, mm: Math.round(inches * 25.4 * 100) / 100 };
 }
 
 /** Estimate interior page count from word count for a trim size (ESTIMATE — verify in KDP previewer). */
 export function estimatePages(words: number, trim: TrimSize = "6x9"): number {
-  const wpp = TRIM[trim].wordsPerPage;
+  // Unknown trim → 6x9 fallback (never dereference undefined); non-finite/≤0 words → 1 page
+  // (never propagate NaN). kdpReadiness reports both as failed checks, so neither is silent.
+  const wpp = TRIM[trim]?.wordsPerPage ?? TRIM["6x9"].wordsPerPage;
+  if (!Number.isFinite(words) || words <= 0) return 1;
   return Math.max(1, Math.ceil(words / wpp));
 }
 
 /** Full wraparound cover canvas size (inches), incl. spine + bleed on all sides. */
 export function coverCanvas(pageCount: number, trim: TrimSize = "6x9", paper: PaperWeight = "60_cream") {
-  const t = TRIM[trim];
+  const t = TRIM[trim] ?? TRIM["6x9"]; // unknown trim → fallback, never read undefined.w
   const spine = spineWidth(pageCount, paper).inches;
   return {
     widthIn: Math.round((t.w * 2 + spine + BLEED_IN * 2) * 1000) / 1000,
@@ -91,15 +97,22 @@ export function kdpReadiness(input: { words: number; trim?: TrimSize; paper?: Pa
   const trim = input.trim ?? "6x9";
   const paper = input.paper ?? "60_cream";
   const binding = input.binding ?? "paperback";
+  // Validate BEFORE the math (which now falls back safely) so an invalid trim/paper/word
+  // count fails a real check and drops `ready` to false — instead of crashing (old: trim
+  // deref before the trim check ran) or reporting a NaN spine as publish-ready.
+  const trimOk = trim in TRIM;
+  const paperOk = paper in PPI;
+  const wordsOk = Number.isFinite(input.words) && input.words > 0;
   const pages = estimatePages(input.words, trim);
   const spine = spineWidth(pages, paper);
   const minPages = binding === "hardcover" ? MIN_PAGES_HARDCOVER : MIN_PAGES_PAPERBACK;
 
   const checks: KdpCheck[] = [
-    { rule: `≥ ${minPages} pages (${binding})`, ok: pages >= minPages, note: `estimated ${pages} pages from ${input.words} words` },
-    { rule: "Known trim size", ok: trim in TRIM, note: `${TRIM[trim].w}"×${TRIM[trim].h}"` },
-    { rule: "Word count present", ok: input.words > 0, note: `${input.words} words` },
-    { rule: "Spine fits content (paperback < ~0.06\" has no spine text)", ok: true, note: `spine ${spine.inches}" (${spine.mm} mm)` },
+    { rule: "Known trim size", ok: trimOk, note: trimOk ? `${TRIM[trim].w}"×${TRIM[trim].h}"` : `unknown trim "${trim}" — using 6x9 to estimate` },
+    { rule: "Known paper stock", ok: paperOk, note: paperOk ? `${PPI[paper]} PPI` : `unknown paper "${paper}" — using 60_cream to estimate` },
+    { rule: "Word count present", ok: wordsOk, note: wordsOk ? `${input.words} words` : `invalid word count (${input.words})` },
+    { rule: `≥ ${minPages} pages (${binding})`, ok: wordsOk && pages >= minPages, note: `estimated ${pages} pages from ${input.words} words` },
+    { rule: "Spine fits content (paperback < ~0.06\" has no spine text)", ok: trimOk && paperOk && wordsOk, note: `spine ${spine.inches}" (${spine.mm} mm)` },
     { rule: "Cover bleed 0.125\" each side", ok: true, note: "applied in coverCanvas()" },
   ];
   if (input.meta) checks.push(...kdpMetadataChecks(input.meta));

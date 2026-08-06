@@ -136,3 +136,24 @@ describe("structureGuidanceTh injection", () => {
     expect(plain.prompt).not.toContain("คิโชเท็งเค็ตสึ");
   });
 });
+
+describe("short book reaches its closing beat (audit fix)", () => {
+  it("jataka in 3 chapters ends on the identification, not the verse", () => {
+    // Fewer chapters than beats used to end one beat short, dropping the defining close.
+    expect(structurePhase("jataka", 3, 3)!.beat.en).toBe("The identification");
+    expect(structurePhase("jataka", 1, 3)!.beatIndex).toBe(0); // still opens on the first beat
+  });
+
+  it("every NON-pinned structure hits its last beat on the last chapter, even when chapters < beats", () => {
+    for (const s of NARRATIVE_STRUCTURES) {
+      // pinned-opening structures (golden-three) deliberately map a short book entirely into
+      // the pinned prefix, so they need not reach the serial close — exclude those cases.
+      const pin = (s as { pinnedOpening?: number }).pinnedOpening ?? 0;
+      for (const total of [2, 3, s.beats.length]) {
+        if (total <= pin) continue;
+        const ph = structurePhase(s.id, total, total)!;
+        expect(ph.beatIndex, `${s.id} @ ${total}ch`).toBe(s.beats.length - 1);
+      }
+    }
+  });
+});

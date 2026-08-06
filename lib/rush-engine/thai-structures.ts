@@ -242,7 +242,13 @@ export function structurePhase(id: string, chapter1: number, totalChapters: numb
   } else {
     const restBeats = b - pin;
     const restChapters = Math.max(1, totalChapters - pin);
-    idx = pin + Math.min(restBeats - 1, Math.floor(((chapter1 - pin - 1) / restChapters) * restBeats));
+    const c = chapter1 - pin - 1; // 0-based position within the rest chapters
+    // Map rest chapters onto rest beats hitting BOTH ends: first rest chapter → first rest
+    // beat, LAST chapter → LAST beat. The old floor()-of-ratio never reached the final beat
+    // when there were fewer chapters than beats (jataka in 3 chapters ended on the verse, not
+    // the closing identification), silently dropping the structure's defining last beat.
+    const beatInRest = restChapters > 1 ? Math.round((c * (restBeats - 1)) / (restChapters - 1)) : restBeats - 1;
+    idx = pin + Math.max(0, Math.min(restBeats - 1, beatInRest));
   }
   return { structure, beat: structure.beats[idx], beatIndex: idx, beatCount: b };
 }
