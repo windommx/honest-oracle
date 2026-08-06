@@ -142,3 +142,28 @@ export function boundedCount(hay: string, term: string): number {
   }
   return count;
 }
+
+const NAME_RE_ESCAPE = /[.*+?^${}()|[\]\\]/g;
+/** Count each declared NAME in a body of text, per language.
+ *
+ *  Thai: substring + CAST-AWARE overlap subtraction (countPhrases) — a short name that only
+ *  ever falls inside a LONGER declared name (แอน inside แอนนา) nets to 0, while a short name
+ *  run together with an ordinary word (เอิ่ม in เอิ่มพูด) is still counted. This is the
+ *  phantom-match fix that a plain word-boundary check could not give without collapsing
+ *  recall on Thai's space-free prose.
+ *
+ *  English: \b word boundaries already prevent a name matching inside a longer word ("Ann"
+ *  in "Anna", "Sam" in "same"), so no overlap subtraction is needed. Returns a name→count
+ *  map keyed by the ORIGINAL-cased names. Pure/deterministic. */
+export function countNames(body: string, names: string[], lang: "th" | "en"): Map<string, number> {
+  if (lang === "en") {
+    const hay = body.toLowerCase();
+    return new Map(names.map((n) => {
+      const re = new RegExp(`\\b${n.toLowerCase().replace(NAME_RE_ESCAPE, "\\$&")}\\b`, "g");
+      return [n, (hay.match(re) ?? []).length] as const;
+    }));
+  }
+  const out = new Map<string, number>(names.map((n) => [n, 0]));
+  for (const { phrase, count } of countPhrases(body, names)) out.set(phrase, count);
+  return out;
+}

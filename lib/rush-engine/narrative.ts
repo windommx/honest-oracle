@@ -9,7 +9,7 @@
 // ╚══════════════════════════════════════════════════════════════════╝
 
 import { splitChapters } from "./chapters";
-import { maxOf, minOf } from "./text-util";
+import { maxOf, minOf, countNames } from "./text-util";
 
 const RE_ESCAPE = /[.*+?^${}()|[\]\\]/g;
 const countEn = (s: string, t: string) => (s.match(new RegExp(`\\b${t.replace(RE_ESCAPE, "\\$&")}\\b`, "gi")) ?? []).length;
@@ -37,11 +37,14 @@ export interface NarrativeArcs { chapters: number; characters: CharArc[] }
  *  whether the arc is "good". */
 export function characterArc(text: string, names: string[], lang: "th" | "en" = "th"): NarrativeArcs {
   const cast = Array.from(new Set(names.map((n) => n.trim()).filter((n) => n.length >= 2)));
-  const count = lang === "en" ? countEn : countTh;
   const chs = bodies(text);
   const n = chs.length;
+  // Cast-aware counts per chapter: a short name inside a longer CAST name (แอน in แอนนา) is
+  // subtracted, so a character is not marked "present" in every chapter their substring-name
+  // happens to nest in. One pass over the whole cast per chapter.
+  const perChapterCounts = chs.map((b) => countNames(b, cast, lang));
   const characters: CharArc[] = cast.map((name) => {
-    const perChapter = chs.map((b) => count(b, name));
+    const perChapter = perChapterCounts.map((m) => m.get(name) ?? 0);
     const present = perChapter.map((c, i) => (c > 0 ? i + 1 : 0)).filter((x) => x > 0);
     const first = present.length ? present[0] : 0;
     const last = present.length ? present[present.length - 1] : 0;
