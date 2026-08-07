@@ -42,7 +42,7 @@ export function Stat({ value, label }: { value: string; label: string }) {
   return (
     <div className="p-2 bg-white/5 rounded-lg text-center">
       <div className="text-lg font-bold text-[#c9a84c]">{value}</div>
-      <div className="text-[0.6rem] text-gray-500 mt-0.5">{label}</div>
+      <div className="text-[0.6rem] text-faint mt-0.5">{label}</div>
     </div>
   );
 }

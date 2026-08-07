@@ -61,8 +61,8 @@ export default function RushStart() {
         <div className="flex items-center justify-between mb-2">
           <p className="text-xs tracking-[0.2em] uppercase text-[#c9a84c] font-semibold">Rush Studio · สร้าง Prompt Pack</p>
           <div className="flex items-center gap-3">
-            <Link href="/rush/fix" className="text-xs text-gray-500 hover:text-gray-300">ติดอยู่? หาจากอาการ</Link>
-            <Link href="/rush/explore" className="text-xs text-gray-500 hover:text-gray-300">← ดู 8 ประเภท</Link>
+            <Link href="/rush/fix" className="text-xs text-faint hover:text-gray-300">ติดอยู่? หาจากอาการ</Link>
+            <Link href="/rush/explore" className="text-xs text-faint hover:text-gray-300">← ดู 8 ประเภท</Link>
           </div>
         </div>
 
@@ -71,7 +71,7 @@ export default function RushStart() {
           {STEPS.map((s, i) => (
             <div key={s} className="flex-1">
               <div className={`h-1 rounded-full ${i <= step ? "bg-[#c9a84c]" : "bg-white/10"}`} />
-              <p className={`text-[0.62rem] mt-1.5 ${i === step ? "text-[#e6c86a]" : "text-gray-600"}`}>{i + 1}. {s}</p>
+              <p className={`text-[0.62rem] mt-1.5 ${i === step ? "text-[#e6c86a]" : "text-faint"}`}>{i + 1}. {s}</p>
             </div>
           ))}
         </div>
@@ -90,7 +90,7 @@ export default function RushStart() {
                   <span className="text-2xl">{bt.icon}</span>
                   <span>
                     <span className="block font-medium text-gray-100">{bt.label}</span>
-                    <span className="block text-[0.68rem] text-gray-500">{bt.sub_genres.length} แนวย่อย · {bt.default_chapters} บท</span>
+                    <span className="block text-[0.68rem] text-faint">{bt.sub_genres.length} แนวย่อย · {bt.default_chapters} บท</span>
                   </span>
                   {type === key && <Check className="w-4 h-4 text-[#c9a84c] ml-auto" />}
                 </button>
@@ -100,7 +100,7 @@ export default function RushStart() {
             {/* bootstraps — one-click starting points (skip the wizard entirely) */}
             <div className="mt-10">
               <h3 className="text-sm font-semibold text-gray-300 mb-1">หรือเริ่มเร็วจากแม่แบบตั้งต้น ({BOOTSTRAPS.length})</h3>
-              <p className="text-[0.68rem] text-gray-500 mb-3">กดแล้วได้ config ครบ (ประเภท·แนว·โครงเรื่อง·ความยาว) — ปรับต่อได้ทุกอย่างในหน้าถัดไป</p>
+              <p className="text-[0.68rem] text-faint mb-3">กดแล้วได้ config ครบ (ประเภท·แนว·โครงเรื่อง·ความยาว) — ปรับต่อได้ทุกอย่างในหน้าถัดไป</p>
               <div className="flex flex-wrap gap-1.5 mb-3">
                 <button
                   onClick={() => setPresetFilter("all")}
@@ -129,8 +129,8 @@ export default function RushStart() {
                       <span className="text-base">{BOOK_TYPES[b.type].icon}</span>
                       <span className="text-sm font-medium text-gray-100 group-hover:text-[#e6c86a]">{b.nameTh}</span>
                     </span>
-                    <span className="block text-[0.65rem] text-gray-500 mt-1">{b.taglineTh}</span>
-                    <span className="block text-[0.6rem] text-gray-600 mt-1">
+                    <span className="block text-[0.65rem] text-faint mt-1">{b.taglineTh}</span>
+                    <span className="block text-[0.6rem] text-faint mt-1">
                       {b.chapters} บท × {b.words.toLocaleString()} คำ{b.structure ? ` · ${structureById(b.structure)?.thai ?? b.structure}` : ""}
                     </span>
                   </Link>
@@ -144,7 +144,7 @@ export default function RushStart() {
         {step === 1 && (
           <section>
             <h2 className="text-lg font-bold mb-1">แนวย่อยของ {t.label}</h2>
-            <p className="text-sm text-gray-500 mb-4">เลือกแนวย่อยที่ใกล้เคียงที่สุด</p>
+            <p className="text-sm text-faint mb-4">เลือกแนวย่อยที่ใกล้เคียงที่สุด</p>
             <div className="flex flex-wrap gap-2 mb-6">
               {t.sub_genres.map((g) => (
                 <button
@@ -172,14 +172,14 @@ export default function RushStart() {
             {type === "novel" && lang === "th" && (
               <div className="mt-6">
                 <h3 className="text-sm font-semibold mb-1">โครงเรื่อง (ทางเลือกไทย/เอเชีย)</h3>
-                <p className="text-[0.7rem] text-gray-500 mb-2">เลือกโครงพื้นถิ่นแทน 3 องก์ตะวันตก — จะฝัง beat รายบทลงใน prompt ภาษาไทย</p>
+                <p className="text-[0.7rem] text-faint mb-2">เลือกโครงพื้นถิ่นแทน 3 องก์ตะวันตก — จะฝัง beat รายบทลงใน prompt ภาษาไทย</p>
                 <div className="grid gap-2 sm:grid-cols-2">
                   <button
                     onClick={() => setStructure("")}
                     className={`rounded-xl border p-3 text-left transition ${structure === "" ? "border-[#c9a84c] bg-[#c9a84c]/[0.06]" : "border-white/10 hover:border-white/25"}`}
                   >
                     <span className="block text-sm font-medium text-gray-100">โครงมาตรฐาน (3 องก์)</span>
-                    <span className="block text-[0.66rem] text-gray-500 mt-0.5">conflict → climax → resolution</span>
+                    <span className="block text-[0.66rem] text-faint mt-0.5">conflict → climax → resolution</span>
                   </button>
                   {NARRATIVE_STRUCTURES.map((s) => (
                     <button
@@ -188,7 +188,7 @@ export default function RushStart() {
                       className={`rounded-xl border p-3 text-left transition ${structure === s.id ? "border-[#c9a84c] bg-[#c9a84c]/[0.06]" : "border-white/10 hover:border-white/25"}`}
                     >
                       <span className="block text-sm font-medium text-gray-100">{s.thai}</span>
-                      <span className="block text-[0.66rem] text-gray-500 mt-0.5">{s.origin}</span>
+                      <span className="block text-[0.66rem] text-faint mt-0.5">{s.origin}</span>
                     </button>
                   ))}
                 </div>
@@ -211,7 +211,7 @@ export default function RushStart() {
                 <input type="number" min={100} max={20000} step={100} value={words} onChange={(e) => setWords(Math.max(100, Math.min(20000, parseInt(e.target.value) || 100)))} className="mt-1.5 w-full px-3 py-2 rounded-lg border border-white/10 bg-white/5 text-gray-100 focus:border-[#c9a84c]/50 focus:outline-none" />
               </label>
             </div>
-            <p className="text-[0.72rem] text-gray-500 mt-3">รวมประมาณ {(chapters * words).toLocaleString()} คำ · ค่าเริ่มต้นของ {t.label}: {t.default_chapters} บท × {t.default_words.toLocaleString()} คำ</p>
+            <p className="text-[0.72rem] text-faint mt-3">รวมประมาณ {(chapters * words).toLocaleString()} คำ · ค่าเริ่มต้นของ {t.label}: {t.default_chapters} บท × {t.default_words.toLocaleString()} คำ</p>
           </section>
         )}
 
@@ -219,7 +219,7 @@ export default function RushStart() {
         {step === 3 && (
           <section>
             <h2 className="text-lg font-bold mb-1">โมดูลเสริม</h2>
-            <p className="text-sm text-gray-500 mb-4">เลือกได้หลายกลุ่ม — ต่อเข้าไปใน prompt pack (แนะนำตามประเภทไว้ให้แล้ว)</p>
+            <p className="text-sm text-faint mb-4">เลือกได้หลายกลุ่ม — ต่อเข้าไปใน prompt pack (แนะนำตามประเภทไว้ให้แล้ว)</p>
             <div className="grid gap-2.5 sm:grid-cols-2">
               {MODULE_GROUPS.map((g) => {
                 const on = groups.includes(g.key);
@@ -234,7 +234,7 @@ export default function RushStart() {
                     </span>
                     <span>
                       <span className="block text-sm font-medium text-gray-100">{g.label}</span>
-                      <span className="block text-[0.68rem] text-gray-500 leading-snug mt-0.5">{g.desc}</span>
+                      <span className="block text-[0.68rem] text-faint leading-snug mt-0.5">{g.desc}</span>
                     </span>
                   </button>
                 );
@@ -257,7 +257,7 @@ export default function RushStart() {
                 ["โมดูลเสริม", groups.length ? groups.map((k) => MODULE_GROUPS.find((m) => m.key === k)?.label).join(", ") : "core เท่านั้น"],
               ].map(([k, v]) => (
                 <div key={k} className="flex gap-3 px-4 py-2.5">
-                  <dt className="w-28 shrink-0 text-gray-500">{k}</dt>
+                  <dt className="w-28 shrink-0 text-faint">{k}</dt>
                   <dd className="text-gray-200">{v}</dd>
                 </div>
               ))}
@@ -265,7 +265,7 @@ export default function RushStart() {
             <Link href={href} className="mt-6 inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-[#c9a84c] text-black font-semibold hover:bg-[#e6c86a] transition">
               สร้าง Prompt Pack ใน Rush Studio <ArrowRight className="w-4 h-4" />
             </Link>
-            <p className="text-[0.68rem] text-gray-500 mt-3">จะเปิด /rush พร้อมตั้งค่าทุกอย่างให้ — กด Generate ได้เลย</p>
+            <p className="text-[0.68rem] text-faint mt-3">จะเปิด /rush พร้อมตั้งค่าทุกอย่างให้ — กด Generate ได้เลย</p>
           </section>
         )}
 

@@ -57,10 +57,10 @@ export default function RushHonesty() {
       <div className="max-w-3xl mx-auto px-5 py-12">
         <div className="flex items-center justify-between mb-2">
           <p className="text-xs tracking-[0.2em] uppercase text-[#c9a84c] font-semibold">Rush · ความซื่อสัตย์ทางญาณวิทยา</p>
-          <Link href="/rush/explore" className="text-xs text-gray-500 hover:text-gray-300">← กลับ</Link>
+          <Link href="/rush/explore" className="text-xs text-faint hover:text-gray-300">← กลับ</Link>
         </div>
         <h1 className="text-2xl font-bold text-gray-100 mb-1">เราถือมาตรฐานเดียวกับที่เราใช้ตรวจงานคุณ</h1>
-        <p className="text-sm text-gray-500 mb-8">
+        <p className="text-sm text-faint mb-8">
           Rush ปฏิเสธที่จะให้คะแนน 0–100 แบบเดา และหน้านี้แสดงว่าเราใช้กฎเดียวกันนั้นกับ<strong>ตัวเลขของเราเอง</strong>และ<strong>แหล่งอ้างอิงของเราเอง</strong>
         </p>
 
@@ -75,12 +75,12 @@ export default function RushHonesty() {
                 <div className="flex items-center gap-2">
                   <span className="inline-block w-2 h-2 rounded-full" style={{ background: TIER_TONE[t.id] }} />
                   <span className="text-sm font-medium" style={{ color: TIER_TONE[t.id] }}>{t.thai}</span>
-                  <span className="text-[0.6rem] text-gray-500 italic">{t.pali}</span>
+                  <span className="text-[0.6rem] text-faint italic">{t.pali}</span>
                   <span className={`ml-auto text-[0.6rem] px-1.5 py-0.5 rounded ${t.admissible ? "text-emerald-300/80" : "text-rose-300/80"}`}>
                     {t.admissible ? "แสดงได้" : "ปฏิเสธ"}
                   </span>
                 </div>
-                <p className="text-[0.72rem] text-gray-500 mt-1">{t.gloss}</p>
+                <p className="text-[0.72rem] text-faint mt-1">{t.gloss}</p>
               </div>
             ))}
           </div>
@@ -105,7 +105,7 @@ export default function RushHonesty() {
           <h2 className="flex items-center gap-2 text-sm font-semibold text-gray-200 mb-1">
             <BookMarked className="w-4 h-4 text-[#c9a84c]" /> เราจัดชั้นแหล่งอ้างอิงของเราเองด้วย
           </h2>
-          <p className="text-[0.72rem] text-gray-500 mb-3">
+          <p className="text-[0.72rem] text-faint mb-3">
             ชั้นบอกว่า <strong>ตรวจมาแรงแค่ไหน</strong> ไม่ได้บอกว่างานดีแค่ไหน
           </p>
 
@@ -134,17 +134,17 @@ export default function RushHonesty() {
             {disputed().map((c) => (
               <div key={c.id} className="rounded-lg border border-rose-500/15 bg-rose-500/[0.03] p-3">
                 <p className="text-[0.75rem] text-gray-200">
-                  {c.who} <span className="text-gray-500">({c.year})</span> — <span className="text-gray-400">{c.claim}</span>
+                  {c.who} <span className="text-faint">({c.year})</span> — <span className="text-gray-400">{c.claim}</span>
                 </p>
-                {c.note && <p className="text-[0.68rem] text-gray-500 mt-1">{c.note}</p>}
+                {c.note && <p className="text-[0.68rem] text-faint mt-1">{c.note}</p>}
               </div>
             ))}
           </div>
         </section>
 
-        <p className="mt-12 text-[0.65rem] leading-relaxed text-gray-700 border-t border-white/5 pt-5">
+        <p className="mt-12 text-[0.65rem] leading-relaxed text-faint border-t border-white/5 pt-5">
           ทุกอย่างในหน้านี้คำนวณสด ๆ จากตัวเครื่องยนต์ในเบราว์เซอร์คุณ — ไม่มีเซิร์ฟเวอร์ ไม่มีการเรียก AI.
-          ตรวจเองได้ที่ command line: <code className="text-gray-500">rush cite</code>, <code className="text-gray-500">rush receipt &lt;ไฟล์&gt; --verify</code>.
+          ตรวจเองได้ที่ command line: <code className="text-faint">rush cite</code>, <code className="text-faint">rush receipt &lt;ไฟล์&gt; --verify</code>.
         </p>
       </div>
     </main>

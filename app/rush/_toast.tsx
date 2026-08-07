@@ -106,7 +106,7 @@ export function Toaster() {
             <button
               onClick={() => dismissToast(t.id)}
               aria-label="ปิดการแจ้งเตือน"
-              className="shrink-0 text-gray-500 hover:text-gray-200 transition text-sm leading-none px-1"
+              className="shrink-0 text-faint hover:text-gray-200 transition text-sm leading-none px-1"
             >
               ✕
             </button>

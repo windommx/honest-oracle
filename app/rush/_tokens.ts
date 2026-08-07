@@ -44,8 +44,24 @@ export const GOLD_DARK = "#a8893d";
 /** Print/paper foreground — the manuscript preview only, where the surface is light. */
 export const PAPER = "#f0ece4";
 
-/** Muted foreground fallback (Tailwind gray-400) for an unmapped tier badge. */
+/** Muted foreground (Tailwind gray-400). 7.78:1 on BG — passes WCAG AA. */
 export const MUTED = "#9ca3af";
+
+/** Faintest text tier. Tailwind gray-500 (#6b7280) measured 4.09:1 on BG — it FAILS AA for
+ *  normal text, and it was the app's most-used text colour (116 uses) on 0.62-0.72rem type,
+ *  which is normal text by any reading. gray-600 (2.61:1) and gray-700 (1.92:1) failed even
+ *  the 3:1 large-text floor. This value is the faintest grey that still clears 4.5:1, so the
+ *  four-level hierarchy survives without an unreadable rung. */
+export const TEXT_FAINT = "#757d8c";
+
+/** Measured WCAG contrast of each text tier against BG. Recomputed by _contrast.test.ts —
+ *  these are recorded so the choice is auditable, not asserted from memory. */
+export const TEXT_CONTRAST = {
+  "gray-200": 15.95,
+  "gray-300": 13.40,
+  "gray-400": 7.78,
+  TEXT_FAINT: 4.77,
+} as const;
 
 // ── Epistemic tier colours ─────────────────────────────────────────────────────
 // SEMANTIC, not decorative: each encodes one tier from epistemics.ts, and they were
@@ -73,6 +89,7 @@ export const PALETTE = {
   FOREGROUND,
   PAPER,
   MUTED,
+  TEXT_FAINT,
   TIER_DIRECT,
   TIER_DERIVED,
   TIER_HEURISTIC,

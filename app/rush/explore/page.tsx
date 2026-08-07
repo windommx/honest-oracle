@@ -72,7 +72,7 @@ export default function RushExplore() {
       {/* book types */}
       <section id="types" className="max-w-5xl mx-auto px-5 py-10">
         <h2 className="text-xl font-bold mb-1">8 ประเภทหนังสือ</h2>
-        <p className="text-sm text-gray-500 mb-6">คลิกการ์ดเพื่อดูแนวย่อย โครงเรื่อง และค่าเริ่มต้น (ข้อมูลจริงจากเอนจิน)</p>
+        <p className="text-sm text-faint mb-6">คลิกการ์ดเพื่อดูแนวย่อย โครงเรื่อง และค่าเริ่มต้น (ข้อมูลจริงจากเอนจิน)</p>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {types.map(([key, t]) => {
             const isOpen = open === key;
@@ -86,7 +86,7 @@ export default function RushExplore() {
                       <p className="text-xs text-gray-400 mt-0.5">{TYPE_TH[key]}</p>
                     </div>
                   </div>
-                  <div className="flex flex-wrap gap-1.5 mt-3 text-[0.65rem] text-gray-500">
+                  <div className="flex flex-wrap gap-1.5 mt-3 text-[0.65rem] text-faint">
                     <span className="px-2 py-0.5 rounded border border-white/10">{t.sub_genres.length} แนวย่อย</span>
                     <span className="px-2 py-0.5 rounded border border-white/10">{t.structures.length} โครงเรื่อง</span>
                     <span className="px-2 py-0.5 rounded border border-white/10">{t.default_chapters} บท × {t.default_words.toLocaleString()} คำ</span>
@@ -95,7 +95,7 @@ export default function RushExplore() {
                 {isOpen && (
                   <div className="mt-4 space-y-3 border-t border-white/10 pt-3">
                     <div>
-                      <p className="text-[0.65rem] uppercase tracking-wide text-gray-500 mb-1.5">แนวย่อย</p>
+                      <p className="text-[0.65rem] uppercase tracking-wide text-faint mb-1.5">แนวย่อย</p>
                       <div className="flex flex-wrap gap-1.5">
                         {t.sub_genres.map((g) => (
                           <span key={g} className="text-[0.68rem] px-2 py-0.5 rounded-full border border-[#c9a84c]/30 text-[#e6c86a]">{g.replace(/_/g, " ")}</span>
@@ -103,7 +103,7 @@ export default function RushExplore() {
                       </div>
                     </div>
                     <div>
-                      <p className="text-[0.65rem] uppercase tracking-wide text-gray-500 mb-1.5">โครงเรื่อง</p>
+                      <p className="text-[0.65rem] uppercase tracking-wide text-faint mb-1.5">โครงเรื่อง</p>
                       <div className="flex flex-wrap gap-1.5">
                         {t.structures.map((s) => (
                           <span key={s} className="text-[0.68rem] px-2 py-0.5 rounded-full border border-white/10 text-gray-300">{s.replace(/_/g, " ")}</span>
@@ -143,7 +143,7 @@ export default function RushExplore() {
       {/* module groups */}
       <section className="max-w-5xl mx-auto px-5 py-10">
         <h2 className="text-xl font-bold mb-1">โมดูลเสริม {MODULE_GROUPS.length} กลุ่ม</h2>
-        <p className="text-sm text-gray-500 mb-6">เปิดตามต้องการ — ต่อเข้าไปใน prompt pack</p>
+        <p className="text-sm text-faint mb-6">เปิดตามต้องการ — ต่อเข้าไปใน prompt pack</p>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {MODULE_GROUPS.map((g) => (
             <div key={g.key} className="rounded-xl border border-white/10 bg-white/[0.02] p-4">
@@ -151,7 +151,7 @@ export default function RushExplore() {
                 <Check className="w-4 h-4 text-[#c9a84c] shrink-0" />
                 <h3 className="font-medium text-sm text-gray-100">{g.label}</h3>
               </div>
-              <p className="text-[0.72rem] text-gray-500 mt-1.5 leading-relaxed">{g.desc}</p>
+              <p className="text-[0.72rem] text-faint mt-1.5 leading-relaxed">{g.desc}</p>
             </div>
           ))}
         </div>

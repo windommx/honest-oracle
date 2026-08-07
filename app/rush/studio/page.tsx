@@ -181,7 +181,7 @@ export default function StudioPage() {
                   {apiKey && <button type="button" onClick={clearKey} className="text-[#c9a84c] hover:underline">ล้าง key</button>}
                 </span>
                 <input type="password" value={apiKey} onChange={(e) => onKey(e.target.value)} placeholder={meta.keyHint} className="input" />
-                <label className="flex items-center gap-1.5 text-[0.65rem] text-gray-500 mt-1.5 cursor-pointer">
+                <label className="flex items-center gap-1.5 text-[0.65rem] text-faint mt-1.5 cursor-pointer">
                   <input type="checkbox" checked={rememberKey} onChange={(e) => toggleRemember(e.target.checked)} className="accent-[#c9a84c]" />
                   จำ key ไว้ในแท็บนี้ (ล้างเมื่อปิดแท็บ)
                 </label>
@@ -223,7 +223,7 @@ export default function StudioPage() {
                 )}
               </div>
               <div className="bg-[#12121a] border border-white/10 rounded-xl p-4 text-sm text-gray-200 whitespace-pre-wrap min-h-[420px] max-h-[600px] overflow-y-auto">
-                {output || <span className="text-gray-600">ผลลัพธ์จะแสดงที่นี่ — บันทึกเป็นต้นฉบับเพื่อนำไปวิเคราะห์/รัน NIS ต่อ</span>}
+                {output || <span className="text-faint">ผลลัพธ์จะแสดงที่นี่ — บันทึกเป็นต้นฉบับเพื่อนำไปวิเคราะห์/รัน NIS ต่อ</span>}
               </div>
             </div>
           </div>

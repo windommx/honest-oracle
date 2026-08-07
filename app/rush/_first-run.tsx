@@ -87,12 +87,12 @@ export function FirstRunOrientation({ show }: { show: boolean }) {
       <button
         onClick={() => { dismissOrientation(); setDismissed(true); }}
         aria-label="ปิดคำแนะนำเริ่มต้น"
-        className="absolute right-3 top-3 text-gray-500 hover:text-gray-200 transition"
+        className="absolute right-3 top-3 text-faint hover:text-gray-200 transition"
       >
         <X className="w-4 h-4" />
       </button>
       <h2 className="text-sm font-semibold text-gray-100 mb-1">เริ่มตรงไหนดี?</h2>
-      <p className="text-[0.72rem] text-gray-500 mb-4">
+      <p className="text-[0.72rem] text-faint mb-4">
         หน้านี้คือแผงตั้งค่าแบบเต็ม — ถ้ายังไม่ชิน เริ่มจากทางลัดข้างล่างได้
       </p>
       <div className="grid gap-2.5 sm:grid-cols-3">
@@ -106,7 +106,7 @@ export function FirstRunOrientation({ show }: { show: boolean }) {
               <p.icon className="w-4 h-4 text-[#c9a84c]" />
               <span className="text-[0.78rem] font-medium text-gray-100 group-hover:text-[#e6c86a]">{p.title}</span>
             </span>
-            <span className="block text-[0.68rem] leading-snug text-gray-500">{p.body}</span>
+            <span className="block text-[0.68rem] leading-snug text-faint">{p.body}</span>
           </Link>
         ))}
       </div>
@@ -118,7 +118,7 @@ export function FirstRunOrientation({ show }: { show: boolean }) {
  *  the reachability half of the fix, independent of the onboarding half. */
 export function OnRamps() {
   return (
-    <nav aria-label="ทางลัด" className="flex flex-wrap gap-x-4 gap-y-1.5 text-[0.68rem] text-gray-600">
+    <nav aria-label="ทางลัด" className="flex flex-wrap gap-x-4 gap-y-1.5 text-[0.68rem] text-faint">
       {PATHS.map((p) => (
         <Link key={p.href} href={p.href} className="hover:text-[#c9a84c] transition">
           {p.title}
