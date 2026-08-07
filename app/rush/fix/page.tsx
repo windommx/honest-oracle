@@ -3,7 +3,11 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { Search, ArrowRight, AlertCircle, CornerDownRight } from "lucide-react";
-import { route, SYMPTOM_LADDER, MODULE_CATALOG, TH_META } from "@/lib/rush-engine/engine";
+// Data-only imports: the barrel would pull every prompt builder for what is a
+// names-and-descriptions screen (measured: 285 kB -> 173 kB First Load JS).
+import { route, SYMPTOM_LADDER } from "@/lib/rush-engine/router";
+import { MODULE_META as MODULE_CATALOG } from "@/lib/rush-engine/catalog-meta";
+import { TH_META } from "@/lib/rush-engine/th-meta";
 
 // Sample symptoms, taken verbatim from the ladder's own rung labels so this list can
 // never drift out of sync with what actually routes. Six chosen to span the ladder.

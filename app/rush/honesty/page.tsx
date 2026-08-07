@@ -1,13 +1,13 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { ShieldCheck, XCircle, BookMarked } from "lucide-react";
-import {
-  TIERS, REFUSED_CONSTRUCTS,
-  CITATIONS, disputed, coverage,
-  generateAllPrompts, MODULE_GROUPS, type BookConfig,
-} from "@/lib/rush-engine/engine";
+// Data-only imports at module scope. generateAllPrompts/coverage are loaded LAZILY below:
+// the live citation-coverage count needs the whole prompt engine, and paying for it in the
+// initial bundle made this the one page the import cleanup could not shrink (287 kB).
+import { TIERS, REFUSED_CONSTRUCTS } from "@/lib/rush-engine/epistemics";
+import { CITATIONS, disputed } from "@/lib/rush-engine/citations";
 
 const TIER_TONE: Record<string, string> = {
   paccakkha: "#34d399", anumana: "#38bdf8", sanna: "#fbbf24", avisaya: "#fb7185",
@@ -23,18 +23,33 @@ const CITE_LABEL: Record<string, string> = {
 };
 
 export default function RushHonesty() {
-  // Live coverage from the real generated prompts — the same number `rush cite` prints,
-  // computed client-side because the engine is pure and needs no server.
-  const { registered, mentionsEstimate, byTier, primaryCount } = useMemo(() => {
-    const cfg = {
-      type: "novel", title: "-", thesis: "-", reader: "-", voice: "storytelling",
-      chapters: 12, wordsPerChapter: 2000, subGenre: "thriller", citationStyle: "none", language: "english",
-    } as unknown as BookConfig;
-    const text = generateAllPrompts(cfg, MODULE_GROUPS.map((m) => m.key)).map((p) => p.prompt).join("\n");
-    const cov = coverage(text);
+  // Tier counts are pure data — available immediately.
+  const { byTier, primaryCount, registered } = useMemo(() => {
     const byTier: Record<string, number> = {};
     for (const c of CITATIONS) byTier[c.tier] = (byTier[c.tier] ?? 0) + 1;
-    return { ...cov, byTier, primaryCount: byTier.primary ?? 0 };
+    return { byTier, primaryCount: byTier.primary ?? 0, registered: CITATIONS.length };
+  }, []);
+
+  // The coverage DENOMINATOR is still counted live from the real generated prompts — never
+  // a hardcoded constant, which is the property that keeps it from drifting flattering as
+  // modules grow. It just loads after paint now, so the page does not ship the whole prompt
+  // engine in its initial bundle. null = still counting.
+  const [mentionsEstimate, setMentionsEstimate] = useState<number | null>(null);
+  useEffect(() => {
+    let live = true;
+    void (async () => {
+      const [{ generateAllPrompts, MODULE_GROUPS }, { coverage }] = await Promise.all([
+        import("@/lib/rush-engine/engine"),
+        import("@/lib/rush-engine/citations"),
+      ]);
+      const cfg = {
+        type: "novel", title: "-", thesis: "-", reader: "-", voice: "storytelling",
+        chapters: 12, wordsPerChapter: 2000, subGenre: "thriller", citationStyle: "none", language: "english",
+      } as unknown as Parameters<typeof generateAllPrompts>[0];
+      const text = generateAllPrompts(cfg, MODULE_GROUPS.map((m) => m.key)).map((p) => p.prompt).join("\n");
+      if (live) setMentionsEstimate(coverage(text).mentionsEstimate);
+    })();
+    return () => { live = false; };
   }, []);
 
   return (
@@ -96,7 +111,7 @@ export default function RushHonesty() {
 
           <div className="rounded-lg border border-white/10 p-3 mb-3 text-[0.72rem] text-gray-400 leading-relaxed">
             <span className="text-gray-200 font-medium">{registered}</span> แหล่งอ้างอิงลงทะเบียนแล้ว จาก
-            ~<span className="text-gray-200 font-medium">{mentionsEstimate}</span> การอ้างอิงในโมดูล (ประมาณการแบบนับเกิน).{" "}
+            ~<span className="text-gray-200 font-medium">{mentionsEstimate ?? "…"}</span> การอ้างอิงในโมดูล (ประมาณการแบบนับเกิน).{" "}
             <span className={primaryCount === 0 ? "text-rose-300/90" : "text-emerald-300/90"}>
               เปิดต้นฉบับจริง {primaryCount} ฉบับ
             </span>{" "}

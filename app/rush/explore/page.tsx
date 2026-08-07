@@ -3,7 +3,12 @@
 import { useState } from "react";
 import Link from "next/link";
 import { ArrowRight, Check, ShieldCheck, Cpu, Languages, Scale } from "lucide-react";
-import { BOOK_TYPES, MODULE_GROUPS, MODULE_CATALOG, NARRATIVE_STRUCTURES, BOOTSTRAPS, type BookTypeKey } from "@/lib/rush-engine/engine";
+import { BOOK_TYPES } from "@/lib/rush-engine/book-types";
+import type { BookTypeKey } from "@/lib/rush-engine/types";
+import { MODULE_GROUPS } from "@/lib/rush-engine/modules";
+import { MODULE_META as MODULE_CATALOG } from "@/lib/rush-engine/catalog-meta";
+import { NARRATIVE_STRUCTURES } from "@/lib/rush-engine/thai-structures";
+import { BOOTSTRAPS } from "@/lib/rush-engine/bootstraps";
 
 // Curated Thai one-liners per book type (marketing copy — the structural facts below come
 // straight from BOOK_TYPES so nothing here is invented).

@@ -3,7 +3,11 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { ArrowRight, ArrowLeft, Check } from "lucide-react";
-import { BOOK_TYPES, MODULE_GROUPS, defaultGroupsFor, NARRATIVE_STRUCTURES, BOOTSTRAPS, bootstrapQuery, structureById, type BookTypeKey } from "@/lib/rush-engine/engine";
+import { BOOK_TYPES } from "@/lib/rush-engine/book-types";
+import type { BookTypeKey } from "@/lib/rush-engine/types";
+import { MODULE_GROUPS, defaultGroupsFor } from "@/lib/rush-engine/modules";
+import { NARRATIVE_STRUCTURES, structureById } from "@/lib/rush-engine/thai-structures";
+import { BOOTSTRAPS, bootstrapQuery } from "@/lib/rush-engine/bootstraps";
 
 type GroupKey = (typeof MODULE_GROUPS)[number]["key"];
 const STEPS = ["ประเภท", "แนวย่อย + ภาษา", "ความยาว", "โมดูลเสริม", "สรุป"];
