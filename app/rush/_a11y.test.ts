@@ -86,3 +86,26 @@ describe("mobile layout", () => {
     expect(navRow).toContain("flex-wrap");
   });
 });
+
+describe("bundle discipline", () => {
+  it("the light UI primitives import no engine analyzer", () => {
+    // _ui.tsx exists so that importing <Field> does not drag in every analyzer. If an
+    // engine import lands here, /rush's initial bundle silently grows again and the
+    // dynamic-imported modals stop being split at all — which is exactly what happened
+    // while _components still owned these four helpers.
+    const ui = readFileSync(join(RUSH_DIR, "_ui.tsx"), "utf8");
+    const imports = Array.from(ui.matchAll(/^import .*from "([^"]+)";$/gm)).map((m) => m[1]);
+    const engineImports = imports.filter((i) => i.includes("rush-engine") && !i.endsWith("/types"));
+    expect(engineImports, `_ui.tsx must stay analyzer-free, found: ${engineImports.join(", ")}`).toEqual([]);
+  });
+
+  it("/rush loads the heavy modals dynamically, not statically", () => {
+    const page = readFileSync(join(RUSH_DIR, "page.tsx"), "utf8");
+    for (const modal of ["GuideModal", "ThaiAnalyzerModal", "ProseAnalyzerModal"]) {
+      expect(page, `${modal} must be dynamic`).toMatch(new RegExp(`const ${modal} = dynamic\\(`));
+    }
+    // and the light helpers must NOT come from _components (that static import is what
+    // pinned the whole module into the first chunk despite the dynamic imports)
+    expect(page).not.toMatch(/import \{[^}]*Field[^}]*\} from "\.\/_components"/);
+  });
+});

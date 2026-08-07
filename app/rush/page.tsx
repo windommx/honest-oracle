@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import {
   Crown,
@@ -23,7 +24,16 @@ import {
   Play,
 } from "lucide-react";
 import { titleCase, copyText, slug, downloadBlob } from "./_utils";
-import { GROUP_COLORS, Field, Stat, FilterChip, GuideModal, ThaiAnalyzerModal, ProseAnalyzerModal } from "./_components";
+import { GROUP_COLORS, Field, Stat, FilterChip } from "./_ui";
+
+// The three modals live behind a click and drag in every analyzer (Thai, prose, codex,
+// saga, sensory, radar, rename, register, translation, narrative) plus the EPUB builder.
+// Loading them on first paint cost ~20 kB of First Load JS for UI most visits never open.
+// ssr:false because they are browser-only panels; the brief load lands where a user
+// already expects one — after they ask for the tool.
+const GuideModal = dynamic(() => import("./_components").then((m) => m.GuideModal), { ssr: false });
+const ThaiAnalyzerModal = dynamic(() => import("./_components").then((m) => m.ThaiAnalyzerModal), { ssr: false });
+const ProseAnalyzerModal = dynamic(() => import("./_components").then((m) => m.ProseAnalyzerModal), { ssr: false });
 import { getManuscript, listManuscripts } from "./_manuscript-store";
 import { FirstRunOrientation, OnRamps } from "./_first-run";
 import {
