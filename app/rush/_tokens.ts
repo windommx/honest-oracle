@@ -50,9 +50,15 @@ export const MUTED = "#9ca3af";
 /** Faintest text tier. Tailwind gray-500 (#6b7280) measured 4.09:1 on BG — it FAILS AA for
  *  normal text, and it was the app's most-used text colour (116 uses) on 0.62-0.72rem type,
  *  which is normal text by any reading. gray-600 (2.61:1) and gray-700 (1.92:1) failed even
- *  the 3:1 large-text floor. This value is the faintest grey that still clears 4.5:1, so the
- *  four-level hierarchy survives without an unreadable rung. */
-export const TEXT_FAINT = "#757d8c";
+ *  the 3:1 large-text floor.
+ *
+ *  Calibrated against the LIGHTEST surface a faint label can land on, not just the page
+ *  background. The first attempt (#757d8c) cleared 4.77:1 on BG but fell to 4.35:1 on
+ *  bg-white/5 and 3.78:1 on bg-white/10 — a value tuned for one background silently fails
+ *  on every card and chip drawn over it. This one clears 4.5:1 on ALL nine surfaces the app
+ *  actually uses (page, raised, white/0.02-0.10, gold/0.06-0.15), worst case 4.51:1, and is
+ *  still visibly fainter than gray-400. */
+export const TEXT_FAINT = "#828a99";
 
 /** Measured WCAG contrast of each text tier against BG. Recomputed by _contrast.test.ts —
  *  these are recorded so the choice is auditable, not asserted from memory. */
@@ -60,7 +66,7 @@ export const TEXT_CONTRAST = {
   "gray-200": 15.95,
   "gray-300": 13.40,
   "gray-400": 7.78,
-  TEXT_FAINT: 4.77,
+  TEXT_FAINT: 5.69, // on BG; worst case across all surfaces is 4.51:1
 } as const;
 
 // ── Epistemic tier colours ─────────────────────────────────────────────────────

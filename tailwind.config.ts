@@ -18,8 +18,8 @@ const config: Config = {
           dark: "#a8893d",
         },
         border: "rgba(201, 168, 76, 0.2)",
-        // WCAG-checked faintest text tier (4.77:1 on the page bg) — see app/rush/_tokens.ts
-        faint: "#757d8c",
+        // WCAG-checked faintest text tier (>=4.5:1 on EVERY surface in use) — see app/rush/_tokens.ts
+        faint: "#828a99",
       },
       fontFamily: {
         sans: ["Kanit", "Inter", "sans-serif"],

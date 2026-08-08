@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
-import { BG, TEXT_FAINT, TEXT_CONTRAST } from "./_tokens";
+import { BG, SURFACE, GOLD, TEXT_FAINT, TEXT_CONTRAST } from "./_tokens";
 
 // ── WCAG 2.1 relative luminance + contrast ratio, computed here rather than trusted ──
 const lin = (c: number) => {
@@ -41,6 +41,29 @@ function tsxFiles(dir: string): string[] {
 
 const AA_NORMAL = 4.5;
 
+/** Composite a translucent layer over a base into the effective solid colour a reader sees. */
+function over(fg: string, alpha: number, bg: string): string {
+  const parts = (h: string) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+  const [r, g, b] = parts(fg);
+  const [x, y, z] = parts(bg);
+  const mix = (f: number, k: number) => Math.round(f * alpha + k * (1 - alpha));
+  return "#" + [mix(r, x), mix(g, y), mix(b, z)].map((v) => v.toString(16).padStart(2, "0")).join("");
+}
+
+/** Every surface a faint label can actually land on, drawn from the overlay classes the app
+ *  uses (bg-white/[0.02]…/10, bg-[#c9a84c]/[0.06]…/15) composited over the page. */
+const SURFACES: Record<string, string> = {
+  "page BG": BG,
+  "raised SURFACE": SURFACE,
+  "white/[0.02]": over("#ffffff", 0.02, BG),
+  "white/[0.03]": over("#ffffff", 0.03, BG),
+  "white/5": over("#ffffff", 0.05, BG),
+  "white/10": over("#ffffff", 0.1, BG),
+  "gold/[0.06]": over(GOLD, 0.06, BG),
+  "gold/10": over(GOLD, 0.1, BG),
+  "gold/15": over(GOLD, 0.15, BG),
+};
+
 describe("WCAG contrast (2.1 AA, 4.5:1 for normal text)", () => {
   it("the maths matches the published anchors", () => {
     // Sanity-check the implementation before trusting its verdicts: white on black is
@@ -73,11 +96,28 @@ describe("WCAG contrast (2.1 AA, 4.5:1 for normal text)", () => {
     expect(failures, `text below ${AA_NORMAL}:1 on ${BG}:\n${failures.join("\n")}`).toEqual([]);
   });
 
-  it("the faint tier is the faintest value that still clears AA", () => {
-    // If someone darkens it "just a little" for hierarchy, this fails — which is the point.
-    const r = contrast(TEXT_FAINT, BG);
-    expect(r).toBeGreaterThanOrEqual(AA_NORMAL);
-    expect(r).toBeLessThan(6); // still visibly fainter than gray-400 (7.78:1)
+  it("the faint tier clears AA on EVERY surface, not just the page background", () => {
+    // The gap this closes, found by extending the audit: the first faint value (#757d8c)
+    // cleared 4.77:1 on BG and was shipped — then measured 4.35:1 on bg-white/5 and 3.78:1
+    // on bg-white/10. A colour tuned against one background silently fails on every card
+    // and chip drawn over it, and cards are where small print lives.
+    const failures: string[] = [];
+    for (const [name, surface] of Object.entries(SURFACES)) {
+      const r = contrast(TEXT_FAINT, surface);
+      if (r < AA_NORMAL) failures.push(`${name} (${surface}): ${r.toFixed(2)}:1`);
+    }
+    expect(failures, `TEXT_FAINT below AA on:\n${failures.join("\n")}`).toEqual([]);
+  });
+
+  it("the faint tier is still visibly fainter than the muted tier", () => {
+    // Passing AA by simply brightening to gray-400 would collapse two levels into one.
+    expect(contrast(TEXT_FAINT, BG)).toBeLessThan(contrast("#9ca3af", BG));
+  });
+
+  it("black-on-gold buttons and gold-on-dark text clear AA", () => {
+    expect(contrast("#000000", GOLD)).toBeGreaterThanOrEqual(AA_NORMAL);
+    expect(contrast(GOLD, BG)).toBeGreaterThanOrEqual(AA_NORMAL);
+    expect(contrast(GOLD, SURFACE)).toBeGreaterThanOrEqual(AA_NORMAL);
   });
 
   it("the recorded ratios in _tokens.ts match a fresh computation", () => {
