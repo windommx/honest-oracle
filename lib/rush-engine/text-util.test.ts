@@ -24,6 +24,26 @@ describe("countPhrases", () => {
     expect(r.find((x) => x.phrase === "a testament to")?.count).toBe(1);
     expect(r.find((x) => x.phrase === "testament")).toBeUndefined();
   });
+
+  it("does NOT subtract one token-counted word from another it is a substring of", () => {
+    // Regression: with tokens supplied, single-word phrases are counted by exact token
+    // match, so รส and รสชาติ are separate tokens at separate positions and share no span.
+    // The old overlap pass still subtracted count(รสชาติ) from count(รส) because
+    // "รสชาติ".includes("รส"), wiping out a genuine sensory hit (sensory.ts undercounted).
+    const tokens = ["อาหาร", "มี", "รส", "และ", "รสชาติ"];
+    const r = countPhrases("อาหาร มี รส และ รสชาติ", ["รส", "รสชาติ"], { tokens });
+    expect(r.find((x) => x.phrase === "รส")?.count).toBe(1);
+    expect(r.find((x) => x.phrase === "รสชาติ")?.count).toBe(1);
+  });
+
+  it("still absorbs a token into a longer MULTI-word phrase even when tokens are supplied", () => {
+    // The overlap correction must survive for its real purpose: the token "testament" DOES
+    // sit inside the span of the multi-word phrase "a testament to", so it must net to 0.
+    const tokens = ["a", "testament", "to", "skill"];
+    const r = countPhrases("a testament to skill", ["testament", "a testament to"], { tokens });
+    expect(r.find((x) => x.phrase === "a testament to")?.count).toBe(1);
+    expect(r.find((x) => x.phrase === "testament")).toBeUndefined();
+  });
 });
 
 describe("wordDiff", () => {

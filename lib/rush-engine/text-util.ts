@@ -26,14 +26,26 @@ export function countPhrases(
   const substringPhrases = phrases.filter((p) => !(tokenFreq && !p.includes(" ")));
   const acCounts = substringPhrases.length ? countNonOverlapping(text, substringPhrases) : null;
   const raw = phrases.map((phrase) => {
-    const single = tokenFreq && !phrase.includes(" ");
+    const single = !!(tokenFreq && !phrase.includes(" "));
     const count = single ? (tokenFreq!.get(phrase) ?? 0) : (acCounts?.get(phrase) ?? 0);
-    return { phrase, count };
+    return { phrase, count, single };
   });
   return raw
-    .map(({ phrase, count }) => {
+    .map(({ phrase, count, single }) => {
       const overlap = raw.reduce(
-        (sum, o) => (o.phrase !== phrase && o.phrase.length > phrase.length && o.phrase.includes(phrase) ? sum + o.count : sum),
+        (sum, o) =>
+          o.phrase !== phrase &&
+          o.phrase.length > phrase.length &&
+          o.phrase.includes(phrase) &&
+          // Overlap subtraction only applies when the shorter phrase's raw count really does
+          // include hits sitting INSIDE the longer phrase's span. Two distinct exact-token
+          // matches never share a span: รส and รสชาติ are separate tokens at separate
+          // positions, so subtracting one from the other silently deletes a genuine hit.
+          // Skip only when BOTH are single-word token-counted; a longer MULTI-word substring
+          // phrase (e.g. "a testament to" containing the token "testament") still absorbs it.
+          !(single && o.single)
+            ? sum + o.count
+            : sum,
         0
       );
       return { phrase, count: Math.max(0, count - overlap) };

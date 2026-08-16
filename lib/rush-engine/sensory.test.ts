@@ -53,6 +53,17 @@ describe("sensoryDensity (Thai)", () => {
     expect(t(withExtra)).toBeGreaterThan(t(base));
   });
 
+  it("counts a short taste word AND its longer superset as separate hits (undercount regression)", () => {
+    // รส and รสชาติ are distinct tokens at distinct positions. countPhrases used to subtract
+    // count(รสชาติ) from count(รส) because "รสชาติ".includes("รส"), silently dropping the
+    // standalone รส hit — a wrong number in a ledger whose whole promise is honest counts.
+    const led = sensoryDensity("อาหารจานนี้รสจัดจริงๆ แต่รสชาติกลมกล่อมมาก", "th");
+    const taste = led.senses.find((s) => s.sense === "taste")!;
+    expect(taste.samples.some((w) => w.word === "รส")).toBe(true);
+    expect(taste.samples.some((w) => w.word === "รสชาติ")).toBe(true);
+    expect(taste.count).toBe(taste.samples.reduce((s, w) => s + w.count, 0));
+  });
+
   it("catches expanded Thai vocabulary in the right sense (recall regression)", () => {
     const led = sensoryDensity("ท้องฟ้า ทึบ มืด ฟ้าร้อง สนั่น ดัง รส เฝื่อน ขม หิน สาก เหนอะหนะ", "th");
     const by = (s: string) => led.senses.find((x) => x.sense === s)!;
