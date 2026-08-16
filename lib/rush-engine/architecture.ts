@@ -103,7 +103,30 @@ export function buildArchitecture(config: BookConfig): Architecture {
       buildPoetryArchitecture(arch, config);
       break;
   }
+  normalizeParts(arch);
   return arch;
+}
+
+// The `parts` map is a human-facing summary of which chapters fall in which phase.
+// Several layouts compute the FINAL part's start with ceil(ratio * ch) + 1; at small
+// chapter counts ceil() rounds the previous boundary all the way up to `ch`, so the
+// start becomes ch + 1 and the layout emits a phantom trailing part like [ch+1, ch] —
+// a reversed range that advertises a chapter which does not exist (e.g. a 6-chapter
+// how-to claiming a section over "chapter 7"). The real `chapters` array is always
+// correct (numbered 1..ch); only this previously-unvalidated summary drifted.
+//
+// Normalize once, after every layout: clamp each range into [1, ch] and drop any part
+// left empty. Valid parts (end ≤ ch, start ≥ 1) are untouched, and because the phantom
+// only appears when the PRIOR part already reached ch, dropping it never orphans a real
+// chapter — a property the companion guard test enforces across all types and ch 1..120.
+function normalizeParts(arch: Architecture) {
+  const ch = arch.chapters.length;
+  arch.parts = arch.parts
+    .map((p) => ({
+      ...p,
+      chapters: [Math.max(1, p.chapters[0]), Math.min(ch, p.chapters[1])] as [number, number],
+    }))
+    .filter((p) => p.chapters[0] <= p.chapters[1]);
 }
 
 function buildFictionArchitecture(arch: Architecture, config: BookConfig) {
