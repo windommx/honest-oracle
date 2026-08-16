@@ -81,6 +81,20 @@ describe("classification — a number only gets the warrant it is entitled to", 
     expect(r.claims.length + r.unclassified.length + r.rejected.length + r.duplicates.length).toBe(submitted.length);
   });
 
+  it("a REFUSED construct's value never survives — even when submitted twice", () => {
+    // The refused/unclassified branches used to register the value in `seen`, which drives
+    // the duplicate branch that echoes kept/dropped VALUES. So resubmitting a refused signal
+    // leaked its number into r.duplicates — breaking "the value must not survive anywhere"
+    // exactly when a caller repeats it. Now `seen` holds only accepted claims.
+    const refused = REFUSED_CONSTRUCTS[0].id;
+    const r = mk([{ signal: refused, value: 999111 }, { signal: refused, value: 999222 }]);
+    expect(JSON.stringify(r)).not.toContain("999111");
+    expect(JSON.stringify(r)).not.toContain("999222");
+    expect(r.duplicates).toEqual([]);                       // a refused value is not a "kept" quantity
+    expect(r.rejected.filter((x) => x.signal === refused)).toHaveLength(2); // re-refused, not leaked
+    expect(r.claims.length + r.unclassified.length + r.rejected.length + r.duplicates.length).toBe(2);
+  });
+
   it("a signal submitted twice keeps the first value and records the rest, never a contradiction", () => {
     // Adversarial-audit finding in this module's own code: two claims for the same signal
     // both used to survive into `claims`, and verifyReceipt's re-run Map then compared

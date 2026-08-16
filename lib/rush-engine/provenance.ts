@@ -123,17 +123,21 @@ export function buildReceipt(opts: {
       continue;
     }
     if (isRefused(c.signal)) {
+      // Do NOT register the value in `seen`. `seen` drives the duplicate branch above, which
+      // reports the kept/dropped VALUES — and a refused construct's value must not survive
+      // anywhere in the receipt. If the same refused signal is submitted again it is simply
+      // re-refused here; the number is never exposed.
       rejected.push({
         signal: c.signal,
         why: "on REFUSED_CONSTRUCTS — a latent construct with no valid operation; it cannot be certified because it was never measured",
       });
-      seen.set(c.signal, c.value);
       continue;
     }
     const s = classifySignal(c.signal);
     if (!s) {
+      // Same reasoning: an unclassified signal was never measured, so its value is not a
+      // certified quantity to echo back as a "duplicate". A re-submission re-lists it.
       unclassified.push(c.signal);
-      seen.set(c.signal, c.value);
       continue;
     }
     seen.set(c.signal, c.value);
