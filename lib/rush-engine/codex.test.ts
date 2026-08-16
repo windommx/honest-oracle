@@ -105,6 +105,13 @@ describe("open threads (ปมค้าง)", () => {
     ]);
   });
 
+  it("digest puts hard constraints BEFORE the cast list (IFScale primacy ordering)", () => {
+    const c = parseCodex("[ตัวละคร]\nบุญมา: พ่อ\nสถานะ: ตายในบท 3\nอนันต์: ลูก\n[ปมค้าง]\nความลับผลแล็บ: สูง");
+    const d = codexDigestTh(c);
+    expect(d.indexOf("ข้อจำกัดสถานะ")).toBeLessThan(d.indexOf("ตัวละคร (2)"));
+    expect(d.indexOf("ปมที่ค้าง")).toBeLessThan(d.indexOf("ตัวละคร (2)"));
+  });
+
   it("renders threads in the digest sorted by priority, with the never-drop rule", () => {
     const d = codexDigestTh(parseCodex(T));
     expect(d).toContain("ปมที่ค้าง (3):");
@@ -348,5 +355,37 @@ describe("codexAudit — draft vs codex (counts, not a verdict)", () => {
     expect(out).toContain("นับได้ ไม่ใช่คำตัดสิน");
     expect(out).not.toMatch(/\b\d{1,3}\/100\b/);
     expect(out).toContain("ไม่ถูกอ้างถึง"); // เสือ, มาลี, etc.
+  });
+});
+
+describe("Thai substring false-positives (audit fix)", () => {
+  it("does not raise a status conflict on a name that is only a substring of a living one", () => {
+    // สม (dead) must not be accused when only สมชาย (living, different character) appears.
+    const c = parseCodex("[ตัวละคร]\nสม: ยาม\nสถานะ: ตายในบท 2\nสมชาย: พระเอก");
+    expect(codexAudit(c, "สมชาย เดินเข้ามาในเมือง", "th").statusConflicts).toEqual([]);
+  });
+  it("does not count a forbidden word that only occurs inside a longer word", () => {
+    // หมอ (forbidden) must not fire inside หมอน (pillow).
+    const c = parseCodex("[ตัวละคร]\nแม่: แม่\nคำต้องห้าม: หมอ");
+    expect(codexAudit(c, "เธอวางหมอนลงบนเตียง", "th").forbiddenHits).toEqual([]);
+  });
+  it("parses a relation whose endpoints contain hyphens", () => {
+    // "Spider-Man" must not be split at its internal hyphen into from:"Spider".
+    const c = parseCodex("[RELATIONS]\nSpider-Man -> Green-Goblin: hunts");
+    expect(c.relations).toContainEqual({ from: "Spider-Man", to: "Green-Goblin", kind: "hunts", directed: true });
+  });
+  it("GONE vocabulary covers common phrasings", () => {
+    const c = parseCodex("[ตัวละคร]\nเสือ: วายร้าย\nสถานะ: ถูกฆ่าในบทที่ 9");
+    expect(codexAudit(c, "เสือ ปรากฏตัวอีกครั้ง", "th").statusConflicts.map((e) => e.name)).toEqual(["เสือ"]);
+  });
+});
+
+describe("prose paragraph under a section header is not registered as an entity (audit fix)", () => {
+  it("skips a colon-less run-on line but keeps real names, including single-period ones", () => {
+    const c = parseCodex("[CHARACTERS]\nAlice went to the store. She was very tired that day.\nBob: friend\nSt. John: knight");
+    const names = c.entities.map((e) => e.name);
+    expect(names).toContain("Bob");
+    expect(names).toContain("St. John");           // one period → still a name
+    expect(names.some((n) => n.includes("went to the store"))).toBe(false); // prose skipped
   });
 });

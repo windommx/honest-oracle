@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { toast } from "../_toast";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   Crown, BookOpen, FileText, Share2, HardDrive, Type, Plus, RefreshCw, Search,
-  LayoutGrid, List, Lock, Globe, Trash2, ArrowRight, Play, Wand2, Sparkles, Loader2, BookDown,
+  LayoutGrid, List, Lock, Globe, Trash2, ArrowRight, Play, Wand2, Sparkles, Loader2, BookDown, CloudOff,
 } from "lucide-react";
 import { BOOK_TYPES, buildEpub, type BookConfig, type BookTypeKey } from "@/lib/rush-engine/engine";
 import { splitChapters } from "@/lib/rush-engine/chapters";
@@ -45,6 +46,7 @@ export default function DashboardPage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [needLogin, setNeedLogin] = useState(false);
+  const [loadError, setLoadError] = useState(false);
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
   const [sort, setSort] = useState<Sort>("recent");
@@ -66,7 +68,7 @@ export default function DashboardPage() {
         const { url } = await res.json();
         if (url) { window.location.href = url; return; }
       } else if (res.status === 501) {
-        alert("ระบบบิลยังไม่ได้ตั้งค่า (ต้องใส่ STRIPE_PRICE_ID_PRO) — ดูขั้นตอนใน README");
+        toast("ระบบบิลยังไม่ได้ตั้งค่า (ต้องใส่ STRIPE_PRICE_ID_PRO) — ดูขั้นตอนใน README", { variant: "error" });
       } else if (res.status === 401) {
         setNeedLogin(true);
       }
@@ -79,6 +81,7 @@ export default function DashboardPage() {
 
   async function loadProjects() {
     setLoading(true);
+    setLoadError(false);
     try {
       const res = await fetch("/api/rush/projects");
       if (res.status === 401) setNeedLogin(true);
@@ -87,9 +90,15 @@ export default function DashboardPage() {
         const data = await res.json();
         setProjects(data.projects ?? []);
         setPlan(data.plan ?? "free");
+      } else {
+        // A non-OK response is a FAILED LOAD, not an empty shelf.
+        setLoadError(true);
       }
     } catch {
-      /* offline */
+      // Offline / network error. Do NOT fall through to the empty state: rendering
+      // "you have no saved books" when we simply could not reach the server tells the
+      // writer something false about their own work. Say we could not load, and offer retry.
+      setLoadError(true);
     } finally {
       setLoading(false);
     }
@@ -97,20 +106,29 @@ export default function DashboardPage() {
 
   useEffect(() => {
     loadProjects();
-    setManuscripts(listManuscripts());
+    void listManuscripts().then(setManuscripts);
   }, []);
 
   async function del(id: string) {
+    // Optimistic removal — but a FAILED delete must not leave the book merely hidden.
+    // Put it back and say so, rather than letting the user believe it is gone.
+    const prev = projects;
     setProjects((p) => p.filter((x) => x.id !== id));
     try {
-      await fetch(`/api/rush/projects/${id}`, { method: "DELETE" });
+      const res = await fetch(`/api/rush/projects/${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error(String(res.status));
     } catch {
-      /* best-effort */
+      setProjects(prev);
+      toast("ลบไม่สำเร็จ — หนังสือยังอยู่ ลองใหม่อีกครั้ง", { variant: "error" });
     }
   }
-  const delManuscript = (id: string) => {
-    deleteManuscript(id);
-    setManuscripts(listManuscripts());
+  const delManuscript = async (id: string) => {
+    try {
+      await deleteManuscript(id);
+      setManuscripts(await listManuscripts());
+    } catch {
+      toast("ลบต้นฉบับในเครื่องไม่สำเร็จ — ต้นฉบับยังอยู่", { variant: "error" });
+    }
   };
   const exportEpub = (m: StoredManuscript) => {
     const chs = splitChapters(m.text).filter((c) => c.body.trim());
@@ -119,6 +137,9 @@ export default function DashboardPage() {
       title: m.title,
       language: m.lang,
       chapters: chs.map((c) => ({ title: c.title, text: c.body })),
+      // The engine has no clock by design; the export handler does. Stamping here keeps
+      // buildEpub pure while still shipping a real dcterms:modified (EPUB 3 requires one).
+      modified: new Date().toISOString().replace(/\.\d{3}Z$/, "Z"),
     });
     const url = URL.createObjectURL(new Blob([bytes.buffer as ArrayBuffer], { type: "application/epub+zip" }));
     const link = document.createElement("a");
@@ -226,7 +247,7 @@ export default function DashboardPage() {
 
         {/* Quick actions */}
         <div className="mb-8">
-          <div className="section-header mb-3 px-1 text-xs uppercase tracking-wider text-slate-500 font-semibold">การดำเนินการด่วน</div>
+          <div className="section-header mb-3 px-1 text-xs uppercase tracking-wider text-faint font-semibold">การดำเนินการด่วน</div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <QuickAction href="/rush" icon={<Wand2 className="w-6 h-6" />} title="เครื่องมือ prompt" sub="สร้างชุด prompt แต่งหนังสือคุณภาพสูง" cta="เปิดเครื่องมือ" tone="from-indigo-500/20 to-violet-500/10 text-indigo-400" />
             <QuickAction href="/rush/studio" icon={<Play className="w-6 h-6" />} title="Rush Studio" sub="รัน prompt ด้วย API key ของคุณเอง" cta="เปิด Studio" tone="from-amber-500/20 to-yellow-500/10 text-amber-400" />
@@ -238,13 +259,13 @@ export default function DashboardPage() {
         <div className="mb-8">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-y-3 mb-4 px-1">
             <div>
-              <div className="text-xs uppercase tracking-wider text-slate-500 font-semibold mb-1">โปรเจกต์นิยายและหนังสือ</div>
+              <div className="text-xs uppercase tracking-wider text-faint font-semibold mb-1">โปรเจกต์นิยายและหนังสือ</div>
               <div className="text-xl font-semibold tracking-tight">My Library <span className="text-slate-400 font-normal text-base">({stats.count})</span></div>
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <div className="relative w-full sm:w-64">
-                <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="ค้นหาหนังสือ…" className="w-full bg-white/5 border border-white/10 focus:border-white/30 text-sm placeholder:text-slate-500 rounded-3xl py-2.5 pl-10 pr-4 outline-none" />
-                <Search className="w-4 h-4 absolute left-4 top-3 text-slate-500" />
+                <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="ค้นหาหนังสือ…" className="w-full bg-white/5 border border-white/10 focus:border-white/30 text-sm placeholder:text-faint rounded-3xl py-2.5 pl-10 pr-4 outline-none" />
+                <Search className="w-4 h-4 absolute left-4 top-3 text-faint" />
               </div>
               <div className="flex items-center bg-white/5 border border-white/10 rounded-3xl p-1 text-xs">
                 {([["all", "ทั้งหมด"], ["private", "ส่วนตัว"], ["public", "แชร์"]] as const).map(([k, label]) => (
@@ -263,7 +284,7 @@ export default function DashboardPage() {
           </div>
 
           {loading && (
-            <div className="flex items-center justify-center py-20 text-slate-500"><Loader2 className="w-5 h-5 animate-spin" /></div>
+            <div className="flex items-center justify-center py-20 text-faint"><Loader2 className="w-5 h-5 animate-spin" /></div>
           )}
 
           {!loading && needLogin && (
@@ -271,20 +292,36 @@ export default function DashboardPage() {
               <Lock className="w-10 h-10 mx-auto mb-3 text-[#c9a84c]/40" />
               <p className="text-slate-300">เข้าสู่ระบบเพื่อบันทึกและจัดการหนังสือของคุณ</p>
               <Link href="/login?callbackUrl=/rush/dashboard" className="inline-block mt-4 text-sm text-[#c9a84c] hover:underline">ไปหน้าเข้าสู่ระบบ →</Link>
-              <p className="text-xs text-slate-600 mt-4">หรือ <Link href="/rush" className="text-[#c9a84c] hover:underline">สร้าง prompt โดยไม่ต้องล็อกอิน</Link> (จะไม่ถูกบันทึก)</p>
+              <p className="text-xs text-faint mt-4">หรือ <Link href="/rush" className="text-[#c9a84c] hover:underline">สร้าง prompt โดยไม่ต้องล็อกอิน</Link> (จะไม่ถูกบันทึก)</p>
             </div>
           )}
 
-          {!loading && !needLogin && projects.length === 0 && (
-            <div className="glass-card rounded-3xl p-10 text-center text-slate-500">
+          {!loading && !needLogin && loadError && (
+            <div className="glass-card rounded-3xl p-10 text-center">
+              <CloudOff className="w-10 h-10 mx-auto mb-3 text-rose-400/50" />
+              <p className="text-slate-300">โหลดรายการหนังสือไม่สำเร็จ</p>
+              <p className="text-xs text-faint mt-1.5">
+                นี่<strong>ไม่ได้</strong>แปลว่าคุณไม่มีหนังสือ — แค่ตอนนี้เราติดต่อเซิร์ฟเวอร์ไม่ได้ ต้นฉบับที่เก็บในเครื่องยังอยู่ครบ
+              </p>
+              <button
+                onClick={loadProjects}
+                className="inline-flex items-center gap-1.5 mt-4 text-sm px-4 py-2 rounded-lg border border-[#c9a84c]/40 text-[#c9a84c] hover:bg-[#c9a84c]/10 transition"
+              >
+                <RefreshCw className="w-4 h-4" /> ลองอีกครั้ง
+              </button>
+            </div>
+          )}
+
+          {!loading && !needLogin && !loadError && projects.length === 0 && (
+            <div className="glass-card rounded-3xl p-10 text-center text-faint">
               <BookOpen className="w-10 h-10 mx-auto mb-3 text-[#c9a84c]/40" />
               <p>ยังไม่มีหนังสือที่บันทึกไว้</p>
               <Link href="/rush" className="inline-flex items-center gap-1 mt-4 text-sm text-[#c9a84c] hover:underline">เริ่มเล่มแรก <ArrowRight className="w-4 h-4" /></Link>
             </div>
           )}
 
-          {!loading && projects.length > 0 && visible.length === 0 && (
-            <p className="text-center text-slate-600 text-sm py-12">ไม่พบหนังสือที่ตรงกับการค้นหา</p>
+          {!loading && !loadError && projects.length > 0 && visible.length === 0 && (
+            <p className="text-center text-faint text-sm py-12">ไม่พบหนังสือที่ตรงกับการค้นหา</p>
           )}
 
           {/* Grid */}
@@ -335,18 +372,18 @@ export default function DashboardPage() {
           <div className="xl:col-span-3">
             <div className="flex items-center justify-between mb-3 px-1">
               <div>
-                <div className="text-xs uppercase tracking-wider text-slate-500 font-semibold">ต้นฉบับที่บันทึก (ในเครื่องนี้)</div>
+                <div className="text-xs uppercase tracking-wider text-faint font-semibold">ต้นฉบับที่บันทึก (ในเครื่องนี้)</div>
                 <div className="text-sm text-slate-400">เก็บฝั่งเบราว์เซอร์ ไม่ขึ้น server — เปิดได้เฉพาะเครื่องนี้</div>
               </div>
             </div>
             <div className="glass-card rounded-3xl p-1">
               {manuscripts.length === 0 ? (
-                <p className="text-center text-slate-600 text-sm py-10">ยังไม่มีต้นฉบับ — บันทึกจาก analyzer หรือ Studio</p>
+                <p className="text-center text-faint text-sm py-10">ยังไม่มีต้นฉบับ — บันทึกจาก analyzer หรือ Studio</p>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm min-w-[480px]">
                     <thead>
-                      <tr className="text-xs text-slate-500">
+                      <tr className="text-xs text-faint">
                         <th className="text-left px-5 py-3 font-normal">ชื่อ / บท</th>
                         <th className="px-4 py-3 font-normal text-center">ภาษา</th>
                         <th className="px-4 py-3 font-normal text-right">ตัวอักษร</th>
@@ -366,7 +403,7 @@ export default function DashboardPage() {
                           <td className="px-3 text-right whitespace-nowrap">
                             <button onClick={() => router.push(`/rush?analyze=${m.id}`)} className="text-emerald-400 hover:text-emerald-300 p-1.5" aria-label="Analyze"><Search className="w-4 h-4" /></button>
                             <button onClick={() => exportEpub(m)} className="text-[#c9a84c] hover:text-amber-300 p-1.5" aria-label="Export EPUB" title="ดาวน์โหลด .epub"><BookDown className="w-4 h-4" /></button>
-                            <button onClick={() => delManuscript(m.id)} className="text-slate-500 hover:text-red-400 p-1.5" aria-label="Delete manuscript"><Trash2 className="w-4 h-4" /></button>
+                            <button onClick={() => delManuscript(m.id)} className="text-faint hover:text-red-400 p-1.5" aria-label="Delete manuscript"><Trash2 className="w-4 h-4" /></button>
                           </td>
                         </tr>
                       ))}
@@ -379,14 +416,14 @@ export default function DashboardPage() {
 
           {/* Honest summary panel (replaces fabricated "AI Insights") */}
           <div className="xl:col-span-2">
-            <div className="text-xs uppercase tracking-wider text-slate-500 font-semibold px-1 mb-3">สรุปการใช้งาน (ในเครื่องนี้)</div>
+            <div className="text-xs uppercase tracking-wider text-faint font-semibold px-1 mb-3">สรุปการใช้งาน (ในเครื่องนี้)</div>
             <div className="glass-card rounded-3xl p-5 h-full flex flex-col">
               <div className="grid grid-cols-3 gap-3 text-center">
                 <Mini value={String(stats.count)} label="หนังสือ" />
                 <Mini value={String(manuscripts.length)} label="ต้นฉบับ" />
                 <Mini value={fmt(localChars)} label="ตัวอักษร" />
               </div>
-              <p className="text-xs text-slate-500 mt-4 leading-relaxed border-t border-white/10 pt-4">
+              <p className="text-xs text-faint mt-4 leading-relaxed border-t border-white/10 pt-4">
                 ตัวเลขทั้งหมดมาจากข้อมูลจริง (โปรเจกต์ที่บันทึก + ต้นฉบับในเบราว์เซอร์) — ไม่มีสถิติประดิษฐ์
               </p>
               <div className="mt-auto pt-4 space-y-2">
@@ -418,7 +455,7 @@ function Kpi({ label, value, icon, tint }: { label: string; value: string; icon:
     <div className="glass-card rounded-3xl p-5 hover:-translate-y-0.5 transition-transform">
       <div className="flex justify-between items-start">
         <div>
-          <div className="text-xs text-slate-500 font-medium tracking-wider">{label}</div>
+          <div className="text-xs text-faint font-medium tracking-wider">{label}</div>
           <div className="text-3xl sm:text-4xl font-semibold text-white mt-1 tabular-nums">{value}</div>
         </div>
         <span className={tint}>{icon}</span>
@@ -460,7 +497,7 @@ function ProjectCard({ p, onOpen, onDelete }: { p: Project; onOpen: () => void; 
       <div className="p-5 flex-1 flex flex-col">
         <div className="font-semibold text-[15px] leading-tight">{p.title}</div>
         <div className="text-xs text-slate-400 mt-0.5">{bt?.label ?? p.type} • {titleCase(p.subGenre)}</div>
-        <div className="mt-auto pt-4 flex justify-between text-[11px] text-slate-500">
+        <div className="mt-auto pt-4 flex justify-between text-[11px] text-faint">
           <span>{p.config?.chapters ? `${p.config.chapters} บท` : "—"}{w ? ` · ~${fmt(w)} คำ` : ""}</span>
           <span>{new Date(p.updatedAt).toLocaleDateString("th-TH", { dateStyle: "medium" })}</span>
         </div>
@@ -477,7 +514,7 @@ function Mini({ value, label }: { value: string; label: string }) {
   return (
     <div>
       <div className="text-2xl font-semibold text-white tabular-nums">{value}</div>
-      <div className="text-[10px] text-slate-500 -mt-0.5">{label}</div>
+      <div className="text-[10px] text-faint -mt-0.5">{label}</div>
     </div>
   );
 }

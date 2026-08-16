@@ -3,7 +3,12 @@
 import { useState } from "react";
 import Link from "next/link";
 import { ArrowRight, Check, ShieldCheck, Cpu, Languages, Scale } from "lucide-react";
-import { BOOK_TYPES, MODULE_GROUPS, type BookTypeKey } from "@/lib/rush-engine/engine";
+import { BOOK_TYPES } from "@/lib/rush-engine/book-types";
+import type { BookTypeKey } from "@/lib/rush-engine/types";
+import { MODULE_GROUPS } from "@/lib/rush-engine/modules";
+import { MODULE_META as MODULE_CATALOG } from "@/lib/rush-engine/catalog-meta";
+import { NARRATIVE_STRUCTURES } from "@/lib/rush-engine/thai-structures";
+import { BOOTSTRAPS } from "@/lib/rush-engine/bootstraps";
 
 // Curated Thai one-liners per book type (marketing copy — the structural facts below come
 // straight from BOOK_TYPES so nothing here is invented).
@@ -41,9 +46,22 @@ export default function RushExplore() {
         <p className="mt-4 text-gray-400 max-w-2xl mx-auto">
           เลือกประเภท → สร้าง prompt pack ครบชุด → เอาไปใช้กับ LLM ตัวโปรด. บวกเครื่องมือวิเคราะห์ภาษาไทยที่นับได้จริง ไม่มีคะแนนเดา
         </p>
+        {/* live counts — computed from the engine registries, never hardcoded */}
+        <div className="mt-5 flex flex-wrap gap-2 justify-center text-[0.7rem] text-gray-400">
+          <span className="px-2.5 py-1 rounded-full border border-white/10">{Object.keys(BOOK_TYPES).length} ประเภทหนังสือ</span>
+          <span className="px-2.5 py-1 rounded-full border border-white/10">{MODULE_CATALOG.length} โมดูล prompt</span>
+          <span className="px-2.5 py-1 rounded-full border border-white/10">{NARRATIVE_STRUCTURES.length} โครงเรื่อง (รวมพื้นถิ่นไทย/เอเชีย)</span>
+          <span className="px-2.5 py-1 rounded-full border border-white/10">{BOOTSTRAPS.length} แม่แบบตั้งต้น</span>
+        </div>
         <div className="mt-7 flex flex-wrap gap-3 justify-center">
           <Link href="/rush/start" className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-[#c9a84c] text-black font-semibold hover:bg-[#e6c86a] transition">
             เริ่มสร้าง Prompt Pack <ArrowRight className="w-4 h-4" />
+          </Link>
+          <Link href="/rush/fix" className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg border border-white/15 text-gray-200 hover:bg-white/5 transition">
+            เขียนอยู่แล้วแต่ติด — หาโมดูลจากอาการ
+          </Link>
+          <Link href="/rush/honesty" className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg border border-white/15 text-gray-200 hover:bg-white/5 transition">
+            ทำไมเชื่อตัวเลขเราได้ — ชั้นความซื่อสัตย์
           </Link>
           <a href="#types" className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg border border-white/15 text-gray-200 hover:bg-white/5 transition">
             ดู 8 ประเภท
@@ -54,7 +72,7 @@ export default function RushExplore() {
       {/* book types */}
       <section id="types" className="max-w-5xl mx-auto px-5 py-10">
         <h2 className="text-xl font-bold mb-1">8 ประเภทหนังสือ</h2>
-        <p className="text-sm text-gray-500 mb-6">คลิกการ์ดเพื่อดูแนวย่อย โครงเรื่อง และค่าเริ่มต้น (ข้อมูลจริงจากเอนจิน)</p>
+        <p className="text-sm text-faint mb-6">คลิกการ์ดเพื่อดูแนวย่อย โครงเรื่อง และค่าเริ่มต้น (ข้อมูลจริงจากเอนจิน)</p>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {types.map(([key, t]) => {
             const isOpen = open === key;
@@ -68,7 +86,7 @@ export default function RushExplore() {
                       <p className="text-xs text-gray-400 mt-0.5">{TYPE_TH[key]}</p>
                     </div>
                   </div>
-                  <div className="flex flex-wrap gap-1.5 mt-3 text-[0.65rem] text-gray-500">
+                  <div className="flex flex-wrap gap-1.5 mt-3 text-[0.65rem] text-faint">
                     <span className="px-2 py-0.5 rounded border border-white/10">{t.sub_genres.length} แนวย่อย</span>
                     <span className="px-2 py-0.5 rounded border border-white/10">{t.structures.length} โครงเรื่อง</span>
                     <span className="px-2 py-0.5 rounded border border-white/10">{t.default_chapters} บท × {t.default_words.toLocaleString()} คำ</span>
@@ -77,15 +95,15 @@ export default function RushExplore() {
                 {isOpen && (
                   <div className="mt-4 space-y-3 border-t border-white/10 pt-3">
                     <div>
-                      <p className="text-[0.65rem] uppercase tracking-wide text-gray-500 mb-1.5">แนวย่อย</p>
+                      <p className="text-[0.65rem] uppercase tracking-wide text-faint mb-1.5">แนวย่อย</p>
                       <div className="flex flex-wrap gap-1.5">
                         {t.sub_genres.map((g) => (
-                          <span key={g} className="text-[0.68rem] px-2 py-0.5 rounded-full border border-[#c9a84c]/30 text-[#d8b45a]">{g.replace(/_/g, " ")}</span>
+                          <span key={g} className="text-[0.68rem] px-2 py-0.5 rounded-full border border-[#c9a84c]/30 text-[#e6c86a]">{g.replace(/_/g, " ")}</span>
                         ))}
                       </div>
                     </div>
                     <div>
-                      <p className="text-[0.65rem] uppercase tracking-wide text-gray-500 mb-1.5">โครงเรื่อง</p>
+                      <p className="text-[0.65rem] uppercase tracking-wide text-faint mb-1.5">โครงเรื่อง</p>
                       <div className="flex flex-wrap gap-1.5">
                         {t.structures.map((s) => (
                           <span key={s} className="text-[0.68rem] px-2 py-0.5 rounded-full border border-white/10 text-gray-300">{s.replace(/_/g, " ")}</span>
@@ -113,7 +131,7 @@ export default function RushExplore() {
           {HOW.map((h) => (
             <div key={h.title} className="rounded-2xl border border-white/10 bg-white/[0.02] p-5">
               <div className="flex items-center gap-2.5 mb-2">
-                <span className="grid place-items-center w-9 h-9 rounded-lg bg-[#c9a84c]/15 text-[#d8b45a]"><h.icon className="w-5 h-5" /></span>
+                <span className="grid place-items-center w-9 h-9 rounded-lg bg-[#c9a84c]/15 text-[#e6c86a]"><h.icon className="w-5 h-5" /></span>
                 <h3 className="font-semibold text-gray-100">{h.title}</h3>
               </div>
               <p className="text-sm text-gray-400 leading-relaxed">{h.body}</p>
@@ -125,7 +143,7 @@ export default function RushExplore() {
       {/* module groups */}
       <section className="max-w-5xl mx-auto px-5 py-10">
         <h2 className="text-xl font-bold mb-1">โมดูลเสริม {MODULE_GROUPS.length} กลุ่ม</h2>
-        <p className="text-sm text-gray-500 mb-6">เปิดตามต้องการ — ต่อเข้าไปใน prompt pack</p>
+        <p className="text-sm text-faint mb-6">เปิดตามต้องการ — ต่อเข้าไปใน prompt pack</p>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {MODULE_GROUPS.map((g) => (
             <div key={g.key} className="rounded-xl border border-white/10 bg-white/[0.02] p-4">
@@ -133,7 +151,7 @@ export default function RushExplore() {
                 <Check className="w-4 h-4 text-[#c9a84c] shrink-0" />
                 <h3 className="font-medium text-sm text-gray-100">{g.label}</h3>
               </div>
-              <p className="text-[0.72rem] text-gray-500 mt-1.5 leading-relaxed">{g.desc}</p>
+              <p className="text-[0.72rem] text-faint mt-1.5 leading-relaxed">{g.desc}</p>
             </div>
           ))}
         </div>

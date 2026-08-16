@@ -41,6 +41,49 @@ describe("narrative structures", () => {
     expect(structurePhase("thai-web-novel", 20, 20)!.beat.en).toBe("Next-episode hook");
   });
 
+  it("ships the duanju vertical-drama arc with honest snippet-tier provenance", () => {
+    const d = structureById("duanju")!;
+    expect(d.beats).toHaveLength(7);
+    expect(d.beats[0].en).toBe("Golden opening");
+    expect(d.beats[6].en).toBe("Compressed close");
+    // the course's countable density rule survives into the beats
+    expect(d.beats.map((b) => b.desc).join(" ")).toContain("1 จุดอารมณ์เล็กต่อตอน");
+    // provenance: official Hongguo course, but snippet-confidence — must say so,
+    // and the officially-denied / single-source numbers must NOT be taught
+    expect(d.note).toContain("snippet");
+    expect(d.note).toContain("ไม่นำมาใช้");
+    expect(d.origin).toContain("Hongguo");
+    // ch1/100 → golden opening; ch100/100 → compressed close
+    expect(structurePhase("duanju", 1, 100)!.beat.en).toBe("Golden opening");
+    expect(structurePhase("duanju", 100, 100)!.beat.en).toBe("Compressed close");
+  });
+
+  it("ships the golden-three serial with its opening pinned to chapters 1-3 literally", () => {
+    const g = structureById("golden-three")!;
+    expect(g.beats).toHaveLength(7);
+    expect(g.pinnedOpening).toBe(3);
+    // 黄金三章 IS chapters 1/2/3 — even in a 24-chapter book, never a proportional share
+    expect(structurePhase("golden-three", 1, 24)!.beat.en).toBe("Golden ch.1 — hook & mystery");
+    expect(structurePhase("golden-three", 2, 24)!.beat.en).toBe("Golden ch.2 — prove the lead");
+    expect(structurePhase("golden-three", 3, 24)!.beat.en).toBe("Golden ch.3 — advance & plant");
+    expect(structurePhase("golden-three", 4, 24)!.beatIndex).toBe(3); // serial engine starts at ch4
+    expect(structurePhase("golden-three", 24, 24)!.beatIndex).toBe(6); // last chapter → last beat
+    // the editors'-desk rule survives into the note, provenance flagged honestly
+    expect(g.note).toContain("สามบรรทัดสุดท้าย");
+    expect(g.note).toContain("snippet");
+  });
+
+  it("ships the limited-series widening-scope arc with honest provenance", () => {
+    const l = structureById("limited-series")!;
+    expect(l.beats).toHaveLength(6);
+    expect(l.beats[0].en).toBe("Single event, tight frame");
+    expect(l.beats[5].en).toBe("What remains");
+    // the saggy-middle fix is scope escalation, stated where the writer will read it
+    expect(l.beats[2].desc).toContain("ขอบเขตใหม่");
+    expect(l.note).toContain("snippet");
+    expect(structurePhase("limited-series", 8, 8)!.beat.en).toBe("What remains");
+  });
+
   it("returns null for an unknown structure id", () => {
     expect(structureById("bogus")).toBeNull();
     expect(structureById(undefined)).toBeNull();
@@ -91,5 +134,26 @@ describe("structureGuidanceTh injection", () => {
     // without a structure, the same book has no structure block
     const plain = generateAllPrompts({ ...cfg, structure: undefined } as typeof cfg, []).find((p) => p.id === "CH_1")!;
     expect(plain.prompt).not.toContain("คิโชเท็งเค็ตสึ");
+  });
+});
+
+describe("short book reaches its closing beat (audit fix)", () => {
+  it("jataka in 3 chapters ends on the identification, not the verse", () => {
+    // Fewer chapters than beats used to end one beat short, dropping the defining close.
+    expect(structurePhase("jataka", 3, 3)!.beat.en).toBe("The identification");
+    expect(structurePhase("jataka", 1, 3)!.beatIndex).toBe(0); // still opens on the first beat
+  });
+
+  it("every NON-pinned structure hits its last beat on the last chapter, even when chapters < beats", () => {
+    for (const s of NARRATIVE_STRUCTURES) {
+      // pinned-opening structures (golden-three) deliberately map a short book entirely into
+      // the pinned prefix, so they need not reach the serial close — exclude those cases.
+      const pin = (s as { pinnedOpening?: number }).pinnedOpening ?? 0;
+      for (const total of [2, 3, s.beats.length]) {
+        if (total <= pin) continue;
+        const ph = structurePhase(s.id, total, total)!;
+        expect(ph.beatIndex, `${s.id} @ ${total}ch`).toBe(s.beats.length - 1);
+      }
+    }
   });
 });

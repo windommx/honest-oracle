@@ -240,14 +240,14 @@ describe("ProseAnalyzerModal", () => {
     expect(ta.value).not.toContain("She ran home");
   });
 
-  it("saves the current text as a named manuscript and lists it for loading", () => {
+  it("saves the current text as a named manuscript and lists it for loading", async () => {
     render(<ProseAnalyzerModal onClose={() => {}} />);
     fireEvent.change(screen.getByPlaceholderText(/Paste English prose/i), {
       target: { value: "Some draft prose to keep." },
     });
     fireEvent.change(screen.getByPlaceholderText(/name…/i), { target: { value: "My chapter" } });
     fireEvent.click(screen.getByText(/Save draft/i));
-    // The saved draft now appears as an <option> in the load dropdown.
-    expect(screen.getByRole("option", { name: "My chapter" })).toBeTruthy();
+    // Saving is async (IndexedDB) — the saved draft appears as an <option> once it lands.
+    expect(await screen.findByRole("option", { name: "My chapter" })).toBeTruthy();
   });
 });

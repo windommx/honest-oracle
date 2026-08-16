@@ -20,15 +20,41 @@ describe("competitive matrix integrity", () => {
   });
 });
 
+describe("SuperCool row (AI-publishing-funnel rival)", () => {
+  it("carries review-tier provenance and only the marks reviews actually support", () => {
+    const sc = RIVALS.find((r) => r.id === "supercool")!;
+    expect(sc.source).toContain("user reviews"); // vendor claims cross-checked, never vendor-only
+    // reviews confirm drift/inconsistency on long books → no consistency machinery
+    expect(mark("consistency_auto", "supercool")).toBe("no");
+    // credit system on top of subscription = lock-in, the opposite of BYO-key
+    expect(mark("byo_key", "supercool")).toBe("no");
+    // what reviews DO confirm working: guided flow + one-click generation
+    expect(mark("starter_flow", "supercool")).toBe("yes");
+    expect(mark("ai_inline", "supercool")).toBe("yes");
+    // unverified vendor claims stay "unknown" — not charitably upgraded to "yes"
+    expect(mark("story_bible", "supercool")).toBe("unknown");
+  });
+});
+
 describe("soleProviders", () => {
   it("returns capabilities only Rush provides fully", () => {
     const ids = soleProviders().map((c) => c.id);
     expect(ids).toContain("thai_dialect");
-    expect(ids).toContain("consistency_auto");
     expect(ids).toContain("sensory_density");
-    expect(ids).toContain("saga");
     // thai_native is NOT sole — AI Novel Workspace is also Thai-native
     expect(ids).not.toContain("thai_native");
+    // Honest downgrades from widening the field to 20 rivals (2026-08). The matrix
+    // exists to falsify Rush's own pitch, so these are recorded, not absorbed:
+    //  · saga — Plottr and Dabble ship real multi-book series bibles
+    //  · privacy — Scrivener and Plottr are local-first with zero AI
+    //  · consistency_auto — AutoCrit's Series Analyzer does cross-book contradiction
+    //    tracking. It is LLM-based and paid where Rush's is deterministic and free,
+    //    but this model counts FEATURES, never weighted quality (see the header), so
+    //    the mark stands and the sole-provider claim goes.
+    for (const lost of ["saga", "privacy", "consistency_auto"]) expect(ids).not.toContain(lost);
+    // What survived a 2x wider field: the Thai layer and measured sensory density.
+    expect(ids).toEqual(expect.arrayContaining(["thai_dialect", "sensory_density"]));
+    expect(ids).toHaveLength(2);
   });
 });
 
@@ -81,11 +107,15 @@ describe("pressureRanking", () => {
 
 describe("staleFacts", () => {
   it("flags rivals older than the window and never Rush", () => {
-    const stale = staleFacts("2026-08", 6);
-    const ids = stale.map((r) => r.id);
-    expect(ids).toContain("novelcrafter"); // as-of 2026-01, >6mo before 2026-08
-    expect(ids).not.toContain("rush");
-    expect(ids).not.toContain("ai_novel_ws"); // as-of 2026-07, fresh
+    // 2026-08 sweep: all six previously-stale rivals were re-checked, so nothing
+    // older than 6 months remains (freshness is data, not a fixed rival list).
+    const now = staleFacts("2026-08", 6).map((r) => r.id);
+    expect(now).not.toContain("novelcrafter"); // re-checked 2026-08
+    expect(now).not.toContain("rush");
+    // far enough in the future, everything unrefreshed goes stale — except Rush, by design
+    const later = staleFacts("2027-06", 6).map((r) => r.id);
+    expect(later).toContain("novelcrafter");
+    expect(later).not.toContain("rush");
   });
 });
 

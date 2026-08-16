@@ -8,6 +8,7 @@
 // ╚══════════════════════════════════════════════════════════════════╝
 
 import { splitChapters } from "./chapters";
+import { maxOf } from "./text-util";
 import { tokenizeThai, THAI_STOPWORDS } from "./thai-analyzer";
 import { buildSymIndex, neighbors } from "./symspell";
 
@@ -178,7 +179,7 @@ export function consistencyLedger(text: string, lang: "en" | "th", protect?: str
   const dropped =
     total >= 4
       ? Array.from(stats.entries())
-          .filter(([, s]) => s.count >= 3 && Math.max(...Array.from(s.chapters)) <= Math.floor(total / 2))
+          .filter(([, s]) => s.count >= 3 && maxOf(Array.from(s.chapters)) <= Math.floor(total / 2))
           .map(([t]) => toStat(t))
           .sort((a, b) => b.count - a.count)
           .slice(0, 20)

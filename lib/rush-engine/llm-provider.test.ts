@@ -33,7 +33,9 @@ describe("buildProviderRequest", () => {
     expect(req.headers["anthropic-version"]).toBeTruthy();
     const body = JSON.parse(req.body);
     expect(body.model).toBe("claude-opus-4-8");
-    expect(body.system).toBe("be terse");
+    // System is a cache-marked block array: the stable prefix gets 0.1× pricing
+    // on repeat runs (and the marker is a documented no-op below the minimum size).
+    expect(body.system).toEqual([{ type: "text", text: "be terse", cache_control: { type: "ephemeral" } }]);
     expect(body.messages).toEqual([{ role: "user", content: "hi" }]);
   });
 
@@ -100,5 +102,26 @@ describe("parseProviderError", () => {
 describe("PROVIDERS", () => {
   it("lists models for each provider", () => {
     expect(PROVIDERS.every((p) => p.models.length > 0)).toBe(true);
+  });
+});
+
+describe("recommendProvider never returns undefined (audit fix)", () => {
+  it("falls back to the full pool when available is empty or all-unknown", () => {
+    // An empty/all-invalid `available` used to yield {provider: undefined}, which
+    // buildProviderRequest silently treats as OpenAI — a non-OpenAI user's key to the
+    // wrong host. Now a valid Provider is always returned (the type promises one).
+    expect(recommendProvider({ contextChars: 1000, available: [] }).provider).toBeTruthy();
+    expect(recommendProvider({ contextChars: 1000, available: ["nope" as never] }).provider).toBeTruthy();
+    const p = recommendProvider({ contextChars: 1000, available: [] }).provider;
+    expect(["anthropic", "openai", "gemini", "groq"]).toContain(p);
+  });
+});
+
+describe("buildProviderRequest escapes the Gemini model in the URL (audit fix)", () => {
+  it("a model with URL-special characters cannot break out of the path", () => {
+    const r = buildProviderRequest({ provider: "gemini", model: "gemini?key=EVIL x", apiKey: "sk-REAL", prompt: "hi" });
+    expect(r.url).not.toContain("gemini?key=EVIL"); // not an unescaped second query param
+    expect(r.url).toContain("gemini%3Fkey%3DEVIL%20x");
+    expect(r.url).toContain("key=sk-REAL"); // the real key is still the only real query param
   });
 });

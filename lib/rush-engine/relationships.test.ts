@@ -31,3 +31,23 @@ describe("characterGraph", () => {
     expect(g.edges).toHaveLength(0);
   });
 });
+
+describe("cast-aware overlap subtraction (audit elevation)", () => {
+  it("Thai: a short name inside a longer CAST name is not over-counted, no phantom node", () => {
+    // แอน inside แอนนา and สม inside สมชาย are subtracted; a real standalone แอน still counts;
+    // เอิ่ม run together with an ordinary verb (เอิ่มพูด) is KEPT — recall preserved.
+    const g = characterGraph("บทที่ 1\n\nแอนนาเดินกับสมชาย แล้วเอิ่มพูดว่าแอนอยู่ไหน", ["แอน", "แอนนา", "สม", "สมชาย", "เอิ่ม"], "th");
+    const m = new Map(g.nodes.map((n) => [n.name, n.mentions]));
+    expect(m.get("สม")).toBeUndefined();     // only ever inside สมชาย → dropped
+    expect(m.get("แอน")).toBe(1);            // the one standalone occurrence
+    expect(m.get("แอนนา")).toBe(1);
+    expect(m.get("เอิ่ม")).toBe(1);          // run-together but not inside another cast name
+  });
+  it("English keeps word boundaries: Sam is not found inside 'same'", () => {
+    const g = characterGraph("Chapter 1\n\nAnna met Sam. Ann waved. It was the same day.", ["Ann", "Anna", "Sam"], "en");
+    const m = new Map(g.nodes.map((n) => [n.name, n.mentions]));
+    expect(m.get("Sam")).toBe(1);   // not 2 — "same" excluded
+    expect(m.get("Ann")).toBe(1);   // not found inside "Anna"
+    expect(m.get("Anna")).toBe(1);
+  });
+});

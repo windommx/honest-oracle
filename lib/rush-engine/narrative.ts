@@ -9,9 +9,10 @@
 // ╚══════════════════════════════════════════════════════════════════╝
 
 import { splitChapters } from "./chapters";
+import { maxOf, minOf, countNames } from "./text-util";
 
 const RE_ESCAPE = /[.*+?^${}()|[\]\\]/g;
-const countEn = (s: string, t: string) => (s.match(new RegExp(`\\b${t.replace(RE_ESCAPE, "\\$&")}\\b`, "g")) ?? []).length;
+const countEn = (s: string, t: string) => (s.match(new RegExp(`\\b${t.replace(RE_ESCAPE, "\\$&")}\\b`, "gi")) ?? []).length;
 const countTh = (s: string, t: string) => (t ? s.split(t).length - 1 : 0);
 
 function bodies(text: string): string[] {
@@ -36,11 +37,14 @@ export interface NarrativeArcs { chapters: number; characters: CharArc[] }
  *  whether the arc is "good". */
 export function characterArc(text: string, names: string[], lang: "th" | "en" = "th"): NarrativeArcs {
   const cast = Array.from(new Set(names.map((n) => n.trim()).filter((n) => n.length >= 2)));
-  const count = lang === "en" ? countEn : countTh;
   const chs = bodies(text);
   const n = chs.length;
+  // Cast-aware counts per chapter: a short name inside a longer CAST name (แอน in แอนนา) is
+  // subtracted, so a character is not marked "present" in every chapter their substring-name
+  // happens to nest in. One pass over the whole cast per chapter.
+  const perChapterCounts = chs.map((b) => countNames(b, cast, lang));
   const characters: CharArc[] = cast.map((name) => {
-    const perChapter = chs.map((b) => count(b, name));
+    const perChapter = perChapterCounts.map((m) => m.get(name) ?? 0);
     const present = perChapter.map((c, i) => (c > 0 ? i + 1 : 0)).filter((x) => x > 0);
     const first = present.length ? present[0] : 0;
     const last = present.length ? present[present.length - 1] : 0;
@@ -99,8 +103,8 @@ export function pacingProfile(chapters: ChapterSignal[]): PacingProfile {
   const mid = acts[1];
   if (overallWords && mid.avgWords < overallWords * 0.7) flags.push(`บทกลางสั้นกว่าค่าเฉลี่ยเล่ม ${Math.round((1 - mid.avgWords / overallWords) * 100)}% (อาจ pacing หย่อนกลางเรื่อง)`);
   if (overallWords && acts[0].avgWords > overallWords * 1.3) flags.push("องก์เปิดยาวกว่าค่าเฉลี่ยมาก (อาจ front-load เยอะ)");
-  const maxDlg = Math.max(...acts.map((a) => a.avgDialogue));
-  const minDlg = Math.min(...acts.map((a) => a.avgDialogue));
+  const maxDlg = maxOf(acts.map((a) => a.avgDialogue));
+  const minDlg = minOf(acts.map((a) => a.avgDialogue));
   if (maxDlg - minDlg >= 25) flags.push(`สัดส่วนบทพูดสวิงระหว่างองก์ ${minDlg}%→${maxDlg}% (ตรวจสมดุลฉาก action/บทสนทนา)`);
   return { acts, flags };
 }
@@ -167,6 +171,11 @@ export function hookSignal(text: string, lang: "th" | "en" = "th"): HookSignal {
   const hasEllipsis = /(…|\.\.\.)/.test(tail);
   const lexicon = lang === "th" ? TENSION_TH : TENSION_EN;
   const hayTail = lang === "th" ? tail : tail.toLowerCase();
+  // KNOWN CEILING (Thai): a substring includes fires แต่ ("but") inside แต่งงาน
+  // ("wedding"), so a calm ending can read as anyDevice=true. A whole-word count was
+  // rejected — Thai tension words appear run-together (แต่เธอ…) and boundaryed matching
+  // dropped the real ones. Presence-not-strength is already disclosed; a writer reads
+  // the flagged words and judges. Over-flag beats missing a real hook.
   const tensionWords = lexicon.filter((w) => hayTail.includes(w));
   return {
     tailWords: tail.length,

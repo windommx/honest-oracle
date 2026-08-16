@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { toast } from "../_toast";
 import Link from "next/link";
 import { Crown, BookOpen, Play, Loader2, Save, Check, KeyRound } from "lucide-react";
 import { PROVIDERS, type Provider } from "@/lib/rush-engine/llm-provider";
@@ -117,13 +118,20 @@ export default function StudioPage() {
 
   function saveOutput() {
     if (!output.trim()) return;
-    saveManuscript({ title: `Studio ${new Date().toLocaleString()}`, lang: saveLang, text: output });
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+    void saveManuscript({ title: `Studio ${new Date().toLocaleString()}`, lang: saveLang, text: output })
+      .then(() => {
+        setSaved(true);
+        setTimeout(() => setSaved(false), 2000);
+      })
+      // saveManuscript now throws when BOTH stores are full. Without this catch the promise
+      // rejects unhandled and the writer sees NOTHING — they think the save worked.
+      .catch(() => {
+        toast("บันทึกไม่สำเร็จ — พื้นที่เก็บของเบราว์เซอร์เต็ม ผลลัพธ์นี้ยังไม่ถูกบันทึก คัดลอกเก็บไว้ก่อน", { variant: "error" });
+      });
   }
 
   return (
-    <div className="min-h-screen bg-[#08080e]">
+    <div className="min-h-screen bg-[#0a0a0f]">
       <nav className="fixed top-0 left-0 right-0 z-50 glass-card">
         <div className="max-w-5xl mx-auto px-4 py-4 flex justify-between items-center">
           <Link href="/" className="flex items-center gap-2">
@@ -173,7 +181,7 @@ export default function StudioPage() {
                   {apiKey && <button type="button" onClick={clearKey} className="text-[#c9a84c] hover:underline">ล้าง key</button>}
                 </span>
                 <input type="password" value={apiKey} onChange={(e) => onKey(e.target.value)} placeholder={meta.keyHint} className="input" />
-                <label className="flex items-center gap-1.5 text-[0.65rem] text-gray-500 mt-1.5 cursor-pointer">
+                <label className="flex items-center gap-1.5 text-[0.65rem] text-faint mt-1.5 cursor-pointer">
                   <input type="checkbox" checked={rememberKey} onChange={(e) => toggleRemember(e.target.checked)} className="accent-[#c9a84c]" />
                   จำ key ไว้ในแท็บนี้ (ล้างเมื่อปิดแท็บ)
                 </label>
@@ -189,7 +197,7 @@ export default function StudioPage() {
               <button
                 onClick={run}
                 disabled={loading}
-                className="w-full py-2.5 bg-[#c9a84c] text-black font-semibold rounded-xl hover:bg-[#d4b96a] transition-colors flex items-center justify-center gap-2 text-sm disabled:opacity-50"
+                className="w-full py-2.5 bg-[#c9a84c] text-black font-semibold rounded-xl hover:bg-[#e6c86a] transition-colors flex items-center justify-center gap-2 text-sm disabled:opacity-50"
               >
                 {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
                 {loading ? "กำลังรัน…" : "รัน"}
@@ -203,7 +211,7 @@ export default function StudioPage() {
                 <span className="text-[0.7rem] text-gray-400">ผลลัพธ์</span>
                 {output && (
                   <div className="flex items-center gap-2">
-                    <select value={saveLang} onChange={(e) => setSaveLang(e.target.value as "th" | "en")} className="text-[0.65rem] bg-[#08080e] border border-white/10 rounded px-1.5 py-0.5 text-gray-300">
+                    <select value={saveLang} onChange={(e) => setSaveLang(e.target.value as "th" | "en")} className="text-[0.65rem] bg-[#0a0a0f] border border-white/10 rounded px-1.5 py-0.5 text-gray-300">
                       <option value="th">ไทย</option>
                       <option value="en">EN</option>
                     </select>
@@ -214,8 +222,8 @@ export default function StudioPage() {
                   </div>
                 )}
               </div>
-              <div className="bg-[#0d0d15] border border-white/10 rounded-xl p-4 text-sm text-gray-200 whitespace-pre-wrap min-h-[420px] max-h-[600px] overflow-y-auto">
-                {output || <span className="text-gray-600">ผลลัพธ์จะแสดงที่นี่ — บันทึกเป็นต้นฉบับเพื่อนำไปวิเคราะห์/รัน NIS ต่อ</span>}
+              <div className="bg-[#12121a] border border-white/10 rounded-xl p-4 text-sm text-gray-200 whitespace-pre-wrap min-h-[420px] max-h-[600px] overflow-y-auto">
+                {output || <span className="text-faint">ผลลัพธ์จะแสดงที่นี่ — บันทึกเป็นต้นฉบับเพื่อนำไปวิเคราะห์/รัน NIS ต่อ</span>}
               </div>
             </div>
           </div>

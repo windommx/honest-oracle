@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import {
   Crown,
@@ -23,8 +24,18 @@ import {
   Play,
 } from "lucide-react";
 import { titleCase, copyText, slug, downloadBlob } from "./_utils";
-import { GROUP_COLORS, Field, Stat, FilterChip, GuideModal, ThaiAnalyzerModal, ProseAnalyzerModal } from "./_components";
-import { getManuscript } from "./_manuscript-store";
+import { GROUP_COLORS, Field, Stat, FilterChip } from "./_ui";
+
+// The three modals live behind a click and drag in every analyzer (Thai, prose, codex,
+// saga, sensory, radar, rename, register, translation, narrative) plus the EPUB builder.
+// Loading them on first paint cost ~20 kB of First Load JS for UI most visits never open.
+// ssr:false because they are browser-only panels; the brief load lands where a user
+// already expects one — after they ask for the tool.
+const GuideModal = dynamic(() => import("./_components").then((m) => m.GuideModal), { ssr: false });
+const ThaiAnalyzerModal = dynamic(() => import("./_components").then((m) => m.ThaiAnalyzerModal), { ssr: false });
+const ProseAnalyzerModal = dynamic(() => import("./_components").then((m) => m.ProseAnalyzerModal), { ssr: false });
+import { getManuscript, listManuscripts } from "./_manuscript-store";
+import { FirstRunOrientation, OnRamps } from "./_first-run";
 import {
   BOOK_TYPES,
   MODULE_GROUPS,
@@ -130,12 +141,17 @@ export default function RushPage() {
   }
 
   const hydratedRef = useRef(false);
+  // A visitor is 'new' only on real signals: no deep-link config (?type/?project) and
+  // no drafts already stored. Guessing wrong here would nag a returning writer.
+  const [isNewcomer, setIsNewcomer] = useState(false);
 
   useEffect(() => {
     refreshProjects();
     const params = new URLSearchParams(window.location.search);
     const pid = params.get("project");
     const typeParam = params.get("type");
+    const deepLinked = !!(pid || typeParam);
+    void listManuscripts().then((ms: unknown[]) => setIsNewcomer(!deepLinked && ms.length === 0));
     if (pid) loadProject(pid);
     else if (typeParam && typeParam in BOOK_TYPES) {
       // Deep-link from the /rush/explore landing or the /rush/start wizard:
@@ -174,12 +190,13 @@ export default function RushPage() {
     }
     const mid = params.get("analyze");
     if (mid) {
-      const m = getManuscript(mid);
-      if (m) {
-        setAnalyzeText(m.text);
-        if (m.lang === "th") setShowAnalyzer(true);
-        else setShowProse(true);
-      }
+      void getManuscript(mid).then((m) => {
+        if (m) {
+          setAnalyzeText(m.text);
+          if (m.lang === "th") setShowAnalyzer(true);
+          else setShowProse(true);
+        }
+      });
     }
     const tool = params.get("tool");
     if (tool === "thai") setShowAnalyzer(true);
@@ -522,14 +539,17 @@ export default function RushPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#08080e]">
+    <div className="min-h-screen bg-[#0a0a0f]">
       <nav className="fixed top-0 left-0 right-0 z-50 glass-card">
         <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
           <Link href="/" className="flex items-center gap-2">
             <Crown className="w-7 h-7 text-[#c9a84c]" />
             <span className="text-lg font-semibold gold-gradient">NaraSuite</span>
           </Link>
-          <div className="flex items-center gap-2 text-sm text-gray-300">
+          {/* Five gold pills with no breakpoint overflowed a phone. Wrapping + a smaller
+              gap keeps every action reachable on a narrow screen instead of pushing some
+              off-canvas — many Thai writers are mobile-first. */}
+          <div className="flex flex-wrap items-center justify-end gap-1.5 sm:gap-2 text-sm text-gray-300">
             <Link href="/rush/dashboard" className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#c9a84c]/30 text-[#c9a84c] hover:border-[#c9a84c] transition-colors text-xs">
               <LayoutGrid className="w-3.5 h-3.5" />
               แดชบอร์ด
@@ -550,7 +570,7 @@ export default function RushPage() {
               <HelpCircle className="w-3.5 h-3.5" />
               วิธีใช้
             </button>
-            <span className="flex items-center gap-2">
+            <span className="hidden lg:flex items-center gap-2">
               <BookOpen className="w-4 h-4 text-[#c9a84c]" />
               Rush Engine
             </span>
@@ -560,12 +580,16 @@ export default function RushPage() {
 
       <div className="pt-24 pb-16 px-4">
         <div className="max-w-7xl mx-auto">
+          <FirstRunOrientation show={isNewcomer} />
           <div className="mb-6">
             <h1 className="text-3xl font-bold gold-gradient">Rush Engine — Book Prompt Generator</h1>
             <p className="text-gray-400 mt-2 text-sm">
               สร้างชุด prompt ครบเซ็ตสำหรับแต่งหนังสือทุกประเภท — คัดลอกไปใช้กับ LLM ตัวไหนก็ได้ (ChatGPT / Claude / Gemini)
-              <span className="block text-[0.7rem] text-gray-600 mt-1">แพลตฟอร์มสร้าง “prompt” — ไม่ใช่ตัวเขียน AI · ไม่ต้องมี API key · ไม่มีค่า token</span>
+              <span className="block text-[0.7rem] text-faint mt-1">แพลตฟอร์มสร้าง “prompt” — ไม่ใช่ตัวเขียน AI · ไม่ต้องมี API key · ไม่มีค่า token</span>
             </p>
+            <div className="mt-2.5">
+              <OnRamps />
+            </div>
             <button
               onClick={loadExample}
               className="mt-3 text-xs px-3 py-1.5 rounded-lg border border-[#c9a84c]/40 text-[#c9a84c] hover:bg-[#c9a84c]/10 transition-colors"
@@ -714,7 +738,7 @@ export default function RushPage() {
                       />
                       <span className="text-xs">
                         <span className="text-gray-200">{g.label}</span>
-                        <span className="block text-[0.65rem] text-gray-500 leading-snug">{g.desc}</span>
+                        <span className="block text-[0.65rem] text-faint leading-snug">{g.desc}</span>
                       </span>
                     </label>
                   ))}
@@ -733,12 +757,12 @@ export default function RushPage() {
                       <li key={s.key} className="text-[0.7rem] leading-snug">
                         <span className="text-[#c9a84c] font-semibold tabular-nums">{s.n}.</span>{" "}
                         <span className="text-gray-200">{s.titleTh}</span>
-                        <span className="block text-[0.62rem] text-gray-500">
+                        <span className="block text-[0.62rem] text-faint">
                           {s.whyTh} · <span className="text-gray-400">{s.promptIds.join(" + ")}</span>
                         </span>
                       </li>
                     ))}
-                    <li className="text-[0.6rem] text-gray-600 pt-1">
+                    <li className="text-[0.6rem] text-faint pt-1">
                       กด “Generate” แล้วรัน prompt ตามลำดับนี้ — ใส่ไอเดีย → อนุมัติ → ทำต่อ · คุณคุมทิศทางทั้งหมด
                     </li>
                   </ol>
@@ -751,7 +775,7 @@ export default function RushPage() {
                 <Stat value={String(prompts.length)} label="Prompts" />
               </div>
 
-              <button onClick={generate} className="w-full py-3 bg-[#c9a84c] text-black font-semibold rounded-xl hover:bg-[#d4b96a] transition-colors flex items-center justify-center gap-2">
+              <button onClick={generate} className="w-full py-3 bg-[#c9a84c] text-black font-semibold rounded-xl hover:bg-[#e6c86a] transition-colors flex items-center justify-center gap-2">
                 <Sparkles className="w-4 h-4" />
                 Generate Prompts
               </button>
@@ -820,7 +844,7 @@ export default function RushPage() {
                 </div>
               )}
 
-              {notice && <div className="mt-4 p-3 bg-[#c9a84c]/10 border border-[#c9a84c]/30 rounded-xl text-[#d4b96a] text-xs">{notice}</div>}
+              {notice && <div className="mt-4 p-3 bg-[#c9a84c]/10 border border-[#c9a84c]/30 rounded-xl text-[#e6c86a] text-xs">{notice}</div>}
               {error && (
                 <div className="mt-3 p-3 bg-red-500/10 border border-red-500/30 rounded-xl flex items-start gap-2 text-red-400 text-sm">
                   <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
@@ -833,7 +857,7 @@ export default function RushPage() {
                   <div className="flex items-center justify-between mb-2">
                     <h3 className="text-xs font-semibold tracking-widest text-gray-400 uppercase">Saved Projects</h3>
                     {projectId && (
-                      <button onClick={newProject} className="text-[0.65rem] text-gray-500 hover:text-[#c9a84c]">+ New</button>
+                      <button onClick={newProject} className="text-[0.65rem] text-faint hover:text-[#c9a84c]">+ New</button>
                     )}
                   </div>
                   <div className="space-y-1.5">
@@ -841,9 +865,9 @@ export default function RushPage() {
                       <div key={p.id} className={`flex items-center justify-between gap-2 p-2 rounded-lg border text-xs ${projectId === p.id ? "border-[#c9a84c]/50 bg-[#c9a84c]/5" : "border-white/5 bg-white/5"}`}>
                         <button onClick={() => loadProject(p.id)} className="flex-1 text-left truncate" title={p.title}>
                           <span className="text-gray-200">{p.title}</span>
-                          <span className="text-gray-500 ml-1">· {titleCase(p.type)}</span>
+                          <span className="text-faint ml-1">· {titleCase(p.type)}</span>
                         </button>
-                        <button onClick={() => deleteProject(p.id)} className="text-gray-600 hover:text-red-400" title="Delete">
+                        <button onClick={() => deleteProject(p.id)} className="text-faint hover:text-red-400" title="Delete">
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
                       </div>
@@ -872,7 +896,7 @@ export default function RushPage() {
                       </button>
                     )}
                     {storyBible.trim() && (
-                      <button onClick={() => setStoryBible("")} className="text-[0.65rem] text-gray-500 hover:text-red-400">
+                      <button onClick={() => setStoryBible("")} className="text-[0.65rem] text-faint hover:text-red-400">
                         Clear
                       </button>
                     )}
@@ -884,20 +908,23 @@ export default function RushPage() {
                   placeholder="วาง/แก้ codex ที่นี่ — หรือคัดลอกบล็อก <<<STATE>>> ที่โมเดลสร้างจากบทล่าสุดมาวาง แล้วกด Generate ใหม่ → ฉีดเป็น 'แหล่งความจริง' เข้าทุกบทอัตโนมัติ"
                   className="input min-h-[80px] resize-y font-mono text-[0.72rem]"
                 />
-                <p className="text-[0.62rem] text-gray-600 mt-1">
+                <p className="text-[0.62rem] text-faint mt-1">
                   ปิดช่องว่าง continuity ด้วย prompt ล้วน — แก้ที่นี่ที่เดียว ใช้กับทุกบท (กด Generate Prompts ใหม่เพื่อใช้ค่าล่าสุด)
                 </p>
-                <p className="text-[0.62rem] text-gray-600 mt-1 leading-relaxed">
+                <p className="text-[0.62rem] text-faint mt-1 leading-relaxed">
                   <span className="text-[#c9a84c]">Story Codex (GraphRAG):</span> ประกาศ entity ใต้หัวข้อ <code className="text-gray-400">[ตัวละคร] [สถานที่] [สิ่งของ] [ความสัมพันธ์]</code> →
                   สารบบทั้งเล่มฉีดเข้า master prompt ส่วนแต่ละบทจะได้เฉพาะ entity ที่ปรากฏใน beat บทนั้น + ตัวที่เชื่อมกัน (deterministic ไม่มี LLM แอบทำงาน)
+                </p>
+                <p className="text-[0.62rem] text-faint mt-1 leading-relaxed">
+                  <span className="text-gray-400">กฎเขียน entry (จากแนวปฏิบัติที่เครื่องมือใหญ่ converge ตรงกัน):</span> เขียนเชิงบวกเสมอ (&quot;ตาบอด&quot; ไม่ใช่ &quot;มองไม่เห็น&quot; — คำปฏิเสธรั่วเข้า prose) · ข้อเท็จจริงสั้น ๆ ไม่ใช่ prose · เริ่มเล็กแล้วค่อยเติม · ความลับที่ยังไม่ควรโผล่ในเนื้อเรื่อง ใส่ใน <code className="text-gray-400">รู้แล้ว:</code> (knowledge lock) ไม่ใช่ในคำอธิบายตัวละคร
                 </p>
               </div>
 
               {prompts.length === 0 ? (
-                <div className="glass-card rounded-2xl p-10 text-center text-gray-500">
+                <div className="glass-card rounded-2xl p-10 text-center text-faint">
                   <Sparkles className="w-10 h-10 mx-auto mb-3 text-[#c9a84c]/40" />
                   <p>ตั้งค่าหนังสือทางซ้าย แล้วกด Generate Prompts</p>
-                  <p className="text-xs mt-2 text-gray-600">
+                  <p className="text-xs mt-2 text-faint">
                     จะได้ชุด prompt ครบเซ็ต: Master, Overview, รายบท, Analysis, Revision, Front/Back Matter, Feedback
                   </p>
                   <button onClick={() => setShowGuide(true)} className="mt-4 text-xs text-[#c9a84c] hover:underline">
@@ -925,12 +952,12 @@ export default function RushPage() {
                         <div key={p.id} className="glass-card rounded-2xl overflow-hidden border border-white/5">
                           <div className="flex items-center justify-between gap-3 px-5 py-3">
                             <button onClick={() => setOpenId(open ? null : p.id)} aria-expanded={open} className="flex items-center gap-3 min-w-0 flex-1 text-left">
-                              <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${open ? "rotate-180" : ""}`} />
+                              <ChevronDown className={`w-4 h-4 text-faint transition-transform ${open ? "rotate-180" : ""}`} />
                               <span className="text-sm font-semibold text-gray-100 whitespace-nowrap">{p.id}</span>
-                              <span className="text-xs text-gray-500 truncate">{p.name}</span>
+                              <span className="text-xs text-faint truncate">{p.name}</span>
                             </button>
                             <div className="flex items-center gap-2 flex-shrink-0">
-                              <span className="text-[0.6rem] text-gray-600 tabular-nums" title="ประมาณจากอัตราส่วนตัวอักษร/token (heuristic) — จำนวนจริงต่างกันตามโมเดล">
+                              <span className="text-[0.6rem] text-faint tabular-nums" title="ประมาณจากอัตราส่วนตัวอักษร/token (heuristic) — จำนวนจริงต่างกันตามโมเดล">
                                 ≈{estimateTokens(p.prompt).toLocaleString()} tok
                               </span>
                               <span className={`text-[0.6rem] px-1.5 py-0.5 border rounded ${GROUP_COLORS[p.group]}`}>{groupLabel(p.group)}</span>
@@ -944,9 +971,9 @@ export default function RushPage() {
                           </div>
                           {open && (
                             <div className="px-5 pb-5">
-                              <p className="text-[0.7rem] text-gray-500 mb-1">{p.description}</p>
-                              <p className="text-[0.65rem] text-gray-600 italic mb-3">Usage: {p.usage}</p>
-                              <pre className="bg-[#08080e] border border-white/5 rounded-lg p-4 text-xs leading-6 text-gray-300 whitespace-pre-wrap max-h-[480px] overflow-y-auto">
+                              <p className="text-[0.7rem] text-faint mb-1">{p.description}</p>
+                              <p className="text-[0.65rem] text-faint italic mb-3">Usage: {p.usage}</p>
+                              <pre className="bg-[#0a0a0f] border border-white/5 rounded-lg p-4 text-xs leading-6 text-gray-300 whitespace-pre-wrap max-h-[480px] overflow-y-auto">
                                 {p.prompt}
                               </pre>
                             </div>
@@ -978,7 +1005,7 @@ export default function RushPage() {
         :global(.input) {
           width: 100%;
           padding: 8px 10px;
-          background: #08080e;
+          background: #0a0a0f;
           border: 1px solid rgba(255, 255, 255, 0.1);
           color: #f0ece4;
           font-size: 0.85rem;

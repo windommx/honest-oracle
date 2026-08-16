@@ -152,6 +152,15 @@ TENSION: ...  (fiction only)
 
 Keep STATE compact (≤ 250 words), newest facts first, plain facts only. Carry it forward chapter to chapter. If I paste a STATE block into a later prompt, treat it as the source of truth.
 
+Worked example (format to follow — content is illustrative only):
+<<<STATE>>>
+CHARACTERS: Anan — detective, now knows the key opens the warehouse; distrusts Dr. Lee. Mali — still missing, last seen at the docks.
+WORLD/FACTS: the warehouse sits under pier 3; the gang meets on new-moon nights.
+TIMELINE: night 4 since the disappearance.
+OPEN THREADS: who sent the photo; why the ledger page was torn.
+TENSION: rising — first direct threat received.
+<<<END STATE>>>
+
 ⚠ STATE is a working tool, not book content — before compiling/publishing, strip every <<<STATE>>> block and any prompt remnants from the manuscript (in 2025 several published authors were caught with forgotten prompts printed in their books).
 
 ═══ OUTPUT FORMAT ═══
@@ -503,10 +512,11 @@ export function generateFeedbackChainPrompt(config: BookConfig): string {
   p += `2. ISSUES TO ADDRESS: Unresolved questions, unsupported claims, tone inconsistencies, missing elements?\n`;
   p += `3. INSTRUCTIONS FOR NEXT CHAPTER: What to build on, what to avoid repeating, what tone to maintain, specific improvements.\n`;
   p += `4. QUALITY SCORES: Overall quality (0-1); ready for next chapter (yes/no); if no, what must be fixed first?\n`;
+  p += `5. FRESHNESS-DECAY CHECK (real AI-novel pipelines measure quality dropping after ~chapter 6): is this chapter falling into formula vs the early ones — repeated scene shapes, same opening/closing rhythms, recycled imagery? If yes, name the pattern the NEXT chapter must break.\n`;
   if (config.type === "novel" || config.type === "memoir" || config.type === "kids") {
-    p += `\n5. FICTION-SPECIFIC: Character states at chapter end; tension level and direction; unresolved plot threads; foreshadowing planted.`;
+    p += `\n6. FICTION-SPECIFIC: Character states at chapter end; tension level and direction; unresolved plot threads; foreshadowing planted.`;
   } else {
-    p += `\n5. NON-FICTION-SPECIFIC: Thesis proof progress; evidence used; reader-journey milestone check; counter-arguments addressed.`;
+    p += `\n6. NON-FICTION-SPECIFIC: Thesis proof progress; evidence used; reader-journey milestone check; counter-arguments addressed.`;
   }
   p += `\n\n═══ CHAPTER DRAFT TO ANALYZE ═══\n[INSERT COMPLETED CHAPTER HERE]`;
   return p;

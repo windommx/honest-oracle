@@ -5,7 +5,7 @@
 // ╚══════════════════════════════════════════════════════════════════╝
 
 import { splitChapters } from "./chapters";
-import { countPhrases } from "./text-util";
+import { countPhrases, maxOf } from "./text-util";
 export { splitChapters }; // re-exported for callers importing it from the analyzer
 
 // AI-slop words & hollow formulas (substring match on lowercased text).
@@ -15,7 +15,10 @@ export const SLOP_TERMS = [
   "crucial", "vibrant", "meticulous", "bustling", "whimsical", "nestled", "boasts",
   "embark", "unleash", "elevate", "seamless", "robust", "leverage", "myriad",
   // hollow formulas / phrases
-  "it's not just", "in a world where", "more than ever", "it's worth noting",
+  // "not just X, but Y" contrast crutch — the #1 LLM rhetorical tic per the
+  // autonovel field notes; slop-score weights this pattern family at 25%.
+  "it's not just", "isn't just", "wasn't just", "not merely", "not simply",
+  "in a world where", "more than ever", "it's worth noting",
   "needless to say", "at the end of the day", "game changer", "a testament to",
   "in today's", "when it comes to", "the fact that",
 ];
@@ -234,7 +237,7 @@ export function analyzeProse(text: string): ProseAnalysis {
   const sentences = {
     count: sentenceLens.length,
     avgWords: sentenceLens.length ? Math.round(words.length / sentenceLens.length) : 0,
-    longest: sentenceLens.length ? Math.max(...sentenceLens) : 0,
+    longest: maxOf(sentenceLens),
   };
   const mean = sentenceLens.length ? sentenceLens.reduce((s, n) => s + n, 0) / sentenceLens.length : 0;
   const variance = sentenceLens.length
@@ -271,7 +274,7 @@ export function analyzeProse(text: string): ProseAnalysis {
 
   return {
     wordCount: words.length,
-    charCount: text.replace(/\s/g, "").length,
+    charCount: Array.from(text.replace(/\s/g, "")).length,
     uniqueWords: freq.size,
     sentences,
     rhythm,

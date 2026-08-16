@@ -30,3 +30,14 @@ describe("checkThaiRegister", () => {
     expect(f[0].count).toBe(3);
   });
 });
+
+describe("common informal loanwords are flagged (audit regression)", () => {
+  it("counts single-token loanwords by substring, not exact Intl.Segmenter token", () => {
+    // Passing { tokens } forced exact-token matching; Intl.Segmenter splits a loanword
+    // differently inside prose than in isolation, so ไอเดีย / คอมเมนต์ silently scored 0.
+    const f = checkThaiRegister("ไอเดียนี้ดีมาก เดี๋ยวจะไอเดียอีก แล้วคอมเมนต์กันได้ คอมเมนต์เลย");
+    const byTerm = new Map(f.map((x) => [x.term, x.count]));
+    expect(byTerm.get("ไอเดีย")).toBe(2);
+    expect(byTerm.get("คอมเมนต์")).toBe(2);
+  });
+});

@@ -50,7 +50,12 @@ export type Priority = "cheap" | "balanced" | "premium";
  *  guidance, not a live load-balancer (we have no per-provider telemetry). */
 export function recommendProvider(opts: { contextChars: number; priority?: Priority; available?: Provider[] }): { provider: Provider; reason: string } {
   const priority = opts.priority ?? "balanced";
-  const pool = (opts.available ?? PROVIDERS.map((p) => p.id)).filter((p) => PROVIDER_PROFILE[p]);
+  const requested = (opts.available ?? PROVIDERS.map((p) => p.id)).filter((p) => PROVIDER_PROFILE[p]);
+  // An explicit `available` that filters to nothing (empty, or all-unknown ids) would leave
+  // no candidate and return provider:undefined — which buildProviderRequest silently treats
+  // as OpenAI, shipping a non-OpenAI user's key to the wrong host. Fall back to the full
+  // pool so a valid Provider is ALWAYS returned (the type promises one).
+  const pool = requested.length ? requested : PROVIDERS.map((p) => p.id);
   const WEIGHTS: Record<Priority, { q: number; c: number; s: number }> = {
     cheap: { q: 0.2, c: 0.5, s: 0.3 },
     balanced: { q: 0.4, c: 0.3, s: 0.3 },
@@ -117,7 +122,14 @@ export function buildProviderRequest(input: RunInput): ProviderRequest {
       body: JSON.stringify({
         model: input.model,
         max_tokens: maxTokens,
-        ...(input.system ? { system: input.system } : {}),
+        // The system prompt (master + codex digest) is the stable, byte-identical
+        // prefix across a book's chapter runs — mark it cacheable so repeat runs
+        // pay 0.1× input on it (write costs 1.25×; below the model's minimum
+        // cacheable size the marker is a documented no-op, so this is safe for
+        // short prompts too). Anthropic prompt-caching docs, fetched 2026-07.
+        ...(input.system
+          ? { system: [{ type: "text", text: input.system, cache_control: { type: "ephemeral" } }] }
+          : {}),
         messages: [{ role: "user", content: input.prompt }],
       }),
     };
@@ -125,7 +137,7 @@ export function buildProviderRequest(input: RunInput): ProviderRequest {
   if (input.provider === "gemini") {
     // Google Generative Language API. Key goes in the query string (server-side only).
     return {
-      url: `https://generativelanguage.googleapis.com/v1beta/models/${input.model}:generateContent?key=${encodeURIComponent(input.apiKey)}`,
+      url: `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(input.model)}:generateContent?key=${encodeURIComponent(input.apiKey)}`,
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
         ...(input.system ? { systemInstruction: { parts: [{ text: input.system }] } } : {}),

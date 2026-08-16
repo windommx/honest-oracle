@@ -54,7 +54,7 @@ export default function SharePage({ params }: { params: Promise<{ token: string 
   }
 
   return (
-    <div className="min-h-screen bg-[#08080e]">
+    <div className="min-h-screen bg-[#0a0a0f]">
       <nav className="fixed top-0 left-0 right-0 z-50 glass-card">
         <div className="max-w-5xl mx-auto px-4 py-4 flex justify-between items-center">
           <Link href="/" className="flex items-center gap-2">
@@ -70,7 +70,7 @@ export default function SharePage({ params }: { params: Promise<{ token: string 
 
       <div className="pt-24 pb-16 px-4">
         <div className="max-w-3xl mx-auto">
-          {loading && <p className="text-gray-500 text-center">กำลังโหลด…</p>}
+          {loading && <p className="text-faint text-center">กำลังโหลด…</p>}
           {error && (
             <div className="glass-card rounded-2xl p-6 flex items-start gap-2 text-red-400">
               <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
@@ -81,7 +81,7 @@ export default function SharePage({ params }: { params: Promise<{ token: string 
             <>
               <div className="mb-6">
                 <h1 className="text-2xl font-bold gold-gradient">{title}</h1>
-                <p className="text-gray-500 text-sm mt-1">ชุด prompt แบบอ่านอย่างเดียว ({prompts.length} prompts)</p>
+                <p className="text-faint text-sm mt-1">ชุด prompt แบบอ่านอย่างเดียว ({prompts.length} prompts)</p>
               </div>
               <div className="space-y-3">
                 {prompts.map((p) => {
@@ -90,9 +90,9 @@ export default function SharePage({ params }: { params: Promise<{ token: string 
                     <div key={p.id} className="glass-card rounded-2xl overflow-hidden border border-white/5">
                       <div className="flex items-center justify-between gap-3 px-5 py-3">
                         <button onClick={() => setOpenId(open ? null : p.id)} aria-expanded={open} className="flex items-center gap-3 min-w-0 flex-1 text-left">
-                          <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${open ? "rotate-180" : ""}`} />
+                          <ChevronDown className={`w-4 h-4 text-faint transition-transform ${open ? "rotate-180" : ""}`} />
                           <span className="text-sm font-semibold text-gray-100 whitespace-nowrap">{p.id}</span>
-                          <span className="text-xs text-gray-500 truncate">{p.name}</span>
+                          <span className="text-xs text-faint truncate">{p.name}</span>
                         </button>
                         <button onClick={() => copyPrompt(p)} className="text-gray-400 hover:text-[#c9a84c]" aria-label={`Copy ${p.id}`}>
                           {copiedId === p.id ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
@@ -100,7 +100,7 @@ export default function SharePage({ params }: { params: Promise<{ token: string 
                       </div>
                       {open && (
                         <div className="px-5 pb-5">
-                          <pre className="bg-[#08080e] border border-white/5 rounded-lg p-4 text-xs leading-6 text-gray-300 whitespace-pre-wrap max-h-[480px] overflow-y-auto">
+                          <pre className="bg-[#0a0a0f] border border-white/5 rounded-lg p-4 text-xs leading-6 text-gray-300 whitespace-pre-wrap max-h-[480px] overflow-y-auto">
                             {p.prompt}
                           </pre>
                         </div>

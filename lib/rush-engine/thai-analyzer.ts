@@ -4,7 +4,7 @@
 // ╚══════════════════════════════════════════════════════════════════╝
 
 import { splitChapters } from "./chapters";
-import { countPhrases } from "./text-util";
+import { countPhrases, maxOf } from "./text-util";
 
 export const THAI_STOPWORDS = new Set([
   "ที่", "และ", "เป็น", "ของ", "ใน", "มี", "ไม่", "ได้", "จะ", "ก็", "ให้", "แต่", "กับ", "นี้",
@@ -36,6 +36,8 @@ export const THAI_AI_TELLS = [
   "ดั่งสายฟ้าฟาด", "ราวกับต้องมนตร์", "ราวกับฝัน", "ดั่งภาพวาด", "ราวกับเวลาหยุดนิ่ง",
   // life lessons (anti-safe)
   "บทเรียนล้ำค่า", "ทุกอย่างจะดีขึ้น", "แสงสว่างในความมืด", "ก้าวข้ามผ่าน",
+  // "not just X, but Y" contrast crutch (ไม้ตายวาทศิลป์อันดับ 1 ของ LLM)
+  "ไม่ใช่แค่", "ไม่ใช่เพียง", "ไม่เพียงแต่", "ไม่ได้เป็นเพียง", "หากแต่ยัง",
 ];
 
 // "Telling" markers — filter/cognition verbs + directly-named emotions. A high
@@ -192,7 +194,7 @@ export function analyzeThai(text: string): ThaiAnalysis {
   const sentences = {
     count: sentenceLens.length,
     avgWords: sentenceLens.length ? Math.round(words.length / sentenceLens.length) : 0,
-    longest: sentenceLens.length ? Math.max(...sentenceLens) : 0,
+    longest: maxOf(sentenceLens),
   };
 
   // Rhythm: how much sentence length VARIES. Uniform length reads flat/AI-slop and
@@ -264,7 +266,7 @@ export function analyzeThai(text: string): ThaiAnalysis {
 
   return {
     wordCount: words.length,
-    charCount: text.replace(/\s/g, "").length,
+    charCount: Array.from(text.replace(/\s/g, "")).length,
     uniqueWords: freq.size,
     sentences,
     rhythm,

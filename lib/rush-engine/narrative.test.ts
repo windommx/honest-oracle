@@ -87,3 +87,16 @@ describe("hookSignal — ending devices, presence not strength", () => {
     expect(h.tensionWords).toEqual([]); // tension words live before the tail window
   });
 });
+
+describe("characterArc cast-aware counting (audit elevation)", () => {
+  it("a short name inside a longer CAST name is not phantom-present", () => {
+    // สม only ever appears inside สมชาย, แอน only inside แอนนา — neither is its own character
+    // here, so both must be absent, not marked present in every chapter their substring nests.
+    const a = characterArc("บทที่ 1\n\nสมชายเดินไป\n\nบทที่ 2\n\nแอนนากลับมา", ["สม", "สมชาย", "แอน", "แอนนา"], "th");
+    const m = new Map(a.characters.map((c) => [c.name, c.total]));
+    expect(m.get("สม")).toBe(0);
+    expect(m.get("แอน")).toBe(0);
+    expect(m.get("สมชาย")).toBe(1);
+    expect(m.get("แอนนา")).toBe(1);
+  });
+});

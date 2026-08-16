@@ -62,7 +62,7 @@ describe("Dashboard", () => {
 
   it("lists locally-saved manuscripts even without login", async () => {
     mockFetch(401, {});
-    saveManuscript({ title: "ร่างบทที่หนึ่ง", lang: "th", text: "เนื้อเรื่อง" });
+    await saveManuscript({ title: "ร่างบทที่หนึ่ง", lang: "th", text: "เนื้อเรื่อง" });
     render(<DashboardPage />);
     expect(await screen.findByText("ร่างบทที่หนึ่ง")).toBeTruthy();
     expect(screen.getByText(/ต้นฉบับที่บันทึก/)).toBeTruthy();

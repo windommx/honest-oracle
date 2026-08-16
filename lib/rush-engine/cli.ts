@@ -5,7 +5,7 @@
 // ║  bin (scripts/rush.ts) wires process.argv + node:fs to it.         ║
 // ╚══════════════════════════════════════════════════════════════════╝
 
-import { BOOK_TYPES, defaultGroupsFor, generateAllPrompts, type BookConfig, type BookTypeKey, type PromptGroup } from "./engine";
+import { BOOK_TYPES, MODULE_GROUPS, defaultGroupsFor, generateAllPrompts, type BookConfig, type BookTypeKey, type PromptGroup } from "./engine";
 import { analyzeThai } from "./thai-analyzer";
 import { analyzeProse } from "./prose-analyzer";
 import { sensoryDensity, SENSE_LABEL, type Sense } from "./sensory";
@@ -19,8 +19,11 @@ import { splitChapters } from "./chapters";
 import { parseCodex, codexAudit, codexCanon, formatCodexAudit, codexMermaid } from "./codex";
 import { analyzeSaga, formatSaga, type SagaBook } from "./saga";
 import { analyzeOpeners, formatOpeners } from "./openers";
-import { findRestatements } from "./restatement";
+import { findRestatements, findNearRestatements } from "./restatement";
 import { excessVocabulary, formatExcess } from "./excess";
+import { route, formatRoute } from "./router";
+import { buildReceipt, verifyReceipt, formatReceipt, type Claim } from "./provenance";
+import { formatCitationLedger, recheckQueue, citationsFor, CITATIONS, coverage } from "./citations";
 
 export interface CliResult { stdout: string; stderr: string; code: number }
 
@@ -54,6 +57,9 @@ USAGE
   rush excess   <suspect.md> --baseline <human.md> [--lang th|en] [--min n]
   rush scene    <file.md>   (Thai: real per-scene signals — no fake 0–100 scores)
   rush narrative <file.md> [--names "A,B"] [--motifs "x,y"]  (Thai: presence/pacing/motifs)
+  rush route    "<อาการที่เจอ>"   (symptom → which of the 61 modules to open)
+  rush receipt  <file.md> [--lang th|en] [--verify]  (measurement receipt + re-derive check)
+  rush cite     [--module <ID>] [--recheck]   (citation ledger: how strongly each source was checked)
   rush help
 
 COMMANDS
@@ -81,6 +87,22 @@ COMMANDS
             "tell" judgement (and the corpora) are yours.
   scene     Per-scene readout (Thai): words, clauses, rhythm cv, dialogue ratio, telling
             density, sensory/1k, AI-tells — real signals, never a fake 0–100 vibe score.
+  receipt   Print a measurement receipt: every number with its epistemic tier (direct
+            count / derived / heuristic), the instrument that produced it, and the exact
+            command to remake it. Carries NO timestamp — the engine has no clock, so the
+            same file yields a byte-identical receipt forever, and that equality is the
+            proof. --verify re-derives and diffs; exit 1 on drift.
+  cite      The citation ledger. Every registered source with its VERIFICATION tier —
+            opened the paper / confirmed via a search index / from memory / disputed.
+            The tier says how strongly it was CHECKED, never how good the work is.
+            --module <ID> filters to one module; --recheck lists the weakest first.
+            The registry is partial and reports its own coverage rather than implying
+            it covers every reference the modules make.
+  route     Describe the problem in your own words ("จบบทแล้ววางได้", "ตัวละครพูดเหมือนกันหมด")
+            and get the module to open. A fixed keyword ladder, not a model: it prints the
+            words that triggered the route so you can check it, lists every competing rung
+            instead of hiding them, and returns NOTHING when nothing matches rather than
+            guessing the nearest module.
 
 TYPES     ${Object.keys(BOOK_TYPES).join(", ")}
 `;
@@ -151,6 +173,18 @@ function cmdAnalyze(file: string | undefined, flags: Record<string, string | tru
       L.push(`  ×${r.count}${loc}  "${r.phrase.length > 70 ? r.phrase.slice(0, 70) + "…" : r.phrase}"`);
     }
     L.push("  (verbatim only — paraphrased redundancy needs a human read)");
+  }
+
+  // Near-verbatim repeats: winnowing fingerprints nominate candidate pairs; every
+  // pair is verified with an exact token diff before it can appear here.
+  const near = findNearRestatements(text, lang);
+  if (near.found.length) {
+    L.push("", "near-verbatim repeats (winnowed candidates, exact-verified):");
+    for (const r of near.found.slice(0, 5)) {
+      const loc = r.chaptersA !== r.chaptersB ? ` (ch ${r.chaptersA}→${r.chaptersB})` : "";
+      L.push(`  ${r.sharedTokens}/${r.totalTokens}${loc}  "${r.b.length > 60 ? r.b.slice(0, 60) + "…" : r.b}"`);
+      if (r.changed.length) L.push(`     changed: ${r.changed.join(", ")}`);
+    }
   }
 
   const led = consistencyLedger(text, lang);
@@ -384,6 +418,105 @@ function cmdNarrative(file: string | undefined, flags: Record<string, string | t
   return { stdout: L.join("\n") + "\n", stderr: "", code: 0 };
 }
 
+/** Symptom → module. Exit 1 on no match, following grep's convention: the run succeeded,
+ *  the search found nothing. Callers can branch on it without parsing the text. */
+function cmdRoute(symptom: string): CliResult {
+  if (!symptom.trim()) {
+    return { stdout: "", stderr: `rush route "<อาการที่เจอ>"\nเช่น: rush route "จบบทแล้ววางได้ ไม่มีใครอ่านต่อ"\n`, code: 2 };
+  }
+  const r = route(symptom);
+  return { stdout: formatRoute(symptom) + "\n", stderr: "", code: r.primary ? 0 : 1 };
+}
+
+/** Emit a measurement receipt: every number, its epistemic tier, the instrument that made
+ *  it, and the command that remakes it. --verify re-runs against a receipt's own fingerprint
+ *  and claim values, which is the half that turns the document into a check. */
+function cmdReceipt(file: string | undefined, flags: Record<string, string | true>, read?: (p: string) => string): CliResult {
+  const r = readFile(file, read);
+  if ("code" in r) return r;
+  const th = flags.lang === "th" || /[฀-๿]/.test(r.text);
+  const lang = th ? "th" : "en";
+  // The two analyzers report different things, and the receipt says which one ran rather
+  // than pretending to a shared shape. Only signals that analyzer actually produces are
+  // claimed — a receipt must never assert a number nobody computed.
+  const claims: Claim[] = [];
+  if (th) {
+    const a = analyzeThai(r.text);
+    claims.push(
+      { signal: "wordCount", value: a.wordCount, instrument: "Thai segmenter (newmm-class)" },
+      { signal: "charCount", value: a.charCount },
+      { signal: "uniqueWords", value: a.uniqueWords },
+      { signal: "sentenceCount", value: a.sentences.count },
+      { signal: "avgWords", value: a.sentences.avgWords },
+      { signal: "rhythmStdev", value: a.rhythm.stdev },
+      { signal: "rhythmCv", value: a.rhythm.cv },
+      { signal: "dialogueLines", value: a.dialogue.lines },
+      { signal: "dialogueRatio", value: a.dialogue.ratio },
+      { signal: "tellingCount", value: a.telling.count },
+      { signal: "echoes", value: a.echoes.length },
+      { signal: "aiTells", value: a.aiTells.length },
+    );
+  } else {
+    const a = analyzeProse(r.text);
+    claims.push(
+      { signal: "wordCount", value: a.wordCount, instrument: "whitespace tokenizer" },
+      { signal: "charCount", value: a.charCount },
+      { signal: "uniqueWords", value: a.uniqueWords },
+      { signal: "sentenceCount", value: a.sentences.count },
+      { signal: "avgWords", value: a.sentences.avgWords },
+      { signal: "rhythmStdev", value: a.rhythm.stdev },
+      { signal: "rhythmCv", value: a.rhythm.cv },
+      { signal: "tellingCount", value: a.telling.count },
+      { signal: "aiTells", value: a.slop.length },
+    );
+  }
+  const reproduce = `npm run rush -- receipt ${file} --lang ${lang}`;
+  const receipt = buildReceipt({ tool: th ? "analyzeThai" : "analyzeProse", text: r.text, claims, reproduce });
+
+  if (flags.verify) {
+    // Re-derive from the same file and diff against what the receipt asserts. A pure
+    // engine must report ok; anything else is a real finding, not a formality.
+    const v = verifyReceipt(receipt, r.text, claims);
+    const L = [`# verify — ${v.ok ? "PASS" : "FAIL"}`, "", `  same input   ${v.sameInput}`, `  matched      ${v.matched.length}`, `  drifted      ${v.drifted.length}`];
+    for (const d of v.drifted) L.push(`    ${d.signal}: ${d.was} → ${d.now}`);
+    if (v.missing.length) L.push(`  missing      ${v.missing.join(", ")}`);
+    if (v.added.length) L.push(`  added        ${v.added.join(", ")}`);
+    return { stdout: L.join("\n") + "\n", stderr: "", code: v.ok ? 0 : 1 };
+  }
+  return { stdout: formatReceipt(receipt) + "\n", stderr: "", code: 0 };
+}
+
+/** The citation ledger — the same tiering epistemics applies to numbers, applied to sources. */
+function cmdCite(flags: Record<string, string | true>): CliResult {
+  if (typeof flags.module === "string") {
+    const rows = citationsFor(flags.module);
+    if (!rows.length) return { stdout: "", stderr: `no registered citations for "${flags.module}" — unaudited, which is not the same as none\n`, code: 1 };
+    const L = [`# ${flags.module} — ${rows.length} registered source(s)`, ""];
+    for (const c of rows) {
+      L.push(`[${c.tier}] ${c.who} (${c.year}) — ${c.work}`);
+      L.push(`   ${c.claim}`);
+      if (c.note) L.push(`   note: ${c.note}`);
+      L.push("");
+    }
+    return { stdout: L.join("\n"), stderr: "", code: 0 };
+  }
+  if (flags.recheck) {
+    const q = recheckQueue();
+    const L = ["# re-check queue — weakest verification first", "", "(disputed entries are excluded: their tier describes the CLAIM, not how it was checked)", ""];
+    for (const c of q) L.push(`[${c.tier}] ${c.who} (${c.year}) — ${c.work}  → ${c.usedIn.join(", ")}`);
+    L.push("", `${q.length} of ${CITATIONS.length} registered citations still want a primary source.`);
+    return { stdout: L.join("\n") + "\n", stderr: "", code: 0 };
+  }
+  // Live coverage: the denominator is counted from the ACTUAL generated prompts across
+  // every module group, not a constant — so the ratio cannot drift into looking flattering
+  // as modules grow. It is a heuristic over-count, labelled as such by coverage().
+  const cfg: BookConfig = { type: "novel", title: "-", thesis: "-", reader: "-", voice: "storytelling", chapters: 12, wordsPerChapter: 2000, subGenre: "thriller", citationStyle: "none", language: "english" } as unknown as BookConfig;
+  const text = generateAllPrompts(cfg, MODULE_GROUPS.map((m) => m.key)).map((p) => p.prompt).join("\n");
+  const cov = coverage(text);
+  const foot = ["", `— coverage: ${cov.registered} registered / ~${cov.mentionsEstimate} citation-shaped references (heuristic over-count)`, `  ${cov.note}`];
+  return { stdout: formatCitationLedger() + foot.join("\n") + "\n", stderr: "", code: 0 };
+}
+
 export function runCli(argv: string[], io?: { read?: (path: string) => string }): CliResult {
   const { positional, flags } = parseFlags(argv);
   const cmd = positional[0];
@@ -399,5 +532,8 @@ export function runCli(argv: string[], io?: { read?: (path: string) => string })
   if (cmd === "excess") return cmdExcess(positional[1], flags, io?.read);
   if (cmd === "scene") return cmdScene(positional[1], flags, io?.read);
   if (cmd === "narrative") return cmdNarrative(positional[1], flags, io?.read);
+  if (cmd === "route") return cmdRoute(positional.slice(1).join(" "));
+  if (cmd === "receipt") return cmdReceipt(positional[1], flags, io?.read);
+  if (cmd === "cite") return cmdCite(flags);
   return { stdout: "", stderr: `unknown command "${cmd}". try: rush help\n`, code: 2 };
 }

@@ -168,3 +168,83 @@ describe("runCli", () => {
     expect(r.stdout).toContain("อัปเดต");
   });
 });
+
+describe("rush route", () => {
+  it("routes a Thai symptom and shows the audit trail", () => {
+    const r = runCli(["route", "จบบทแล้ววางได้ ไม่มีใครอ่านต่อ"]);
+    expect(r.code).toBe(0);
+    expect(r.stdout).toContain("HOOK_CRAFT");
+    expect(r.stdout).toContain("คำที่ทำให้เข้าขั้นนี้");
+  });
+  it("exits 1 on no match (grep convention) and refuses to guess", () => {
+    const r = runCli(["route", "วันนี้อากาศดี"]);
+    expect(r.code).toBe(1);
+    expect(r.stdout).toContain("R0");
+    expect(r.stdout).not.toMatch(/เปิดตัวนี้ก่อน/);
+  });
+  it("errors with usage when the symptom is missing", () => {
+    const r = runCli(["route"]);
+    expect(r.code).toBe(2);
+    expect(r.stderr).toContain("rush route");
+  });
+  it("is listed in help", () => {
+    expect(runCli(["help"]).stdout).toContain("rush route");
+  });
+});
+
+describe("rush receipt", () => {
+  const th = "บทที่ 1\n\nเขายืนอยู่ตรงนั้น ฝนตกหนัก เขารู้สึกเศร้า\n";
+  const read = () => th;
+  it("prints tiers, instruments and the reproduce command", () => {
+    const r = runCli(["receipt", "d.md"], { read });
+    expect(r.code).toBe(0);
+    expect(r.stdout).toContain("ประจักษ์");
+    expect(r.stdout).toContain("Thai segmenter");
+    expect(r.stdout).toContain("npm run rush -- receipt d.md");
+  });
+  it("carries no date — the engine has no clock", () => {
+    const r = runCli(["receipt", "d.md"], { read });
+    expect(r.stdout).not.toMatch(/20\d{2}-\d{2}-\d{2}/);
+    expect(r.stdout).toContain("ไม่มีวันที่");
+  });
+  it("--verify re-derives and passes on a pure engine", () => {
+    const r = runCli(["receipt", "d.md", "--verify"], { read });
+    expect(r.code).toBe(0);
+    expect(r.stdout).toContain("PASS");
+    expect(r.stdout).toContain("drifted      0");
+  });
+  it("names the tokenizer that actually ran, per language", () => {
+    // Regression: the English path printed "Thai segmenter" because the registry entry
+    // names a family. For a receipt, an imprecise instrument is the defect itself.
+    const en = runCli(["receipt", "d.md"], { read: () => "He walked slowly. She felt sad.\n" });
+    expect(en.stdout).toContain("whitespace tokenizer");
+    expect(en.stdout).not.toContain("Thai segmenter");
+  });
+  it("is listed in help", () => {
+    expect(runCli(["help"]).stdout).toContain("rush receipt");
+  });
+});
+
+describe("rush cite", () => {
+  it("prints the ledger grouped by verification tier", () => {
+    const r = runCli(["cite"]);
+    expect(r.code).toBe(0);
+    expect(r.stdout).toContain("ตรวจแค่ไหน ไม่ใช่ดีแค่ไหน");
+    expect(r.stdout).toContain("ไม่ได้เปิดหน้าเอกสาร");
+  });
+  it("--recheck lists weakest first and excludes disputed", () => {
+    const r = runCli(["cite", "--recheck"]);
+    expect(r.stdout.indexOf("[memory]")).toBeLessThan(r.stdout.indexOf("[index]"));
+    expect(r.stdout).not.toContain("[disputed]");
+    expect(r.stdout).toMatch(/still want a primary source/);
+  });
+  it("--module filters, and says 'unaudited' rather than 'none' when empty", () => {
+    expect(runCli(["cite", "--module", "RECAP"]).stdout).toContain("BooookScore");
+    const none = runCli(["cite", "--module", "TRANSLATE"]);
+    expect(none.code).toBe(1);
+    expect(none.stderr).toContain("unaudited");
+  });
+  it("is listed in help", () => {
+    expect(runCli(["help"]).stdout).toContain("rush cite");
+  });
+});

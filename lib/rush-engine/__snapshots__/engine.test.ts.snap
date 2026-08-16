@@ -69,6 +69,15 @@ TENSION: ...  (fiction only)
 
 Keep STATE compact (≤ 250 words), newest facts first, plain facts only. Carry it forward chapter to chapter. If I paste a STATE block into a later prompt, treat it as the source of truth.
 
+Worked example (format to follow — content is illustrative only):
+<<<STATE>>>
+CHARACTERS: Anan — detective, now knows the key opens the warehouse; distrusts Dr. Lee. Mali — still missing, last seen at the docks.
+WORLD/FACTS: the warehouse sits under pier 3; the gang meets on new-moon nights.
+TIMELINE: night 4 since the disappearance.
+OPEN THREADS: who sent the photo; why the ledger page was torn.
+TENSION: rising — first direct threat received.
+<<<END STATE>>>
+
 ⚠ STATE is a working tool, not book content — before compiling/publishing, strip every <<<STATE>>> block and any prompt remnants from the manuscript (in 2025 several published authors were caught with forgotten prompts printed in their books).
 
 ═══ OUTPUT FORMAT ═══
@@ -600,8 +609,9 @@ Output the complete revised chapter (no commentary).",
 2. ISSUES TO ADDRESS: Unresolved questions, unsupported claims, tone inconsistencies, missing elements?
 3. INSTRUCTIONS FOR NEXT CHAPTER: What to build on, what to avoid repeating, what tone to maintain, specific improvements.
 4. QUALITY SCORES: Overall quality (0-1); ready for next chapter (yes/no); if no, what must be fixed first?
+5. FRESHNESS-DECAY CHECK (real AI-novel pipelines measure quality dropping after ~chapter 6): is this chapter falling into formula vs the early ones — repeated scene shapes, same opening/closing rhythms, recycled imagery? If yes, name the pattern the NEXT chapter must break.
 
-5. NON-FICTION-SPECIFIC: Thesis proof progress; evidence used; reader-journey milestone check; counter-arguments addressed.
+6. NON-FICTION-SPECIFIC: Thesis proof progress; evidence used; reader-journey milestone check; counter-arguments addressed.
 
 ═══ CHAPTER DRAFT TO ANALYZE ═══
 [INSERT COMPLETED CHAPTER HERE]",
@@ -661,10 +671,15 @@ Thesis: A premise worth testing
 
 Hierarchy (strongest → weakest): systematic review / meta-analysis > randomized controlled trial > cohort/longitudinal > case study > expert opinion > anecdote.
 
+REPLICATION CHECK (the layer most self-help sourcing skips): a claim can be RCT-grade AND dead — the grade tells you how it was tested, not whether it survived retesting. Worked example to teach from: the "power pose" hormonal claims (testosterone up, cortisol down; Carney, Cuddy & Yap 2010) failed a larger replication (Ranehill et al. 2015) and were publicly disavowed by the study's own first author in 2016 — yet they still circulate in wellness content today, often with the failed replication rewritten as a confirmation. For any load-bearing claim: search "<claim> replication" before citing.
+
+PRECISION RED FLAGS — the fingerprint of manufactured evidence: (a) suspiciously exact percentages tied to prestigious journals without a findable paper ("reduces anxiety 35%, JAMA 20XX"); (b) effect sizes far larger than the field's norm; (c) mechanisms stated as certainties ("raises testosterone 15-20%"); (d) a real technique carrying an invented number (the technique's realness launders the statistic). Rule: keep the technique if independently sourced, STRIP the number unless the primary paper is in hand.
+
 Output:
-1. EVIDENCE TABLE: each claim | the support it currently rests on | its grade on the hierarchy.
+1. EVIDENCE TABLE: each claim | the support it currently rests on | its grade on the hierarchy | replication status if known.
 2. GAP REPORT: claims propped up only by anecdote/expert-opinion that need stronger support.
-3. For each gap, suggest what kind of source would raise the grade.
+3. RED-FLAG LIST: every suspiciously precise number, with keep-technique/strip-number verdicts.
+4. For each gap, suggest what kind of source would raise the grade.
 (If the topic is history/memoir/philosophy where this hierarchy doesn't apply, say so and switch to source-credibility criteria: primary vs. secondary, bias, corroboration.)
 
 ═══ DRAFT ═══
@@ -676,17 +691,77 @@ Output:
     "group": "nonfiction",
     "id": "PEDAGOGY",
     "name": "Pedagogy Pack",
-    "prompt": "Generate the PEDAGOGY layer for a chapter of "The Test Book" (textbook / how-to / instructional nonfiction).
+    "prompt": "PEDAGOGY LAYER for a chapter of "The Test Book" — instructional nonfiction (textbook / how-to / manual).
 
-Produce:
-1. LEARNING OBJECTIVES: 3-5 measurable objectives using Bloom's verbs (remember → understand → apply → analyze → evaluate → create), escalating across the book.
-2. WORKED EXAMPLE: one fully worked example demonstrating the chapter's key skill, step by step.
-3. RETRIEVAL PRACTICE: 4-6 end-of-chapter questions that force recall (not re-reading).
-4. SPACED CALLBACK: 1-2 questions that connect to a concept from an earlier chapter.
-5. KEY TAKEAWAYS: 3 one-line summaries.
+THE FAILURE THIS MODULE EXISTS TO FIX: the reader finishes the chapter, agrees with every sentence, and still cannot DO the thing. That is not a clarity problem and more explaining will not cure it. A chapter that ends in comprehension ends in nothing checkable; a chapter must end in a CAPABILITY the reader can demonstrate. Everything below is ordered by that.
 
-═══ CHAPTER TOPIC ═══
-[INSERT CHAPTER TOPIC / CONTENT HERE]",
+Reader (write for this person, not for a general audience): QA engineers
+Book thesis the chapter must serve: A premise worth testing
+Chapter budget: ~3000 words, chapter {n} of 6 · diy
+
+━━ STEP 1 · THE CAPABILITY SENTENCE (write this before any prose) ━━
+"After this chapter, QA engineers can [VERB] [OBJECT] [under these conditions] [to this standard]."
+The verb must name something an observer could watch happen. If the only verb that fits is understand / know / appreciate / be aware of, the chapter has a TOPIC, not a capability — go back and find the action the topic is for. Standard means a signal the reader can check alone: the output has these three parts, the number balances, the dough passes the windowpane test, the script runs without error.
+One capability per chapter. A chapter with four is four chapters.
+
+━━ STEP 2 · THE DEMONSTRATION TASK (write it SECOND, before the explanation) ━━
+The task that would prove the capability. State the inputs the reader will have, the artifact they will produce, and the SUCCESS SIGNAL that tells them it worked — plus the FAILURE SIGNAL, i.e. what a wrong result looks like. Then write the chapter backwards from this task and cut every paragraph that does not serve it.
+
+━━ STEP 3 · THE WORKED EXAMPLE, THEN THE FADE ━━
+Give the solution before you demand one. Novices learning from studied worked examples outperform novices told to solve the equivalent problems themselves — the worked example effect (Sweller & Cooper 1985; Sweller 1988, Cognitive Science 12(2), cognitive load theory). Produce THREE items in sequence, not one:
+  (a) FULL WORKED EXAMPLE — exact shape:
+        GIVEN: the concrete starting inputs, with real values. No "let x be a value".
+        GOAL: the finished artifact, described so the reader can recognise it.
+        STEP n: the action · the actual substitution or keystroke · WHY THIS STEP (one line — the rule it comes from)
+        WRONG TURN: the mistake most people make at this step, shown wrong, then corrected.
+        RESULT: the finished artifact in full, so the reader can compare theirs to it.
+      The WHY line is not decoration. Learners who explain each step's rationale to themselves gain more from examples than those who read them through (Chi et al. 1989, self-explanation effect) — the line exists to prompt that explanation.
+  (b) FADED TWIN — same procedure, new inputs, LAST step blank for the reader to complete. Then a version with the last two blank.
+  (c) FULL PROBLEM — new inputs, nothing given, answer at the back.
+Fade on purpose: the same guidance that helps a novice stops helping and can hurt once the reader has the schema (expertise reversal effect, Kalyuga, Ayres, Chandler & Sweller 2003). A book that worked-examples chapter 12 as heavily as chapter 1 is padding.
+
+━━ STEP 4 · RETRIEVAL PRACTICE (the end of the chapter, not an appendix) ━━
+Retrieval beats rereading for durable retention (Roediger & Karpicke 2006, Psychological Science 17(3):249-255; meta-analyses: Rowland 2014, Psychological Bulletin 140(6); Adesope, Trevisan & Sundararajan 2017, Review of Educational Research). Dunlosky et al. 2013 (Psychological Science in the Public Interest 14(1)) rate practice testing and distributed practice HIGH utility, and rereading and highlighting — the two things books actually train readers to do — LOW.
+Write 4-6 items in this exact shape:
+    CLOSED BOOK. (say it — the instruction is the intervention)
+    PROMPT: a question that requires PRODUCING the answer, not recognising it. No multiple choice.
+    ANSWER LENGTH: one sentence, or one worked line.
+    ANSWER + WHY: placed at the end of the chapter or the back of the book, never on the same spread.
+Cover all four item types: (1) state the term in your own words; (2) run the procedure on inputs never shown; (3) decide WHICH procedure applies to a described situation; (4) here is a broken example — find the error.
+One caveat to honour: Roediger & Karpicke found that on an IMMEDIATE test restudying actually beat testing; the advantage of retrieval appeared at a delay. So do not promise the reader an instant feeling of mastery, and put the real check after a gap.
+
+━━ STEP 5 · SPACING AND INTERLEAVING ━━
+SPACED CALLBACK: 1-2 items reaching back to an earlier chapter. Distributed practice beats massed practice, and the best gap grows with how long you want the material to last (Cepeda, Pashler, Vul, Wixted & Rohrer 2006, Psychological Bulletin 132 — 317 experiments; interstudy interval and retention interval act jointly). Practical schedule for a 6-chapter book: revisit each capability once about three chapters later, once near the end, and once in the closing chapter — as a task, never as a summary paragraph.
+INTERLEAVING, with its real limits: mixing problem types beats blocking them (Rohrer & Taylor 2007, Instructional Science 35). But the meta-analysis says it is conditional — a moderate overall effect (Brunmair & Richter 2019, Psychological Bulletin 145(11), Hedges' g ≈ 0.42) that is strong for visual/category material, small for mathematics, ambiguous for expository text, and REVERSED for word learning, where blocking won. Interleave discriminable procedures the reader will have to choose between; block a single procedure being installed for the first time.
+And expect it to feel worse: conditions that slow visible performance can improve durable learning — desirable difficulties (Bjork 1994; Soderstrom & Bjork 2015, Perspectives on Psychological Science 10(2)). Warn the reader in the book, or they will read your hard chapter as a badly written one.
+
+━━ DO NOT BUILD THE BOOK ON THESE ━━
+· LEARNING STYLES (visual / auditory / kinesthetic; "some readers are visual learners, so this chapter is illustrated"). The meshing claim — that matching instruction to a stated preference improves learning — requires a crossover interaction, and Pashler, McDaniel, Rohrer & Bjork (2008, Psychological Science in the Public Interest 9(3):105-119) found "no adequate evidence base to justify incorporating learning-styles assessments into general educational practice." Direct tests since (Rogowsky, Calhoun & Tallal 2015; and again with children, 2020) found no crossover. Preferences are real; the payoff is not. Vary format because the CONTENT wants a diagram, never because a reader "is a visual learner."
+· THE LEARNING PYRAMID / "we remember 10% of what we read, 20% of what we hear, 90% of what we teach." Traced: Edgar Dale's Cone of Experience (1946, 1954, 1969) contains NO percentages — Dale offered it as a classification from concrete to abstract, explicitly not a rank order of learning. The numbers were welded on later, circulated via Treichler (1967) and NTL Institute, which, asked for its evidence, replied that it no longer had and could not find the original research. Letrud & Hernes (2018, Cogent Education 5(1)) traced versions of the pyramid back more than 160 years and concluded it did not originate in empirical research at all. Never print these numbers. If your book's structure depends on them, the structure is decoration.
+· THE 10,000-HOUR RULE as a promise. Practice matters; the meta-analysis of deliberate practice across music, games, sports, education and professions (Macnamara, Hambrick & Oswald 2014, Psychological Science 25) found it explains far less of the variance in performance than the popular rule implies, and least of all in professional domains. Give the reader a practice schedule, not an hour count that guarantees mastery.
+· BLOOM'S TAXONOMY, used as a law. It is an organizing vocabulary (Bloom et al. 1956; revised Anderson & Krathwohl 2001), not an empirical finding, and the strict cumulative hierarchy is not supported — the revision itself relaxed it, and empirical probes of the revised taxonomy's internal assumptions find the knowledge-type and cognitive-process dimensions are not independent (Larsen, Endo, Yee, Do & Lo 2022, CBE—Life Sciences Education 21(4)). USE its verbs, because they force you to name an observable action. Do NOT claim your chapters climb a validated ladder.
+· COGNITIVE LOAD THEORY — take the instructional effects, hold the theory loosely. The worked example, split-attention, redundancy and expertise-reversal effects are replicated instructional findings. The underlying load construct is contested: critics note there is no independent measure of load, so it is often inferred from the very test scores it is meant to explain. Cite the effect, not the mechanism.
+
+━━ OUTPUT ━━
+1. CAPABILITY SENTENCE (one line, observable verb, stated standard).
+2. DEMONSTRATION TASK with success signal and failure signal.
+3. WORKED EXAMPLE in the GIVEN / GOAL / STEP+WHY / WRONG TURN / RESULT shape, then the faded twin, then the unaided problem.
+4. RETRIEVAL SET: 4-6 items in the CLOSED BOOK / PROMPT / ANSWER LENGTH / ANSWER+WHY shape, covering all four item types.
+5. SPACED CALLBACK: 1-2 items from named earlier chapters, plus where in the book each capability is revisited.
+6. CUT LIST: every part of the current draft that serves neither the demonstration task nor a retrieval item.
+7. PREREQUISITE CHECK: what the reader must already be able to do, and which earlier chapter installed it. If nothing did, say so — a chapter resting on an uninstalled prerequisite is the most common reason readers "can't follow."
+
+━━ HONESTY RULES ━━
+- NEVER cite a retention percentage you cannot trace to a named study you have in hand. "People remember X% of what they Y" has no sourceable origin (see the pyramid above); writing it makes every other claim in your book cheaper.
+- Cite instructional EFFECTS by paper and year, not by folk name. "Studies show" is not a citation; render real ones in none and mark anything unverified [VERIFY].
+- Distinguish established from contested IN THE TEXT: retrieval practice and spacing are heavily replicated; interleaving is conditional on material; cognitive load theory's mechanism is disputed. A reader who later learns you flattened this stops trusting the parts that were true.
+- Do not promise outcomes ("master this in 30 days", "3x faster learning"). You cannot observe the reader; any number about their future performance is invented.
+- Emit NO scores. No difficulty rating, no comprehension score, no readability grade sold as learning, no predicted completion or mastery percentage. Report present-or-absent facts instead: capability sentence present/absent, worked example present/absent, retrieval items count, spaced callbacks count, prerequisites unmet (list).
+- What you can check from the chapter is whether the parts exist. Whether the reader learned is measured on readers, not on the manuscript — say so rather than estimating it.
+- If the chapter genuinely has no demonstrable capability (a history chapter, an orientation chapter), say THAT and drop the layer. Do not manufacture an exercise to fill the slot.
+
+═══ CHAPTER TOPIC / DRAFT ═══
+[INSERT CHAPTER TOPIC OR DRAFT HERE]",
     "usage": "Run per chapter for textbook/how-to.",
   },
   {
@@ -776,6 +851,15 @@ Act 3: Climax & Resolution: บท 4-6 — Dark night, climax, resolution
 <<<END STATE>>>
 
 เขียน STATE ให้กระชับ (≤ 250 คำ) ข้อเท็จจริงใหม่ขึ้นก่อน เป็นข้อเท็จจริงล้วน ส่งต่อจากบทสู่บท ถ้าผู้ใช้วางบล็อก STATE มาในพรอมป์ตถัดไป ให้ถือเป็นแหล่งความจริง
+
+ตัวอย่างที่กรอกแล้ว (ทำตามรูปแบบนี้ — เนื้อหาเป็นเพียงตัวอย่าง):
+<<<STATE>>>
+ตัวละคร: อนันต์ — นักสืบ ตอนนี้รู้แล้วว่ากุญแจเปิดโกดัง; ไม่ไว้ใจหมอลี · มาลี — ยังหายตัว พบร่องรอยล่าสุดที่ท่าเรือ
+โลก/ข้อเท็จจริง: โกดังอยู่ใต้ท่าที่ 3; แก๊งนัดพบคืนเดือนมืด
+เส้นเวลา: คืนที่ 4 หลังการหายตัว
+ปมที่ค้าง: ใครส่งรูปถ่ายมา; ทำไมหน้าบัญชีถูกฉีก
+ความตึงเครียด: ไต่ขึ้น — ได้รับคำขู่ตรงครั้งแรก
+<<<END STATE>>>
 
 ⚠ STATE เป็นเครื่องมือทำงาน ไม่ใช่เนื้อหาหนังสือ — ตอนรวมเล่ม/ตีพิมพ์ ต้องลบบล็อก <<<STATE>>> และร่องรอย prompt ทุกชิ้นออกจากต้นฉบับ (ปี 2025 มีนักเขียนหลายรายถูกจับได้เพราะลืม prompt ไว้ในเล่มพิมพ์จริง)
 
@@ -1232,8 +1316,9 @@ Act 3: Climax & Resolution: บท 4-6 — Dark night, climax, resolution
 2. ปัญหาที่ต้องจัดการ: คำถามค้าง ข้ออ้างไร้หลักฐาน น้ำเสียงไม่สม่ำเสมอ องค์ประกอบที่ขาด
 3. คำสั่งสำหรับบทถัดไป: ต่อยอดอะไร เลี่ยงเล่าซ้ำอะไร คงโทนแบบไหน ปรับปรุงอะไร
 4. คะแนนคุณภาพ: ภาพรวม (0-1); พร้อมไปบทถัดไปไหม; ถ้าไม่ ต้องแก้อะไรก่อน
+5. เช็ค "ความสดเสื่อม" (freshness decay — pipeline นิยาย AI จริงวัดได้ว่าคุณภาพเริ่มตกหลังบทที่ ~6): บทนี้เริ่มติดสูตรเดิมเทียบกับบทแรก ๆ ไหม — โครงฉากซ้ำ จังหวะเปิด/ปิดซ้ำ ภาพเปรียบวนซ้ำ ถ้าใช่ ระบุแพทเทิร์นที่ต้องแหกในบทถัดไป
 
-5. เฉพาะนิยาย: สถานะตัวละครตอนจบบท; ระดับ/ทิศทางความตึงเครียด; ปมที่ค้าง; การปูเรื่อง (foreshadowing)
+6. เฉพาะนิยาย: สถานะตัวละครตอนจบบท; ระดับ/ทิศทางความตึงเครียด; ปมที่ค้าง; การปูเรื่อง (foreshadowing)
 
 ═══ ดราฟต์บทที่จะวิเคราะห์ ═══
 [วางบทที่เขียนเสร็จที่นี่]",
@@ -1284,7 +1369,14 @@ Act 3: Climax & Resolution: บท 4-6 — Dark night, climax, resolution
 3. ระบุบทที่เป็นเหตุการณ์จุดประกาย จุดกึ่งกลาง และจุดสุดยอด
 4. แต่ละบท: "คำสัญญา" หนึ่งบรรทัด + hook ท้ายบท
 
-รูปแบบ: เขียนหนึ่งบรรทัดต่อบทเป็น "N. <beat>" (เช่น "1. ...", "2. ...") เพื่อวางลงช่อง Outline แล้วระบบจะ map เข้าแต่ละบทอัตโนมัติ",
+รูปแบบ: เขียนหนึ่งบรรทัดต่อบทเป็น "N. <beat>" (เช่น "1. ...", "2. ...") เพื่อวางลงช่อง Outline แล้วระบบจะ map เข้าแต่ละบทอัตโนมัติ
+
+5. ตรวจ BUT/THEREFORE (กฎ Parker & Stone): อ่าน outline เป็นลูกโซ่ — ทุกคู่ beat ที่ติดกันต้องเชื่อมด้วย "เพราะฉะนั้น" (เหตุ-ผล) หรือ "แต่" (พลิกผัน) ทำเครื่องหมายและแก้ทุกข้อต่อที่เป็น "แล้วก็" — ตรงนั้นคือจุดที่เรื่องเล่าหยุดเป็นเรื่องเล่าแล้วกลายเป็นรายการเหตุการณ์
+6. ถ้ามีหลายเส้นเรื่อง ให้ติดป้าย A/B/C ทุก beat (A = เส้นหลัก beat มากสุด; B = เส้นขนานที่มักถือแก่นเรื่อง; C = runner คลายเครียด) และเช็คว่าไม่มีเส้นไหนเงียบเกิน 3 บทติด
+
+ข้อมูลจาก streaming (Netflix hook study): ผู้อ่าน/ผู้ชมแทบไม่เคยติดที่ตอนเปิด — ตอน 2-4 คือตัวตรึงจริง: บทแรกซื้อความสนใจ บท 2-4 ต้องเปลี่ยนเป็นความผูกพัน
+
+อะไรข้ามจากจอมาได้ (งานวิชาการด้าน adaptation, McFarlane): beat โครงเรื่อง และรูปองก์ ข้ามสื่อได้ — ยืมมาใช้เต็มที่แบบที่โมดูลนี้ทำ แต่ เสียงเล่า มุมมอง และความคิดในใจ ไม่มีอยู่บนจอ — นี่คือแต้มต่อเฉพาะของนิยาย ดังนั้น: วางโครงแบบทีวี แต่จงใช้พลังเฉพาะของ prose ที่จอแตะไม่ได้ อย่าลดทอนความคิดในใจเพื่อเลียนแบบบทหนัง",
     "usage": "รันก่อนเขียนเพื่อวางแผนทั้งเล่ม",
   },
   {
@@ -1342,6 +1434,7 @@ Act 3: Climax & Resolution: บท 4-6 — Dark night, climax, resolution
 จัดเป็นหมวด (ใส่เฉพาะที่เกี่ยว):
 - ฉาก: สถานที่ ภูมิศาสตร์ ยุคสมัย บรรยากาศ
 - กฎ: โลกทำงานอย่างไร และ "ขีดจำกัด" (อะไรเป็นไปไม่ได้)
+  ใช้กฎ Sanderson กำกับ (จาก essay ของเขาเอง 2007-2013): ข้อหนึ่ง — "ความสามารถของผู้เขียนในการคลี่ปมด้วยเวทมนตร์ แปรผันตรงกับความเข้าใจของผู้อ่านต่อเวทมนตร์นั้น" (พลังที่ไม่อธิบาย สร้างความอัศจรรย์ได้ แต่ห้ามใช้แก้ปม) · ข้อสอง — "ขีดจำกัด > พลัง" (สิ่งที่เวทมนตร์ทำไม่ได้ น่าสนใจกว่าสิ่งที่ทำได้) · ข้อสาม — ขยายของที่มีให้ลึก ก่อนเพิ่มของใหม่ (โยงระบบเข้ากับวัฒนธรรม เศรษฐกิจ นิเวศ) เขาเรียกมันว่าแนวทาง ไม่ใช่กฎ — ละเมิดได้ถ้าตั้งใจ ห้ามละเมิดเพราะเผลอ
 - กลุ่ม/ฝ่าย: ชื่อ เป้าหมาย ความสัมพันธ์
 - วัตถุ/ตำนานสำคัญ
 - เส้นเวลาเหตุการณ์ใหญ่
@@ -1412,6 +1505,7 @@ POV: [ ] · เป้าหมาย: [ ] · อุปสรรค: [ ] · ต�
 - ห้ามจบแบบปลอบใจ/เรียบร้อย ห้ามสรุป "บทเรียน" ห้าม "ทุกอย่างดีขึ้น"
 - ยกระดับความขัดแย้ง: ตัวละครต้องเสีย/เสี่ยงบางอย่างจริง ทุกการเลือกมีราคา
 - ตัด "theater": การยกยอตัวเอง เมโลดราม่า อารมณ์โต้ง ๆ ผู้เล่าสั่งสอน
+- แบนชื่อและเฟอร์นิเจอร์ stock ของ AI — วัดมาแล้ว ไม่ใช่คำเล่าลือ: ใน 20,000 เรื่องที่ LLM แต่ง มี 11 คำ stock (Elias, Elara, ประภาคาร, ช่างนาฬิกา...) โผล่ใน 88.3% ของเรื่อง (arXiv:2605.26492) และ output ของโมเดลเกาะกลุ่มแทบเหมือนกันเมื่อวัดที่สเกลใหญ่ (NeurIPS 2025 "Artificial Hivemind") ถ้าชื่อหรือฉากรู้สึกเหมือนสัญชาตญาณแรกของโมเดล — มันใช่ จงเรียกทางเลือกที่สามที่สี่ หรือชื่อไทยเฉพาะถิ่น
 - แบนคำคลิเช AI ทางอารมณ์ — แสดงผ่านการกระทำ/ภาษากายเฉพาะแทน เช่น "น้ำตาไหลริน", "หัวใจบีบรัด/สลาย", "รอยยิ้มอบอุ่น", "ความรู้สึกท่วมท้น", "ใจหายวาบ"
 - ยอมให้คลุมเครืออย่างมีเหตุผลแทนบทสรุปสวยงาม ปล่อยให้ผลของการกระทำคงอยู่
 
@@ -1448,6 +1542,14 @@ POV: [ ] · เป้าหมาย: [ ] · อุปสรรค: [ ] · ต�
     "name": "Immersion / Deep-POV Pass",
     "prompt": "เขียนฉากใหม่เพื่อดึงผู้อ่านเข้าไป "ข้างใน" ประสบการณ์ของตัวละคร POV (deep POV / การขนส่งผู้อ่าน) คงพล็อต ข้อเท็จจริง และความหมายบทสนทนาไว้ — เปลี่ยนแค่ระยะใกล้ ไม่ใช่เปลี่ยนเหตุการณ์
 
+ระยะจิต (psychic distance — Gardner, The Art of Fiction 1983 — บันไดที่ทั้งโมดูลนี้ไต่):
+  ขั้น1 "ฤดูหนาวปี 1853 ชายร่างใหญ่ก้าวออกจากประตู"
+  ขั้น2 "เฮนรี เจ. วอร์เบอร์ตัน ไม่เคยชอบพายุหิมะนัก"
+  ขั้น3 "เฮนรีเกลียดพายุหิมะ"
+  ขั้น4 "ให้ตายสิ เขาเกลียดพายุหิมะบ้านี่"
+  ขั้น5 "หิมะ ใต้ปกเสื้อ ในรองเท้า เย็นเยียบ อุดตันวิญญาณอันน่าสังเวช..."
+  กฎ: "ไถล" ระหว่างขั้น อย่ากระโดด (ขั้น1→4 ในบรรทัดเดียว = มือสมัครเล่น) เปิดฉากกว้าง (1-2) ลงลึกสุด (4-5) ตรงอารมณ์พีค ถอยออกตอนเปลี่ยนผ่าน · สิ่งที่งานวิจัยเสริม (van Laer et al. 2014, meta 76 งาน): คันโยกดึงผู้อ่านที่วัดได้สามตัวคือ ตัวละครที่ระบุตัวตนได้ พล็อตที่เห็นภาพ และความสมจริง — ตรงกับขั้นตอนด้านล่างพอดี
+
 ทำครบทั้งห้า:
 1. ปักหมุดเร็ว — ภายใน 2-3 ประโยคแรก ตรึงผู้อ่านไว้กับสถานที่/ร่างกาย/ขณะนั้น ด้วยรายละเอียดรูปธรรมหนึ่งอย่าง (ไม่ใช่เปิดด้วยพยากรณ์อากาศหรือเกริ่นลอย ๆ)
 2. ตัดกริยากรอง — เอากริยาที่ถอยระยะออก (เห็น / ได้ยิน / รู้สึก / สังเกต / ตระหนัก / มองเห็น) แล้วเล่าการรับรู้ตรง ๆ "เธอได้ยินเสียงประตูลั่นเอี๊ยด" → "ประตูลั่นเอี๊ยด"
@@ -1457,11 +1559,70 @@ POV: [ ] · เป้าหมาย: [ ] · อุปสรรค: [ ] · ต�
 
 กฎ: ไม่พรรณนาเว่อร์หรือสัมผัสคลิเช รายละเอียดที่เติมต้องทำหน้าที่คู่ (อารมณ์/ตัวละคร/แก่นเรื่อง) ห้ามเพิ่มเหตุการณ์ที่ดราฟต์ไม่ได้บอกใบ้ไว้
 
+แบบฝึกแปลง — ทุกบรรทัดที่ "ตั้งชื่ออารมณ์" ("เธอรู้สึกถูกหักหลัง") ให้เขียนใหม่เป็นห่วงโซ่พฤติกรรม: การกระทำรูปธรรม 3-5 อย่าง + พร็อพหนึ่งชิ้น + ฉากที่ช่วยทำงาน ("เธอหยิบรูปคู่จากกระเป๋าสตางค์ ฉีกเป็นสองชิ้น วางลงบนโต๊ะฝั่งของเขา") ห่วงโซ่ต้องอ่านแล้ว "เป็น" อารมณ์นั้นโดยไม่ต้องติดป้าย — เทคนิคนี้มีวิชาการหนุนหลังนับร้อยปี: OBJECTIVE CORRELATIVE ของ T.S. Eliot (1919): "ชุดวัตถุ สถานการณ์ ห่วงโซ่เหตุการณ์ ที่เป็นสูตรของอารมณ์นั้นโดยเฉพาะ... เมื่อข้อเท็จจริงภายนอกถูกวางลง อารมณ์จะถูกปลุกขึ้นทันที" — คอร์สแปลงบทละครสั้นยุคใหม่สอนท่าเดียวกันนี้ในฐานะจุดอ่อนอันดับหนึ่งของนักเขียน prose
+วินัยพร็อพ — วัตถุหนึ่งชิ้น ปรากฏสามครั้ง เปลี่ยนไปทุกครั้ง ระเบิดหนึ่งครั้ง พร็อพที่ถูกตามรอยแบกความหมายแทนการบรรยายเยิ่นเย้อ (ปืนของเชคอฟ — จากจดหมายของเขาเอง ปี 1889: "อย่าวางปืนไรเฟิลที่บรรจุกระสุนไว้บนเวที ถ้าไม่คิดจะให้มันลั่น" — × กฎเลขสาม) การเปลี่ยนครั้งสุดท้ายควร "ย้อนกลับไม่ได้" — เผา ฉีก ส่งไปรษณีย์ เททิ้ง — เพราะจุดที่หวนคืนไม่ได้นั่นแหละคือจังหวะอารมณ์ การเปลี่ยนที่ย้อนได้เป็นแค่การหยิบจับของ
+รักษาแต้มต่อของนิยาย — ความคิดภายในคือสิ่งที่ prose มีแต่จอไม่มี (งานวิชาการ adaptation) แบบฝึกนี้ใช้กับบรรทัดที่ "การตั้งชื่อ" มาแทน "การแสดง" ไม่ใช่คำสั่งห้ามชีวิตภายใน — แปลงเฉพาะบรรทัดบอกเล่าที่อ่อนสุด เก็บความคิดภายในที่คู่ควรกับที่ของมันไว้
+
 ผลลัพธ์: ฉากที่เขียนใหม่ ตามด้วยบันทึกการแก้ 3-5 บรรทัด ระบุกริยากรองที่ตัดและปมที่เปิด
 
 ═══ ดราฟต์ ═══
 [วางฉากที่นี่]",
     "usage": "ส่งฉากเพื่อดึงผู้อ่านเข้าไปข้างใน",
+  },
+  {
+    "description": "ตรวจพรีมิสไซไฟกับฟิสิกส์ 7 ข้อที่ต่อรองไม่ได้ แล้วขุดฉากที่ข้อจำกัดบังคับให้เกิด",
+    "group": "craft",
+    "id": "HARD_SF",
+    "name": "Hard-SF Constraint Pass",
+    "prompt": "ตรวจพรีมิสไซไฟกับฟิสิกส์ที่ต่อรองไม่ได้ แล้วขุด "ฉาก" ที่ข้อจำกัดแต่ละข้อบังคับให้เกิด วิทยานิพนธ์: ข้อจำกัดไม่ใช่กรง มันคือเครื่องยนต์ของเรื่อง (ตรรกะเดียวกับกฎข้อสองของ Sanderson ใน WORLD_CODEX — ขีดจำกัดน่าสนใจกว่าพลัง)
+
+เจ็ดข้อที่ไม่ยืดหยุ่น (ระบุว่าเรื่องคุณเชื่อฟังข้อไหน และข้อไหนที่ "ตั้งใจ" ละเมิด):
+1. ไม่มี FTL — เวลาเดินทาง = ระยะทาง ÷ ความเร็ว การเร่งมวลถึงความเร็วแสงต้องใช้พลังงานอนันต์ ดราม่า: เดินทาง 40 ปีแสง แปลว่าทุกคนที่คุณรู้จักตายไปแล้วเมื่อคุณถึง — การเดินทางเองคือความสูญเสีย
+2. ไม่มีสัญญาณเร็วกว่าแสง — ข้อความวิ่งที่ c "ทั้งไปและกลับ" ดราม่า: คำสั่งจากบ้านเก่าแล้วตั้งแต่มาถึง คำว่า "สวัสดี" ราคาสองเท่าของระยะทางเป็นปี จะเชื่อฟังคำสั่งที่ออกก่อนคุณเกิดไหม
+3. สมการจรวดเป็นเอกซ์โพเนนเชียล — Δv = vₑ·ln(m₀/m_f) เพิ่มความเร็วเป้าหมายสองเท่า ไม่ได้แปลว่าเชื้อเพลิงสองเท่า แต่อาจหลายร้อยเท่า นี่คือเหตุผลที่ยานข้ามดาวจริง ๆ เป็นถังเชื้อเพลิงเกือบทั้งลำ ดราม่า: ภารกิจเป็นเที่ยวเดียวเพราะเลขคณิต ไม่ใช่เพราะเลือก
+4. รังสีคือตัวละครหนึ่งตัว — อวกาศลึกมีอัตรารังสีราวพันเท่าพื้นหลังของโลก การกำบังนับเป็นมวลต่อพื้นที่ (g/cm²) และวัสดุที่มีไฮโดรเจนมาก (น้ำ พอลิเอทิลีน) กำบังดีกว่าตะกั่ว เพราะธาตุหนักสร้างอนุภาคทุติยภูมิซ้ำ น้ำที่ใช้กำบังคือน้ำดื่มด้วย — รูรั่วหนึ่งรูบังคับให้เลือก "กำบัง หรือ ดื่ม" ดราม่า: ทุกกรัมที่ป้องกัน คือกรัมที่เอาไปเป็นเชื้อเพลิงไม่ได้
+5. ปริมาณรังสีเป็นขั้นบันได ไม่ใช่ลูกบิด — เจ็บป่วยเล็กน้อย → ช่วงกลางที่รอดได้แต่โหดร้าย (สัปดาห์ของไขกระดูกล้ม ติดเชื้อ ผมร่วง) → เกือบตายแน่นอน ของขวัญสำหรับนักเขียนคือ "ระยะแฝง": ชั่วโมงถึงวันที่ผู้ป่วยรู้สึก "ปกติ" ทั้งที่ความเสียหายเกิดไปแล้ว ไม่ต้องมีใครบอกว่าเขากำลังจะตาย — ผู้อ่านรู้ก่อน
+6. Time dilation มีจริงแต่ขี้เกียจ — γ = 1/√(1−v²/c²) แทบไม่ขยับใต้ ~0.3c ที่หนึ่งในสิบของความเร็วแสง การเดินทาง 400 ปีต่างจากเวลาที่บ้านราวสองปี ดราม่า: มันไม่ใช่ทางหนีอย่างที่หนังทำให้เชื่อ — แต่สองปีก็พอให้รัฐบาลล้ม สงครามเริ่ม หรือภารกิจถูกลืม
+7. ความน่าจะเป็นทบต้น — ล้มเหลว 3% ต่อรอบ cryo คูณ 200 รอบ ไม่ใช่ 6% แต่คือรอดชีวิต 0.97²⁰⁰ ≈ 0.2% ระบบเสี่ยงซ้ำ ๆ ต้องคิดแบบคูณ ไม่งั้นยอดศพผิดสองชั้น ดราม่า: คณิตศาสตร์บังคับให้กัปตันเลือกว่าใครได้นอน
+
+วิธีทำ:
+ก. จัดระดับเรื่อง: ULTRA-HARD (ไม่มีปาฏิหาริย์) / HARD (ปาฏิหาริย์หนึ่งอย่างที่ตั้งชื่อได้ ที่เหลือเชื่อฟังหมด) / SOFT (เอาความเท่) ทั้งสามชอบธรรม — สิ่งที่ทำลายความไว้ใจคือ "ไม่ประกาศ"
+ข. ลิสต์ปาฏิหาริย์ทุกข้อที่เก็บไว้ หนึ่งข้อคือขนบของแนว สามข้อคือแฟนตาซีใส่ชุดอวกาศ
+ค. ข้อจำกัดที่เรื่อง "เชื่อฟัง" แต่ละข้อ เขียนฉากที่มันบังคับให้เกิด: ข้อจำกัด → ราคา → การเลือก → ฉาก
+ง. ทำเครื่องหมายตัวเลขที่ต้องคงเส้นคงวา (เวลาเดินทาง ปริมาณรังสี เชื้อเพลิง ดีเลย์) แล้วใส่ลง story codex ให้บทหลัง ๆ ขัดกันเองไม่ได้
+
+กฎความซื่อสัตย์เมื่อใช้วิทยาศาสตร์จริงในนิยาย:
+- ระบบจริงใช้ชื่อจริงและขีดจำกัดจริง ตรงไหนที่คุณต่อเติมเอง ให้ "บอกไว้ใน codex" ไม่ใช่บอกผู้อ่านกลางฉาก
+- สถานที่จริงมาพร้อมความไม่แน่นอนจริง: TRAPPIST-1 (39.6 ปีแสง ดาวแคระแดงเย็นจัด เจ็ดดาวเคราะห์) มีจริงและปล่อยแฟลร์บ่อยจริง — แต่ดาวเคราะห์พวกนั้นยังมีบรรยากาศอยู่ไหม เป็นเรื่องที่ยังถกกันอยู่ ไม่ใช่ข้อยุติ เขียนดาวที่คุณต้องการได้ แต่บันทึกใน codex ว่าอากาศบนนั้นเป็นของที่คุณแต่ง
+- ห้ามกุการอ้างอิง ตัวเลขปริมาณรังสี หรือเปอร์เซ็นต์การรอดชีวิต เพื่อให้ฟังดูเข้มงวด ตัวเลขที่ผู้อ่านตรวจสอบได้หนึ่งตัว มีค่ากว่าตัวเลขที่แค่ฟังดูแม่นสิบตัว
+
+ผลลัพธ์: ผลตรวจข้อจำกัด (ข้อไหนผูก ข้อไหนละเมิดและทำไม) · รายการปาฏิหาริย์ · ฉากที่ถูกบังคับหนึ่งฉากต่อข้อจำกัดที่ผูก · ตารางตัวเลขคงเส้นคงวาสำหรับ codex
+
+═══ พรีมิส / โน้ตโลก ═══
+[วางพรีมิสไซไฟที่นี่]",
+    "usage": "ส่งพรีมิสไซไฟเพื่อให้ข้อจำกัดสร้างดราม่า",
+  },
+  {
+    "description": "ชั้นเสียงร้อยแก้วไทย: คำซ้อนเพื่อเสียง สัมผัสใน คำซ้ำ ระดับภาษา บททดสอบอ่านออกเสียง",
+    "group": "craft",
+    "id": "THAI_SOUND",
+    "name": "Thai Sound Pass",
+    "prompt": "ปรับ "ชั้นเสียง" ของร้อยแก้วไทย — จังหวะและความไพเราะที่ตำรา craft ฝรั่งไม่เคยครอบคลุม คืนข้อความที่แก้แล้ว + บันทึกกลวิธี
+
+ที่มา บอกตรง ๆ: วิชาการไทย codify ชั้นนี้ไว้แบบ "พรรณนา" (หลักภาษาไทยของกำชัย ทองหล่อ แยก คำซ้อนเพื่อเสียง ออกจาก คำซ้อนเพื่อความหมาย · บรรทัดฐานภาษาไทย เล่ม 4 วางระบบระดับภาษา · วิทยานิพนธ์ลีลาภาษาวิเคราะห์ร้อยแก้วกวีของอังคาร กัลยาณพงศ์) — แต่ "คู่มือสอนเขียน" เชิงปฏิบัติของชั้นเสียงนี้ยังไม่มีใครทำ โมดูลนี้คือการ codify ครั้งแรกบนฐานแหล่งที่ระบุชื่อได้ กฎการใช้เป็นของเรา และประกาศไว้ตรงนี้ว่าเป็นของเรา
+
+กลวิธี (ใช้อย่างประหยัด — เสียงรับใช้ความหมาย):
+1. คำซ้อนเพื่อเสียงในฐานะเครื่องมือจังหวะ — คู่คำที่ซ้อนเพื่อความไพเราะ (ท้อแท้ อ้างว้าง แร้นแค้น เปล่าเปลี่ยว) ทำให้บรรทัดช้าลงและนุ่มลง ใช้ตรงจุดพักอารมณ์ ตัดทิ้งตรงที่จังหวะต้องวิ่ง — หนึ่งคู่ต่อประโยคเป็นเพดาน
+2. สัมผัสในร้อยแก้ว — สงวนไว้สำหรับ "จุดพีค" (ความตาย คำสาบาน ประโยคปิดเรื่อง) เกินราวหนึ่งเสียงสัมผัสต่อย่อหน้า ร้อยแก้วจะกลายเป็นร้อยกรอง และผู้อ่านจะหลุดจากเรื่อง
+3. คำซ้ำ — เพื่อพื้นผิวและลักษณะการกระทำ (เดินช้า ๆ, ใจเต้นตึก ๆ) คำซ้ำเลียนเสียงตรึงร่างกายไว้ในฉาก แต่ซ้อนคำซ้ำหลายชั้นติดกันจะอ่านเหมือนภาษาเด็ก
+4. ระดับภาษาคือเครื่องดนตรี (ฐาน: ระบบทางการ 5 ระดับ พิธีการ→กันเอง) — ส่วนบรรยายมักยืนระดับเดียวทั้งเรื่อง ส่วนบทสนทนาขยับตามตัวละครและตามแรงกดดัน ตัวละครที่ "ยกระดับความเป็นทางการขึ้น" ตอนอารมณ์พุ่ง คือร่องรอย (กลไกเดียวกับ "ความเป็นทางการคือร่องรอย" ใน HOOK_CRAFT แต่มาอยู่ที่ชั้นภาษาที่ภาษาไทยทำเครื่องหมายไว้จริง)
+5. บททดสอบอ่านออกเสียง (หลักของ Le Guin ข้ามภาษาได้: "บททดสอบของประโยคคือ มันฟังแล้วถูกไหม") — อ่านออกเสียง ตรงไหนลมหายใจขาดกลางวรรค หรือพยางค์หนักสองพยางค์ชนกัน ให้เขียนรอยต่อนั้นใหม่
+
+ผลลัพธ์: ข้อความที่แก้แล้ว · บันทึกกลวิธี (ใช้อะไร ตรงไหน เพราะอะไร) · หนึ่งบรรทัดระบุจุดที่คุณ "ตัด" การเล่นเสียงออก เพราะมันร้องกลบฉาก
+
+═══ ร้อยแก้วภาษาไทย ═══
+[วางร้อยแก้วภาษาไทยที่นี่]",
+    "usage": "ส่งร้อยแก้วไทยเพื่อปรับจังหวะและความไพเราะ",
   },
   {
     "description": "ศาสตร์ hook ท้ายตอน (5 ประเภท + hybrid) และความยับยั้ง — almost moment, สิ่งที่เขาไม่ทำ, ร่างกายทรยศทีหลัง",
@@ -1478,12 +1639,22 @@ POV: [ ] · เป้าหมาย: [ ] · อุปสรรค: [ ] · ต�
 5. ร่างกายสะท้อน — ร่างกายเก็บสิ่งที่ไม่ได้พูด (ไหล่ที่ยังอุ่น มือที่เย็นลง)
 Hybrid — เหตุการณ์เล็ก + ปฏิกิริยาอารมณ์ + สิ่งที่ยังค้าง
 
+act-out กลางบท (จากศาสตร์ act break ของทีวี): บทยาวควรมี "หน้าผาภายใน" 1-2 จุดกลางบท — จบฉาก/ตอนย่อยด้วยคำถามที่ส่วนถัดไปต้องตอบ นักเขียนบททีวีวางแผน act-out ก่อนสิ่งอื่นเพราะมันกำหนดวิถีของทุกอย่างที่มาก่อนหน้า
+
+วิทยาศาสตร์ที่หนุนจริง (ทุกข้อตรวจสถานะ replication แล้ว):
+- ความอยากรู้คือช่องว่างข้อมูล (Loewenstein 1994; Kang et al. 2009): ความอยากรู้พีคที่ความรู้ "บางส่วน" — โค้งรูประฆังคว่ำ ความรู้ศูนย์ = ความอยากรู้ศูนย์ ดังนั้น hook ที่ดี "ให้" ข้อมูลเพื่อเปิดช่องว่าง — การกั๊กล้วน ๆ คือเวอร์ชันมือสมัครเล่น
+- ห่วงใยก่อนอันตราย (disposition theory, Zillmann): ความลุ้น = ความกลัวแทนตัวละครที่ "รัก" อันตรายต่อคนที่ผู้อ่านยังไม่ผูกพันคือเสียงรบกวน ไม่ใช่ความตึง
+- ความลุ้นรอดสปอยล์ (anomalous suspense, Gerrig): ผู้อ่านลุ้นแม้อ่านซ้ำ/รู้ตอนจบ — foreshadowing และการเผยบางส่วนจึงปลอดภัยกว่าที่สัญชาตญาณบอกมาก
+- แก้ความเชื่อผิด: คำอธิบายยอดนิยมว่า cliffhanger ได้ผลเพราะ "สมองจำงานค้างดีกว่า" (Zeigarnik) ตกการทดสอบ meta-analysis ปี 2025 — ห้ามสอนต่อ สิ่งที่รอดคือแรงกระตุ้นให้ "กลับไปทำต่อ" (Ovsiankina) ซึ่งเป็นโมเดลของ cliffhanger ที่ตรงกว่าด้วยซ้ำ: เป้าหมายไม่ใช่ให้เขาจำได้ แต่ให้เขากลับมา
+
 ศาสตร์ความยับยั้ง (เครื่องยนต์ของทุกข้อ):
 - "สิ่งที่เขาไม่ทำ" หนักกว่าสิ่งที่ทำ — การข้ามกิจวัตรที่ทำทุกคืน บอกมากกว่าการจ้องมอง
 - almost moment — เกือบพูด เกือบสัมผัส แล้วหยุด ยิ่งใกล้ ยิ่งหยุดแล้วกระแทกแรง
 - ร่างกายทรยศทีหลัง — มือนิ่งตลอดหัตถการ แต่สั่นตอนเปิดขวดน้ำหลังเลิกเวร ส่วนปลายรั่วก่อน (นิ้ว ไหล่) ใบหน้ารั่วท้ายสุด
 - ความเป็นทางการคือร่องรอย — ยิ่งคุมอารมณ์ ยิ่งพูดเป็นทางการผิดปกติ
 - micro-conflict — อยากถามแต่ไม่กล้า อยากใกล้แต่บังคับให้ห่าง แรงเสียดทานเล็ก ๆ ซ้ำ ๆ ตึงกว่าเหตุการณ์ใหญ่ในแนว slow burn
+- การกระทำแตกกลางคัน — ท่าที่ทำจนจบคือคำบอกเล่า ท่าที่ค้างกลางคันคือคำใบ้: "ปิดประตูแต่ไม่ล็อก" อยู่ในใจผู้อ่านนานกว่า "ล็อกประตูแล้วเดินจากไป" — เติมจังหวะร่างกายเล็ก ๆ ตรงรอยแตกหนึ่งจุด (มือค้างบนลูกบิดครึ่งจังหวะ) ครึ่งจังหวะนั้นชนะบทพูดทุกบรรทัด
+- ปิดด้วยสิ่งตกค้าง — จบที่ "ของที่เหลืออยู่" โดยตัวละครออกจากเฟรมไปแล้ว: แหวนที่ยังอยู่ใต้ถ้วย แสงลอดช่องประตู เถ้าที่ลมพัดไป — "สิ่งที่ยังไม่เสร็จ" แรงกว่า "คำถามที่ยังไม่ตอบ" เพราะวัตถุกังวานต่อในใจผู้อ่าน ส่วนคำถามได้แต่รอ (กฎรับน้ำหนักคือทฤษฎีการละของ Hemingway, Death in the Afternoon 1932: ละได้เฉพาะสิ่งที่คุณ "รู้" — การตัดที่มีความรู้หนุนหลัง ผู้อ่านจะรู้สึกถึงมัน "แรงเท่ากับที่เขียนออกมา" ส่วนการละเพราะไม่รู้ ทิ้งไว้แค่ "โพรงกลวง")
 
 ตัวอย่างเทียบ:
   ✗ "เธอรู้สึกเศร้ามาก ไม่รู้จะทำอย่างไรต่อไป"
@@ -1618,6 +1789,20 @@ attachment ในฐานะเครื่องยนต์พฤติกร
 5. COMPOSITION — ชนิดช็อต + การจัดเฟรม (โคลสอัพ/ไวด์/over-shoulder)
 6. NEGATIVE PROMPT — สิ่งที่ต้องกันออก (ตัวละครเกิน ตัวอักษร ลายน้ำ ยุคผิด)
 
+ลำดับ prompt (Subject → Action → Environment → Cinematography → Quality & Style): ขึ้นต้นด้วยประธานรูปธรรม + กำลังทำอะไร แล้วค่อยวางฉาก มุมกล้อง และคำเก็บงานท้ายสุด — prompt ที่เรียงแบบนี้คุมโมเดลภาพได้ดีกว่ากองคำอารมณ์มาก
+
+จานสุนทรียะแนวจินตนาการ — คำแนวกว้าง ๆ ("futuristic city") คุมโมเดลไม่อยู่ ให้ระบุแนวย่อย + ใช้ visual language ของมัน:
+- Cyberpunk (เทคโนโลยีสูง ชีวิตต่ำ): นีออน ฝน โฮโลแกรม มหานคร
+- Solarpunk (อนาคตสีเขียว): สวนแนวตั้ง สถาปัตยกรรมโซลาร์ พลังงานสะอาด
+- Steampunk (จักรกลยุค Victorian): ทองเหลือง เฟือง ไอน้ำ เรือเหาะ
+- Dieselpunk (retro-future อุตสาหกรรมศตวรรษ 20): เหล็กกล้า ดีเซล โรงงาน อาร์ตเดโค
+- Biopunk (เทคโนโลยีชีวภาพ): พันธุกรรม ห้องแล็บ วิศวกรรมชีวภาพ
+- Space opera (สเกลมหากาพย์): ยานรบ กาแล็กซี อารยธรรมต่างดาว
+- Futuristic-sleek (ล้ำสมัยไม่ต้องมีปม): เมืองอัจฉริยะเรียบมินิมัล
+- Post-apocalyptic (หลังโลกล่ม): ซากปรักหักพัง ธรรมชาติทวงคืน การเอาชีวิตรอด
+- Sci-fi คลาสสิก: AI หุ่นยนต์ อวกาศ เทคโนโลยีล้ำยุค
+เลือกแนวเดียว แล้วล็อกไว้ใน STYLE ทั้งเล่ม — ภาพที่สลับจานสไตล์ไปมา คือเหตุที่หนังสือดูไม่เป็นเล่มเดียวกัน
+
 ส่งออก: prompt หนึ่งย่อหน้า + บรรทัด negative แยก คงหน้าตาตัวละครให้ตรงกับฉากก่อน ๆ (ใช้คำบรรยายเดิม)
 
 ═══ ฉาก ═══
@@ -1739,6 +1924,15 @@ TENSION: ...  (fiction only)
 <<<END STATE>>>
 
 Keep STATE compact (≤ 250 words), newest facts first, plain facts only. Carry it forward chapter to chapter. If I paste a STATE block into a later prompt, treat it as the source of truth.
+
+Worked example (format to follow — content is illustrative only):
+<<<STATE>>>
+CHARACTERS: Anan — detective, now knows the key opens the warehouse; distrusts Dr. Lee. Mali — still missing, last seen at the docks.
+WORLD/FACTS: the warehouse sits under pier 3; the gang meets on new-moon nights.
+TIMELINE: night 4 since the disappearance.
+OPEN THREADS: who sent the photo; why the ledger page was torn.
+TENSION: rising — first direct threat received.
+<<<END STATE>>>
 
 ⚠ STATE is a working tool, not book content — before compiling/publishing, strip every <<<STATE>>> block and any prompt remnants from the manuscript (in 2025 several published authors were caught with forgotten prompts printed in their books).
 
@@ -2233,8 +2427,9 @@ Output the complete revised chapter (no commentary).",
 2. ISSUES TO ADDRESS: Unresolved questions, unsupported claims, tone inconsistencies, missing elements?
 3. INSTRUCTIONS FOR NEXT CHAPTER: What to build on, what to avoid repeating, what tone to maintain, specific improvements.
 4. QUALITY SCORES: Overall quality (0-1); ready for next chapter (yes/no); if no, what must be fixed first?
+5. FRESHNESS-DECAY CHECK (real AI-novel pipelines measure quality dropping after ~chapter 6): is this chapter falling into formula vs the early ones — repeated scene shapes, same opening/closing rhythms, recycled imagery? If yes, name the pattern the NEXT chapter must break.
 
-5. NON-FICTION-SPECIFIC: Thesis proof progress; evidence used; reader-journey milestone check; counter-arguments addressed.
+6. NON-FICTION-SPECIFIC: Thesis proof progress; evidence used; reader-journey milestone check; counter-arguments addressed.
 
 ═══ CHAPTER DRAFT TO ANALYZE ═══
 [INSERT COMPLETED CHAPTER HERE]",
@@ -2294,10 +2489,15 @@ Thesis: A premise worth testing
 
 Hierarchy (strongest → weakest): systematic review / meta-analysis > randomized controlled trial > cohort/longitudinal > case study > expert opinion > anecdote.
 
+REPLICATION CHECK (the layer most self-help sourcing skips): a claim can be RCT-grade AND dead — the grade tells you how it was tested, not whether it survived retesting. Worked example to teach from: the "power pose" hormonal claims (testosterone up, cortisol down; Carney, Cuddy & Yap 2010) failed a larger replication (Ranehill et al. 2015) and were publicly disavowed by the study's own first author in 2016 — yet they still circulate in wellness content today, often with the failed replication rewritten as a confirmation. For any load-bearing claim: search "<claim> replication" before citing.
+
+PRECISION RED FLAGS — the fingerprint of manufactured evidence: (a) suspiciously exact percentages tied to prestigious journals without a findable paper ("reduces anxiety 35%, JAMA 20XX"); (b) effect sizes far larger than the field's norm; (c) mechanisms stated as certainties ("raises testosterone 15-20%"); (d) a real technique carrying an invented number (the technique's realness launders the statistic). Rule: keep the technique if independently sourced, STRIP the number unless the primary paper is in hand.
+
 Output:
-1. EVIDENCE TABLE: each claim | the support it currently rests on | its grade on the hierarchy.
+1. EVIDENCE TABLE: each claim | the support it currently rests on | its grade on the hierarchy | replication status if known.
 2. GAP REPORT: claims propped up only by anecdote/expert-opinion that need stronger support.
-3. For each gap, suggest what kind of source would raise the grade.
+3. RED-FLAG LIST: every suspiciously precise number, with keep-technique/strip-number verdicts.
+4. For each gap, suggest what kind of source would raise the grade.
 (If the topic is history/memoir/philosophy where this hierarchy doesn't apply, say so and switch to source-credibility criteria: primary vs. secondary, bias, corroboration.)
 
 ═══ DRAFT ═══
@@ -2309,17 +2509,77 @@ Output:
     "group": "nonfiction",
     "id": "PEDAGOGY",
     "name": "Pedagogy Pack",
-    "prompt": "Generate the PEDAGOGY layer for a chapter of "The Test Book" (textbook / how-to / instructional nonfiction).
+    "prompt": "PEDAGOGY LAYER for a chapter of "The Test Book" — instructional nonfiction (textbook / how-to / manual).
 
-Produce:
-1. LEARNING OBJECTIVES: 3-5 measurable objectives using Bloom's verbs (remember → understand → apply → analyze → evaluate → create), escalating across the book.
-2. WORKED EXAMPLE: one fully worked example demonstrating the chapter's key skill, step by step.
-3. RETRIEVAL PRACTICE: 4-6 end-of-chapter questions that force recall (not re-reading).
-4. SPACED CALLBACK: 1-2 questions that connect to a concept from an earlier chapter.
-5. KEY TAKEAWAYS: 3 one-line summaries.
+THE FAILURE THIS MODULE EXISTS TO FIX: the reader finishes the chapter, agrees with every sentence, and still cannot DO the thing. That is not a clarity problem and more explaining will not cure it. A chapter that ends in comprehension ends in nothing checkable; a chapter must end in a CAPABILITY the reader can demonstrate. Everything below is ordered by that.
 
-═══ CHAPTER TOPIC ═══
-[INSERT CHAPTER TOPIC / CONTENT HERE]",
+Reader (write for this person, not for a general audience): QA engineers
+Book thesis the chapter must serve: A premise worth testing
+Chapter budget: ~3000 words, chapter {n} of 6 · self help
+
+━━ STEP 1 · THE CAPABILITY SENTENCE (write this before any prose) ━━
+"After this chapter, QA engineers can [VERB] [OBJECT] [under these conditions] [to this standard]."
+The verb must name something an observer could watch happen. If the only verb that fits is understand / know / appreciate / be aware of, the chapter has a TOPIC, not a capability — go back and find the action the topic is for. Standard means a signal the reader can check alone: the output has these three parts, the number balances, the dough passes the windowpane test, the script runs without error.
+One capability per chapter. A chapter with four is four chapters.
+
+━━ STEP 2 · THE DEMONSTRATION TASK (write it SECOND, before the explanation) ━━
+The task that would prove the capability. State the inputs the reader will have, the artifact they will produce, and the SUCCESS SIGNAL that tells them it worked — plus the FAILURE SIGNAL, i.e. what a wrong result looks like. Then write the chapter backwards from this task and cut every paragraph that does not serve it.
+
+━━ STEP 3 · THE WORKED EXAMPLE, THEN THE FADE ━━
+Give the solution before you demand one. Novices learning from studied worked examples outperform novices told to solve the equivalent problems themselves — the worked example effect (Sweller & Cooper 1985; Sweller 1988, Cognitive Science 12(2), cognitive load theory). Produce THREE items in sequence, not one:
+  (a) FULL WORKED EXAMPLE — exact shape:
+        GIVEN: the concrete starting inputs, with real values. No "let x be a value".
+        GOAL: the finished artifact, described so the reader can recognise it.
+        STEP n: the action · the actual substitution or keystroke · WHY THIS STEP (one line — the rule it comes from)
+        WRONG TURN: the mistake most people make at this step, shown wrong, then corrected.
+        RESULT: the finished artifact in full, so the reader can compare theirs to it.
+      The WHY line is not decoration. Learners who explain each step's rationale to themselves gain more from examples than those who read them through (Chi et al. 1989, self-explanation effect) — the line exists to prompt that explanation.
+  (b) FADED TWIN — same procedure, new inputs, LAST step blank for the reader to complete. Then a version with the last two blank.
+  (c) FULL PROBLEM — new inputs, nothing given, answer at the back.
+Fade on purpose: the same guidance that helps a novice stops helping and can hurt once the reader has the schema (expertise reversal effect, Kalyuga, Ayres, Chandler & Sweller 2003). A book that worked-examples chapter 12 as heavily as chapter 1 is padding.
+
+━━ STEP 4 · RETRIEVAL PRACTICE (the end of the chapter, not an appendix) ━━
+Retrieval beats rereading for durable retention (Roediger & Karpicke 2006, Psychological Science 17(3):249-255; meta-analyses: Rowland 2014, Psychological Bulletin 140(6); Adesope, Trevisan & Sundararajan 2017, Review of Educational Research). Dunlosky et al. 2013 (Psychological Science in the Public Interest 14(1)) rate practice testing and distributed practice HIGH utility, and rereading and highlighting — the two things books actually train readers to do — LOW.
+Write 4-6 items in this exact shape:
+    CLOSED BOOK. (say it — the instruction is the intervention)
+    PROMPT: a question that requires PRODUCING the answer, not recognising it. No multiple choice.
+    ANSWER LENGTH: one sentence, or one worked line.
+    ANSWER + WHY: placed at the end of the chapter or the back of the book, never on the same spread.
+Cover all four item types: (1) state the term in your own words; (2) run the procedure on inputs never shown; (3) decide WHICH procedure applies to a described situation; (4) here is a broken example — find the error.
+One caveat to honour: Roediger & Karpicke found that on an IMMEDIATE test restudying actually beat testing; the advantage of retrieval appeared at a delay. So do not promise the reader an instant feeling of mastery, and put the real check after a gap.
+
+━━ STEP 5 · SPACING AND INTERLEAVING ━━
+SPACED CALLBACK: 1-2 items reaching back to an earlier chapter. Distributed practice beats massed practice, and the best gap grows with how long you want the material to last (Cepeda, Pashler, Vul, Wixted & Rohrer 2006, Psychological Bulletin 132 — 317 experiments; interstudy interval and retention interval act jointly). Practical schedule for a 6-chapter book: revisit each capability once about three chapters later, once near the end, and once in the closing chapter — as a task, never as a summary paragraph.
+INTERLEAVING, with its real limits: mixing problem types beats blocking them (Rohrer & Taylor 2007, Instructional Science 35). But the meta-analysis says it is conditional — a moderate overall effect (Brunmair & Richter 2019, Psychological Bulletin 145(11), Hedges' g ≈ 0.42) that is strong for visual/category material, small for mathematics, ambiguous for expository text, and REVERSED for word learning, where blocking won. Interleave discriminable procedures the reader will have to choose between; block a single procedure being installed for the first time.
+And expect it to feel worse: conditions that slow visible performance can improve durable learning — desirable difficulties (Bjork 1994; Soderstrom & Bjork 2015, Perspectives on Psychological Science 10(2)). Warn the reader in the book, or they will read your hard chapter as a badly written one.
+
+━━ DO NOT BUILD THE BOOK ON THESE ━━
+· LEARNING STYLES (visual / auditory / kinesthetic; "some readers are visual learners, so this chapter is illustrated"). The meshing claim — that matching instruction to a stated preference improves learning — requires a crossover interaction, and Pashler, McDaniel, Rohrer & Bjork (2008, Psychological Science in the Public Interest 9(3):105-119) found "no adequate evidence base to justify incorporating learning-styles assessments into general educational practice." Direct tests since (Rogowsky, Calhoun & Tallal 2015; and again with children, 2020) found no crossover. Preferences are real; the payoff is not. Vary format because the CONTENT wants a diagram, never because a reader "is a visual learner."
+· THE LEARNING PYRAMID / "we remember 10% of what we read, 20% of what we hear, 90% of what we teach." Traced: Edgar Dale's Cone of Experience (1946, 1954, 1969) contains NO percentages — Dale offered it as a classification from concrete to abstract, explicitly not a rank order of learning. The numbers were welded on later, circulated via Treichler (1967) and NTL Institute, which, asked for its evidence, replied that it no longer had and could not find the original research. Letrud & Hernes (2018, Cogent Education 5(1)) traced versions of the pyramid back more than 160 years and concluded it did not originate in empirical research at all. Never print these numbers. If your book's structure depends on them, the structure is decoration.
+· THE 10,000-HOUR RULE as a promise. Practice matters; the meta-analysis of deliberate practice across music, games, sports, education and professions (Macnamara, Hambrick & Oswald 2014, Psychological Science 25) found it explains far less of the variance in performance than the popular rule implies, and least of all in professional domains. Give the reader a practice schedule, not an hour count that guarantees mastery.
+· BLOOM'S TAXONOMY, used as a law. It is an organizing vocabulary (Bloom et al. 1956; revised Anderson & Krathwohl 2001), not an empirical finding, and the strict cumulative hierarchy is not supported — the revision itself relaxed it, and empirical probes of the revised taxonomy's internal assumptions find the knowledge-type and cognitive-process dimensions are not independent (Larsen, Endo, Yee, Do & Lo 2022, CBE—Life Sciences Education 21(4)). USE its verbs, because they force you to name an observable action. Do NOT claim your chapters climb a validated ladder.
+· COGNITIVE LOAD THEORY — take the instructional effects, hold the theory loosely. The worked example, split-attention, redundancy and expertise-reversal effects are replicated instructional findings. The underlying load construct is contested: critics note there is no independent measure of load, so it is often inferred from the very test scores it is meant to explain. Cite the effect, not the mechanism.
+
+━━ OUTPUT ━━
+1. CAPABILITY SENTENCE (one line, observable verb, stated standard).
+2. DEMONSTRATION TASK with success signal and failure signal.
+3. WORKED EXAMPLE in the GIVEN / GOAL / STEP+WHY / WRONG TURN / RESULT shape, then the faded twin, then the unaided problem.
+4. RETRIEVAL SET: 4-6 items in the CLOSED BOOK / PROMPT / ANSWER LENGTH / ANSWER+WHY shape, covering all four item types.
+5. SPACED CALLBACK: 1-2 items from named earlier chapters, plus where in the book each capability is revisited.
+6. CUT LIST: every part of the current draft that serves neither the demonstration task nor a retrieval item.
+7. PREREQUISITE CHECK: what the reader must already be able to do, and which earlier chapter installed it. If nothing did, say so — a chapter resting on an uninstalled prerequisite is the most common reason readers "can't follow."
+
+━━ HONESTY RULES ━━
+- NEVER cite a retention percentage you cannot trace to a named study you have in hand. "People remember X% of what they Y" has no sourceable origin (see the pyramid above); writing it makes every other claim in your book cheaper.
+- Cite instructional EFFECTS by paper and year, not by folk name. "Studies show" is not a citation; render real ones in none and mark anything unverified [VERIFY].
+- Distinguish established from contested IN THE TEXT: retrieval practice and spacing are heavily replicated; interleaving is conditional on material; cognitive load theory's mechanism is disputed. A reader who later learns you flattened this stops trusting the parts that were true.
+- Do not promise outcomes ("master this in 30 days", "3x faster learning"). You cannot observe the reader; any number about their future performance is invented.
+- Emit NO scores. No difficulty rating, no comprehension score, no readability grade sold as learning, no predicted completion or mastery percentage. Report present-or-absent facts instead: capability sentence present/absent, worked example present/absent, retrieval items count, spaced callbacks count, prerequisites unmet (list).
+- What you can check from the chapter is whether the parts exist. Whether the reader learned is measured on readers, not on the manuscript — say so rather than estimating it.
+- If the chapter genuinely has no demonstrable capability (a history chapter, an orientation chapter), say THAT and drop the layer. Do not manufacture an exercise to fill the slot.
+
+═══ CHAPTER TOPIC / DRAFT ═══
+[INSERT CHAPTER TOPIC OR DRAFT HERE]",
     "usage": "Run per chapter for textbook/how-to.",
   },
   {
@@ -2414,6 +2674,8 @@ Target reading level: [e.g. grade 8 / general adult / academic]
     "name": "Line Edit",
     "prompt": "Perform a LINE EDIT — sentence-level craft, not content changes. Return the edited text plus a brief rationale list.
 
+VOICE-DRIFT GUARD (measured hazard: even "grammar-only" LLM revision passes level register toward formal, impersonal prose and strip first-person — arXiv:2604.22142): preserve the draft's register, contractions, sentence-length variance, and person. If a sentence is informal ON PURPOSE, grammar-correctness does not outrank voice — leave it.
+
 Fix:
 - Filter/whimper words: just, really, very, that, kind of, sort of, actually, simply
 - Weak "-ly" adverbs (replace with stronger verbs)
@@ -2427,6 +2689,33 @@ Preserve voice and meaning. Output: edited text, then a short bullet list of rep
 ═══ DRAFT ═══
 [INSERT DRAFT HERE]",
     "usage": "Send a draft for a sentence-level edit.",
+  },
+  {
+    "description": "Cut N words with every cut classified (over-explain ~32% and redundant ~26% lead in field data) — plot facts and setups untouchable.",
+    "group": "prose",
+    "id": "CUT_PASS",
+    "name": "Adversarial Cut Pass",
+    "prompt": "ADVERSARIAL CUT PASS — shrink a chapter by cutting, and CLASSIFY every cut so the writer learns their own patterns. Field measurement from a real 75k-word AI-assisted novel pipeline (NousResearch autonovel, 2026): the two biggest cut categories were OVER-EXPLAIN (~32% of cuts) and REDUNDANT (~26%) — hunt those first.
+
+The tradition behind this pass: King's Formula — "2nd Draft = 1st Draft − 10%" (an anonymous editor's rejection-slip note King says changed how he rewrites; On Writing, 2000) — and Elmore Leonard's rule 10: "Try to leave out the part that readers tend to skip" — the thick paragraphs the eye slides over ("hooptedoodle," his word via Steinbeck). Leonard's summary rule doubles as this pass's exit test: "If it sounds like writing, I rewrite it."
+
+Target: cut [N — default 500] words from the chapter below WITHOUT losing any plot fact, character beat, or planted setup.
+
+For every cut, output a line:
+  [CATEGORY] "first words of the cut…" (−X words) — one-line reason
+Categories:
+- OVER-EXPLAIN — explaining what the scene already showed, or explaining a subtext to death
+- REDUNDANT — restating information the reader already has (verbatim or paraphrased)
+- SCAFFOLDING — throat-clearing openings, stage-management ("she turned and then walked to…"), weather reports
+- HEDGE — qualifiers and softeners (rather, quite, somewhat, seemed to, began to)
+- ORNAMENT — decoration that does no double duty (no emotion/character/theme work)
+
+Rules: never cut a planted setup or its payoff; if a cut changes meaning, don't make it — flag it as [STUCK] with the reason instead; after cutting, output the revised chapter in full, then the cut list, then the totals per category.
+Known failure modes to avoid (also field-measured): don't overshoot the target by rewriting instead of cutting, and don't compress the chapter below the point where scenes lose room to breathe.
+
+═══ CHAPTER TO CUT ═══
+[paste the chapter + optional target word count]",
+    "usage": "Send a finished chapter to tighten.",
   },
 ]
 `;
@@ -2504,6 +2793,15 @@ TENSION: ...  (fiction only)
 <<<END STATE>>>
 
 Keep STATE compact (≤ 250 words), newest facts first, plain facts only. Carry it forward chapter to chapter. If I paste a STATE block into a later prompt, treat it as the source of truth.
+
+Worked example (format to follow — content is illustrative only):
+<<<STATE>>>
+CHARACTERS: Anan — detective, now knows the key opens the warehouse; distrusts Dr. Lee. Mali — still missing, last seen at the docks.
+WORLD/FACTS: the warehouse sits under pier 3; the gang meets on new-moon nights.
+TIMELINE: night 4 since the disappearance.
+OPEN THREADS: who sent the photo; why the ledger page was torn.
+TENSION: rising — first direct threat received.
+<<<END STATE>>>
 
 ⚠ STATE is a working tool, not book content — before compiling/publishing, strip every <<<STATE>>> block and any prompt remnants from the manuscript (in 2025 several published authors were caught with forgotten prompts printed in their books).
 
@@ -3017,8 +3315,9 @@ Output the complete revised chapter (no commentary).",
 2. ISSUES TO ADDRESS: Unresolved questions, unsupported claims, tone inconsistencies, missing elements?
 3. INSTRUCTIONS FOR NEXT CHAPTER: What to build on, what to avoid repeating, what tone to maintain, specific improvements.
 4. QUALITY SCORES: Overall quality (0-1); ready for next chapter (yes/no); if no, what must be fixed first?
+5. FRESHNESS-DECAY CHECK (real AI-novel pipelines measure quality dropping after ~chapter 6): is this chapter falling into formula vs the early ones — repeated scene shapes, same opening/closing rhythms, recycled imagery? If yes, name the pattern the NEXT chapter must break.
 
-5. FICTION-SPECIFIC: Character states at chapter end; tension level and direction; unresolved plot threads; foreshadowing planted.
+6. FICTION-SPECIFIC: Character states at chapter end; tension level and direction; unresolved plot threads; foreshadowing planted.
 
 ═══ CHAPTER DRAFT TO ANALYZE ═══
 [INSERT COMPLETED CHAPTER HERE]",
@@ -3069,6 +3368,12 @@ Chapters: 6 · ~3000 words each · english
 2. Map every beat to a chapter number (1-6) with a 1-2 sentence purpose.
 3. Mark the inciting incident, midpoint, and climax chapters.
 4. For each chapter: a one-line "promise" (what the reader gets) and a hook for the chapter end.
+5. BUT/THEREFORE AUDIT (Parker & Stone's rule): read the outline as a chain — every adjacent beat pair must connect with "THEREFORE" (causation) or "BUT" (reversal). Flag and fix every "AND THEN" joint: that is where a story stops being a story and becomes a list.
+6. If the book braids multiple plotlines, mark each beat A/B/C (A = main line, carries most beats; B = parallel line that usually carries the THEME; C = light runner) and check no line goes silent for more than 3 consecutive chapters.
+
+NOTE FROM STREAMING DATA (Netflix's own hook study): audiences almost never commit on the opener — episodes 2-4 do the hooking. Budget accordingly: the opening chapter earns attention, chapters 2-4 must CONVERT it.
+
+WHAT TRANSFERS FROM THE SCREEN (adaptation scholarship, McFarlane): beats, structure, and act shapes cross media — borrow them freely, as this module does. Narration, point of view, and interior thought do NOT exist on screen: they are the novel's home advantage. So structure like television, but SPEND the prose-only powers the screen can't touch — do not flatten interiority to imitate a screenplay.
 
 FORMAT: output one line per chapter as "N. <beat>" (e.g. "1. ...", "2. ...") so it can be pasted into the Outline field and auto-mapped to each chapter prompt.",
     "usage": "Run before writing, to plan the whole book.",
@@ -3131,6 +3436,7 @@ For EACH arc character, output:
 Organize into clear sections (include only what's relevant):
 - SETTING: places, geography, time period, atmosphere
 - RULES: how the world works (magic/tech/social rules) and their LIMITS (what is impossible)
+  Apply Sanderson's Laws here (his own essays, 2007-2013): FIRST — "an author's ability to solve conflict with magic is DIRECTLY PROPORTIONAL to how well the reader understands said magic" (unexplained power may create wonder, never solutions); SECOND — "Limitations > Powers" (what the magic CAN'T do is more interesting than what it can); THIRD — expand what you already have before adding something new (depth over breadth: connect the system to culture, economy, ecology). He calls them guidelines, not laws — violable on purpose, never by accident.
 - FACTIONS / GROUPS: names, goals, relationships
 - KEY OBJECTS / LORE: items, history, mythology
 - TIMELINE: the sequence of major events
@@ -3205,6 +3511,7 @@ Rules:
 - Cut "theater": self-congratulation, melodrama, on-the-nose emotion, narrator moralizing.
 - Ban AI-tell emotion clichés — show through specific action/body instead. Thai examples to remove:
   "น้ำตาไหลริน", "หัวใจบีบรัด/สลาย", "รอยยิ้มอบอุ่น", "ความรู้สึกท่วมท้น", "ใจหายวาบ".
+- Ban STOCK AI NAMES AND FURNITURE — measured, not folklore: across 20,000 LLM-generated stories, 11 stock tokens (Elias, Elara, a lighthouse, a clockmaker...) appeared in 88.3% (arXiv:2605.26492); model outputs also cluster to near-identical responses at scale (NeurIPS 2025 "Artificial Hivemind"). If a name or setting feels like the model's first instinct, it is — demand the third or fourth alternative, or a Thai-specific one.
 - Prefer earned ambiguity over neat resolution where it serves the story; let consequences stand.
 
 Output: the revised passage, then 2-3 bullets on what you made riskier and the cost you added.
@@ -3240,6 +3547,14 @@ Output: a per-scene sense table + the targeted additions.
     "name": "Immersion / Deep-POV Pass",
     "prompt": "Rewrite a scene to pull the reader INSIDE the POV character's experience (deep POV / "transportation"). Keep plot, facts, and dialogue meaning — change how close we are, not what happens.
 
+PSYCHIC DISTANCE (Gardner, The Art of Fiction, 1983 — the ladder this whole module climbs):
+  L1 "It was winter of the year 1853. A large man stepped out of a doorway."
+  L2 "Henry J. Warburton had never much cared for snowstorms."
+  L3 "Henry hated snowstorms."
+  L4 "God how he hated these damn snowstorms."
+  L5 "Snow. Under your collar, down inside your shoes, freezing and plugging up your miserable soul..."
+  Rule: SLIDE between levels, never jump (L1→L4 in one line reads amateur); open scenes wide (L1-2), go deepest (L4-5) at peak emotion, pull back to transition. What research can add (van Laer et al. 2014, meta of 76 studies): the three measured pull-the-reader-in levers are identifiable characters, an imaginable plot, and verisimilitude — exactly what the steps below build.
+
 Do all five:
 1. GROUND FAST — within the first 2-3 sentences, anchor the reader in place/body/moment with one concrete, specific detail (not a weather-report or throat-clear opening).
 2. CUT THE FILTER — remove distancing verbs (saw / heard / felt / noticed / realized / could see) and render the perception directly. "She heard the door creak" → "The door creaked."
@@ -3249,11 +3564,70 @@ Do all five:
 
 Rules: no purple prose or cliché sensory filler; every added detail must do double duty (mood / character / theme). Do not add events that aren't implied by the draft.
 
+CONVERSION DRILL — for every line that NAMES an emotion ("she felt betrayed"), rewrite it as a behavior chain: 3-5 concrete actions + one prop + the setting doing work ("She took the couple photo from her wallet, tore it in two, and laid the halves on his side of the table"). The chain must read AS the emotion without the label. This move has a century of scholarship behind it: T.S. Eliot's OBJECTIVE CORRELATIVE (1919) — "a set of objects, a situation, a chain of events which shall be the formula of that particular emotion... such that when the external facts are given, the emotion is immediately evoked." Modern duanju conversion courses teach the same move as prose writers' #1 deficit.
+PROP DISCIPLINE — one object, three appearances, changed each time, detonating once. A tracked prop carries what narration would over-explain (Chekhov's gun — his own 1889 letters: "one must never place a loaded rifle on the stage if it isn't going to go off" — × rule of three). The final change should be IRREVERSIBLE — burned, torn, mailed away, poured down the drain — because the moment of no return IS the emotional beat; a reversible change is just handling the prop.
+KEEP THE HOME ADVANTAGE — interiority is what prose has that the screen doesn't (adaptation scholarship). This drill targets lines where naming REPLACED showing; it is not a ban on inner life. Convert the weakest told lines, keep the interiority that earns its place.
+
 Output: the rewritten scene, then a 3-5 line changelog naming each filter word cut and each loop opened.
 
 ═══ DRAFT ═══
 [INSERT SCENE HERE]",
     "usage": "Send a scene to pull the reader inside it.",
+  },
+  {
+    "description": "Audit a sci-fi premise against seven non-negotiable physics constraints, then mine each for the scene it forces.",
+    "group": "craft",
+    "id": "HARD_SF",
+    "name": "Hard-SF Constraint Pass",
+    "prompt": "HARD-SF CONSTRAINT PASS — audit a science-fiction premise against physics that does not negotiate, then mine each constraint for the drama it generates. The thesis: a constraint is not a cage, it is the story's engine. (Same logic as Sanderson's Second Law in WORLD_CODEX — limitations are more interesting than powers.)
+
+THE SEVEN THAT DON'T BEND (state which ones your story obeys, and name every one you break ON PURPOSE):
+1. NO FTL. Travel time = distance / speed. Accelerating mass to c needs infinite energy (E = mc²/√(1-v²/c²)). Drama: a 40-light-year trip means everyone you knew is dead when you arrive — the journey itself is the loss.
+2. NO FTL SIGNAL. Messages travel at c, EACH WAY. Drama: an order from home is already old when it arrives; "hello" costs twice the distance in years. Obey a command that was issued before you were born?
+3. THE ROCKET EQUATION IS EXPONENTIAL. Δv = vₑ·ln(m₀/m_f). Doubling target speed does not double fuel — it can multiply it hundreds of times, which is why realistic interstellar ships are mostly tank. Drama: the mission is one-way not by choice but by arithmetic.
+4. RADIATION IS A CHARACTER. Deep space runs roughly a thousand times Earth's background rate; shielding is counted in mass-per-area (g/cm²), and hydrogen-rich material (water, polyethylene) beats lead — heavy elements shower secondary particles. Water shielding is also drinking water: a hull breach forces "shield or drink." Drama: every gram of protection is a gram of fuel you cannot spend.
+5. DOSE HAS BANDS, NOT A DIAL. Acute exposure is a staircase: mild sickness → a survivable-but-brutal middle (weeks of marrow failure, infection, hair loss) → near-certain death. The gift to a writer is the LATENT PHASE: hours to days where the patient feels FINE while the damage is already done. Nobody has to be told they are dying; the reader knows first.
+6. TIME DILATION IS REAL BUT LAZY. γ = 1/√(1-v²/c²) barely moves below ~0.3c — at a tenth of light speed a 400-year voyage differs from home time by about two years. Drama: it is NOT the escape hatch films pretend. Two years is still enough for a government to fall, a war to start, or the mission to be forgotten.
+7. PROBABILITY COMPOUNDS. A 3% failure per cold-sleep cycle over 200 cycles is not 6% total — survival is 0.97²⁰⁰ ≈ 0.2%. Any repeated-risk system must be modelled multiplicatively or the body count is fiction twice over. Drama: the math forces the captain to choose who sleeps.
+
+METHOD:
+A. Classify the story: ULTRA-HARD (no miracles) / HARD (one named miracle, everything else obeys) / SOFT (rule-of-cool). All three are legitimate — an unstated choice is what breaks trust.
+B. List every miracle you keep. One is a genre convention; three is fantasy wearing a spacesuit.
+C. For each constraint the story DOES obey, write the scene it forces. Constraint → cost → choice → scene.
+D. Flag numbers that must stay consistent (travel time, dose, fuel, delay) and put them in the story codex so later chapters cannot contradict them.
+
+HONESTY RULES FOR REAL SCIENCE IN FICTION:
+- Real systems get real names and real limits; where you extrapolate, SAY SO in the codex, not to the reader mid-scene.
+- Real places carry real uncertainty: TRAPPIST-1 (39.6 ly, ultracool red dwarf, seven planets) is real and flare-prone — but whether those planets kept atmospheres is contested, not settled. Write the planet you need; record in the codex that its air is your invention.
+- Never invent a citation, a dose figure, or a survival percentage to sound rigorous. A number a reader can check is worth ten that merely sound precise.
+
+Output: the constraint audit (which of the seven bind, which you break and why), the miracle list, one forced-scene per binding constraint, and the consistency table for the codex.
+
+═══ PREMISE / WORLD NOTES ═══
+[paste the sci-fi premise here]",
+    "usage": "Send a sci-fi premise to make its limits generate drama.",
+  },
+  {
+    "description": "The sound layer of Thai prose: euphonic คำซ้อน as rhythm, สัมผัสใน at peaks, reduplication, register as instrument, read-aloud test.",
+    "group": "craft",
+    "id": "THAI_SOUND",
+    "name": "Thai Sound Pass",
+    "prompt": "THAI SOUND PASS — tune the SOUND layer of Thai prose: the rhythm and euphony devices Thai has that English craft books never cover. Return the revised passage + a short device log.
+
+PROVENANCE, stated honestly: Thai scholarship codifies this layer DESCRIPTIVELY (Kamchai Thonglor's classic grammar separates คำซ้อนเพื่อเสียง "euphonic doubling" from meaning-doubling; บรรทัดฐานภาษาไทย vol.4 codifies the register system; Chula stylistics theses analyze the poetic prose of Angkhan Kalayanapong) — but no prescriptive how-to manual exists. This module is a FIRST prescriptive codification built on those named sources; the craft rules are ours and are marked as such.
+
+Devices to apply (sparingly — sound serves sense):
+1. คำซ้อนเพื่อเสียง as a RHYTHM tool — euphonic pairs (ท้อแท้ อ้างว้าง แร้นแค้น เปล่าเปลี่ยว) slow and soften a line; use at emotional rests, cut them where pace must run. One per sentence maximum.
+2. สัมผัสใน (internal rhyme/alliteration) in prose — reserve for PEAK moments (a death, a vow, an ending line); more than ~one audible chime per paragraph turns prose into verse and breaks transportation.
+3. คำซ้ำ (reduplication) for texture and aspect (เดินช้า ๆ, ใจเต้นตึก ๆ) — sound-mimetic doubles ground the body in the scene; stacked doubles read childish.
+4. REGISTER AS INSTRUMENT (base: the official 5-level system, พิธีการ→กันเอง): narration usually holds one register; dialogue moves per character and per pressure — a character shifting UP in formality under emotion is a tell (same device as HOOK_CRAFT's formality tell, now at the language-level Thai actually marks).
+5. THE READ-ALOUD TEST (Le Guin's doctrine crosses languages: "The test of a sentence is, Does it sound right?"): read the passage aloud; wherever breath breaks mid-clause or two stressed syllables collide, rewrite that seam.
+
+Output: revised passage · device log (which device, where, why) · one line naming any place you REMOVED sound-play because it out-sang the scene.
+
+═══ THAI PASSAGE ═══
+[วางร้อยแก้วภาษาไทยที่นี่]",
+    "usage": "Send a Thai passage to tune its rhythm and euphony.",
   },
   {
     "description": "Emotional-hook typology (5 types + hybrid) and restraint craft — the almost-moment, what-they-don't-do, body-betrays-last — for chapter endings.",
@@ -3270,12 +3644,22 @@ HOOK TYPES (pick what fits — hybrid is strongest):
 5. PHYSICAL ECHO — the body carries what was never said (a warm shoulder, a cold hand).
 HYBRID — small external event + emotional reaction + unresolved residue.
 
+MID-CHAPTER ACT-OUTS (from TV act-break craft): long chapters deserve 1-2 internal cliffs — end a scene/section on a question the next section must answer. TV writers plan act-outs before anything else because the break determines the trajectory of everything preceding it.
+
+WHAT THE SCIENCE ACTUALLY SUPPORTS (each verified with replication status):
+- CURIOSITY IS AN INFORMATION GAP (Loewenstein 1994; Kang et al. 2009): curiosity peaks at PARTIAL knowledge — an inverted-U. Zero knowledge produces zero curiosity. So a hook GIVES information to open a gap; pure withholding is the amateur version.
+- CARING BEFORE DANGER (disposition theory, Zillmann): suspense = fear for a LIKED character. Danger to someone the reader hasn't invested in is noise, not tension.
+- SUSPENSE SURVIVES SPOILERS (Gerrig's anomalous suspense): readers feel suspense on rereads and even about known history — so foreshadowing and partial reveals are far safer than intuition says.
+- HONESTY CORRECTION: the popular claim that cliffhangers work because "unfinished tasks are remembered better" (Zeigarnik) FAILED a 2025 meta-analysis — do not teach it. What survives is the urge to RESUME an interrupted activity (Ovsiankina) — which is the better model of a cliffhanger anyway: the goal is not that they remember, it's that they come back.
+
 RESTRAINT CRAFT (the engine of all of the above):
 - WHAT THEY DON'T DO beats what they do: skipping a nightly habit says more than a stare.
 - THE ALMOST MOMENT — nearly speaks, nearly touches, then stops. The closer to the act, the harder the stop lands.
 - BODY BETRAYS LAST — steady hands during the crisis; a tremor opening a water bottle after. Extremities leak first (fingers, shoulders), the face last.
 - FORMALITY AS A TELL — the more controlled a character feels, the more official their speech gets.
 - MICRO-CONFLICT — wants to ask / doesn't dare; wants closeness / keeps distance. Small frictions, repeated, out-tension big events in slow-burn.
+- FRACTURED ACTION — a completed gesture states; an interrupted one implies. "Closed the door but didn't lock it" outlives "locked the door and left." Put one tiny bodily beat at the break point (a hand resting on the knob half a beat too long) — that half-beat outguns any line of dialogue.
+- RESIDUAL-SPACE CLOSE — end on what's LEFT, character already out of frame: the ring still under the cup, the light through the door gap, the ash the wind takes. An unfinished THING beats an unanswered QUESTION — objects keep resonating in the reader; questions just wait. (The load-bearing rule is Hemingway's theory of omission, Death in the Afternoon, 1932: you may omit only what you KNOW — knowledge-backed subtraction is felt "as strongly as though the writer had stated" it; omitting from ignorance leaves "hollow places.")
 
 CONTRASTIVE EXAMPLE:
   ✗ "She felt very sad. She didn't know what to do."
@@ -3410,6 +3794,20 @@ Produce, for the scene below:
 5. COMPOSITION — shot type + framing (close-up / wide / over-shoulder).
 6. NEGATIVE PROMPT — what to exclude (extra characters, text, watermark, wrong era).
 
+PROMPT ORDER (Subject → Action → Environment → Cinematography → Quality & Style): lead with the concrete subject and what it is doing, then place it, then the camera, then finishing terms — a prompt ordered this way steers image models far better than a mood-word pile.
+
+SPECULATIVE-AESTHETIC PALETTE — a genre word alone ("futuristic city") is too broad to steer a model; name the SUB-aesthetic and use its visual language:
+- Cyberpunk (high tech, low life): neon, rain, holograms, megacity
+- Solarpunk (green optimism): vertical gardens, solar architecture, clean tech
+- Steampunk (Victorian machine-age): brass, gears, steam, airships
+- Dieselpunk (20th-c industrial retro-future): steel, diesel, factories, art deco
+- Biopunk (organic tech): genetics, labs, bioengineering
+- Space opera (epic scale): starships, galaxies, alien civilizations
+- Futuristic-sleek (no conflict implied): minimal smart-tech cityscapes
+- Post-apocalyptic (after the fall): ruins, reclaimed nature, survival
+- Classic sci-fi: AI, robots, space, advanced technology
+Pick ONE and lock it into STYLE for the whole book — mixing palettes across illustrations is how a book's art stops looking like one book.
+
 Output one paragraph prompt + a separate negative line. Keep character looks consistent with earlier scenes — reuse the same descriptors.
 
 ═══ SCENE ═══
@@ -3522,6 +3920,7 @@ Then output an Amazon-safe HTML version using only <b>, <i>, <h4>, <br>, <ul><li
 3. VERIFICATION CHECKLIST: for each keyword — how to validate it (type it into Amazon search; check autocomplete suggestions; confirm books rank for it; gauge competition). Mark any guess as "VERIFY".
 4. A 2-line A+ / comparison hook for the product page.
 5. AI DISCLOSURE note for the user (state it plainly, don't decide for them): under KDP's policy (framework since Sept 2023 — verify current wording in KDP help), AI-GENERATED content (text/images/translation created by AI, even if edited) must be disclosed to Amazon during publishing setup; AI-ASSISTED (you wrote it, AI helped edit/refine/brainstorm) requires no disclosure. Tell the user which side their workflow falls on is THEIR call to make honestly — and that platform rules change, so re-check at publish time.
+6. BESTSELLER-BADGE REALITY (teach it straight): Amazon's "#1 Best Seller" flag is computed PER CATEGORY from recent sales velocity, refreshed hourly — in a deep niche category, a handful of same-day sales can take #1. Two honest consequences: (a) it is an achievable launch tactic — pick the deepest categories that GENUINELY fit and concentrate launch-day sales; (b) other books' badges are weak evidence of quality or income, so never buy a tool or course on the strength of a badge screenshot. Never advise miscategorizing into an irrelevant niche to farm the flag — Amazon removes miscategorized titles and readers punish the mismatch.
 
 Be concrete; avoid generic single words.",
     "usage": "Run before publishing on KDP.",
@@ -3531,17 +3930,58 @@ Be concrete; avoid generic single words.",
     "group": "marketing",
     "id": "SUBMISSION",
     "name": "Agent Submission Pack",
-    "prompt": "Produce a traditional-publishing SUBMISSION PACK for "The Test Book".
+    "prompt": "Produce a SUBMISSION PACK for "The Test Book" — the pitch aimed at ONE professional reader (an acquiring editor, or an agent in markets that use them). This is NOT retail copy: a shopper is browsing, this reader is deciding whether to spend a week of their life on your manuscript. Back-cover/store copy is a different artifact (see BLURB, KDP_META).
 
-Inputs to use: premise = A premise worth testing; type = Novel / Fiction; audience = QA engineers; approx 18000 words.
+PROJECT FACTS (use only these; do not invent credentials, sales, or prior publications):
+premise = A premise worth testing · type = Novel / Fiction / thriller · reader = QA engineers · voice = storytelling · manuscript language = english · length ≈ 18000 words in 6 chapters
 
-Output four parts:
-1. QUERY LETTER (~250 words): hook paragraph (protagonist/concept + conflict + stakes), then metadata line (title, word count, genre, 2 comp titles), then a 2-line author bio slot.
-2. ONE-PAGE SYNOPSIS: present tense, the FULL arc including the ending (no teasing), key turning points named.
-3. FIVE COMP TITLES: published within ~3 years, same readership (avoid mega-bestsellers), each with one line on the shared element. Mark any you're unsure are recent — the user should verify.
-4. AUTHOR BIO: three versions — 50, 100, and 150 words.
+⚠ TWO MARKETS, TWO RULEBOOKS. State at the top of your output which one this pack targets.
+A) ENGLISH-LANGUAGE TRADE (US/UK): the query-letter → agent → publisher route below is THAT market's convention. It is a convention, not a law of publishing.
+B) THAI PUBLISHERS: in Thailand the author-representation agent model is reported as effectively absent — Thailand-based literary agencies work mainly on TRANSLATION RIGHTS (buying foreign titles for Thai publishers, selling Thai titles abroad), not on representing a Thai author to a Thai publisher. The normal route is DIRECT to the publisher (สำนักพิมพ์), usually by e-mail to the editorial desk, plus two other routes that matter: an open call / contest (การประกวดต้นฉบับ) and being picked up from an online serial platform (readAwrite, Dek-D, Fictionlog and similar). Thai publishers that publish submission pages typically specify their own file spec — Word file, A4, Cordia/Angsana-class font at 14 pt, a เรื่องย่อ of at most ~2 A4 pages, and a short ประวัตินักเขียน. TREAT EVERY SUCH DETAIL AS A PATTERN, NOT AS THE RULE: before sending anything, open the publisher's own "ส่งต้นฉบับ / เปิดรับต้นฉบับ" page and copy ITS spec exactly. Where their spec and this module disagree, THEIR SPEC WINS. If a publisher publishes no submission page, that silence is information — ask them, do not assume a Western template applies.
 
-[INSERT any author credentials / comp ideas here]",
+Produce these artifacts, in this order:
+
+1. QUERY LETTER / จดหมายเสนอต้นฉบับ (~250–350 words, one page, five slots in this order)
+   a. ADDRESS + WHY THIS READER — one sentence naming why this publisher/imprint/agent fits THIS book. Leave it as a fill-in slot: [ทำไมถึงส่งให้ที่นี่ — อ้างอิงหนังสือในเครือที่คุณอ่านจริง]. Do NOT fabricate the reason.
+   b. HOOK — 150–200 words: protagonist (or, for nonfiction, the question), the concrete situation, the conflict, what is at stake, and the choice the book turns on. Concrete nouns; no theme talk, no backstory, no rhetorical questions.
+   c. METADATA LINE — title, Novel / Fiction, subgenre, word count (18000 words, rounded), language, comps, and whether the manuscript is COMPLETE. For fiction from an unpublished author the manuscript must be finished before you query — say so plainly.
+   d. BIO — 2 sentences, relevant credentials only (see 4).
+   e. CLOSE — what is attached, exactly as the recipient's guidelines asked for it.
+
+2. ONE-PAGE SYNOPSIS / เรื่องย่อ (~500 words; Thai publishers often cap at 2 A4 pages — obey theirs)
+   Third person, PRESENT tense, regardless of the book's own tense and person. The whole arc, in order, with the turning points named, WHO CHANGES and how — AND THE ENDING SPELLED OUT. A submission synopsis is not a teaser; withholding the ending is the most common reason it fails its job. Name only characters that matter to the spine (a synopsis crowded with names reads as an unfocused book). 
+
+3. COMPS / หนังสือเทียบเคียง — 3 to 5 candidates, ranked, each with ONE line naming the shared element
+   What a comp is FOR: it is a market argument, not a compliment. It tells the reader "here is the shelf, here is the audience, here is roughly how it sells." An acquiring editor builds a profit-and-loss estimate from comparable titles, so an unusable comp costs you the argument.
+   A USEFUL comp is: (i) recently published — roughly the last 2–3 years; (ii) recognisable to that specific reader — for a Thai publisher that means a Thai-market title, ideally one on their own or a rival's list, NOT a New York bestseller; (iii) matched on tone/voice/readership rather than on plot furniture; (iv) a book you have actually read.
+   A HARMFUL comp is: a mega-seller or classic ("the next Harry Potter", "เหมือน…ที่ขายล้านเล่ม") — it reads as a claim about your sales, not about your book; a title over ~5–10 years old (it argues the market has already moved on); a film or series used as the only comp (a screen comp shows tone but proves nothing about book buyers — use at most one, as a secondary); two comps that are the same book twice (they should triangulate, e.g. one for voice, one for structure, one for audience); anything you have not read.
+   For every candidate output: TITLE · author · year · publisher/imprint if known · the one shared element · confidence. Mark anything you are not certain is real and recent as "VERIFY — check in a bookshop, on the publisher's catalogue, or on the retailer page before sending."
+
+4. AUTHOR BIO / ประวัตินักเขียน — three versions: 50, 100, 150 words, third person
+   Include only: publication credits, relevant professional or lived expertise that gives you standing to write THIS book, prizes actually won, and — for nonfiction — platform stated as verifiable facts (audience size, column, teaching, community) rather than adjectives. Exclude: age, unrelated jobs, "I have loved writing since I was a child", and any credential the author has not supplied. If the author gives you nothing, output the bio as a labelled EMPTY SLOT with a list of what to fill in. For fiction, having no credits is normal — say nothing rather than padding.
+
+5. PACKAGE CHECK — the pages themselves: send exactly what was asked for (some ask 10 pages, some 3 chapters, some 10,000 words, some the whole file), from the actual opening — never a later chapter you like better.
+
+6. AFTER YOU SEND — vocabulary and expectations, stated honestly
+   PARTIAL request = they want more pages, usually a set number of opening pages. FULL request = they want the entire manuscript. Neither is an offer; both are normal steps. Response practice varies enormously and some recipients publish a "no response means no" policy. THE ONLY AUTHORITY ON TIMING IS THE RECIPIENT'S OWN STATED WINDOW — read it, write it in your tracker, and follow up only after it has passed. This module will not tell you an average wait, a reply rate, or an acceptance rate, because no honest single number exists for them.
+
+7. MONEY AND SAFETY — read this before you send anything
+   Yog's Law (coined by author James D. Macdonald): MONEY FLOWS TOWARD THE AUTHOR. A publisher or agent who acquires your book pays you; you do not pay them to be considered. The Association of American Literary Agents' Canon of Ethics forbids member agents from charging reading fees to evaluate work for possible representation — so a "reading fee", "evaluation fee", "marketing contribution" or "submission fee" for consideration is the loudest possible warning sign.
+   WATCHDOG, NAMED: Writer Beware — founded 1998, sponsored by SFWA (Science Fiction and Fantasy Writers Association), at writerbeware.blog — documents fee-charging agents, predatory vanity operations, ghostwriting-and-marketing scams, and impersonation of real publishers and real editors. Check any company that solicits YOU there first. Solicitation is itself a flag: legitimate publishers rarely cold-call an unpublished author to praise their manuscript.
+   FOR THAI AUTHORS: paying a printer or a จ้างพิมพ์ / self-publishing service is a legitimate purchase of a service — but it is a purchase, not an acquisition, and anyone presenting it as "the publisher accepted your book" is misrepresenting it. I could not identify a Thai-language equivalent of Writer Beware, so do this instead: check that the company's books are physically in bookshops and listed by real distributors, ask other authors on their list, and get the terms (print run, royalty, rights, duration) in writing before signing.
+   You do NOT need to register copyright before submitting: under Thailand's Copyright Act B.E. 2537 copyright exists automatically from creation, without registration (the Department of Intellectual Property's จดแจ้ง filing is an evidentiary record, not the source of the right). Anyone who says you must pay to protect your manuscript before sending it is selling something.
+
+HONESTY RULES (these override everything above):
+- NEVER invent an agent's name, an agency, an imprint, an editor, or a publisher's submission policy. If a real recipient is needed, output a labelled slot and the instruction to verify on that party's own website.
+- NEVER invent a response-time statistic, an acceptance rate, a reply rate, or "your chances" — these are not knowable from a manuscript and Rush does not print them.
+- NEVER invent a comp title, its year, or its publisher. A plausible-sounding book that does not exist destroys the letter's credibility instantly; mark every unverified comp "VERIFY".
+- Do not present English-language agent conventions as universal. Where this pack's advice and the recipient's own stated guidelines differ, the recipient wins — say so in the output.
+- State the manuscript's real word count from the facts above; do not round toward a genre "sweet spot" you did not measure.
+- If the author supplied no credentials, the bio stays an empty slot. Do not manufacture a biography.
+- No score, no rating, no readiness percentage for the pack. Report what each artifact contains and what is still missing.
+
+═══ AUTHOR CREDENTIALS · TARGET PUBLISHER/AGENT (paste their stated guidelines verbatim) · COMP IDEAS ═══
+[INSERT HERE — ถ้ามีหน้า "เปิดรับต้นฉบับ" ของสำนักพิมพ์ ให้วางข้อความจริงมาทั้งหมด]",
     "usage": "Run for traditional submission.",
   },
 ]

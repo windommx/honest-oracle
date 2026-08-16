@@ -10,10 +10,7 @@
 // ╚══════════════════════════════════════════════════════════════════╝
 
 import { splitChapters } from "./chapters";
-
-const RE_ESCAPE = /[.*+?^${}()|[\]\\]/g;
-const countEn = (s: string, term: string) => (s.match(new RegExp(`\\b${term.replace(RE_ESCAPE, "\\$&")}\\b`, "g")) ?? []).length;
-const countTh = (s: string, term: string) => (term ? s.split(term).length - 1 : 0);
+import { countNames } from "./text-util";
 
 export interface CharNode { name: string; mentions: number; chapters: number[] }
 export interface CharEdge { a: string; b: string; weight: number; chapters: number[] }
@@ -27,15 +24,15 @@ export interface CharacterGraph {
  *  writer glossary of characters/places). Deterministic; counts, not inference. */
 export function characterGraph(text: string, names: string[], lang: "th" | "en" = "th"): CharacterGraph {
   const cast = Array.from(new Set(names.map((n) => n.trim()).filter((n) => n.length >= 2)));
-  const count = lang === "en" ? countEn : countTh;
   const chunks = splitChapters(text).map((c, i) => ({ n: i + 1, body: c.body })).filter((c) => c.body.trim());
 
   // per-name: total mentions + set of chapters present in
   const present = new Map<string, Set<number>>(cast.map((n) => [n, new Set<number>()]));
   const mentions = new Map<string, number>(cast.map((n) => [n, 0]));
   for (const ch of chunks) {
+    const counts = countNames(ch.body, cast, lang);
     for (const name of cast) {
-      const c = count(ch.body, name);
+      const c = counts.get(name) ?? 0;
       if (c > 0) {
         mentions.set(name, (mentions.get(name) ?? 0) + c);
         present.get(name)!.add(ch.n);

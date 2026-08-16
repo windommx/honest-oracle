@@ -24,6 +24,9 @@ export interface NarrativeStructure {
   origin: string;
   conflictDriven: boolean; // false = builds on contrast/karma, not antagonist-conflict
   note?: string;           // confidence / provenance caveat, surfaced honestly
+  /** First N beats map 1:1 to the first N chapters (e.g. 黄金三章 IS chapters 1–3,
+   *  not a proportional share); remaining beats spread over remaining chapters. */
+  pinnedOpening?: number;
   beats: StructureBeat[];
 }
 
@@ -135,6 +138,63 @@ export const NARRATIVE_STRUCTURES: NarrativeStructure[] = [
     ],
   },
   {
+    id: "golden-three",
+    thai: "สามบททอง (黄金三章)",
+    en: "Golden three chapters — Chinese web-novel serial",
+    origin:
+      "ขนบนิยายเว็บจีน (Qidian VIP 2003 → ยุค Tomato) — บทละ ~3,000 ตัวอักษร ทุกบทจบด้วย hook · สามบทแรกคือชีวิตของเรื่อง",
+    conflictDriven: true,
+    pinnedOpening: 3,
+    note:
+      "สังเคราะห์จากขนบอุตสาหกรรม/บรรณาธิการ (ยืนยันข้ามแหล่งระดับ snippet ไม่ใช่ตำราวิชาการ) — กฎที่ข้ามทุกช่วง: ทุกบทจบด้วย hook และ บก./ผู้อ่านตัดสินจาก 'สามบรรทัดสุดท้ายของทุกบท' · สามบทแรกผูกกับบทที่ 1-2-3 ตรงตัว ไม่ใช่ตามสัดส่วน",
+    beats: [
+      { thai: "บททองที่ 1 — เหตุ+ปริศนา", en: "Golden ch.1 — hook & mystery", desc: "เปิดด้วยเหตุการณ์/ปริศนาที่ตั้งคำถามใหญ่ทันที — ผู้อ่านเว็บตัดสินใจจากบทนี้บทเดียว ห้ามใช้เป็นบทปูฉากเปล่า ๆ" },
+      { thai: "บททองที่ 2 — พิสูจน์ตัวเอก", en: "Golden ch.2 — prove the lead", desc: "ตัวเอกพิสูจน์ตัวผ่านการกระทำจริง (ไม่ใช่คำบรรยายว่าเก่ง/น่าสนใจ) ให้ผู้อ่านได้เหตุผลที่จะตามคนคนนี้" },
+      { thai: "บททองที่ 3 — เดินเรื่อง+ปลูกปม", en: "Golden ch.3 — advance & plant", desc: "เดินเส้นหลักไปข้างหน้าจริง และฝังปมค้างที่จะจ่ายทีหลัง — จบสามบทนี้ ผู้อ่านต้องตอบได้ว่าเรื่องเกี่ยวกับอะไร และทำไมต้องตามต่อ" },
+      { thai: "เดินเรื่องรายตอน", en: "Serial engine", desc: "แต่ละบทมีเหตุการณ์ย่อยที่จบในตัว (mini-event ถี่ในแนวเร็ว) + hook ท้ายบททุกบท — สามบรรทัดสุดท้ายคือจุดที่ผู้อ่านกดตอนถัดไปหรือปิดแอป" },
+      { thai: "พลิกยกเดิมพัน", en: "Reversal & raise", desc: "การเปิดเผย/พลิกที่เปลี่ยนความเข้าใจ ยกเดิมพันของเส้นหลักขึ้นอีกขั้น — arc ย่อยที่ผ่านมาต้องประกอบขึ้นเป็นภาพใหญ่" },
+      { thai: "บีบสู่จุดสูงสุด", en: "Compression to climax", desc: "แรงกดดันทบต้น ปมค้างที่ฝังจากสามบททองถูกดึงกลับมาชนกันที่การเผชิญหน้าใหญ่" },
+      { thai: "คลี่คลาย + เปิดทางต่อ", en: "Resolve & re-hook", desc: "คลี่ปมหลักสั้น ๆ — ถ้าเป็นซีรีส์ ปิดด้วยปมใหม่ของภาคต่อ ตามขนบรายตอนที่ไม่ปล่อยผู้อ่านหลุดมือ" },
+    ],
+  },
+  {
+    id: "duanju",
+    thai: "ละครสั้นแนวตั้ง (duanju / 短剧)",
+    en: "Vertical micro-drama (duanju) arc",
+    origin:
+      "คอร์สทางการ 短剧编剧第一课 ของแพลตฟอร์ม Hongguo (ByteDance, 2025–26) — ฟอร์แมต 80–100 ตอน × 1–3 นาที ปรับใช้กับนิยายรายตอน",
+    conflictDriven: true,
+    note:
+      "สังเคราะห์จากคำสอนทางการของคอร์ส (ยืนยันข้ามแหล่งระดับ snippet ไม่ใช่ full text) — เฉพาะกติกาที่หลายแหล่งตรงกัน: เส้นหลักเห็นใน 3 ตอนแรก, 10 ตอนแรกคือหน้าต่างรั้งผู้อ่าน, จุดอารมณ์เล็ก ~1/ตอน + ใหญ่ทุก 5–10 ตอน; ตัวเลข lore (เช่น '90 วินาที') ไม่นำมาใช้",
+    beats: [
+      { thai: "เปิดทอง (黄金开场)", en: "Golden opening", desc: "3 ตอนแรกต้องทำครบสาม: จุดความสนใจ + วางอารมณ์ + ฝังปมสงสัย และเส้นเรื่องหลักต้องมองเห็นแล้ว (กำหนดโทน/ร้อยฉาก/โฟกัส) — ห้ามเก็บแกนเรื่องไว้ทีหลัง" },
+      { thai: "หน้าต่างรั้งผู้อ่าน (窗口期)", en: "Retention window", desc: "ช่วงตัดสิน retention: เดินระบบ ความคาดหวัง=ทิศทาง / ปมสงสัย=เส้นทาง / ตะขอ=แรงขับ ให้ครบวง และจ่ายความสะใจทันที — โดนหยามตอนนี้ ต้องเอาคืนภายในตอนถัดไป ไม่อดออมความฟิน" },
+      { thai: "บันไดยกระดับ (发展期)", en: "Escalation ladder", desc: "เดินเรื่องด้วยชัยชนะ/ความพ่ายย่อย ~1 จุดอารมณ์เล็กต่อตอน เดิมพันสูงขึ้นทีละขั้น — เส้นหลักห้ามเฉไฉ (โหมดพังคลาสสิก: เย็บฉากพีคต่อกันแล้วเรื่องพังราวตอนที่ 10)" },
+      { thai: "จุดอารมณ์ใหญ่กลางเรื่อง (大情绪点)", en: "Big emotional peak", desc: "จุดใหญ่ระดับพลิกสถานะ/เปิดโปงครั้งใหญ่ — รางวัลก้อนโตที่สะสมมาจากจุดเล็กหลายตอน แล้วตั้งเดิมพันชุดใหม่ทันที" },
+      { thai: "บีบสู่วิกฤต", en: "Compression to crisis", desc: "แรงกดดันทบต้น ศัตรู/ความจริงบีบเข้า ตัวเอกเสียมากขึ้นทุกตอน — ยังคงจุดเล็กรายตอน แต่ขั้วอารมณ์หนักขึ้น" },
+      { thai: "จุดอารมณ์ใหญ่สุดท้าย", en: "Final payoff peak", desc: "การเผชิญหน้า/เอาคืน/พลิกชีวิตครั้งใหญ่สุดของเรื่อง — ทุกปมสงสัยหลักที่ฝังไว้ตั้งแต่ช่วงเปิดต้องได้คำตอบที่นี่" },
+      { thai: "เก็บจบกระชับ (收束期)", en: "Compressed close", desc: "ปิดสั้นและแน่น: เก็บปมรอง ยืนยันสถานะใหม่ของตัวเอก — ไม่มีช่วงอ้อยอิ่งหลังจุดสูงสุด ผู้อ่านรายตอนไม่รอ" },
+    ],
+  },
+  {
+    id: "limited-series",
+    thai: "มินิซีรีส์ (ขยายกรอบต่อบท)",
+    en: "Limited series — widening-scope arc",
+    origin:
+      "ขนบมินิซีรีส์ยุค streaming — ทางแก้ 'กลางหย่อน' แบบ Chernobyl (Craig Mazin): แต่ละตอนขยายกรอบเวลา/ขอบเขต แทนสมมาตรสามองก์ · เหมาะกับ novella/เรื่องสั้นยาว",
+    conflictDriven: true,
+    note:
+      "สังเคราะห์จากบทสัมภาษณ์/บันทึกของ showrunner (ระดับ snippet) — หลักที่ยึด: ตอน 3-5 จาก 8 คือจุดตายของมินิซีรีส์ แก้ด้วยการให้แต่ละช่วง 'ขยายขอบเขตของเรื่อง' ไม่ใช่วน beat เดิมในกรอบเดิม",
+    beats: [
+      { thai: "เหตุการณ์เดียว กรอบแคบ", en: "Single event, tight frame", desc: "เปิดในกรอบเวลา/สถานที่แคบที่สุด (คืนเดียว เหตุการณ์เดียว) — แรงระเบิดทั้งเรื่องถูกอัดอยู่ในนี้ ยังไม่ต้องอธิบายระบบเบื้องหลัง" },
+      { thai: "ขยายเป็นวัน", en: "Widen to days", desc: "ผลกระทบลามสู่คนรอบเหตุการณ์ — ตัวละครใหม่เข้ามาพร้อมมุมที่ผู้อ่านยังไม่เคยเห็น" },
+      { thai: "ขยายเป็นสัปดาห์", en: "Widen to weeks", desc: "ช่วงที่เรื่องขนาดนี้มักหย่อน — สู้ด้วยขอบเขตใหม่ ไม่ใช่ beat ซ้ำ: เผยกลไก/ระบบ/ประวัติที่ทำให้เหตุการณ์แรกเกิดขึ้นได้" },
+      { thai: "ขยายเป็นเดือน — ระดับระบบ", en: "Widen to months — systemic", desc: "เรื่องส่วนตัวกลายเป็นเรื่องของระบบ เดิมพันยกจากชะตาคนหนึ่งเป็นราคาที่ทั้งโครงสร้างต้องจ่าย" },
+      { thai: "การชำระความ", en: "The reckoning", desc: "การพิจารณา/เผชิญหน้าที่ดึงทุกกรอบเวลากลับมาชนกัน — ความจริงทั้งหมดถูกวางบนโต๊ะต่อหน้าผู้อ่าน" },
+      { thai: "ความหมายที่เหลือ", en: "What remains", desc: "ปิดสั้น: อะไรเปลี่ยน อะไรไม่มีวันเปลี่ยน และราคาที่จ่ายไป — มินิซีรีส์จบแล้วจบเลย ไม่เปิดปมภาคต่อ" },
+    ],
+  },
+  {
     id: "jataka",
     thai: "ชาดก (นิทานคติธรรม)",
     en: "Jātaka frame-tale",
@@ -167,12 +227,29 @@ export interface StructurePhase {
 }
 
 /** Map a chapter (1-based) to its beat within the chosen structure, proportionally across
- *  the book. Deterministic; the same (id, chapter, total) always yields the same beat. */
+ *  the book — except a `pinnedOpening` prefix, whose beats ARE chapters 1..N literally.
+ *  Deterministic; the same (id, chapter, total) always yields the same beat. */
 export function structurePhase(id: string, chapter1: number, totalChapters: number): StructurePhase | null {
   const structure = BY_ID[id];
   if (!structure || totalChapters < 1 || chapter1 < 1) return null;
   const b = structure.beats.length;
-  const idx = Math.min(b - 1, Math.floor(((chapter1 - 1) / Math.max(1, totalChapters)) * b));
+  const pin = Math.min(structure.pinnedOpening ?? 0, b, totalChapters);
+  let idx: number;
+  if (chapter1 <= pin) {
+    idx = chapter1 - 1;
+  } else if (b - pin <= 0) {
+    idx = b - 1; // book longer than the pinned prefix but no beats left — hold the last
+  } else {
+    const restBeats = b - pin;
+    const restChapters = Math.max(1, totalChapters - pin);
+    const c = chapter1 - pin - 1; // 0-based position within the rest chapters
+    // Map rest chapters onto rest beats hitting BOTH ends: first rest chapter → first rest
+    // beat, LAST chapter → LAST beat. The old floor()-of-ratio never reached the final beat
+    // when there were fewer chapters than beats (jataka in 3 chapters ended on the verse, not
+    // the closing identification), silently dropping the structure's defining last beat.
+    const beatInRest = restChapters > 1 ? Math.round((c * (restBeats - 1)) / (restChapters - 1)) : restBeats - 1;
+    idx = pin + Math.max(0, Math.min(restBeats - 1, beatInRest));
+  }
   return { structure, beat: structure.beats[idx], beatIndex: idx, beatCount: b };
 }
 

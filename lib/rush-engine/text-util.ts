@@ -98,3 +98,72 @@ export function estimateTokens(text: string): number {
   const other = text.length - thai;
   return Math.ceil(thai / 1.65 + other / 4);
 }
+
+/** max / min over an array without the spread operator.
+ *
+ *  `Math.max(...arr)` passes every element as a call ARGUMENT, and a large enough array
+ *  (~123k in current V8) overflows the call stack — throwing RangeError and losing the
+ *  whole result. A tokenizer's clause-length array reaches that on a long Thai manuscript,
+ *  where clauses track token count. Reduce has no such ceiling. Empty → the supplied
+ *  fallback (default 0), matching the `arr.length ? … : 0` guards these replace. */
+export function maxOf(arr: number[], empty = 0): number {
+  let m = empty;
+  for (let i = 0; i < arr.length; i++) if (i === 0 || arr[i] > m) m = arr[i];
+  return m;
+}
+export function minOf(arr: number[], empty = 0): number {
+  let m = empty;
+  for (let i = 0; i < arr.length; i++) if (i === 0 || arr[i] < m) m = arr[i];
+  return m;
+}
+
+/** Count occurrences of `term` in `hay` that stand as a whole word — i.e. neither neighbour
+ *  is a word-continuation character (a Thai letter, a Latin letter, or a digit).
+ *
+ *  Thai has no spaces inside a phrase, so a raw `includes`/`split` count of a short name
+ *  fires INSIDE longer words: "สม" inside "สมชาย", "หมอ" (doctor) inside "หมอน" (pillow),
+ *  "แต่" (but) inside "แต่งงาน" (wedding). Intl.Segmenter is too inconsistent to build a
+ *  boundary on (it fragments "แอนนา" into แอ|น|นา). Asking directly whether the match is
+ *  flanked by word-continuation characters answers exactly the "is this a whole word"
+ *  question, and is the safe direction for a trust-critical flag: it can miss a name run
+ *  together with an adjacent Thai word (a false negative), never falsely accuse one.
+ *
+ *  `hay` and `term` should already be same-cased. Non-overlapping. Pure. */
+const WORD_CONT = /[฀-๿a-z0-9]/i;
+export function boundedCount(hay: string, term: string): number {
+  if (!term) return 0;
+  let count = 0;
+  let i = hay.indexOf(term);
+  while (i !== -1) {
+    const before = i > 0 ? hay[i - 1] : "";
+    const after = i + term.length < hay.length ? hay[i + term.length] : "";
+    if (!WORD_CONT.test(before) && !WORD_CONT.test(after)) count++;
+    i = hay.indexOf(term, i + term.length);
+  }
+  return count;
+}
+
+const NAME_RE_ESCAPE = /[.*+?^${}()|[\]\\]/g;
+/** Count each declared NAME in a body of text, per language.
+ *
+ *  Thai: substring + CAST-AWARE overlap subtraction (countPhrases) — a short name that only
+ *  ever falls inside a LONGER declared name (แอน inside แอนนา) nets to 0, while a short name
+ *  run together with an ordinary word (เอิ่ม in เอิ่มพูด) is still counted. This is the
+ *  phantom-match fix that a plain word-boundary check could not give without collapsing
+ *  recall on Thai's space-free prose.
+ *
+ *  English: \b word boundaries already prevent a name matching inside a longer word ("Ann"
+ *  in "Anna", "Sam" in "same"), so no overlap subtraction is needed. Returns a name→count
+ *  map keyed by the ORIGINAL-cased names. Pure/deterministic. */
+export function countNames(body: string, names: string[], lang: "th" | "en"): Map<string, number> {
+  if (lang === "en") {
+    const hay = body.toLowerCase();
+    return new Map(names.map((n) => {
+      const re = new RegExp(`\\b${n.toLowerCase().replace(NAME_RE_ESCAPE, "\\$&")}\\b`, "g");
+      return [n, (hay.match(re) ?? []).length] as const;
+    }));
+  }
+  const out = new Map<string, number>(names.map((n) => [n, 0]));
+  for (const { phrase, count } of countPhrases(body, names)) out.set(phrase, count);
+  return out;
+}

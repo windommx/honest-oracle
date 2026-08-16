@@ -171,6 +171,15 @@ export const REFUSED_CONSTRUCTS: RefusedConstruct[] = [
   { id: "characterArcCoherence", thai: "คะแนนความกลมกลืน arc ตัวละคร (0–100)", why: "judgment, not a count — replaced by the per-chapter presence series + exit/gap flags" },
   { id: "thematicResonance", thai: "คะแนน thematic resonance (0–100)", why: "reification of 'resonance' — replaced by motif distribution (how often/where a theme term recurs)" },
   { id: "pacingBalanceScore", thai: "คะแนนสมดุล pacing (0–100)", why: "replaced by per-act measured averages + disclosed threshold flags — no single invented number" },
+  // ── Added 2026-08 from an external hard-SF generator spec (CATINE-Lite) that printed
+  //    these four next to real physics. The physics was adoptable (→ module HARD_SF);
+  //    these are not. Each names a FUTURE READER BEHAVIOUR or a taste judgment, then
+  //    prints it to two decimals from the manuscript alone — pseudo-precision (Bridgman:
+  //    no operation exists), and unfalsifiable at the moment it is shown.
+  { id: "predictedReadThrough", thai: "อัตราอ่านจบที่ทำนายไว้ (%)", why: "a prediction about readers who have not read it yet — needs platform telemetry, not text; source spec printed '87%' with no cohort, no interval, no instrument" },
+  { id: "cliffhangerEffectiveness", thai: "ประสิทธิผลของ cliffhanger (x/10)", why: "reader response scored from the text alone; ordinal digit dressed as a measurement (Stevens) — replaced by countable hook facts: where the chapter cuts, what question is left open" },
+  { id: "nextChapterClickProbability", thai: "ความน่าจะเป็นที่จะกดอ่านตอนต่อไป", why: "a probability with no reference class and no observed frequency — Goodhart bait: optimizing it optimizes the guess, not the book" },
+  { id: "aiSlopScore", thai: "คะแนน AI-slop", why: "same error as isAiWritten with a decimal added ('0.02'): an inference sold as detection — Rush counts cliché-lexicon hits instead, which you can re-derive line by line" },
 ];
 
 /** The ten Kālāma grounds (AN 3.65) — reasons NOT to accept a claim by themselves. Marked:
