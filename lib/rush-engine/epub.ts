@@ -72,8 +72,16 @@ function zipStore(entries: ZEntry[]): Uint8Array {
   return out;
 }
 
+// XML 1.0 forbids C0 control characters other than tab/newline/CR, and — unlike the
+// metacharacters below — they cannot be represented by any entity, so they must be
+// removed, not escaped. Text pasted from PDF/Word routinely carries U+000C (form feed)
+// as a page break; left in, it makes content.opf and the chapter XHTML non-well-formed
+// and EPUBCheck reports a fatal error, contradicting this module's "spec-valid EPUB3"
+// promise (already enforced for the dcterms:modified field, not for title/body text).
 const esc = (s: string) =>
-  s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  s
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, "")
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
 // Stable id from the title (no random/Date → reproducible builds).
 function stableId(s: string): string {

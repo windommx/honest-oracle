@@ -1,9 +1,33 @@
 import { describe, it, expect } from "vitest";
+import { SaxesParser } from "saxes";
 import { buildEpub , EPUB_FALLBACK_MODIFIED } from "./epub";
 
 // UTF-8 (lenient): binary ZIP header bytes become replacement chars, but the
 // embedded text (incl. Thai) is contiguous valid UTF-8 and decodes correctly.
 const latin1 = (b: Uint8Array) => new TextDecoder().decode(b);
+
+// The EPUB entries are STORED uncompressed, so each XML document is a contiguous
+// substring of the decoded blob. Slice one out by its root element and confirm a
+// strict XML parser accepts it — the real "well-formed" bar, not a string match.
+function xmlDocs(epub: Uint8Array): { name: string; xml: string }[] {
+  const whole = latin1(epub);
+  const docs: { name: string; xml: string }[] = [];
+  for (const [name, close] of [["content.opf", "</package>"], ["ch001.xhtml", "</html>"]] as const) {
+    const anchor = whole.indexOf("OEBPS/" + name);
+    if (anchor < 0) continue;
+    const start = whole.indexOf("<?xml", anchor);
+    const end = whole.indexOf(close, start);
+    if (start >= 0 && end >= 0) docs.push({ name, xml: whole.slice(start, end + close.length) });
+  }
+  return docs;
+}
+function wellFormedError(xml: string): string {
+  let err = "";
+  const p = new SaxesParser({ xmlns: true });
+  p.on("error", (e) => { if (!err) err = e.message; });
+  p.write(xml).close();
+  return err;
+}
 
 describe("buildEpub", () => {
   const epub = buildEpub({
@@ -45,6 +69,33 @@ describe("buildEpub", () => {
     const s = latin1(buildEpub({ title: "A & B <x>", chapters: [{ title: "C", text: "1 < 2 & 3" }] }));
     expect(s).toContain("A &amp; B &lt;x&gt;");
     expect(s).toContain("1 &lt; 2 &amp; 3");
+  });
+
+  it("stays well-formed XML when title/text carry XML-illegal control characters", () => {
+    // U+000C (form feed) rides in from PDF/Word paste as a page break; U+000B, U+0000 etc.
+    // likewise. XML 1.0 cannot carry these even as entities, so esc must strip them. Before
+    // the fix the raw byte landed in content.opf and the chapter XHTML and a strict parser
+    // rejected the document — a fatal EPUBCheck error under the module's "spec-valid" claim.
+    const epub = buildEpub({
+      title: "Ti\ftle\x0b",
+      author: "Au\x00thor",
+      chapters: [{ title: "Ch\fapter", text: "line one\fbroken\x0bhere\x00end" }],
+    });
+    const docs = xmlDocs(epub);
+    expect(docs.map((d) => d.name)).toEqual(["content.opf", "ch001.xhtml"]);
+    for (const d of docs) {
+      expect(wellFormedError(d.xml), `${d.name} not well-formed`).toBe("");
+      for (const bad of ["\f", "\x0b", "\x00"]) {
+        expect(d.xml.includes(bad), `${d.name} still carries a control char`).toBe(false);
+      }
+    }
+  });
+
+  it("the well-formedness harness actually rejects a control character (guards the guard)", () => {
+    // Prove the saxes check has teeth: a raw form feed inside an element IS a parse error,
+    // so the passing test above reflects the fix, not a lenient parser.
+    expect(wellFormedError("<p>a\fb</p>")).not.toBe("");
+    expect(wellFormedError("<p>ok</p>")).toBe("");
   });
 });
 
