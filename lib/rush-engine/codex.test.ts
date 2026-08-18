@@ -369,6 +369,18 @@ describe("Thai substring false-positives (audit fix)", () => {
     const c = parseCodex("[ตัวละคร]\nแม่: แม่\nคำต้องห้าม: หมอ");
     expect(codexAudit(c, "เธอวางหมอนลงบนเตียง", "th").forbiddenHits).toEqual([]);
   });
+  it("does not report a character PRESENT when its name is only a substring of another word", () => {
+    // The headline present/missing count used raw includes: สม was reported present because
+    // สมชาย (undeclared, different) appears; likewise "Al" inside "Although". A present/missing
+    // count that says a character is on the page when they never are is a dishonest count.
+    const cTh = parseCodex("[ตัวละคร]\nสม: ยาม\nสมหญิง: นางเอก");
+    const aTh = codexAudit(cTh, "สมชาย เดินเข้ามาในเมืองคนเดียว", "th");
+    expect(aTh.present.map((e) => e.name)).toEqual([]);       // neither declared name appears
+    expect(aTh.missing.map((e) => e.name)).toContain("สม");
+    const cEn = parseCodex("[CHARACTERS]\nAl: guard\nBob: hero");
+    const aEn = codexAudit(cEn, "Although Bob walked in, all was calm.", "en");
+    expect(aEn.present.map((e) => e.name)).toEqual(["Bob"]);  // Al is inside "Although"/"all", not present
+  });
   it("parses a relation whose endpoints contain hyphens", () => {
     // "Spider-Man" must not be split at its internal hyphen into from:"Spider".
     const c = parseCodex("[RELATIONS]\nSpider-Man -> Green-Goblin: hunts");

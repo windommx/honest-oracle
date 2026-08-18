@@ -464,7 +464,11 @@ export function codexAudit(codex: Codex, draft: string, lang: "th" | "en"): Code
   const hay = draft.toLowerCase();
   const tokens = lang === "th" ? tokenizeThai(draft) : tokenizeProse(draft);
   for (const e of codex.entities) {
-    if (hay.includes(e.name.toLowerCase())) { present.push(e); continue; }
+    // Whole-word match, not raw substring: a canon name "สม" must not be reported present
+    // because "สมชาย" (a different, undeclared character) appears, nor "Al" because of
+    // "Although". The headline present/missing count is a HONEST count — the same
+    // boundedCount guard already used below for statusConflicts and forbiddenHits.
+    if (boundedCount(hay, e.name.toLowerCase()) > 0) { present.push(e); continue; }
     const hit = tokens.find((t) =>
       lang === "th" ? thaiMarkVariant(e.name, t) : withinOneEdit(e.name.toLowerCase(), t.toLowerCase())
     );
