@@ -46,7 +46,7 @@ function parseFlags(args: string[]): { positional: string[]; flags: Record<strin
 const HELP = `rush — deterministic novel-writing engine (no LLM, no network)
 
 USAGE
-  rush prompts  --type <t> --genre <g> [--chapters n] [--words n] [--lang th|en] [--full]
+  rush prompts  --type <t> --genre <g> [--chapters n] [--words n] [--voice v] [--reader r] [--lang th|en] [--full]
   rush analyze  <file.md> [--lang th|en]
   rush rename   <file.md> --from <name> --to <name> [--lang th|en] [--write]
   rush relations <file.md> --names "A,B,C" [--lang th|en]
@@ -120,6 +120,11 @@ function cmdPrompts(flags: Record<string, string | true>): CliResult {
     wordsPerChapter: Number(flags.words ?? 2500),
     language: promptLanguage === "th" ? "thai" : "english",
     promptLanguage,
+    // Without these, `undefined` leaks verbatim into the generated prompts
+    // ("โทนเสียง: undefined"). Same defaults as the scene-command config below.
+    voice: String(flags.voice ?? "storytelling"),
+    reader: String(flags.reader ?? (promptLanguage === "th" ? "ผู้อ่านทั่วไป" : "general readers")),
+    citationStyle: "none",
   } as unknown as BookConfig;
 
   const groups = typeof flags.groups === "string"
