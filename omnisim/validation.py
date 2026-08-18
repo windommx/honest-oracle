@@ -572,6 +572,56 @@ def make_noise_dataset(n: int = 16, length: int = 16, seed: int = 0) -> list[Ser
     return out
 
 
+def loo_linear_augment(base: Sequence[float], target: Sequence[float],
+                       feature: Sequence[float]) -> list[float]:
+    """Leave-one-out augmentation: predict target[i] as base[i] + beta*feature[i]
+    where the single coefficient beta is fit (centered least squares) on ALL
+    OTHER points, so no row ever sees its own beta — no in-sample optimism."""
+    n = len(base)
+    res = [target[i] - base[i] for i in range(n)]
+    fmean = sum(feature) / n if n else 0.0
+    fc = [f - fmean for f in feature]
+    aug: list[float] = []
+    for i in range(n):
+        sx = sum(fc[j] ** 2 for j in range(n) if j != i)
+        sxy = sum(fc[j] * res[j] for j in range(n) if j != i)
+        beta = sxy / sx if sx > 1e-12 else 0.0
+        aug.append(base[i] + beta * fc[i])
+    return aug
+
+
+def feature_improvement(base: Sequence[float], target: Sequence[float],
+                        feature: Sequence[float], n_boot: int = 2000,
+                        alpha: float = 0.05, seed: int = 0) -> dict:
+    """Does augmenting `base` with `feature` SIGNIFICANTLY cut squared error?
+    Leave-one-out + paired bootstrap; significant iff the (1-alpha) CI of the
+    improvement excludes 0."""
+    aug = loo_linear_augment(base, target, feature)
+    n = len(base)
+    eb = [(base[i] - target[i]) ** 2 for i in range(n)]
+    ea = [(aug[i] - target[i]) ** 2 for i in range(n)]
+    diffs = [eb[i] - ea[i] for i in range(n)]      # +ve => augmented is better
+    mean, lo, hi = paired_bootstrap_ci(diffs, n_boot=n_boot, alpha=alpha, seed=seed)
+    return {"mean_improvement": round(mean, 6), "ci": (round(lo, 6), round(hi, 6)),
+            "significant": bool(mean > 0 and lo > 0)}
+
+
+def multiple_feature_test(base: Sequence[float], target: Sequence[float],
+                          features: dict, n_boot: int = 2000,
+                          alpha: float = 0.05, seed: int = 0) -> dict:
+    """Test several candidate features for added value over `base`, with
+    BONFERRONI family-wise correction (each judged at alpha/K). The honest
+    answer to 'does ANY of my K features help?' that resists p-hacking:
+    `adequate_feature_found=False` means none survive correction."""
+    k = max(1, len(features))
+    adj = alpha / k
+    per = {name: feature_improvement(base, target, f, n_boot, adj, seed)
+           for name, f in features.items()}
+    return {"adequate_feature_found": any(p["significant"] for p in per.values()),
+            "alpha_per_feature": adj, "n_features": len(features),
+            "per_feature": per}
+
+
 def format_scores(scores: Sequence[Score]) -> str:
     lines = [f"{'model':<14}{'rmse':>10}{'baseline_rmse':>16}{'skill':>10}",
              "-" * 50]

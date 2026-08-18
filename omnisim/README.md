@@ -58,7 +58,7 @@ disabled, and the Z3-specific tests **skip** (they do not fail).
 
 ## Status
 
-- **158** tests pass with z3; **129** pass / **29** skipped without z3.
+- **232** tests pass with z3; **203** pass / **29** skipped without z3.
 - `mypy` clean (`check_untyped_defs` on).
 - CI (`.github/workflows/python-tests.yml`) gates every push/PR in three jobs:
   `tests (with-z3)`, `tests (without-z3)`, `mypy`.

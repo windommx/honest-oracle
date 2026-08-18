@@ -4,6 +4,7 @@ on:
   push:
     paths:
       - 'omnisim/**'
+      - 'consistency_kernel/**'
       - 'tests/**'
       - 'deep_core.py'
       - 'pyproject.toml'
@@ -11,6 +12,7 @@ on:
   pull_request:
     paths:
       - 'omnisim/**'
+      - 'consistency_kernel/**'
       - 'tests/**'
       - 'deep_core.py'
       - 'pyproject.toml'

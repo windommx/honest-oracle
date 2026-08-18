@@ -1728,3 +1728,447 @@ class TestZ3CommitBatch(unittest.TestCase):
                     inconsistent += 1
         self.assertEqual(noop_violations, 0)
         self.assertEqual(inconsistent, 0)
+
+
+from omnisim import multiple_feature_test
+
+
+class TestFeatureAugmentation(unittest.TestCase):
+    def test_detects_a_real_feature(self):
+        rng = random.Random(0); n = 60
+        base = [rng.uniform(0, 1) for _ in range(n)]
+        sig = [rng.gauss(0, 1) for _ in range(n)]
+        target = [base[i] + 0.5 * sig[i] + rng.gauss(0, 0.05) for i in range(n)]
+        feats = {"signal": sig,
+                 "noise1": [rng.gauss(0, 1) for _ in range(n)],
+                 "noise2": [rng.gauss(0, 1) for _ in range(n)]}
+        res = multiple_feature_test(base, target, feats)
+        self.assertTrue(res["adequate_feature_found"])
+        self.assertTrue(res["per_feature"]["signal"]["significant"])
+        self.assertFalse(res["per_feature"]["noise1"]["significant"])
+
+    def test_bonferroni_blocks_false_discovery(self):
+        # INTEGRITY: 6 pure-noise features, family-wise corrected -> none survive.
+        rng = random.Random(1); n = 40
+        base = [rng.uniform(0, 1) for _ in range(n)]
+        target = [base[i] + rng.gauss(0, 0.1) for i in range(n)]
+        feats = {f"n{i}": [rng.gauss(0, 1) for _ in range(n)] for i in range(6)}
+        res = multiple_feature_test(base, target, feats)
+        self.assertFalse(res["adequate_feature_found"])
+
+
+# ── Ported edge-case coverage (mapped to the real package API) ───────────
+
+class TestVector3EdgeCases(unittest.TestCase):
+    def test_clamp_lower_boundaries(self):
+        self.assertEqual(Vector3(-999, -999, -999), Vector3(-1.0, 0.0, -1.0))
+
+    def test_decay_zero_rate_unchanged(self):
+        v = Vector3(0.5, 0.5, 0.5)
+        self.assertEqual(v.decay_toward(Vector3(), 0.0), v)
+
+    def test_decay_full_rate_neutral(self):
+        self.assertEqual(Vector3(1, 1, 1).decay_toward(Vector3(), 1.0), Vector3(0, 0, 0))
+
+    def test_blend_zero_weight_unchanged(self):
+        v = Vector3(0.3, 0.4, 0.5)
+        self.assertEqual(v.blend(Vector3(1, 1, 1), 0.0), v)
+
+    def test_blend_full_weight_other(self):
+        other = Vector3(0.8, 0.7, 0.6)
+        self.assertEqual(Vector3(0, 0, 0).blend(other, 1.0), other)
+
+    def test_blend_weight_clamped_high(self):
+        self.assertEqual(Vector3(0, 0, 0).blend(Vector3(1, 1, 1), 2.5), Vector3(1, 1, 1))
+
+    def test_blend_negative_weight_clamped(self):
+        v = Vector3(0.2, 0.3, 0.4)
+        self.assertEqual(v.blend(Vector3(0.8, 0.7, 0.6), -0.5), v)
+
+    def test_delta_same_vector_zero(self):
+        v = Vector3(0.4, 0.5, 0.6)
+        self.assertEqual(v.delta(v), 0.0)
+
+    def test_bidirectional_decay_midpoint(self):
+        r = Vector3(0.8, 0.8, 0.8).decay_toward(Vector3(0.5, 0.5, 0.5), 0.5)
+        self.assertAlmostEqual(r.pleasure, 0.65, 5)
+
+    def test_blend_linear_interpolation(self):
+        mid = Vector3(0, 0, 0).blend(Vector3(1, 1, 1), 0.3)
+        self.assertAlmostEqual(mid.arousal, 0.3, 5)
+
+    def test_components_independent(self):
+        w = Vector3(0.1, 0.5, 0.9).blend(Vector3(0.9, 0.5, 0.1), 0.5)
+        self.assertEqual(w, Vector3(0.5, 0.5, 0.5))
+
+
+class TestSentimentEdgeCases(unittest.TestCase):
+    def test_empty_string_zero(self):
+        self.assertEqual(SentimentAnalyzer().analyze(""), 0.0)
+
+    def test_all_negative_is_minus_one(self):
+        s = SentimentAnalyzer().analyze("danger threat fail crisis war death attack breach panic")
+        self.assertEqual(s, -1.0)
+
+    def test_mixed_cancels(self):
+        self.assertEqual(SentimentAnalyzer().analyze("danger success threat victory"), 0.0)
+
+    def test_case_insensitive(self):
+        self.assertEqual(SentimentAnalyzer().analyze("DANGER Crisis"),
+                         SentimentAnalyzer().analyze("danger crisis"))
+
+    def test_repeated_words_counted_once(self):
+        self.assertAlmostEqual(
+            SentimentAnalyzer().analyze("danger danger danger success success"), 0.0, 4)
+
+    def test_unknown_words_zero(self):
+        self.assertEqual(SentimentAnalyzer().analyze("skibidi rizz gyatt sigma"), 0.0)
+
+
+class TestCausalDAGEdgeCases(unittest.TestCase):
+    def test_empty_sort(self):
+        self.assertEqual(CausalDAG().topological_sort(), [])
+
+    def test_single_node(self):
+        d = CausalDAG(); d.add_node("x")
+        self.assertEqual(d.topological_sort(), ["x"])
+        self.assertEqual(d.ancestors("x"), set())
+
+    def test_long_chain_order(self):
+        d = CausalDAG()
+        for i in range(50):
+            d.add_edge(f"n{i}", f"n{i+1}")
+        order = d.topological_sort()
+        for i in range(50):
+            self.assertLess(order.index(f"n{i}"), order.index(f"n{i+1}"))
+
+    def test_self_loop_is_cycle(self):
+        d = CausalDAG(); d.add_edge("a", "a")
+        self.assertTrue(d.has_cycle())
+
+    def test_dfs_terminates_on_cycle(self):
+        d = CausalDAG(); d.add_edge("a", "b"); d.add_edge("b", "a")
+        self.assertEqual(len(d.causal_paths("a", "b")), 1)
+
+    def test_add_node_edge_idempotent(self):
+        d = CausalDAG(); d.add_node("x"); d.add_node("x")
+        d.add_edge("a", "b"); d.add_edge("a", "b")
+        self.assertEqual(d.node_count, 3)
+        self.assertEqual(d.edge_count, 1)
+
+
+class TestGillespieEdgeCases(unittest.TestCase):
+    def test_run_empty_no_reactions(self):
+        self.assertEqual(GillespieSSA(seed=42).run(max_time=5.0), [])
+
+    def test_run_hits_max_steps(self):
+        g = GillespieSSA(seed=42)
+        g.add_reaction("fast", lambda: 1000.0, lambda: None)
+        self.assertEqual(len(g.run(max_time=100.0, max_steps=15)), 15)
+
+    def test_scheduled_overdue_fires_first(self):
+        g = GillespieSSA(seed=42)
+        g.add_reaction("slow", lambda: 0.001, lambda: None)
+        g.schedule_event(0.0, "immediate", lambda: None)
+        self.assertEqual(g.step()[1], "immediate")
+
+    def test_scheduled_heap_order(self):
+        g = GillespieSSA(seed=42); order = []
+        g.schedule_event(3.0, "c", lambda: order.append(3))
+        g.schedule_event(1.0, "a", lambda: order.append(1))
+        g.schedule_event(2.0, "b", lambda: order.append(2))
+        g.run(max_time=5.0)
+        self.assertEqual(order, [1, 2, 3])
+
+    def test_negative_propensity_absorbing(self):
+        g = GillespieSSA(seed=42)
+        g.add_reaction("neg", lambda: -5.0, lambda: None)
+        self.assertIsNone(g.step())
+
+    def test_run_respects_max_time(self):
+        g = GillespieSSA(seed=42)
+        g.add_reaction("tick", lambda: 2.0, lambda: None)
+        results = g.run(max_time=10.0, max_steps=1000)
+        # run() halts at the first step whose time crosses max_time: final time
+        # is >= max_time (overshoots by <= one dt) and it stopped on TIME, not
+        # on the step budget.
+        self.assertGreaterEqual(g.time, 10.0)
+        self.assertLess(len(results), 1000)
+
+    def test_is_absorbing_with_scheduled(self):
+        g = GillespieSSA(seed=1)
+        g.schedule_event(5.0, "later", lambda: None)
+        self.assertFalse(g.is_absorbing)
+
+
+class TestNetworkGraphEdgeCases(unittest.TestCase):
+    def test_empty_kkt(self):
+        self.assertEqual(NetworkGraph().kkt_greedy(k=3, mc_runs=50), [])
+
+    def test_k_greater_than_nodes_clamped(self):
+        g = NetworkGraph(); g.add_edge("a", "b", 0.5)
+        self.assertEqual(len(g.kkt_greedy(k=5, mc_runs=50, seed=42)), 2)
+
+    def test_ic_empty_seed_zero(self):
+        g = NetworkGraph(); g.add_edge("a", "b", 1.0)
+        self.assertEqual(g.ic_simulate(set(), random.Random(42)), 0)
+
+    def test_ic_cycle_terminates(self):
+        g = NetworkGraph(); g.add_edge("a", "b", 1.0); g.add_edge("b", "a", 1.0)
+        self.assertEqual(g.ic_simulate({"a"}, random.Random(42)), 2)
+
+    def test_edge_weight_clamped(self):
+        g = NetworkGraph(); g.add_edge("a", "b", 2.5); g.add_edge("a", "c", -0.5)
+        self.assertEqual(g.neighbors("a")["b"], 1.0)
+        self.assertEqual(g.neighbors("a")["c"], 0.0)
+
+    def test_neighbors_nonexistent(self):
+        self.assertEqual(NetworkGraph().neighbors("ghost"), {})
+
+    def test_degree_centrality_single_node(self):
+        g = NetworkGraph(); g.add_node("solo")
+        self.assertEqual(g.degree_centrality()["solo"], 0.0)
+
+
+class TestBifocalMemoryEdgeCases(unittest.TestCase):
+    def test_recall_limit(self):
+        m = BifocalMemory(); m.register_agent("a", "A")
+        for i in range(30):
+            m.add_fact(f"f{i}", f"fact {i}")
+        self.assertEqual(len(m.recall("a", limit=10)), 10)
+
+    def test_distort_overwrites(self):
+        m = BifocalMemory(); m.register_agent("a", "A")
+        m.add_fact("f1", "orig")
+        m.distort("a", "f1", "first", "b1")
+        m.distort("a", "f1", "second", "b2")
+        self.assertEqual(m.recall("a")[0].perceived, "second")
+
+    def test_independent_perceptions(self):
+        m = BifocalMemory(); m.register_agent("a", "A"); m.register_agent("b", "B")
+        m.add_fact("f1", "500", visibility=["public"])
+        m.distort("a", "f1", "5000", "catastrophizing")
+        self.assertEqual(m.recall("a")[0].perceived, "5000")
+        self.assertIsNone(m.recall("b")[0].perceived)
+
+
+
+class TestDPOEdgeCases(unittest.TestCase):
+    def test_uneven_counts_min(self):
+        b = DPOPairBuilder()
+        for _ in range(5):
+            b.add_run("s1", [], True)
+        b.add_run("s1", [], False)
+        self.assertEqual(len(b.build_pairs()), 1)
+
+    def test_empty_stats(self):
+        s = DPOPairBuilder().stats()
+        self.assertEqual(s["total_runs"], 0)
+        self.assertEqual(s["pairs_available"], 0)
+
+
+class TestBiasResolverEdgeCases(unittest.TestCase):
+    def test_no_contradictory_bias_across_states(self):
+        b = BiasResolver()
+        for p in (-0.8, -0.3, 0.0, 0.3, 0.8):
+            for a in (0.0, 0.3, 0.6, 0.9):
+                for d in (-0.8, 0.0, 0.8):
+                    r = b.process("msg", Vector3(p, a, d), -0.5)
+                    if r.bias:
+                        self.assertFalse("catastrophizing" in r.bias and "denial" in r.bias)
+
+    def test_optimism_beats_denial_at_boundary(self):
+        r = BiasResolver().process("Slight bad", Vector3(0.8, 0.2, 0.5), -0.3)
+        self.assertEqual(r.bias, "optimism")
+
+    def test_strong_negative_triggers_denial(self):
+        r = BiasResolver().process("Very bad", Vector3(0.8, 0.2, 0.5), -0.8)
+        self.assertEqual(r.bias, "denial")
+
+    def test_is_overloaded_boundary(self):
+        self.assertTrue(BiasResolver.is_overloaded(Vector3(-0.5, 0.81, 0.19)))
+        self.assertFalse(BiasResolver.is_overloaded(Vector3(-0.5, 0.8, 0.2)))
+
+
+class TestSerialization(unittest.TestCase):
+    def test_vector3_to_dict_keys_and_rounding(self):
+        d = Vector3(0.123456, 0.654321, -0.111111).to_dict()
+        self.assertEqual(set(d), {"p", "a", "d"})
+        self.assertEqual(d, {"p": 0.1235, "a": 0.6543, "d": -0.1111})
+
+    def test_vector3_to_dict_reflects_clamping(self):
+        # to_dict must report the clamped state, not the raw constructor args.
+        self.assertEqual(Vector3(5, 5, -5).to_dict(), {"p": 1.0, "a": 1.0, "d": -1.0})
+
+    def test_agent_action_defaults(self):
+        a = AgentAction("x", ActionType.SPEAK)
+        self.assertIsNone(a.target)
+        self.assertIsNone(a.new_location)
+        self.assertEqual(a.intensity, 0.5)
+        self.assertFalse(a.blocked)
+
+    def test_agent_perception_defaults(self):
+        p = AgentPerception("orig", "seen", 0.2)
+        self.assertIsNone(p.bias)
+        self.assertEqual(p.threat_multiplier, 1.0)
+        self.assertFalse(p.suppressed)
+
+    def test_simulation_result_defaults(self):
+        r = SimulationResult([], None, 0.0, 0, 0, 0)
+        self.assertIsNone(r.recovered)
+        self.assertIsNone(r.aftermath)
+        self.assertEqual(r.errors, [])
+        self.assertEqual(r.exit_reason, "completed")
+
+    def test_action_and_vector_are_frozen(self):
+        with self.assertRaises(Exception):
+            Vector3(0, 0, 0).pleasure = 0.5            # type: ignore[misc]
+        with self.assertRaises(Exception):
+            AgentAction("x", ActionType.SPEAK).target = "y"   # type: ignore[misc]
+
+
+class TestEventBusOrdering(unittest.TestCase):
+    def test_pending_count_tracks_queue(self):
+        bus = EventBus()
+        bus.publish(AgentEvent("speech", "a", "x", 0.0), delay=1.0)
+        bus.publish(AgentEvent("speech", "a", "y", 0.0), delay=1.0)
+        self.assertEqual(bus.pending_count, 2)
+        bus.tick(1.0)
+        self.assertEqual(bus.pending_count, 0)
+
+    def test_same_time_delivered_in_publish_order(self):
+        bus = EventBus()
+        got = []
+        bus.subscribe("b", ["speech"], lambda e: got.append(e.content))
+        bus.publish(AgentEvent("speech", "a", "first", 0.0))
+        bus.publish(AgentEvent("speech", "a", "second", 0.0))
+        bus.tick(0.1)
+        self.assertEqual(got, ["first", "second"])   # seq tie-break is FIFO
+
+    def test_negative_delay_clamped_to_now(self):
+        bus = EventBus()
+        got = []
+        bus.subscribe("b", ["speech"], lambda e: got.append(e))
+        bus.publish(AgentEvent("speech", "a", "x", 0.0), delay=-5.0)
+        bus.tick(0.0001)
+        self.assertEqual(len(got), 1)   # negative delay must not push into the past
+
+    def test_broadcast_reaches_all_non_senders(self):
+        bus = EventBus()
+        b_got, c_got = [], []
+        bus.subscribe("b", ["speech"], lambda e: b_got.append(e))
+        bus.subscribe("c", ["speech"], lambda e: c_got.append(e))
+        bus.publish(AgentEvent("speech", "a", "all", 0.0))   # empty target = broadcast
+        bus.tick(0.1)
+        self.assertEqual((len(b_got), len(c_got)), (1, 1))
+
+    def test_delivered_is_cumulative(self):
+        bus = EventBus()
+        bus.subscribe("b", ["speech"], lambda e: None)
+        bus.publish(AgentEvent("speech", "a", "x", 0.0))
+        bus.tick(0.1)
+        bus.publish(AgentEvent("speech", "a", "y", 0.0))
+        bus.tick(0.1)
+        self.assertEqual([e.content for e in bus.delivered], ["x", "y"])
+
+    def test_current_time_advances_by_dt(self):
+        bus = EventBus()
+        bus.tick(0.3)
+        bus.tick(0.2)
+        self.assertAlmostEqual(bus.current_time, 0.5, 6)
+
+
+class TestNeuralSymbolicBridgeMore(unittest.TestCase):
+    def test_build_prompt_embeds_context_and_schema(self):
+        p = NeuralSymbolicBridge().build_prompt({"situation": "fire"})
+        self.assertIn("fire", p)
+        self.assertIn("confidence", p)   # schema field is surfaced
+
+    def test_build_retry_prompt_lists_violations(self):
+        p = NeuralSymbolicBridge().build_retry_prompt('{"action":"x"}', ["mortal", "locked"])
+        self.assertIn("- mortal", p)
+        self.assertIn("- locked", p)
+        self.assertIn('{"action":"x"}', p)
+
+    def test_build_retry_prompt_handles_no_violations(self):
+        p = NeuralSymbolicBridge().build_retry_prompt("{}", [])
+        self.assertIn("unspecified", p)
+
+    def test_to_z3_constraints_uses_preconditions_only(self):
+        br = NeuralSymbolicBridge()
+        out = br.parse('{"action":"a","confidence":0.5,'
+                       '"preconditions":{"p":true},"effects":{"e":false}}')
+        self.assertEqual(br.to_z3_constraints(out), {"p": True})
+
+    def test_parse_non_numeric_confidence_is_none(self):
+        self.assertIsNone(NeuralSymbolicBridge().parse(
+            '{"action":"a","confidence":"high","preconditions":{}}'))
+
+    def test_parse_non_dict_preconditions_is_none(self):
+        self.assertIsNone(NeuralSymbolicBridge().parse(
+            '{"action":"a","confidence":0.5,"preconditions":[1,2]}'))
+
+    def test_parse_effects_coerced_to_bool(self):
+        out = NeuralSymbolicBridge().parse(
+            '{"action":"a","confidence":0.5,"preconditions":{},"effects":{"x":1,"y":0}}')
+        self.assertEqual(out.effects, {"x": True, "y": False})
+
+    def test_validate_no_preconditions_trivially_valid(self):
+        br = NeuralSymbolicBridge()
+        out = br.parse('{"action":"wait","confidence":0.9,"preconditions":{}}')
+        self.assertEqual(br.validate(None, out), (True, []))   # no engine needed
+
+
+class TestLLMSentimentMore(unittest.TestCase):
+    def test_llm_output_clamped_to_unit_range(self):
+        hi = LLMSentimentAnalyzer(llm_call=lambda t: 9.0)
+        lo = LLMSentimentAnalyzer(llm_call=lambda t: -9.0)
+        self.assertEqual(hi.analyze("x"), 1.0)
+        self.assertEqual(lo.analyze("x"), -1.0)
+
+    def test_cache_prevents_second_llm_call(self):
+        calls = []
+        s = LLMSentimentAnalyzer(llm_call=lambda t: (calls.append(t), 0.3)[1])
+        s.analyze("same")
+        s.analyze("same")
+        self.assertEqual(len(calls), 1)        # second resolved from cache
+        self.assertEqual(s.cache_hits, 1)
+
+    def test_distinct_texts_not_conflated(self):
+        s = LLMSentimentAnalyzer(llm_call=lambda t: 0.1 if t == "a" else 0.9)
+        self.assertEqual(s.analyze("a"), 0.1)
+        self.assertEqual(s.analyze("b"), 0.9)
+        self.assertEqual(s.cache_hits, 0)
+
+
+@unittest.skipUnless(True, "")
+class TestGillespieReproducibility(unittest.TestCase):
+    def _build(self):
+        g = GillespieSSA(seed=7)
+        g.add_reaction("r", lambda: 1.5, lambda: None)
+        return g
+
+    def test_rng_state_roundtrip_reproduces_stream(self):
+        # Advance g1 a few steps, snapshot mid-stream, then collect the tail.
+        g1 = self._build()
+        for _ in range(3):
+            g1.step()
+        saved = g1.rng_state()                 # rng_state() is a method, not a property
+        tail1 = [g1.step()[0] for _ in range(5)]
+        # A fresh solver, restored to that mid-stream RNG point, must continue
+        # the exact same sequence of exponential waiting times (dt).
+        g2 = self._build()
+        g2.set_rng_state(saved)
+        tail2 = [g2.step()[0] for _ in range(5)]
+        self.assertEqual(tail1, tail2)
+
+    def test_set_time_offsets_clock(self):
+        g = self._build()
+        g.set_time(100.0)
+        g.step()                               # step() returns dt; the clock is g.time
+        self.assertGreater(g.time, 100.0)      # absolute clock advanced past the offset
+
+    def test_same_seed_same_trace(self):
+        a = [self._build().step()[0] for _ in range(3)]
+        b = [self._build().step()[0] for _ in range(3)]
+        self.assertEqual(a, b)
