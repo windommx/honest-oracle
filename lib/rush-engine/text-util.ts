@@ -1,5 +1,15 @@
 import { countNonOverlapping } from "./aho-corasick";
 
+/** Neutralize the engine's control tokens in a user free-text field, so any interpolated
+ *  field (title/thesis/reader/voice/subGenre/outline/storyBible) cannot forge STATE fences or
+ *  ═══ section rules inside a generated prompt. Pure and idempotent; a no-op for ordinary text.
+ *  Shared by engine.ts (the live prompt path) and context.ts so the invariant holds in both. */
+export function neutralizeControlTokens(s: string | undefined): string {
+  return (s ?? "")
+    .replace(/<<<\s*(\/?\s*(?:END\s+)?STATE)\s*>>>/gi, "[$1]") // fake STATE fences → inert
+    .replace(/[═]{2,}/g, "──");                                 // fake ═══ section rules
+}
+
 // Count phrase occurrences with substring-overlap correction. When a longer
 // phrase matches (e.g. "หัวใจสลาย" or "a testament to"), its shorter substring
 // phrases ("ใจสลาย", "testament") would otherwise double-count the same span, so
