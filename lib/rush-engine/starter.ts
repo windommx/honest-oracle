@@ -28,7 +28,10 @@ export const STARTER_SEQUENCE: StarterStep[] = [
   {
     n: 2, key: "premise", titleTh: "ตกผลึก premise + แผนเล่ม", titleEn: "Premise & book plan",
     whyTh: "แก่นเรื่องหนึ่งบรรทัด + ภาพรวมทั้งเล่ม (ลองหลายมุมด้วย brainstorm)",
-    promptIds: ["OVERVIEW", "BRAINSTORM"], group: null,
+    // OVERVIEW is core (always produced); BRAINSTORM lives in group "advanced". Declaring the
+    // step group as null meant a writer following this step enabled nothing extra and never got
+    // BRAINSTORM. The group must name where the step's non-core module actually is.
+    promptIds: ["OVERVIEW", "BRAINSTORM"], group: "advanced",
   },
   {
     n: 3, key: "character", titleTh: "วางตัวละครหลัก", titleEn: "Build the cast",

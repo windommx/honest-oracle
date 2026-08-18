@@ -21,13 +21,33 @@ describe("STARTER_SEQUENCE", () => {
     }
   });
 
-  it("every module-backed step names a group that actually holds its modules", () => {
+  it("every non-core module a step references is in that step's declared group", () => {
+    // Do NOT skip steps whose group is null — that skip is exactly what hid the bug where
+    // step 2 declared group:null while referencing BRAINSTORM (group "advanced"), so a writer
+    // following the step enabled nothing and never got BRAINSTORM. A non-core module obliges
+    // the step to name its group.
     for (const step of STARTER_SEQUENCE) {
-      if (!step.group) continue;
       for (const id of step.promptIds) {
         if (CORE_IDS.has(id) || /^CH_\d+$/.test(id)) continue;
         const m = MODULE_CATALOG.find((x) => x.id === id);
-        expect(m?.group, `${id} not in group ${step.group}`).toBe(step.group);
+        expect(m?.group, `${id} (group ${m?.group}) not covered by step ${step.key}'s group ${step.group}`).toBe(step.group);
+      }
+    }
+  });
+
+  it("following any single step in isolation produces every prompt that step promises", () => {
+    // The per-step contract: enable just this step's group and its promptIds must all appear.
+    // Before the fix, following step 2 alone yielded OVERVIEW but silently dropped BRAINSTORM.
+    const base = {
+      title: "ทดสอบ", thesis: "เรื่องทดสอบ", type: "novel", subGenre: "romance",
+      reader: "ผู้ใหญ่", voice: "อบอุ่น", chapters: 3, wordsPerChapter: 1000,
+      citationStyle: "none", language: "thai", promptLanguage: "th",
+    } as unknown as BookConfig;
+    for (const step of STARTER_SEQUENCE) {
+      const groups = step.group ? [step.group] : [];
+      const ids = new Set(generateAllPrompts(base, groups as never[]).map((p) => p.id));
+      for (const id of step.promptIds) {
+        expect(ids.has(id), `step ${step.key}: ${id} missing when only group ${step.group} is enabled`).toBe(true);
       }
     }
   });
