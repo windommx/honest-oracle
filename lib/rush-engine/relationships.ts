@@ -52,7 +52,7 @@ export function characterGraph(text: string, names: string[], lang: "th" | "en" 
       if (shared.length) edges.push({ a: nodes[i].name, b: nodes[j].name, weight: shared.length, chapters: shared });
     }
   }
-  edges.sort((a, b) => b.weight - a.weight || a.a.localeCompare(b.a));
+  edges.sort((a, b) => b.weight - a.weight || a.a.localeCompare(b.a, "en"));
 
   return { chapters: chunks.length, nodes, edges };
 }

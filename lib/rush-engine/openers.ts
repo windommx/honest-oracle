@@ -72,7 +72,10 @@ export function analyzeOpeners(text: string, lang: "th" | "en"): OpenerReport {
 
   const stats: OpenerStat[] = [];
   counts.forEach((count, o) => stats.push({ opener: o, count, ratio: counted ? count / counted : 0 }));
-  stats.sort((a, b) => b.count - a.count || a.opener.localeCompare(b.opener));
+  // Pin the collation locale: a bare localeCompare() reads the host's ambient locale, an
+  // environment-dependent hidden input that can reorder ties across machines/browsers and
+  // break "same input → same output byte-for-byte". "en" gives a stable, host-independent order.
+  stats.sort((a, b) => b.count - a.count || a.opener.localeCompare(b.opener, "en"));
 
   return {
     units: counted,

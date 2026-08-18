@@ -169,7 +169,7 @@ export function realGaps(): Gap[] {
       return { cap: c, rivalsWithIt, tableStakes: rivalsWithIt.length };
     })
     .filter((g) => g.tableStakes > 0)
-    .sort((a, b) => b.tableStakes - a.tableStakes || a.cap.id.localeCompare(b.cap.id));
+    .sort((a, b) => b.tableStakes - a.tableStakes || a.cap.id.localeCompare(b.cap.id, "en"));
 }
 
 /** Deliberate non-goals, surfaced transparently (they are NOT counted as gaps). */
@@ -204,7 +204,7 @@ export function pressureRanking(): { rival: Rival; pressure: number; exposes: st
       const h = headToHead(r.id);
       return { rival: r, pressure: h.rivalOnly.length, exposes: h.rivalOnly };
     })
-    .sort((a, b) => b.pressure - a.pressure || a.rival.name.localeCompare(b.rival.name));
+    .sort((a, b) => b.pressure - a.pressure || a.rival.name.localeCompare(b.rival.name, "en"));
 }
 
 /** Rivals whose facts are older than `months` before `nowYYYYMM` — recheck before trusting. */

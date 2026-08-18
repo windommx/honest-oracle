@@ -211,7 +211,7 @@ export function storyBible(text: string, lang: "en" | "th", minCount = 3, protec
       const last = st.chapters[st.chapters.length - 1];
       return { ...st, firstChapter: first, lastChapter: last, span: last - first + 1 };
     })
-    .sort((a, b) => b.count - a.count || a.term.localeCompare(b.term))
+    .sort((a, b) => b.count - a.count || a.term.localeCompare(b.term, "en"))
     .slice(0, 200);
   return { chapters: total, entries };
 }

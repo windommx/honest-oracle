@@ -90,8 +90,8 @@ export function formatExcess(report: ExcessReport, lang: "th" | "en"): string {
       ? `# excess vocabulary — เทียบความถี่คำ (วิธีของ Kobak et al. 2025 · นับได้ ไม่ใช่คำตัดสิน)`
       : `# excess vocabulary — word-frequency comparison (Kobak et al. 2025 method · counts, not a verdict)`,
     th
-      ? `corpus ฐาน ${report.tokensA.toLocaleString()} token · corpus ตรวจ ${report.tokensB.toLocaleString()} token · นับเฉพาะคำที่พบ ≥${report.minCount} ครั้ง`
-      : `baseline ${report.tokensA.toLocaleString()} tokens · suspect ${report.tokensB.toLocaleString()} tokens · words with ≥${report.minCount} occurrences only`,
+      ? `corpus ฐาน ${report.tokensA.toLocaleString("en-US")} token · corpus ตรวจ ${report.tokensB.toLocaleString("en-US")} token · นับเฉพาะคำที่พบ ≥${report.minCount} ครั้ง`
+      : `baseline ${report.tokensA.toLocaleString("en-US")} tokens · suspect ${report.tokensB.toLocaleString("en-US")} tokens · words with ≥${report.minCount} occurrences only`,
   ];
   if (report.tokensA < 5000 || report.tokensB < 5000) {
     L.push(th ? "⚠ corpus เล็กกว่า 5k token — อัตราส่วนจะผันผวนสูง อ่านเป็นแนวโน้มเท่านั้น" : "⚠ corpus under 5k tokens — ratios will be noisy; read as tendencies only.");
