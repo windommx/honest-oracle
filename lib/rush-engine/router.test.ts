@@ -169,6 +169,23 @@ describe("the audit trail", () => {
     expect(md).toContain("พูดเหมือนกัน");
     expect(md).toContain("VOICE_SHEET");
   });
+
+  it("is deduped, per its documented contract — a keyword never appears twice", () => {
+    // Regression: rung R26 listed "query letter" twice and route() pushed each firing, so the
+    // audit trail read "query letter, query letter, agent". The field is documented as deduped.
+    const r = route("please send a query letter to an agent");
+    const m = r.primary!.matched;
+    expect(new Set(m).size, `duplicate keyword in matched: ${m.join(", ")}`).toBe(m.length);
+    expect(m).toContain("query letter");
+  });
+
+  it("no rung declares the same keyword twice", () => {
+    // Belt-and-suspenders: the data itself should not carry a duplicate that the collector
+    // then has to paper over.
+    for (const rung of SYMPTOM_LADDER) {
+      expect(new Set(rung.keywords).size, `rung ${rung.id} has a duplicate keyword`).toBe(rung.keywords.length);
+    }
+  });
 });
 
 describe("competing rungs are disclosed, never swallowed", () => {

@@ -306,7 +306,7 @@ export const SYMPTOM_LADDER: Rung[] = [
     id: "R26",
     th: "จะส่งสำนักพิมพ์ / หาบรรณาธิการ / เขียนจดหมายเสนอต้นฉบับ",
     en: "Submitting to a publisher or agent",
-    keywords: ["สำนักพิมพ์", "สนพ", "บรรณาธิการ", "เสนอต้นฉบับ", "ส่งต้นฉบับ", "รับต้นฉบับ", "รับพิจารณา", "จดหมายเสนอ", "เรื่องย่อส่งสนพ", "เอเจนต์", "ส่งประกวด", "ค่าลิขสิทธิ์", "ประวัตินักเขียน", "query letter", "cover letter", "query letter", "agent", "publisher", "synopsis", "submission"],
+    keywords: ["สำนักพิมพ์", "สนพ", "บรรณาธิการ", "เสนอต้นฉบับ", "ส่งต้นฉบับ", "รับต้นฉบับ", "รับพิจารณา", "จดหมายเสนอ", "เรื่องย่อส่งสนพ", "เอเจนต์", "ส่งประกวด", "ค่าลิขสิทธิ์", "ประวัตินักเขียน", "query letter", "cover letter", "agent", "publisher", "synopsis", "submission"],
     primary: "SUBMISSION",
     also: ["BLURB", "TITLE"],
     why:
@@ -380,7 +380,9 @@ export function route(symptom: string): RouteResult {
   for (const rung of SYMPTOM_LADDER) {
     const matched: string[] = [];
     for (const k of rung.keywords) {
-      if (hits(hay, normalize(k))) matched.push(k);
+      // `matched` is the audit trail and is documented as deduped: if a rung ever lists the
+      // same keyword twice, or two keywords normalize alike, it must still appear once.
+      if (hits(hay, normalize(k)) && !matched.includes(k)) matched.push(k);
     }
     if (matched.length > 0) all.push({ rung, matched });
   }
