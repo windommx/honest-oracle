@@ -31,8 +31,13 @@ export function renameTerm(text: string, from: string, to: string, lang: "th" | 
   const count = lang === "en" ? countEn : countTh;
 
   const chunks = splitChapters(text);
+  // splitChapters prepends a synthetic "(intro)" chunk when text precedes the first heading.
+  // Numbering positionally (i + 1) would then push every real chapter's number up by one and
+  // invent a chapter that does not exist — a corrupted audit. Offset so the intro is chapter 0
+  // (front matter) and real chapters keep 1-based numbering.
+  const offset = chunks[0]?.title === "(intro)" ? 1 : 0;
   const perChapter = chunks
-    .map((c, i) => ({ chapter: i + 1, count: count(c.body, from) }))
+    .map((c, i) => ({ chapter: i + 1 - offset, count: count(c.body, from) }))
     .filter((p) => p.count > 0);
 
   const targetPreexisting = count(text, to);

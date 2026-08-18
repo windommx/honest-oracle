@@ -22,6 +22,17 @@ describe("renameTerm (Thai)", () => {
     expect(r.total).toBe(0);
     expect(r.perChapter).toHaveLength(0);
   });
+
+  it("does not invent a chapter when the manuscript opens with a preamble", () => {
+    // splitChapters prepends a synthetic (intro) chunk for text before the first heading.
+    // Numbering positionally used to push every real chapter up by one and report a
+    // nonexistent chapter — here a 2-chapter book claimed a "chapter 3". The preamble hit
+    // now maps to chapter 0 (front matter) and the real chapters keep their true numbers.
+    const text = "เกริ่นนำ วิกกี้ปรากฏตัว\n## บทที่ 1\nวิกกี้เดินมา\n## บทที่ 2\nเธอเรียกวิกกี้";
+    const r = renameTerm(text, "วิกกี้", "อาโน่", "th");
+    expect(r.perChapter).toEqual([{ chapter: 0, count: 1 }, { chapter: 1, count: 1 }, { chapter: 2, count: 1 }]);
+    expect(r.perChapter.map((p) => p.chapter)).not.toContain(3);
+  });
 });
 
 describe("renameTerm (English word boundaries)", () => {
