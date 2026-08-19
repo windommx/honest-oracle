@@ -122,3 +122,43 @@ earlier runs, the honest Stage-2 conclusion is:
 OMNISIM is solid engineering and a useful generative/explanatory sandbox, but on
 this evidence it is **not a predictive method**. (Caveats: small single dataset,
 n≈50, underpowered; one feature; three targets tried — multiple comparisons.)
+
+---
+
+# Stage-3: the "make it a method" gamble — disciplined negative
+
+After Stage 2, the only path for OMNISIM to become a predictive *method* was to
+put its distinctive (epistemic) content into the predictive path AND have it add
+value over the logistic baseline. We tested this properly, with a pre-registered
+multiple-feature protocol and family-wise correction.
+
+## Protocol (pre-registered)
+- Target: final cascade size (the target where the contagion family had signal).
+- Baseline: logistic_final (curve shape only) — the bar to beat.
+- Candidate features (prefix only, no leakage), K=6: stance `net_amp`
+  (support−deny), `dispute` (deny+query), mean early `retweets`, `likes`,
+  `replies`, and `velocity` (early acceleration).
+- Each feature augments the baseline via a leave-one-out 1-coefficient fit;
+  improvement is judged by paired bootstrap, with **Bonferroni** correction
+  (each feature at alpha/6) to resist p-hacking across the 6 candidates.
+- 55 real rumor cascades.
+
+## Result
+`adequate_feature_found = False`. Every feature's improvement CI included 0 —
+none was significant, even *before* Bonferroni. (Caveats: n=55; the normalized
+final-size target is heavy-tailed, so the test is underpowered; `retweets` and
+`likes` are duplicate columns in this dataset.)
+
+## Verdict
+The gamble fails on this evidence: no prefix epistemic/engagement signal reliably
+beats the logistic curve. Combined with Stages 1-2, the conclusion is now
+robust and triple-checked:
+
+> OMNISIM is solid engineering and a useful generative/explanatory sandbox; its
+> validation harness is a genuinely valuable, integrity-checked tool — but it is
+> **not a predictive method**, and the distinctive ideas do not (on this data)
+> add predictive value over a one-line logistic curve.
+
+The lasting deliverable from this stage is the reusable, tested machinery
+(`multiple_feature_test` with Bonferroni + leave-one-out + bootstrap, and its
+no-false-discovery integrity test) — the discipline, not a win.

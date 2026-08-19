@@ -1,0 +1,34 @@
+name: extraction-eval
+
+# Manually-triggered benchmark: measures how accurately Claude turns prose into
+# the structured events the consistency kernel enforces. Needs network + an API
+# key, so it runs here in CI (not in the dev sandbox) using a repo secret.
+#
+# Setup (once): add a repository secret named ANTHROPIC_API_KEY
+#   Settings -> Secrets and variables -> Actions -> New repository secret
+# Then run this workflow from the Actions tab ("Run workflow").
+
+on:
+  workflow_dispatch:
+    inputs:
+      model:
+        description: "Claude model id to benchmark"
+        required: false
+        default: "claude-opus-4-8"
+
+jobs:
+  extraction-eval:
+    runs-on: ubuntu-latest
+    name: prose->event extraction F1
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install anthropic SDK
+        run: pip install anthropic
+      - name: Run extraction benchmark
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          ANTHROPIC_MODEL: ${{ github.event.inputs.model }}
+        run: python -m consistency_kernel.run_extraction_eval
