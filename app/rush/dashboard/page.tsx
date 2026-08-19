@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "../_toast";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -39,6 +39,11 @@ type Sort = "recent" | "title";
 type View = "grid" | "list";
 
 const fmt = (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(n >= 10000 ? 0 : 1)}k` : String(n));
+// An invalid updatedAt must render as "—", never the string "Invalid Date".
+const fmtDate = (iso: string | number) => {
+  const d = new Date(iso);
+  return isNaN(+d) ? "—" : d.toLocaleDateString("th-TH", { dateStyle: "medium" });
+};
 const words = (p: Project) => (p.config ? (p.config.chapters || 0) * (p.config.wordsPerChapter || 0) : 0);
 
 export default function DashboardPage() {
@@ -71,36 +76,54 @@ export default function DashboardPage() {
         toast("ระบบบิลยังไม่ได้ตั้งค่า (ต้องใส่ STRIPE_PRICE_ID_PRO) — ดูขั้นตอนใน README", { variant: "error" });
       } else if (res.status === 401) {
         setNeedLogin(true);
+      } else {
+        toast(`เริ่มการชำระเงินไม่สำเร็จ (HTTP ${res.status}) — ลองใหม่อีกครั้ง`, { variant: "error" });
       }
     } catch {
-      /* offline */
+      // A click that does NOTHING is the worst outcome — say why it failed.
+      toast("เชื่อมต่อระบบชำระเงินไม่ได้ — ตรวจอินเทอร์เน็ตแล้วลองใหม่", { variant: "error" });
     } finally {
       setUpgrading(false);
     }
   }
 
+  // Monotone request counter: if the user hits refresh twice, only the LATEST
+  // request may write state. Without this the slower (stale) response wins the
+  // race and silently replaces fresher data.
+  const loadSeq = useRef(0);
   async function loadProjects() {
+    const seq = ++loadSeq.current;
+    const hadData = projects.length > 0;
     setLoading(true);
     setLoadError(false);
+    const failed = () => {
+      // A failed REFRESH must not hide books we already showed the writer. Keep the
+      // last good list on screen and say the refresh failed; the full-page error
+      // card is only for when we have nothing at all to show.
+      if (hadData) toast("รีเฟรชไม่สำเร็จ — แสดงข้อมูลล่าสุดที่โหลดได้ไว้ก่อน", { variant: "error" });
+      else setLoadError(true);
+    };
     try {
       const res = await fetch("/api/rush/projects");
+      if (seq !== loadSeq.current) return; // a newer request owns the state now
       if (res.status === 401) setNeedLogin(true);
       else if (res.ok) {
         setNeedLogin(false);
         const data = await res.json();
+        if (seq !== loadSeq.current) return;
         setProjects(data.projects ?? []);
         setPlan(data.plan ?? "free");
       } else {
         // A non-OK response is a FAILED LOAD, not an empty shelf.
-        setLoadError(true);
+        failed();
       }
     } catch {
       // Offline / network error. Do NOT fall through to the empty state: rendering
       // "you have no saved books" when we simply could not reach the server tells the
       // writer something false about their own work. Say we could not load, and offer retry.
-      setLoadError(true);
+      if (seq === loadSeq.current) failed();
     } finally {
-      setLoading(false);
+      if (seq === loadSeq.current) setLoading(false);
     }
   }
 
@@ -132,7 +155,11 @@ export default function DashboardPage() {
   };
   const exportEpub = (m: StoredManuscript) => {
     const chs = splitChapters(m.text).filter((c) => c.body.trim());
-    if (!chs.length) return;
+    if (!chs.length) {
+      // Before: the button did NOTHING on an empty manuscript — no file, no message.
+      toast("ต้นฉบับนี้ยังไม่มีเนื้อหาให้ส่งออก — EPUB ต้องมีอย่างน้อยหนึ่งบทที่ไม่ว่าง", { variant: "error" });
+      return;
+    }
     const bytes = buildEpub({
       title: m.title,
       language: m.lang,
@@ -165,7 +192,9 @@ export default function DashboardPage() {
       return true;
     });
     return list.sort((a, b) =>
-      sort === "title" ? a.title.localeCompare(b.title) : +new Date(b.updatedAt) - +new Date(a.updatedAt)
+      sort === "title"
+        ? a.title.localeCompare(b.title, "th") // pinned collation — order must not depend on the viewer's OS locale
+        : (+new Date(b.updatedAt) || 0) - (+new Date(a.updatedAt) || 0)
     );
   }, [projects, query, filter, sort]);
 
@@ -230,7 +259,7 @@ export default function DashboardPage() {
             <Link href="/rush" className="flex items-center gap-x-2 px-6 py-3 rounded-3xl bg-white text-[#0a0a0f] font-semibold text-sm hover:bg-amber-100 active:scale-[0.985] transition-all">
               <Plus className="w-4 h-4" /> สร้างหนังสือใหม่
             </Link>
-            <button onClick={loadProjects} className="flex items-center justify-center w-11 h-11 rounded-3xl border border-white/10 hover:bg-white/5 text-slate-400 hover:text-white transition-colors" aria-label="Refresh">
+            <button onClick={loadProjects} className="flex items-center justify-center w-11 h-11 rounded-3xl border border-white/10 hover:bg-white/5 text-slate-400 hover:text-white transition-colors" aria-label="รีเฟรชรายการ">
               <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
             </button>
           </div>
@@ -264,12 +293,12 @@ export default function DashboardPage() {
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <div className="relative w-full sm:w-64">
-                <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="ค้นหาหนังสือ…" className="w-full bg-white/5 border border-white/10 focus:border-white/30 text-sm placeholder:text-faint rounded-3xl py-2.5 pl-10 pr-4 outline-none" />
+                <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="ค้นหาหนังสือ…" aria-label="ค้นหาหนังสือ" className="w-full bg-white/5 border border-white/10 focus:border-white/30 text-sm placeholder:text-faint rounded-3xl py-2.5 pl-10 pr-4 outline-none" />
                 <Search className="w-4 h-4 absolute left-4 top-3 text-faint" />
               </div>
               <div className="flex items-center bg-white/5 border border-white/10 rounded-3xl p-1 text-xs">
                 {([["all", "ทั้งหมด"], ["private", "ส่วนตัว"], ["public", "แชร์"]] as const).map(([k, label]) => (
-                  <button key={k} onClick={() => setFilter(k)} className={`px-3.5 py-1.5 rounded-[20px] font-medium transition-colors ${filter === k ? "bg-[#c9a84c] text-[#0a0a0f]" : "text-slate-400 hover:text-white"}`}>{label}</button>
+                  <button key={k} onClick={() => setFilter(k)} aria-pressed={filter === k} className={`px-3.5 py-1.5 rounded-[20px] font-medium transition-colors ${filter === k ? "bg-[#c9a84c] text-[#0a0a0f]" : "text-slate-400 hover:text-white"}`}>{label}</button>
                 ))}
               </div>
               <select value={sort} onChange={(e) => setSort(e.target.value as Sort)} className="bg-white/5 border border-white/10 rounded-3xl px-3 py-2 text-xs text-slate-300 outline-none">
@@ -277,8 +306,8 @@ export default function DashboardPage() {
                 <option value="title">ชื่อ A-Z</option>
               </select>
               <div className="flex items-center border border-white/10 rounded-3xl p-1 text-xs bg-white/5">
-                <button onClick={() => setView("grid")} className={`px-3 py-1.5 rounded-[20px] flex items-center gap-1.5 ${view === "grid" ? "bg-white/10 text-white" : "text-slate-400"}`} aria-label="Grid view"><LayoutGrid className="w-3.5 h-3.5" /></button>
-                <button onClick={() => setView("list")} className={`px-3 py-1.5 rounded-[20px] flex items-center gap-1.5 ${view === "list" ? "bg-white/10 text-white" : "text-slate-400"}`} aria-label="List view"><List className="w-3.5 h-3.5" /></button>
+                <button onClick={() => setView("grid")} aria-pressed={view === "grid"} className={`px-3 py-1.5 rounded-[20px] flex items-center gap-1.5 ${view === "grid" ? "bg-white/10 text-white" : "text-slate-400"}`} aria-label="มุมมองการ์ด"><LayoutGrid className="w-3.5 h-3.5" /></button>
+                <button onClick={() => setView("list")} aria-pressed={view === "list"} className={`px-3 py-1.5 rounded-[20px] flex items-center gap-1.5 ${view === "list" ? "bg-white/10 text-white" : "text-slate-400"}`} aria-label="มุมมองตาราง"><List className="w-3.5 h-3.5" /></button>
               </div>
             </div>
           </div>
@@ -320,19 +349,19 @@ export default function DashboardPage() {
             </div>
           )}
 
-          {!loading && !loadError && projects.length > 0 && visible.length === 0 && (
+          {!loading && !needLogin && !loadError && projects.length > 0 && visible.length === 0 && (
             <p className="text-center text-faint text-sm py-12">ไม่พบหนังสือที่ตรงกับการค้นหา</p>
           )}
 
           {/* Grid */}
-          {!loading && view === "grid" && visible.length > 0 && (
+          {!loading && !needLogin && view === "grid" && visible.length > 0 && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
               {visible.map((p) => <ProjectCard key={p.id} p={p} onOpen={() => router.push(`/rush?project=${p.id}`)} onDelete={() => del(p.id)} />)}
             </div>
           )}
 
           {/* List */}
-          {!loading && view === "list" && visible.length > 0 && (
+          {!loading && !needLogin && view === "list" && visible.length > 0 && (
             <div className="glass-card rounded-3xl overflow-hidden overflow-x-auto">
               <table className="w-full text-sm min-w-[640px]">
                 <thead>
@@ -354,7 +383,7 @@ export default function DashboardPage() {
                         <td className="px-4 py-4 text-xs text-slate-400">{bt?.label ?? p.type} • {titleCase(p.subGenre)}</td>
                         <td className="px-4 py-4 text-right font-mono text-xs">{p.config?.chapters ?? "—"}</td>
                         <td className="px-4 py-4 text-right font-mono text-xs">{fmt(words(p))}</td>
-                        <td className="px-6 py-4 text-right text-xs text-slate-400">{new Date(p.updatedAt).toLocaleDateString("th-TH", { dateStyle: "medium" })}</td>
+                        <td className="px-6 py-4 text-right text-xs text-slate-400">{fmtDate(p.updatedAt)}</td>
                         <td className="px-4 py-4 text-right">
                           <button onClick={() => router.push(`/rush?project=${p.id}`)} className="text-amber-400 text-xs px-3 py-1 rounded-xl border border-white/10 hover:bg-white/5">เปิด</button>
                         </td>
@@ -398,12 +427,17 @@ export default function DashboardPage() {
                           <td className="px-4 text-center">
                             <span className={`inline-block text-[10px] px-2 py-px rounded ${m.lang === "th" ? "bg-sky-900/60 text-sky-300" : "bg-violet-900/60 text-violet-300"}`}>{m.lang === "th" ? "ไทย" : "EN"}</span>
                           </td>
-                          <td className="px-4 text-right font-mono text-xs text-slate-300">{m.text.length.toLocaleString()}</td>
-                          <td className="px-5 text-right text-xs text-slate-400">{new Date(m.updatedAt).toLocaleDateString("th-TH", { dateStyle: "medium" })}</td>
+                          <td className="px-4 text-right font-mono text-xs text-slate-300">{m.text.length.toLocaleString("th-TH")}</td>
+                          <td className="px-5 text-right text-xs text-slate-400">{fmtDate(m.updatedAt)}</td>
                           <td className="px-3 text-right whitespace-nowrap">
                             <button onClick={() => router.push(`/rush?analyze=${m.id}`)} className="text-emerald-400 hover:text-emerald-300 p-1.5" aria-label="Analyze"><Search className="w-4 h-4" /></button>
                             <button onClick={() => exportEpub(m)} className="text-[#c9a84c] hover:text-amber-300 p-1.5" aria-label="Export EPUB" title="ดาวน์โหลด .epub"><BookDown className="w-4 h-4" /></button>
-                            <button onClick={() => delManuscript(m.id)} className="text-faint hover:text-red-400 p-1.5" aria-label="Delete manuscript"><Trash2 className="w-4 h-4" /></button>
+                            <DeleteButton
+                              onDelete={() => delManuscript(m.id)}
+                              what="ต้นฉบับ"
+                              idleClass="text-faint hover:text-red-400 p-1.5"
+                              armedClass="text-[10px] font-semibold px-2 py-1 rounded-lg bg-red-950/60 border border-red-500/60 text-red-300 whitespace-nowrap"
+                            />
                           </td>
                         </tr>
                       ))}
@@ -439,6 +473,36 @@ export default function DashboardPage() {
         </div>
       </main>
     </div>
+  );
+}
+
+// Deleting is permanent — a server project has no undo endpoint and a local
+// manuscript is gone from IndexedDB for good. One slipped click must never be
+// enough. First click ARMS the button (it turns red and says so); the second
+// click within 4 seconds deletes; doing nothing disarms it again. This keeps
+// the flow keyboard-accessible (same button, no dialog) and un-blockable
+// (no window.confirm, which an earlier maturity pass removed on purpose).
+function DeleteButton({ onDelete, what, idleClass, armedClass }: {
+  onDelete: () => void; what: string; idleClass: string; armedClass: string;
+}) {
+  const [armed, setArmed] = useState(false);
+  useEffect(() => {
+    if (!armed) return;
+    const t = setTimeout(() => setArmed(false), 4000);
+    return () => clearTimeout(t);
+  }, [armed]);
+  return armed ? (
+    <button
+      onClick={() => { setArmed(false); onDelete(); }}
+      aria-label={`ยืนยันลบ${what}`}
+      className={armedClass}
+    >
+      ยืนยันลบ?
+    </button>
+  ) : (
+    <button onClick={() => setArmed(true)} aria-label={`ลบ${what}`} title="ลบ" className={idleClass}>
+      <Trash2 className="w-4 h-4" />
+    </button>
   );
 }
 
@@ -499,11 +563,16 @@ function ProjectCard({ p, onOpen, onDelete }: { p: Project; onOpen: () => void; 
         <div className="text-xs text-slate-400 mt-0.5">{bt?.label ?? p.type} • {titleCase(p.subGenre)}</div>
         <div className="mt-auto pt-4 flex justify-between text-[11px] text-faint">
           <span>{p.config?.chapters ? `${p.config.chapters} บท` : "—"}{w ? ` · ~${fmt(w)} คำ` : ""}</span>
-          <span>{new Date(p.updatedAt).toLocaleDateString("th-TH", { dateStyle: "medium" })}</span>
+          <span>{fmtDate(p.updatedAt)}</span>
         </div>
         <div className="flex items-center gap-x-2 mt-3 pt-4 border-t border-white/10">
           <button onClick={onOpen} className="flex-1 text-xs py-2 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 font-medium text-amber-400 transition-colors">เปิดใน Rush →</button>
-          <button onClick={onDelete} className="w-9 h-9 flex items-center justify-center rounded-2xl border border-white/10 hover:bg-red-950/40 hover:text-red-400 text-slate-400" aria-label="Delete" title="ลบ"><Trash2 className="w-4 h-4" /></button>
+          <DeleteButton
+            onDelete={onDelete}
+            what="หนังสือ"
+            idleClass="w-9 h-9 flex items-center justify-center rounded-2xl border border-white/10 hover:bg-red-950/40 hover:text-red-400 text-slate-400"
+            armedClass="h-9 px-3 text-xs font-semibold rounded-2xl bg-red-950/60 border border-red-500/60 text-red-300 whitespace-nowrap"
+          />
         </div>
       </div>
     </div>
