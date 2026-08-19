@@ -59,7 +59,15 @@ def _normalize(ev) -> Optional[Event]:
     """Coerce one raw item into a valid, lowercased event tuple, or None."""
     if not isinstance(ev, (list, tuple)) or not ev:
         return None
-    parts = [str(x).strip().lower() for x in ev]
+    # Never str()-coerce. Coercion INVENTED entities the model never named: JSON
+    # null became a character literally called "none", 123 became "123", and a
+    # nested object became "{'n': 'bob'}" — each a well-formed event that then
+    # poisons the world graph permanently. "Dropped and counted, never guessed"
+    # has to include the case where the model emitted the right shape with the
+    # wrong types.
+    if any(not isinstance(x, str) for x in ev):
+        return None
+    parts = [x.strip().lower() for x in ev]
     verb = parts[0]
     if verb not in _ARITY or len(parts) != _ARITY[verb]:
         return None
@@ -84,10 +92,10 @@ class ProseExtractor:
         try:
             data = json.loads(raw)
         except (json.JSONDecodeError, TypeError):
-            return ExtractionResult([], 0, ["response was not valid JSON"], raw)
+            return ExtractionResult([], 1, ["response was not valid JSON"], raw)
         items = data.get("events") if isinstance(data, dict) else data
         if not isinstance(items, list):
-            return ExtractionResult([], 0, ["no 'events' list in response"], raw)
+            return ExtractionResult([], 1, ["no 'events' list in response"], raw)
         events: list[Event] = []
         dropped: list[str] = []
         for item in items:

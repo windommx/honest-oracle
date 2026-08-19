@@ -26,6 +26,8 @@ from consistency_kernel import NarrativeKernel
 
 k = NarrativeKernel()
 k.add_awareness("Alice", "the_ancient_dagger")   # Alice may now reference it
+k.add_awareness("Alice", "the_code")             # gate is fail-closed: register
+                                                 # anything she may refer to
 k.world.commit_scene([("learn", "Alice", "the_code")])
 
 # Rule-1 gate + Rule-4 commit, atomic:
@@ -33,10 +35,10 @@ ok, why = k.author_scene([("reference", "Alice", "the_code"),
                           ("place", "dagger", "hall")])
 
 # constrained decoding: only tokens that lead to an allowed entity
-k.trie_for("Alice").valid_next(["the"])          # -> {"ancient"}
+k.trie_for("Alice").valid_next(["the"])          # -> {"ancient", "code"}
 ```
 
-## How "correct" is verified (`tests/test_kernel.py`, 22 tests)
+## How "correct" is verified (`tests/test_kernel.py`, 51 tests)
 
 Not happy-path checks — every guarantee is differential, exhaustive, or fuzzed:
 
@@ -53,6 +55,28 @@ Not happy-path checks — every guarantee is differential, exhaustive, or fuzzed
   when a custom rule raises.
 - **Deadlock freedom**: over 3000 trials, sorted lock order yields **0** deadlocks
   while an arbitrary order is shown to deadlock — a real differential, not a tautology.
+- **Regression suite from the second audit** (see below): 16 tests that each fail
+  against the pre-audit kernel, plus mutation checks — deleting `_rollback` now
+  fails 3 tests, where previously it failed **none**.
+
+### What the second audit found (and why the first suite missed it)
+
+The original 32 tests all passed with the rollback mechanism *deleted entirely*,
+because a rejected scene never wrote anything in the first place — so atomicity was
+asserted but never exercised. That blind spot hid five real defects, each now fixed
+and pinned by a test that fails without the fix:
+
+| Defect | Effect before the fix |
+|---|---|
+| `_validate` ignored intra-scene order | `[("die","Bob"),("act","Bob")]` **committed** — the flagship "dead cannot act" rule silently depended on where the extractor put a chapter break. It also *falsely rejected* the legal `[("learn",…),("reference",…)]`. |
+| Rollback snapshot was a single slot | A nested `commit_scene` cleared it, so the outer rollback became a no-op and a **rejected scene left the world mutated** — the exact opposite of the documented guarantee. |
+| No grammar check at the commit boundary | `("teleport","Bob","moon")` returned `(True, [])` — reported as a successful commit while doing nothing; `("die",)` raised `IndexError` out of the rule engine. |
+| `_normalize` `str()`-coerced JSON members | A `null` became a character named `"none"`, `123` became `"123"`, `{"n":"bob"}` became `"{'n': 'bob'}"` — **inventing** events the model never emitted, into a graph that never forgets. |
+| Rule-1 gate only fired for known entities | A reference to a **never-registered** noun — precisely the hallucination the gate exists to stop — passed straight through. Now fail-closed (`NarrativeKernel(strict_gate=False)` restores the old behaviour, knowingly). |
+
+The `Trie` terminal sentinel was also a plain string (`"\x00$"`) whose comment
+claimed it "can't collide with a token"; it could, and `Trie(["\x00$"])` crashed.
+It is now a unique `object()`, so collision is impossible by construction.
 
 Run it:
 
@@ -73,7 +97,15 @@ claim to:
   real BPE tokenizer and measured against a live model;
 - guarantee serializability on a real database under true concurrency — that needs
   the locking discipline wired into real DB transactions and tested under load;
-- judge prose quality or detect AI-written text.
+- judge prose quality or detect AI-written text;
+- claim that the `longrun` graph arm's 100% detection / 0% false-positive is an
+  empirical discovery. It is **true by construction** on that generator: probes use
+  fresh names, exactly two event kinds, and no distractors, so a correct graph
+  cannot fail it. What the benchmark genuinely shows is the *contrast* — a
+  recency-truncated window loses exactly those probes whose distance exceeds the
+  window — and that the window arm's degradation tracks the generator's distance
+  spread, not a property of real prose. Read it as a demonstration of the failure
+  mode, not as a measured accuracy figure.
 
 Those live behind adapters and require real systems/data to validate. The honest
 boundary is the point: what's inside is checkable to ~100% correctness; what's

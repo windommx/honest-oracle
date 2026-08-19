@@ -24,9 +24,20 @@ __all__ = ["NarrativeKernel"]
 
 
 class NarrativeKernel:
-    def __init__(self) -> None:
+    """Staged Rule-1 gate + Rule-4 commit.
+
+    ``strict_gate`` (default True) decides what happens when a scene references a
+    target that was never registered as a referenceable entity. A gate whose job
+    is to stop hallucinated nouns must reject what it cannot vouch for, so the
+    default is fail-CLOSED. Set ``strict_gate=False`` for the older, permissive
+    behaviour in which unregistered targets bypass the gate entirely — knowingly,
+    rather than by accident.
+    """
+
+    def __init__(self, *, strict_gate: bool = True) -> None:
         self.reach = ReachGraph()
         self.world = WorldState()
+        self.strict_gate = strict_gate
 
     # ── building the world ──────────────────────────────────────────────
     def add_awareness(self, char: str, entity: str) -> None:
@@ -50,14 +61,25 @@ class NarrativeKernel:
                         max_hops: int = 1) -> list[str]:
         """Rule-1 reasons a scene's references are off-manifold (pre-commit)."""
         reasons: list[str] = []
+        known = self.reach.entities
         for ev in events:
-            if ev[0] == "reference":
-                char, entity = ev[1], ev[2]
-                if entity in self.reach.entities and \
-                        entity not in self.allowed_references(char, max_hops):
-                    reasons.append(
-                        f"(gate) '{char}' cannot reference unreachable "
-                        f"entity '{entity}'")
+            if not isinstance(ev, (tuple, list)) or len(ev) < 3 or ev[0] != "reference":
+                continue
+            char, entity = ev[1], ev[2]
+            if entity in self.allowed_references(char, max_hops):
+                continue
+            if entity in known:
+                reasons.append(
+                    f"(gate) '{char}' cannot reference unreachable "
+                    f"entity '{entity}'")
+            elif self.strict_gate:
+                # The hole this closes: the gate only ever fired for entities it
+                # already knew about, so a reference to a noun that was NEVER
+                # registered — precisely the hallucinated entity a constrained
+                # decoding gate exists to stop — sailed through untouched.
+                reasons.append(
+                    f"(gate) '{char}' cannot reference '{entity}': it was never "
+                    f"registered as a referenceable entity")
         return reasons
 
     def author_scene(self, events: Sequence[Event],

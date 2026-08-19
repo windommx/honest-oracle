@@ -20,6 +20,7 @@ logic, not real-world efficacy.
 from .reachability import ReachGraph, Trie, DEFAULT_EDGE
 from .transaction import (
     Event, WorldRule, RuleViolation, WorldState, Scene, lock_keys,
+    grammar_violations,
 )
 from .kernel import NarrativeKernel
 from .extraction import (
@@ -30,6 +31,7 @@ from .extraction import (
 __all__ = [
     "ReachGraph", "Trie", "DEFAULT_EDGE",
     "Event", "WorldRule", "RuleViolation", "WorldState", "Scene", "lock_keys",
+    "grammar_violations",
     "NarrativeKernel",
     "ExtractionResult", "ProseExtractor", "RegexBaselineExtractor",
     "GoldExample", "score", "evaluate",

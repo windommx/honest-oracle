@@ -21,7 +21,7 @@ import unittest
 
 from consistency_kernel import (
     ReachGraph, Trie, WorldState, Scene, RuleViolation, lock_keys,
-    NarrativeKernel,
+    NarrativeKernel, grammar_violations,
 )
 from consistency_kernel.longrun import (
     generate_story, run_comparison, evaluate as window_evaluate,
@@ -306,16 +306,23 @@ class TestTransaction(unittest.TestCase):
                 before = w.public_state()
                 ok, _ = w.commit_scene(events)
                 if ok:
+                    # Independent SEQUENTIAL oracle: a scene is a series of moments,
+                    # so each event is judged against the state as it stands at that
+                    # point, then folded in. (The earlier oracle judged every event
+                    # against the pre-scene state, which is what let a scene
+                    # "Bob dies, Bob acts" pass unnoticed.)
+                    shadow_dead = set(dead_ref)
+                    shadow_knows = {k: set(v) for k, v in knows_ref.items()}
                     for e in events:
                         if e[0] == "act":
-                            self.assertNotIn(e[1], dead_ref)
-                        if e[0] == "reference":
-                            self.assertIn(e[2], knows_ref.get(e[1], set()))
-                    for e in events:
+                            self.assertNotIn(e[1], shadow_dead)
+                        elif e[0] == "reference":
+                            self.assertIn(e[2], shadow_knows.get(e[1], set()))
                         if e[0] == "die":
-                            dead_ref.add(e[1])
+                            shadow_dead.add(e[1])
                         elif e[0] == "learn":
-                            knows_ref.setdefault(e[1], set()).add(e[2])
+                            shadow_knows.setdefault(e[1], set()).add(e[2])
+                    dead_ref, knows_ref = shadow_dead, shadow_knows
                 else:
                     self.assertEqual(w.public_state(), before)  # atomic rollback
 
@@ -552,3 +559,194 @@ class TestExtraction(unittest.TestCase):
         ok2, why = world.commit_scene(ex.extract("ch2: Bob drew his sword.").events)
         self.assertFalse(ok2)
         self.assertTrue(any("(a)" in r for r in why))
+
+
+# ── Regression suite for the second audit ──────────────────────────────────
+# Every test below FAILS against the pre-audit kernel. They exist because the
+# original suite passed with the rollback mechanism entirely deleted, which is
+# how a broken atomicity guarantee survived a "verified" package.
+
+class TestIntraSceneOrdering(unittest.TestCase):
+    """The flagship rule must not depend on where a chapter break happens to fall."""
+
+    def test_dead_character_acting_inside_one_scene_is_rejected(self):
+        # Before: this committed cleanly, because every event was judged against
+        # the frozen pre-scene state. The same two events SPLIT across two scenes
+        # were correctly rejected — so "the dead cannot act" silently depended on
+        # the extractor's chunking.
+        w = WorldState()
+        ok, why = w.commit_scene([("die", "Bob"), ("act", "Bob")])
+        self.assertFalse(ok)
+        self.assertTrue(any("(a)" in r for r in why), why)
+        self.assertEqual(w.public_state(), WorldState().public_state())  # nothing written
+
+    def test_acting_then_dying_in_one_scene_is_still_legal(self):
+        # The order-aware check must not over-correct: speaking and then dying in
+        # the same chapter is ordinary prose.
+        w = WorldState()
+        ok, why = w.commit_scene([("act", "Bob"), ("die", "Bob")])
+        self.assertTrue(ok, why)
+        self.assertTrue(w.is_dead("Bob"))
+
+    def test_learning_then_referencing_in_one_scene_is_legal(self):
+        # The mirror-image bug: order-blindness ALSO produced false rejections.
+        # "Alice learned the code, then Alice mentioned the code" is valid.
+        w = WorldState()
+        ok, why = w.commit_scene([("learn", "A", "f"), ("reference", "A", "f")])
+        self.assertTrue(ok, why)
+        self.assertTrue(w.knows("A", "f"))
+
+    def test_referencing_before_learning_in_one_scene_is_rejected(self):
+        w = WorldState()
+        ok, why = w.commit_scene([("reference", "A", "f"), ("learn", "A", "f")])
+        self.assertFalse(ok)
+        self.assertTrue(any("(c)" in r for r in why), why)
+
+    def test_object_in_two_places_stays_a_joint_check(self):
+        # Rule (b) is about simultaneity, not sequence — it must NOT be relaxed
+        # into "the object simply moved twice" by the ordering change.
+        w = WorldState()
+        ok, why = w.commit_scene([("place", "ring", "tower"), ("place", "ring", "crypt")])
+        self.assertFalse(ok)
+        self.assertTrue(any("(b)" in r for r in why), why)
+
+
+class TestRollbackIsReentrant(unittest.TestCase):
+    """These are the tests that actually EXERCISE rollback.
+
+    The original suite passed with `_rollback` replaced by a no-op, because a
+    rejected scene never wrote anything in the first place. Re-entrancy is the
+    case where state really is mutated before the rollback runs.
+    """
+
+    @staticmethod
+    def _one_shot(fn):
+        fired = {"yet": False}
+
+        def rule(state, events):
+            if fired["yet"]:
+                return []
+            fired["yet"] = True
+            return fn(state, events)
+        return rule
+
+    def test_nested_commit_is_undone_when_the_outer_scene_is_rejected(self):
+        w = WorldState()
+        w.add_rule(self._one_shot(
+            lambda state, events: (state.commit_scene([("learn", "X", "leak")]),
+                                   ["(custom) reject outer"])[1]))
+        before = w.public_state()
+        ok, why = w.commit_scene([("place", "ring", "hall")])
+        self.assertFalse(ok, why)
+        self.assertFalse(w.knows("X", "leak"),
+                         "a nested commit survived a REJECTED outer scene")
+        self.assertEqual(w.public_state(), before)   # byte-identical, as documented
+
+    def test_nested_commit_is_undone_when_a_rule_raises(self):
+        w = WorldState()
+
+        def boom(state, events):
+            state.commit_scene([("learn", "Y", "leak")])
+            raise RuntimeError("rule engine fault")
+        w.add_rule(self._one_shot(boom))
+        before = w.public_state()
+        with self.assertRaises(RuntimeError):
+            w.commit_scene([("place", "ring", "hall")])
+        self.assertFalse(w.knows("Y", "leak"))
+        self.assertEqual(w.public_state(), before)   # fail-closed AND atomic
+
+    def test_transaction_depth_returns_to_zero(self):
+        w = WorldState()
+        self.assertFalse(w.in_transaction)
+        w.commit_scene([("learn", "A", "f")])
+        self.assertFalse(w.in_transaction)
+        w.commit_scene([("reference", "A", "nope")])     # rejected
+        self.assertFalse(w.in_transaction)               # no leaked snapshot
+
+
+class TestEventGrammarIsEnforced(unittest.TestCase):
+    def test_unknown_verb_is_rejected_not_silently_committed(self):
+        # Before: ("teleport", ...) returned (True, []) — reported as a successful
+        # commit while doing nothing at all.
+        w = WorldState()
+        ok, why = w.commit_scene([("teleport", "Bob", "moon")])
+        self.assertFalse(ok)
+        self.assertTrue(any("(g)" in r for r in why), why)
+
+    def test_wrong_arity_is_rejected_not_an_IndexError(self):
+        # Before: raised IndexError out of the rule engine.
+        w = WorldState()
+        for bad in [("die",), ("place", "ring"), ("learn", "A"), (), "die"]:
+            ok, why = w.commit_scene([bad])
+            self.assertFalse(ok, bad)
+            self.assertTrue(any("(g)" in r for r in why), (bad, why))
+
+    def test_a_malformed_event_cannot_partially_apply_its_scene(self):
+        w = WorldState()
+        ok, why = w.commit_scene([("place", "ring", "hall"), ("die",)])
+        self.assertFalse(ok)
+        self.assertIsNone(w.object_location("ring"))
+
+    def test_grammar_violations_is_exported_and_precise(self):
+        self.assertEqual(grammar_violations([("die", "a"), ("place", "o", "l")]), [])
+        self.assertEqual(len(grammar_violations([("die", "a", "extra")])), 1)
+
+
+class TestTrieSentinelCannotCollide(unittest.TestCase):
+    def test_entity_named_like_the_old_sentinel_is_handled(self):
+        # Before: the sentinel was the STRING "\x00$", so this crashed
+        # entities() with "TypeError: unhashable type: 'dict'".
+        trie = Trie(["\x00$", "the_dagger"])
+        self.assertEqual(trie.entities(), {"\x00$", "the_dagger"})
+
+    def test_sentinel_is_not_a_string_any_tokenizer_could_emit(self):
+        self.assertNotIsInstance(Trie._TERMINAL, str)
+
+
+class TestExtractionNeverInventsEntities(unittest.TestCase):
+    def test_non_string_members_are_dropped_not_coerced(self):
+        # Before: null -> a character named "none"; 123 -> "123";
+        # {"n":"bob"} -> "{'n': 'bob'}". Each a well-formed event the model never
+        # emitted, which then poisons the graph permanently.
+        ex = ProseExtractor()
+        r = ex.parse('{"events": [["die", null], ["die", 123], '
+                     '["act", {"n":"bob"}], ["die", ["x","y"]], ["die","bob"]]}')
+        self.assertEqual(r.events, [("die", "bob")])
+        self.assertEqual(r.n_dropped, 4)
+        self.assertNotIn("none", str(r.events))
+
+    def test_a_wholly_discarded_response_is_counted_as_dropped(self):
+        ex = ProseExtractor()
+        for raw in ["not json at all", '{"nope": 1}']:
+            r = ex.parse(raw)
+            self.assertEqual(r.events, [])
+            self.assertEqual(r.n_dropped, len(r.dropped_reasons))
+            self.assertGreater(r.n_dropped, 0, raw)
+
+
+class TestGateIsFailClosed(unittest.TestCase):
+    def test_unregistered_entity_is_blocked_by_default(self):
+        # Before: gate_violations only fired for entities it already knew, so a
+        # reference to a never-registered noun — the hallucination the gate exists
+        # to stop — passed straight through and committed.
+        k = NarrativeKernel()
+        k.add_awareness("Alice", "the_code")
+        k.world.commit_scene([("learn", "Alice", "totally_made_up")])
+        ok, why = k.author_scene([("reference", "Alice", "totally_made_up")])
+        self.assertFalse(ok)
+        self.assertTrue(any("gate" in r for r in why), why)
+
+    def test_permissive_mode_is_available_but_must_be_asked_for(self):
+        k = NarrativeKernel(strict_gate=False)
+        k.add_awareness("Alice", "the_code")
+        k.world.commit_scene([("learn", "Alice", "totally_made_up")])
+        ok, _ = k.author_scene([("reference", "Alice", "totally_made_up")])
+        self.assertTrue(ok)
+
+    def test_registered_and_reachable_still_commits(self):
+        k = NarrativeKernel()
+        k.add_awareness("Alice", "the_code")
+        k.world.commit_scene([("learn", "Alice", "the_code")])
+        ok, why = k.author_scene([("reference", "Alice", "the_code"),
+                                  ("place", "dagger", "hall")])
+        self.assertTrue(ok, why)

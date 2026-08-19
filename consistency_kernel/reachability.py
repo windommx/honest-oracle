@@ -99,7 +99,15 @@ class Trie:
     fixes this by also reporting whether the current node is a valid stopping point.
     """
 
-    _TERMINAL = "\x00$"   # sentinel key; chosen so it can't collide with a token
+    # Sentinel terminal key. This used to be the STRING "\x00$" with a comment
+    # claiming it "can't collide with a token" — but a tokenizer maps strings to
+    # strings, so an entity name containing that sequence produced a real token
+    # equal to the sentinel. Trie(["\x00$"]) then crashed entities() with
+    # "TypeError: unhashable type: 'dict'", and a colliding name could silently
+    # corrupt the soundness+completeness property this class exists to provide.
+    # A unique object() cannot be equal to any string a tokenizer returns, so the
+    # collision is impossible by construction rather than by convention.
+    _TERMINAL = object()
 
     def __init__(self, entities: Iterable[str] = (), *,
                  tokenize: Optional[Callable[[str], list[str]]] = None) -> None:

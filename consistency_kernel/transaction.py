@@ -46,6 +46,37 @@ class RuleViolation(Exception):
         self.reasons = list(reasons)
 
 
+# Verb -> total tuple arity (verb slot included). This is the SAME grammar the
+# extractor validates against; enforcing it here too means an off-grammar event can
+# never reach the rule engine, where it would previously either crash on an index or
+# — worse — be silently accepted as a successful no-op.
+_ARITY: dict[str, int] = {"die": 2, "act": 2, "place": 3, "learn": 3, "reference": 3}
+
+
+def grammar_violations(events: Sequence[Event]) -> list[str]:
+    """Reasons ``events`` is not well-formed under the event grammar.
+
+    FAIL-CLOSED at the boundary: an unknown verb used to commit cleanly while
+    changing nothing (reported as success), and a short tuple such as ``("die",)``
+    raised ``IndexError`` out of the rule engine instead of being rejected.
+    """
+    reasons: list[str] = []
+    for i, ev in enumerate(events):
+        if not isinstance(ev, (tuple, list)) or not ev:
+            reasons.append(f"(g) event {i} is not a non-empty tuple: {ev!r}")
+            continue
+        verb = ev[0]
+        if verb not in _ARITY:
+            reasons.append(
+                f"(g) event {i} has unknown verb {verb!r}; "
+                f"known verbs: {sorted(_ARITY)}")
+        elif len(ev) != _ARITY[verb]:
+            reasons.append(
+                f"(g) event {i} verb {verb!r} takes {_ARITY[verb] - 1} argument(s), "
+                f"got {len(ev) - 1}")
+    return reasons
+
+
 def lock_keys(events: Sequence[Event]) -> list[str]:
     """Canonical, sorted lock keys covering every entity a scene reads/writes.
 
@@ -102,7 +133,13 @@ class WorldState:
         self.knows_map: dict[str, set[str]] = {}
         self.obj_loc: dict[str, str] = {}
         self.extra_rules: list[WorldRule] = []
-        self._snapshot: tuple | None = None
+        # A STACK, not a single slot. With one slot, a rule (or any caller) that
+        # re-entered commit_scene made the inner _commit() clear the outer
+        # transaction's snapshot, turning the outer _rollback() into a silent
+        # no-op — so a rejected scene could leave the world mutated, breaking the
+        # headline atomicity guarantee. A stack makes nesting safe: rolling back
+        # an outer scene also undoes everything an inner commit wrote.
+        self._snapshots: list[tuple] = []
 
     # ── rule registry ───────────────────────────────────────────────────
     def add_rule(self, rule: WorldRule) -> None:
@@ -134,27 +171,64 @@ class WorldState:
                 dict(self.obj_loc))
 
     def _begin(self) -> None:
-        self._snapshot = self._take_snapshot()
+        self._snapshots.append(self._take_snapshot())
 
     def _commit(self) -> None:
-        self._snapshot = None
+        if self._snapshots:
+            self._snapshots.pop()
 
     def _rollback(self) -> None:
-        if self._snapshot is not None:
-            dead, knows, locs = self._snapshot
+        if self._snapshots:
+            dead, knows, locs = self._snapshots.pop()
             self.dead = set(dead)
             self.knows_map = {k: set(v) for k, v in knows.items()}
             self.obj_loc = dict(locs)
-            self._snapshot = None
+
+    @property
+    def in_transaction(self) -> bool:
+        """True while at least one commit_scene is in flight (nesting depth > 0)."""
+        return bool(self._snapshots)
 
     # ── validate / apply ────────────────────────────────────────────────
     def _validate(self, events: Sequence[Event]) -> list[str]:
-        """Evaluate all rules against the PRE-scene state. Returns reasons."""
-        reasons: list[str] = []
-        # (a) the dead cannot act
+        """Evaluate all rules against the committed state, ADVANCING through the
+        scene in order. Returns reasons.
+
+        Order matters inside a scene. Validating every event against the frozen
+        pre-scene state made the flagship rule depend on where the extractor
+        happened to put a chapter break: ``[("die","Bob"), ("act","Bob")]`` — a
+        dead character acting — committed cleanly in one scene while the same two
+        events split across two scenes were correctly rejected. The blindness cut
+        both ways, also REJECTING the legal scene
+        ``[("learn","A","f"), ("reference","A","f")]`` (a character learns a fact
+        and then mentions it). Events arrive as an ordered Sequence and the
+        extractor emits them in prose order, so the ordering information was there
+        all along; this walks it.
+
+        Rule (b) stays a JOINT check on purpose: it is about simultaneity — one
+        object cannot occupy two places in the same moment — not about sequence.
+        """
+        reasons = list(grammar_violations(events))
+        if reasons:
+            # Do not index into malformed tuples below.
+            return reasons
+
+        # (a) and (c) are causal: check each event against the state as it stands
+        # at that point in the scene, then fold the event in.
+        dead = set(self.dead)
+        knows = {k: set(v) for k, v in self.knows_map.items()}
         for ev in events:
-            if ev[0] == "act" and self.is_dead(ev[1]):
+            verb = ev[0]
+            if verb == "act" and ev[1] in dead:
                 reasons.append(f"(a) dead character '{ev[1]}' cannot act")
+            elif verb == "reference" and ev[2] not in knows.get(ev[1], ()):
+                reasons.append(f"(c) '{ev[1]}' references unknown fact '{ev[2]}'")
+            # advance the shadow state
+            if verb == "die":
+                dead.add(ev[1])
+            elif verb == "learn":
+                knows.setdefault(ev[1], set()).add(ev[2])
+
         # (b) an object cannot be placed in two locations within one scene
         placed: dict[str, str] = {}
         for ev in events:
@@ -165,10 +239,7 @@ class WorldState:
                         f"(b) object '{obj}' placed in two locations at once: "
                         f"'{placed[obj]}' and '{loc}'")
                 placed[obj] = loc
-        # (c) a character cannot reference a fact they don't already know
-        for ev in events:
-            if ev[0] == "reference" and not self.knows(ev[1], ev[2]):
-                reasons.append(f"(c) '{ev[1]}' references unknown fact '{ev[2]}'")
+
         # pluggable custom rules
         for rule in self.extra_rules:
             reasons.extend(rule(self, events))
@@ -198,6 +269,12 @@ class WorldState:
         ``lock_acquire`` (optional) is called with the canonical sorted lock keys
         before validation, modelling lock-on-read for a concurrent backend.
         """
+        # Reject off-grammar input before anything else: lock_keys and the rule
+        # engine both index into the tuples, so a malformed event must never get
+        # that far. Nothing has begun yet, so there is nothing to roll back.
+        malformed = grammar_violations(events)
+        if malformed:
+            return False, malformed
         self._begin()
         try:
             if lock_acquire is not None:
