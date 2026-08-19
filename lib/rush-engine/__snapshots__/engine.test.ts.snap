@@ -47,35 +47,30 @@ A premise worth testing
 9. Each chapter must advance thesis proof
 10. Actionable takeaways reader can implement immediately
 
-═══ THESIS ═══
-Main thesis: A premise worth testing
-
 ═══ READER JOURNEY ═══
 Start: problem unaware → End: practitioner who can apply the framework
 
 ═══ CONTINUITY PROTOCOL (automatic story bible — keep this whole session in one chat) ═══
 You maintain a living STATE block so the book stays consistent without me re-pasting notes.
-1. The FIRST time you write, create a STATE block capturing: characters (name + key traits/relationships), setting/world rules, established facts, timeline, unresolved threads, and (fiction) tension level.
+1. The FIRST time you write, create a STATE block capturing: concepts/techniques defined, facts/data/sources already cited, terms already defined, and promises to the reader not yet delivered.
 2. At the START of every chapter, silently read the latest STATE and stay consistent with it — never contradict or re-introduce what's already established.
 3. At the END of every chapter, append an updated STATE block, fenced exactly like this:
 
 <<<STATE>>>
-CHARACTERS: ...
-WORLD/FACTS: ...
-TIMELINE: ...
-OPEN THREADS: ...
-TENSION: ...  (fiction only)
+CONCEPTS/TECHNIQUES DEFINED: ...
+FACTS/DATA/SOURCES ALREADY CITED: ...
+TERMS DEFINED (do not redefine): ...
+PROMISES TO THE READER NOT YET DELIVERED: ...
 <<<END STATE>>>
 
 Keep STATE compact (≤ 250 words), newest facts first, plain facts only. Carry it forward chapter to chapter. If I paste a STATE block into a later prompt, treat it as the source of truth.
 
 Worked example (format to follow — content is illustrative only):
 <<<STATE>>>
-CHARACTERS: Anan — detective, now knows the key opens the warehouse; distrusts Dr. Lee. Mali — still missing, last seen at the docks.
-WORLD/FACTS: the warehouse sits under pier 3; the gang meets on new-moon nights.
-TIMELINE: night 4 since the disappearance.
-OPEN THREADS: who sent the photo; why the ledger page was torn.
-TENSION: rising — first direct threat received.
+CONCEPTS/TECHNIQUES DEFINED: "sunk cost" defined in Ch.2 — later chapters may cite it without redefining.
+FACTS/DATA/SOURCES ALREADY CITED: Kahneman (2011) on loss aversion cited in Ch.3.
+TERMS DEFINED (do not redefine): sunk cost, loss aversion.
+PROMISES TO THE READER NOT YET DELIVERED: promised a 3-step decision framework — 1 step delivered so far.
 <<<END STATE>>>
 
 ⚠ STATE is a working tool, not book content — before compiling/publishing, strip every <<<STATE>>> block and any prompt remnants from the manuscript (in 2025 several published authors were caught with forgotten prompts printed in their books).
@@ -117,7 +112,7 @@ Ch.5 [skill_step] — Teach skill level: advanced
 Ch.6 [conclusion] — Teach skill level: mastery
 
 ═══ INITIALIZE CONTINUITY ═══
-Create the initial <<<STATE>>> block (characters, world/facts, timeline, open threads) from this plan, and maintain it across every chapter per the Continuity Protocol in the system prompt.
+Create the initial <<<STATE>>> block (concepts/techniques defined, facts/sources cited, terms defined, promises to the reader not yet delivered) from this plan, and maintain it across every chapter per the Continuity Protocol in the system prompt.
 
 Confirm you understand the plan and output the initial STATE block, then wait for the first chapter prompt. Do not write any chapter yet.",
     "usage": "Send once before writing Chapter 1.",
@@ -1902,35 +1897,30 @@ A premise worth testing
 9. Each chapter must advance thesis proof
 10. Actionable takeaways reader can implement immediately
 
-═══ THESIS ═══
-Main thesis: A premise worth testing
-
 ═══ READER JOURNEY ═══
 Start: problem unaware → End: practitioner who can apply the framework
 
 ═══ CONTINUITY PROTOCOL (automatic story bible — keep this whole session in one chat) ═══
 You maintain a living STATE block so the book stays consistent without me re-pasting notes.
-1. The FIRST time you write, create a STATE block capturing: characters (name + key traits/relationships), setting/world rules, established facts, timeline, unresolved threads, and (fiction) tension level.
+1. The FIRST time you write, create a STATE block capturing: concepts/techniques defined, facts/data/sources already cited, terms already defined, and promises to the reader not yet delivered.
 2. At the START of every chapter, silently read the latest STATE and stay consistent with it — never contradict or re-introduce what's already established.
 3. At the END of every chapter, append an updated STATE block, fenced exactly like this:
 
 <<<STATE>>>
-CHARACTERS: ...
-WORLD/FACTS: ...
-TIMELINE: ...
-OPEN THREADS: ...
-TENSION: ...  (fiction only)
+CONCEPTS/TECHNIQUES DEFINED: ...
+FACTS/DATA/SOURCES ALREADY CITED: ...
+TERMS DEFINED (do not redefine): ...
+PROMISES TO THE READER NOT YET DELIVERED: ...
 <<<END STATE>>>
 
 Keep STATE compact (≤ 250 words), newest facts first, plain facts only. Carry it forward chapter to chapter. If I paste a STATE block into a later prompt, treat it as the source of truth.
 
 Worked example (format to follow — content is illustrative only):
 <<<STATE>>>
-CHARACTERS: Anan — detective, now knows the key opens the warehouse; distrusts Dr. Lee. Mali — still missing, last seen at the docks.
-WORLD/FACTS: the warehouse sits under pier 3; the gang meets on new-moon nights.
-TIMELINE: night 4 since the disappearance.
-OPEN THREADS: who sent the photo; why the ledger page was torn.
-TENSION: rising — first direct threat received.
+CONCEPTS/TECHNIQUES DEFINED: "sunk cost" defined in Ch.2 — later chapters may cite it without redefining.
+FACTS/DATA/SOURCES ALREADY CITED: Kahneman (2011) on loss aversion cited in Ch.3.
+TERMS DEFINED (do not redefine): sunk cost, loss aversion.
+PROMISES TO THE READER NOT YET DELIVERED: promised a 3-step decision framework — 1 step delivered so far.
 <<<END STATE>>>
 
 ⚠ STATE is a working tool, not book content — before compiling/publishing, strip every <<<STATE>>> block and any prompt remnants from the manuscript (in 2025 several published authors were caught with forgotten prompts printed in their books).
@@ -1972,7 +1962,7 @@ Ch.5 [practice] — APPLY: Give reader hands-on exercise
 Ch.6 [case_study] — CLOSE: Restate thesis, call to action, final story
 
 ═══ INITIALIZE CONTINUITY ═══
-Create the initial <<<STATE>>> block (characters, world/facts, timeline, open threads) from this plan, and maintain it across every chapter per the Continuity Protocol in the system prompt.
+Create the initial <<<STATE>>> block (concepts/techniques defined, facts/sources cited, terms defined, promises to the reader not yet delivered) from this plan, and maintain it across every chapter per the Continuity Protocol in the system prompt.
 
 Confirm you understand the plan and output the initial STATE block, then wait for the first chapter prompt. Do not write any chapter yet.",
     "usage": "Send once before writing Chapter 1.",

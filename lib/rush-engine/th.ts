@@ -100,6 +100,40 @@ function thChecklist(type: BookTypeKey): string {
   return m[type] ?? `  □ ตรงตามวัตถุประสงค์ของบท\n  □ ลำดับ/เหตุผลชัด\n  □ น้ำเสียงสม่ำเสมอ\n  □ ความยาวใกล้เป้าหมาย (±20%)`;
 }
 
+// The continuity STATE is narrative-shaped — characters, timeline, tension, dangling plot
+// threads — with a worked example drawn from a detective novel. That is exactly right for a
+// story and exactly wrong for a cookbook or textbook, which have no characters and no plot
+// tension: tracking them is noise, and the crime-thriller example actively misdirects. A
+// knowledge book instead has to carry forward the concepts/techniques it has defined, the
+// facts and sources it has already cited, the terms it need not re-define, and the promises to
+// the reader it has not yet paid off. Two shapes, chosen by type.
+function thContinuityFields(type: BookTypeKey): string {
+  return isFiction(type)
+    ? `ตัวละคร: ...\nโลก/ข้อเท็จจริง: ...\nเส้นเวลา: ...\nปมที่ค้าง: ...\nความตึงเครียด: ...  (เฉพาะนิยาย)`
+    : `แนวคิด/เทคนิค/นิยามที่ตั้งไว้แล้ว: ...\nข้อเท็จจริง/ข้อมูล/แหล่งอ้างอิงที่ใช้แล้ว: ...\nคำศัพท์ที่นิยามแล้ว (ไม่ต้องนิยามซ้ำ): ...\nสิ่งที่สัญญากับผู้อ่าน / ยังไม่ได้ส่งมอบ: ...`;
+}
+function thContinuityExample(type: BookTypeKey): string {
+  return isFiction(type)
+    ? `ตัวละคร: อนันต์ — นักสืบ ตอนนี้รู้แล้วว่ากุญแจเปิดโกดัง; ไม่ไว้ใจหมอลี · มาลี — ยังหายตัว พบร่องรอยล่าสุดที่ท่าเรือ
+โลก/ข้อเท็จจริง: โกดังอยู่ใต้ท่าที่ 3; แก๊งนัดพบคืนเดือนมืด
+เส้นเวลา: คืนที่ 4 หลังการหายตัว
+ปมที่ค้าง: ใครส่งรูปถ่ายมา; ทำไมหน้าบัญชีถูกฉีก
+ความตึงเครียด: ไต่ขึ้น — ได้รับคำขู่ตรงครั้งแรก`
+    : `แนวคิด/เทคนิค/นิยามที่ตั้งไว้แล้ว: นิยาม "ต้นทุนจม" ไว้ในบท 2 — บทหลังอ้างต่อได้เลย ไม่ต้องนิยามซ้ำ
+ข้อเท็จจริง/ข้อมูล/แหล่งอ้างอิงที่ใช้แล้ว: อ้างงาน Kahneman (2011) เรื่องการกลัวการสูญเสียไปแล้วในบท 3
+คำศัพท์ที่นิยามแล้ว (ไม่ต้องนิยามซ้ำ): ต้นทุนจม, การกลัวการสูญเสีย
+สิ่งที่สัญญากับผู้อ่าน / ยังไม่ได้ส่งมอบ: บอกไว้ว่าจะให้กรอบตัดสินใจ 3 ขั้น — ตอนนี้ให้ไปแล้ว 1 ขั้น`;
+}
+
+/** The แก่นเรื่อง / เรื่องย่อ section. Rendered ONCE (the non-fiction path used to repeat it),
+ *  and when the writer has not filled it in, an honest placeholder replaces a blank header. */
+function thThesisSection(thesis: string): string {
+  const body = thesis.trim()
+    ? thesis.trim()
+    : "(ยังไม่ได้ระบุ — เพิ่มแก่นเรื่อง/เรื่องย่อหนึ่งบรรทัด เพื่อให้ทุกบทเขียนไปในทิศทางเดียวกัน)";
+  return `═══ แก่นเรื่อง / เรื่องย่อ ═══\n${body}`;
+}
+
 // ── MASTER ─────────────────────────────────────────────────────
 
 export function thMaster(config: BookConfig, architecture: Architecture): string {
@@ -120,8 +154,7 @@ export function thMaster(config: BookConfig, architecture: Architecture): string
 - คำต่อบท (เป้าหมาย): ${config.wordsPerChapter}
 - รูปแบบอ้างอิง: ${config.citationStyle}
 
-═══ แก่นเรื่อง / เรื่องย่อ ═══
-${config.thesis}
+${thThesisSection(config.thesis)}
 
 ${codexMaster ? codexMaster + "\n" : ""}═══ มาตรฐานคุณภาพ (ยึดเป็นแนวทาง ใช้วิจารณญาณมากกว่ายึดตัวเลขตายตัว) ═══
 ${thQualityStandards(config.type)}
@@ -140,7 +173,7 @@ ${thQualityStandards(config.type)}
 8. แสดงอารมณ์ผ่านภาษากายและการกระทำ ไม่บอกตรง ๆ
 
 ═══ โครงสร้างองก์ ═══
-${architecture.parts.map((pp) => `${pp.name}: บท ${pp.chapters[0]}-${pp.chapters[1]} — ${pp.purpose ?? ""}`).join("\n")}
+${architecture.parts.map((pp) => `${pp.name}: บท ${pp.chapters[0]}-${pp.chapters[1]}${pp.purpose ? ` — ${pp.purpose}` : ""}`).join("\n")}
 `;
   } else {
     p += `═══ หลักการเขียน (สารคดี/ความรู้) ═══
@@ -152,36 +185,28 @@ ${architecture.parts.map((pp) => `${pp.name}: บท ${pp.chapters[0]}-${pp.chap
 6. การสอน: objective → เนื้อหา → แบบฝึกหัด → สรุป → key takeaway
 7. มีตัวอย่างและการเปรียบเทียบสำหรับแนวคิดนามธรรมทุกอัน
 8. แต่ละบทต้องคืบหน้าการพิสูจน์แก่นเรื่อง
-
-═══ แก่นเรื่อง ═══
-${config.thesis}
 `;
   }
 
+  const isFic = isFiction(config.type);
   p += `
 ═══ ระบบรักษาความต่อเนื่องอัตโนมัติ (story bible ในแชทเดียว) ═══
 คุณดูแลบล็อก STATE เพื่อให้หนังสือสอดคล้องกันโดยไม่ต้องให้ผู้ใช้วางโน้ตซ้ำ
-1. ครั้งแรกที่เขียน ให้สร้างบล็อก STATE ที่บันทึก: ตัวละคร (ชื่อ + ลักษณะ/ความสัมพันธ์), ฉาก/กฎของโลก, ข้อเท็จจริงที่ตั้งไว้, เส้นเวลา, ปมที่ยังค้าง และ (นิยาย) ระดับความตึงเครียด
+1. ครั้งแรกที่เขียน ให้สร้างบล็อก STATE ที่บันทึก: ${isFic
+    ? "ตัวละคร (ชื่อ + ลักษณะ/ความสัมพันธ์), ฉาก/กฎของโลก, ข้อเท็จจริงที่ตั้งไว้, เส้นเวลา, ปมที่ยังค้าง และ (นิยาย) ระดับความตึงเครียด"
+    : "แนวคิด/เทคนิค/นิยามที่ตั้งไว้แล้ว, ข้อเท็จจริง/ข้อมูล/แหล่งอ้างอิงที่ใช้แล้ว, คำศัพท์ที่นิยามแล้ว, และสิ่งที่สัญญากับผู้อ่านแต่ยังไม่ได้ส่งมอบ"}
 2. ก่อนเขียนทุกบท ให้อ่าน STATE ล่าสุดและคงความสอดคล้อง ห้ามขัดแย้งหรือแนะนำสิ่งที่ตั้งไว้แล้วซ้ำ
 3. ท้ายทุกบท ให้แนบบล็อก STATE ที่อัปเดต ครอบด้วยเครื่องหมายนี้เป๊ะ ๆ:
 
 <<<STATE>>>
-ตัวละคร: ...
-โลก/ข้อเท็จจริง: ...
-เส้นเวลา: ...
-ปมที่ค้าง: ...
-ความตึงเครียด: ...  (เฉพาะนิยาย)
+${thContinuityFields(config.type)}
 <<<END STATE>>>
 
 เขียน STATE ให้กระชับ (≤ 250 คำ) ข้อเท็จจริงใหม่ขึ้นก่อน เป็นข้อเท็จจริงล้วน ส่งต่อจากบทสู่บท ถ้าผู้ใช้วางบล็อก STATE มาในพรอมป์ตถัดไป ให้ถือเป็นแหล่งความจริง
 
 ตัวอย่างที่กรอกแล้ว (ทำตามรูปแบบนี้ — เนื้อหาเป็นเพียงตัวอย่าง):
 <<<STATE>>>
-ตัวละคร: อนันต์ — นักสืบ ตอนนี้รู้แล้วว่ากุญแจเปิดโกดัง; ไม่ไว้ใจหมอลี · มาลี — ยังหายตัว พบร่องรอยล่าสุดที่ท่าเรือ
-โลก/ข้อเท็จจริง: โกดังอยู่ใต้ท่าที่ 3; แก๊งนัดพบคืนเดือนมืด
-เส้นเวลา: คืนที่ 4 หลังการหายตัว
-ปมที่ค้าง: ใครส่งรูปถ่ายมา; ทำไมหน้าบัญชีถูกฉีก
-ความตึงเครียด: ไต่ขึ้น — ได้รับคำขู่ตรงครั้งแรก
+${thContinuityExample(config.type)}
 <<<END STATE>>>
 
 ⚠ STATE เป็นเครื่องมือทำงาน ไม่ใช่เนื้อหาหนังสือ — ตอนรวมเล่ม/ตีพิมพ์ ต้องลบบล็อก <<<STATE>>> และร่องรอย prompt ทุกชิ้นออกจากต้นฉบับ (ปี 2025 มีนักเขียนหลายรายถูกจับได้เพราะลืม prompt ไว้ในเล่มพิมพ์จริง)
@@ -211,7 +236,7 @@ export function thOverview(config: BookConfig, architecture: Architecture): stri
   if (config.outline && config.outline.trim()) {
     p += `\n\n═══ โครงเรื่องของผู้เขียน ═══\n${config.outline.trim()}`;
   }
-  p += `\n\n═══ เริ่มต้นความต่อเนื่อง ═══\nสร้างบล็อก <<<STATE>>> เริ่มต้น (ตัวละคร, โลก/ข้อเท็จจริง, เส้นเวลา, ปมที่ค้าง${isFiction(config.type) ? ", ความตึงเครียด" : ""}) จากแผนนี้ และดูแลต่อเนื่องทุกบทตามระบบความต่อเนื่อง`;
+  p += `\n\n═══ เริ่มต้นความต่อเนื่อง ═══\nสร้างบล็อก <<<STATE>>> เริ่มต้น (${isFiction(config.type) ? "ตัวละคร, โลก/ข้อเท็จจริง, เส้นเวลา, ปมที่ค้าง, ความตึงเครียด" : "แนวคิด/เทคนิคที่ตั้งไว้, ข้อเท็จจริง/แหล่งอ้างอิงที่ใช้, คำศัพท์ที่นิยามแล้ว, สิ่งที่สัญญากับผู้อ่านแต่ยังไม่ส่งมอบ"}) จากแผนนี้ และดูแลต่อเนื่องทุกบทตามระบบความต่อเนื่อง`;
   p += `\n\nยืนยันว่าเข้าใจแผน แล้ว output บล็อก STATE เริ่มต้น จากนั้นรอพรอมป์ตบทแรก อย่าเพิ่งเขียนบทใด`;
   return p;
 }

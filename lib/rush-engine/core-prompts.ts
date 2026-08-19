@@ -4,6 +4,38 @@ import { getAnalysisMetrics, getQualityChecklist, getQualityStandards, getRevisi
 import { parseOutline } from "./outline";
 import { parseCodex, codexDigestEn, codexLocalEn } from "./codex";
 
+// The continuity STATE is narrative-shaped (characters, timeline, tension, plot threads) with a
+// detective-novel worked example. Right for a story, wrong for a cookbook or textbook, which
+// have no characters and no plot tension — tracking them is noise and the crime example
+// misdirects. A knowledge book carries forward the concepts/techniques defined, the facts and
+// sources already cited, the terms it need not re-define, and the promises not yet paid off.
+function enContinuityFields(type: BookConfig["type"]): string {
+  return isFictionType(type)
+    ? `CHARACTERS: ...\nWORLD/FACTS: ...\nTIMELINE: ...\nOPEN THREADS: ...\nTENSION: ...  (fiction only)`
+    : `CONCEPTS/TECHNIQUES DEFINED: ...\nFACTS/DATA/SOURCES ALREADY CITED: ...\nTERMS DEFINED (do not redefine): ...\nPROMISES TO THE READER NOT YET DELIVERED: ...`;
+}
+function enContinuityExample(type: BookConfig["type"]): string {
+  return isFictionType(type)
+    ? `CHARACTERS: Anan — detective, now knows the key opens the warehouse; distrusts Dr. Lee. Mali — still missing, last seen at the docks.
+WORLD/FACTS: the warehouse sits under pier 3; the gang meets on new-moon nights.
+TIMELINE: night 4 since the disappearance.
+OPEN THREADS: who sent the photo; why the ledger page was torn.
+TENSION: rising — first direct threat received.`
+    : `CONCEPTS/TECHNIQUES DEFINED: "sunk cost" defined in Ch.2 — later chapters may cite it without redefining.
+FACTS/DATA/SOURCES ALREADY CITED: Kahneman (2011) on loss aversion cited in Ch.3.
+TERMS DEFINED (do not redefine): sunk cost, loss aversion.
+PROMISES TO THE READER NOT YET DELIVERED: promised a 3-step decision framework — 1 step delivered so far.`;
+}
+
+/** The THESIS / PREMISE section. Rendered ONCE (the non-fiction path used to repeat it), and
+ *  when the writer has not filled it in, an honest placeholder replaces a blank header. */
+function enThesisSection(thesis: string): string {
+  const body = thesis.trim()
+    ? thesis.trim()
+    : "(not set — add a one-line thesis/premise so every chapter pulls in the same direction)";
+  return `═══ THESIS / PREMISE ═══\n${body}`;
+}
+
 export function generateMasterSystemPrompt(config: BookConfig, architecture: Architecture): string {
   const type = BOOK_TYPES[config.type];
   const lang = config.language === "thai" ? "ภาษาไทย" : config.language === "bilingual" ? "Thai-English bilingual" : "English";
@@ -26,8 +58,7 @@ Your target reader: ${config.reader}.
 - Language: ${lang}
 - Citation style: ${config.citationStyle}
 
-═══ THESIS / PREMISE ═══
-${config.thesis}
+${enThesisSection(config.thesis)}
 
 ${codexMaster ? codexMaster + "\n" : ""}═══ QUALITY STANDARDS (aim for these; use judgment over rigid ratios) ═══
 ${getQualityStandards(config.type)}
@@ -69,9 +100,6 @@ Protagonist transforms from: flawed → transformed
 8. Average sentence length ≤ 25 words
 9. Each chapter must advance thesis proof
 10. Actionable takeaways reader can implement immediately
-
-═══ THESIS ═══
-Main thesis: ${config.thesis}
 
 ═══ READER JOURNEY ═══
 Start: problem unaware → End: practitioner who can apply the framework
@@ -138,27 +166,21 @@ Start: problem unaware → End: practitioner who can apply the framework
   p += `
 ═══ CONTINUITY PROTOCOL (automatic story bible — keep this whole session in one chat) ═══
 You maintain a living STATE block so the book stays consistent without me re-pasting notes.
-1. The FIRST time you write, create a STATE block capturing: characters (name + key traits/relationships), setting/world rules, established facts, timeline, unresolved threads, and (fiction) tension level.
+1. The FIRST time you write, create a STATE block capturing: ${isFictionType(config.type)
+    ? "characters (name + key traits/relationships), setting/world rules, established facts, timeline, unresolved threads, and (fiction) tension level"
+    : "concepts/techniques defined, facts/data/sources already cited, terms already defined, and promises to the reader not yet delivered"}.
 2. At the START of every chapter, silently read the latest STATE and stay consistent with it — never contradict or re-introduce what's already established.
 3. At the END of every chapter, append an updated STATE block, fenced exactly like this:
 
 <<<STATE>>>
-CHARACTERS: ...
-WORLD/FACTS: ...
-TIMELINE: ...
-OPEN THREADS: ...
-TENSION: ...  (fiction only)
+${enContinuityFields(config.type)}
 <<<END STATE>>>
 
 Keep STATE compact (≤ 250 words), newest facts first, plain facts only. Carry it forward chapter to chapter. If I paste a STATE block into a later prompt, treat it as the source of truth.
 
 Worked example (format to follow — content is illustrative only):
 <<<STATE>>>
-CHARACTERS: Anan — detective, now knows the key opens the warehouse; distrusts Dr. Lee. Mali — still missing, last seen at the docks.
-WORLD/FACTS: the warehouse sits under pier 3; the gang meets on new-moon nights.
-TIMELINE: night 4 since the disappearance.
-OPEN THREADS: who sent the photo; why the ledger page was torn.
-TENSION: rising — first direct threat received.
+${enContinuityExample(config.type)}
 <<<END STATE>>>
 
 ⚠ STATE is a working tool, not book content — before compiling/publishing, strip every <<<STATE>>> block and any prompt remnants from the manuscript (in 2025 several published authors were caught with forgotten prompts printed in their books).
@@ -434,7 +456,7 @@ export function generateOverviewPrompt(config: BookConfig, architecture: Archite
   if (config.outline && config.outline.trim()) {
     p += `\n\n═══ AUTHOR'S OUTLINE / BEATS ═══\n${config.outline.trim()}`;
   }
-  p += `\n\n═══ INITIALIZE CONTINUITY ═══\nCreate the initial <<<STATE>>> block (characters, world/facts, timeline, open threads${isFictionType(config.type) ? ", tension" : ""}) from this plan, and maintain it across every chapter per the Continuity Protocol in the system prompt.`;
+  p += `\n\n═══ INITIALIZE CONTINUITY ═══\nCreate the initial <<<STATE>>> block (${isFictionType(config.type) ? "characters, world/facts, timeline, open threads, tension" : "concepts/techniques defined, facts/sources cited, terms defined, promises to the reader not yet delivered"}) from this plan, and maintain it across every chapter per the Continuity Protocol in the system prompt.`;
   p += `\n\nConfirm you understand the plan and output the initial STATE block, then wait for the first chapter prompt. Do not write any chapter yet.`;
   return p;
 }
