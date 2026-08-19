@@ -1,7 +1,16 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { NextRequest } from "next/server";
 
-vi.mock("@/lib/server/session", () => ({ requireUser: vi.fn() }));
+vi.mock("@/lib/server/session", () => {
+  const requireUser = vi.fn();
+  return {
+    requireUser,
+    // getAuth mirrors production: user comes from requireUser, infra is healthy.
+    // Existing tests keep driving auth through mUser; the 503 branch is tested
+    // by overriding getAuth directly (see "server not configured" below).
+    getAuth: vi.fn(async () => ({ user: await requireUser(), unavailable: null })),
+  };
+});
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     rushProject: {
@@ -16,7 +25,7 @@ vi.mock("@/lib/prisma", () => ({
   },
 }));
 
-import { requireUser } from "@/lib/server/session";
+import { requireUser, getAuth } from "@/lib/server/session";
 import { prisma } from "@/lib/prisma";
 import { GET as listGET, POST as listPOST } from "./route";
 import { GET as idGET, PATCH as idPATCH, DELETE as idDELETE } from "./[id]/route";
@@ -130,5 +139,28 @@ describe("/api/rush/projects/[id]", () => {
     db.rushProject.delete.mockResolvedValue({});
     expect((await idDELETE(req(), params)).status).toBe(200);
     expect(db.rushProject.delete).toHaveBeenCalledWith({ where: { id: "p1" } });
+  });
+});
+
+describe("server not configured (NO_SECRET / DB down)", () => {
+  it("returns 503 with a named-config detail, never a bare 500 or a lying 401", async () => {
+    // The failure this pins: getServerSession throws MissingSecretError before
+    // prisma is ever reached; the route used to crash to a body-less 500. A
+    // misconfigured server must tell its operator WHAT is missing — and must not
+    // send users to a login page that cannot work.
+    const { NextResponse } = await import("next/server");
+    (getAuth as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({
+      user: null,
+      unavailable: NextResponse.json(
+        { error: "server_not_configured", detail: "NEXTAUTH_SECRET is not set" },
+        { status: 503 },
+      ),
+    });
+    const res = await listGET();
+    expect(res.status).toBe(503);
+    const body = await res.json();
+    expect(body.error).toBe("server_not_configured");
+    expect(body.detail).toContain("NEXTAUTH_SECRET");
+    expect(db.rushProject.findMany).not.toHaveBeenCalled(); // fails closed before any DB touch
   });
 });

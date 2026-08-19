@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   Crown, BookOpen, FileText, Share2, HardDrive, Type, Plus, RefreshCw, Search,
-  LayoutGrid, List, Lock, Globe, Trash2, ArrowRight, Play, Wand2, Sparkles, Loader2, BookDown, CloudOff,
+  LayoutGrid, List, Lock, Globe, Trash2, ArrowRight, Play, Wand2, Sparkles, Loader2, BookDown, CloudOff, Wrench,
 } from "lucide-react";
 import { BOOK_TYPES, buildEpub, type BookConfig, type BookTypeKey } from "@/lib/rush-engine/engine";
 import { splitChapters } from "@/lib/rush-engine/chapters";
@@ -52,6 +52,10 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [needLogin, setNeedLogin] = useState(false);
   const [loadError, setLoadError] = useState(false);
+  // 503 from the API = the SERVER is not configured (NEXTAUTH_SECRET / DATABASE_URL).
+  // A different truth from "network failed" and from "not logged in" — self-hosters
+  // need the server's own detail line, not a generic retry card.
+  const [setupDetail, setSetupDetail] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
   const [sort, setSort] = useState<Sort>("recent");
@@ -96,6 +100,7 @@ export default function DashboardPage() {
     const hadData = projects.length > 0;
     setLoading(true);
     setLoadError(false);
+    setSetupDetail(null);
     const failed = () => {
       // A failed REFRESH must not hide books we already showed the writer. Keep the
       // last good list on screen and say the refresh failed; the full-page error
@@ -107,7 +112,11 @@ export default function DashboardPage() {
       const res = await fetch("/api/rush/projects");
       if (seq !== loadSeq.current) return; // a newer request owns the state now
       if (res.status === 401) setNeedLogin(true);
-      else if (res.ok) {
+      else if (res.status === 503) {
+        const body = await res.json().catch(() => ({}));
+        if (seq !== loadSeq.current) return;
+        setSetupDetail(typeof body.detail === "string" ? body.detail : "เซิร์ฟเวอร์ยังตั้งค่าไม่เสร็จ");
+      } else if (res.ok) {
         setNeedLogin(false);
         const data = await res.json();
         if (seq !== loadSeq.current) return;
@@ -325,7 +334,24 @@ export default function DashboardPage() {
             </div>
           )}
 
-          {!loading && !needLogin && loadError && (
+          {!loading && !needLogin && setupDetail && (
+            <div className="glass-card rounded-3xl p-10 text-center">
+              <Wrench className="w-10 h-10 mx-auto mb-3 text-[#c9a84c]/50" />
+              <p className="text-slate-300">เซิร์ฟเวอร์ยังตั้งค่าไม่เสร็จ</p>
+              <p className="text-xs text-faint mt-1.5 max-w-md mx-auto">{setupDetail}</p>
+              <p className="text-xs text-faint mt-3">
+                ถ้าคุณไม่ใช่ผู้ดูแลระบบ: ต้นฉบับในเครื่องยังใช้ได้ตามปกติ และ<Link href="/rush" className="text-[#c9a84c] hover:underline">เครื่องมือ prompt ทำงานได้โดยไม่ต้องมีเซิร์ฟเวอร์</Link>
+              </p>
+              <button
+                onClick={loadProjects}
+                className="inline-flex items-center gap-1.5 mt-4 text-sm px-4 py-2 rounded-lg border border-[#c9a84c]/40 text-[#c9a84c] hover:bg-[#c9a84c]/10 transition"
+              >
+                <RefreshCw className="w-4 h-4" /> ตรวจอีกครั้ง
+              </button>
+            </div>
+          )}
+
+          {!loading && !needLogin && !setupDetail && loadError && (
             <div className="glass-card rounded-3xl p-10 text-center">
               <CloudOff className="w-10 h-10 mx-auto mb-3 text-rose-400/50" />
               <p className="text-slate-300">โหลดรายการหนังสือไม่สำเร็จ</p>
@@ -341,7 +367,7 @@ export default function DashboardPage() {
             </div>
           )}
 
-          {!loading && !needLogin && !loadError && projects.length === 0 && (
+          {!loading && !needLogin && !setupDetail && !loadError && projects.length === 0 && (
             <div className="glass-card rounded-3xl p-10 text-center text-faint">
               <BookOpen className="w-10 h-10 mx-auto mb-3 text-[#c9a84c]/40" />
               <p>ยังไม่มีหนังสือที่บันทึกไว้</p>

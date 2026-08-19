@@ -100,6 +100,23 @@ describe("state exclusivity", () => {
   });
 });
 
+describe("server not configured (self-host truth)", () => {
+  it("a 503 shows the server's own setup detail — not a login lie, not a generic error", async () => {
+    // Reproduced crash: NEXTAUTH_SECRET missing → the API used to 500 and the
+    // dashboard showed the generic "could not load" card. The operator needs the
+    // server's detail line; ordinary users need to know local tools still work.
+    fetchByUrl(() => ({ status: 503, body: { error: "server_not_configured",
+      detail: "เซิร์ฟเวอร์ยังตั้งค่าไม่เสร็จ (NEXTAUTH_SECRET is not set) — ดูตัวแปรที่ต้องตั้งใน .env.example" } }));
+    render(<DashboardPage />);
+    await screen.findByText("เซิร์ฟเวอร์ยังตั้งค่าไม่เสร็จ");
+    expect(screen.getByText(/NEXTAUTH_SECRET/)).toBeTruthy();
+    expect(screen.queryByText(/เข้าสู่ระบบเพื่อบันทึก/)).toBeNull();      // not the login card
+    expect(screen.queryByText(/โหลดรายการหนังสือไม่สำเร็จ/)).toBeNull(); // not the generic error card
+    expect(screen.queryByText(/ยังไม่มีหนังสือที่บันทึกไว้/)).toBeNull(); // and never "empty shelf"
+    expect(screen.getByText(/ทำงานได้โดยไม่ต้องมีเซิร์ฟเวอร์/)).toBeTruthy();
+  });
+});
+
 describe("no silent buttons", () => {
   it("exporting an empty manuscript explains why nothing downloaded", async () => {
     fetchByUrl(() => ({ status: 200, body: { projects: [], plan: "free" } }));

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireUser } from "@/lib/server/session";
+import { getAuth } from "@/lib/server/session";
 import { BOOK_TYPES, type BookConfig } from "@/lib/rush-engine/engine";
 
 interface CreateBody {
@@ -13,7 +13,8 @@ const FREE_PROJECT_LIMIT = 3;
 const PAID_PROJECT_LIMIT = 50;
 
 export async function GET() {
-  const user = await requireUser();
+  const { user, unavailable } = await getAuth();
+  if (unavailable) return unavailable; // 503: server misconfigured — an honest status, not a crash
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const projects = await prisma.rushProject.findMany({
@@ -27,7 +28,8 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
-  const user = await requireUser();
+  const { user, unavailable } = await getAuth();
+  if (unavailable) return unavailable; // 503: server misconfigured — an honest status, not a crash
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   let body: CreateBody;

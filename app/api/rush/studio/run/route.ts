@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireUser } from "@/lib/server/session";
+import { getAuth } from "@/lib/server/session";
 import {
   buildProviderRequest,
   isEndorsedModel,
@@ -15,7 +15,8 @@ import {
 // request's memory. Zero platform token cost.
 
 export async function POST(request: NextRequest) {
-  const user = await requireUser();
+  const { user, unavailable } = await getAuth();
+  if (unavailable) return unavailable; // 503: server misconfigured — an honest status, not a crash
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   let body: Partial<RunInput> & { provider?: string };

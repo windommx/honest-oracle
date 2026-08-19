@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import { prisma } from "@/lib/prisma";
-import { requireUser } from "@/lib/server/session";
+import { getAuth } from "@/lib/server/session";
 import { BOOK_TYPES, type BookConfig } from "@/lib/rush-engine/engine";
 
 interface PatchBody {
@@ -16,7 +16,8 @@ async function ownedProject(userId: string, id: string) {
 }
 
 export async function GET(_request: NextRequest, { params }: { params: { id: string } }) {
-  const user = await requireUser();
+  const { user, unavailable } = await getAuth();
+  if (unavailable) return unavailable; // 503: server misconfigured — an honest status, not a crash
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const project = await prisma.rushProject.findUnique({
@@ -30,7 +31,8 @@ export async function GET(_request: NextRequest, { params }: { params: { id: str
 }
 
 export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
-  const user = await requireUser();
+  const { user, unavailable } = await getAuth();
+  if (unavailable) return unavailable; // 503: server misconfigured — an honest status, not a crash
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const owned = await ownedProject(user.id, params.id);
@@ -86,7 +88,8 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
 }
 
 export async function DELETE(_request: NextRequest, { params }: { params: { id: string } }) {
-  const user = await requireUser();
+  const { user, unavailable } = await getAuth();
+  if (unavailable) return unavailable; // 503: server misconfigured — an honest status, not a crash
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const owned = await ownedProject(user.id, params.id);

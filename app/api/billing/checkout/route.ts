@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireUser } from "@/lib/server/session";
+import { getAuth } from "@/lib/server/session";
 import { getEnv } from "@/lib/server/env";
 import { getStripe } from "@/lib/server/stripe";
 
 const RETURN_PATHS: Record<string, string> = { rush: "/rush/dashboard", oracle: "/oracle/pricing" };
 
 export async function POST(request: NextRequest) {
-  const user = await requireUser();
+  const { user, unavailable } = await getAuth();
+  if (unavailable) return unavailable; // 503: server misconfigured — an honest status, not a crash
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
