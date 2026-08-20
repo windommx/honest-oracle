@@ -16,7 +16,7 @@ import type { PromptGroup } from "@/lib/rush-engine/types";
 // ╚══════════════════════════════════════════════════════════════════╝
 
 export const GROUP_COLORS: Record<PromptGroup, string> = {
-  core: "border-[#c9a84c] text-[#c9a84c]",
+  core: "border-[#ab5bf7] text-[#ab5bf7]",
   craft: "border-green-400 text-green-400",
   nonfiction: "border-blue-400 text-blue-400",
   prose: "border-purple-400 text-purple-400",
@@ -32,7 +32,7 @@ export const GROUP_COLORS: Record<PromptGroup, string> = {
 export function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="mb-3">
-      <label className="block text-[0.7rem] text-gray-400 mb-1 tracking-wide">{label}</label>
+      <label className="block text-[0.7rem] text-slate-400 mb-1 tracking-wide">{label}</label>
       {children}
     </div>
   );
@@ -41,7 +41,7 @@ export function Field({ label, children }: { label: string; children: React.Reac
 export function Stat({ value, label }: { value: string; label: string }) {
   return (
     <div className="p-2 bg-white/5 rounded-lg text-center">
-      <div className="text-lg font-bold text-[#c9a84c]">{value}</div>
+      <div className="text-lg font-bold text-[#ab5bf7]">{value}</div>
       <div className="text-[0.6rem] text-faint mt-0.5">{label}</div>
     </div>
   );
@@ -52,7 +52,7 @@ export function FilterChip({ active, onClick, label }: { active: boolean; onClic
     <button
       onClick={onClick}
       className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${
-        active ? "border-[#c9a84c] text-[#c9a84c] bg-[#c9a84c]/10" : "border-white/10 text-gray-400 hover:border-[#c9a84c]/40"
+        active ? "border-[#ab5bf7] text-[#ab5bf7] bg-[#ab5bf7]/10" : "border-white/10 text-slate-400 hover:border-[#ab5bf7]/40"
       }`}
     >
       {label}

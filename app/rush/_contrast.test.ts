@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
-import { BG, SURFACE, GOLD, TEXT_FAINT, TEXT_CONTRAST } from "./_tokens";
+import { BG, SURFACE, ELEVATED, ACCENT, TEXT_FAINT, TEXT_CONTRAST } from "./_tokens";
 
 // ── WCAG 2.1 relative luminance + contrast ratio, computed here rather than trusted ──
 const lin = (c: number) => {
@@ -21,7 +21,7 @@ export const contrast = (a: string, b: string) => {
 
 /** Tailwind v3 scale values the app uses for TEXT. */
 const TAILWIND_TEXT: Record<string, string> = {
-  "gray-200": "#e5e7eb", "gray-300": "#d1d5db", "gray-400": "#9ca3af",
+  "gray-200": "#e5e7eb", "gray-300": "#d1d5db", "gray-400": "#94a3b8",
   "gray-500": "#6b7280", "gray-600": "#4b5563", "gray-700": "#374151",
   "slate-200": "#e2e8f0", "slate-300": "#cbd5e1", "slate-400": "#94a3b8",
   "slate-500": "#64748b", "slate-600": "#475569",
@@ -51,17 +51,18 @@ function over(fg: string, alpha: number, bg: string): string {
 }
 
 /** Every surface a faint label can actually land on, drawn from the overlay classes the app
- *  uses (bg-white/[0.02]…/10, bg-[#c9a84c]/[0.06]…/15) composited over the page. */
+ *  uses (bg-white/[0.02]…/10, bg-[#ab5bf7]/[0.06]…/15) composited over the page. */
 const SURFACES: Record<string, string> = {
   "page BG": BG,
-  "raised SURFACE": SURFACE,
+  "card SURFACE": SURFACE,
   "white/[0.02]": over("#ffffff", 0.02, BG),
   "white/[0.03]": over("#ffffff", 0.03, BG),
   "white/5": over("#ffffff", 0.05, BG),
   "white/10": over("#ffffff", 0.1, BG),
-  "gold/[0.06]": over(GOLD, 0.06, BG),
-  "gold/10": over(GOLD, 0.1, BG),
-  "gold/15": over(GOLD, 0.15, BG),
+  "accent/[0.06]": over(ACCENT, 0.06, BG),
+  "accent/10": over(ACCENT, 0.1, BG),
+  "accent/15": over(ACCENT, 0.15, BG),
+  "ELEVATED": ELEVATED,
 };
 
 describe("WCAG contrast (2.1 AA, 4.5:1 for normal text)", () => {
@@ -73,12 +74,12 @@ describe("WCAG contrast (2.1 AA, 4.5:1 for normal text)", () => {
   });
 
   it("every text colour used in app/rush clears AA against the page background", () => {
-    // Measured before this pass, against BG #0a0a0f:
-    //   text-gray-500  4.09:1  — the app's MOST-used text colour (116 uses), on 0.62-0.72rem
+    // Measured before this pass, against BG #0b0e17:
+    //   text-slate-500  4.09:1  — the app's MOST-used text colour (116 uses), on 0.62-0.72rem
     //   text-slate-500 4.15:1
-    //   text-gray-600  2.61:1  ] below even the 3:1 large-text floor
+    //   text-slate-600  2.61:1  ] below even the 3:1 large-text floor
     //   text-slate-600 2.61:1  ]
-    //   text-gray-700  1.92:1  ]
+    //   text-slate-700  1.92:1  ]
     // Secondary text at 2.61:1 on a dark page is not a nuance; it is unreadable for many
     // readers, and Thai writers reading long prose on phones are exactly who pays.
     const failures: string[] = [];
@@ -111,21 +112,26 @@ describe("WCAG contrast (2.1 AA, 4.5:1 for normal text)", () => {
 
   it("the faint tier is still visibly fainter than the muted tier", () => {
     // Passing AA by simply brightening to gray-400 would collapse two levels into one.
-    expect(contrast(TEXT_FAINT, BG)).toBeLessThan(contrast("#9ca3af", BG));
+    expect(contrast(TEXT_FAINT, BG)).toBeLessThan(contrast("#94a3b8", BG));
   });
 
-  it("black-on-gold buttons and gold-on-dark text clear AA", () => {
-    expect(contrast("#000000", GOLD)).toBeGreaterThanOrEqual(AA_NORMAL);
-    expect(contrast(GOLD, BG)).toBeGreaterThanOrEqual(AA_NORMAL);
-    expect(contrast(GOLD, SURFACE)).toBeGreaterThanOrEqual(AA_NORMAL);
+  it("dark-on-accent buttons and accent-on-dark text clear AA", () => {
+    // The mandated #a855f7 measured 4.39:1 on SURFACE — the nudge to #ab5bf7 exists
+    // exactly so these three assertions hold. White-on-accent measured 3.96:1, which
+    // is why button text is dark, never white.
+    expect(contrast("#000000", ACCENT)).toBeGreaterThanOrEqual(AA_NORMAL);
+    expect(contrast(BG, ACCENT)).toBeGreaterThanOrEqual(4.5);
+    expect(contrast(ACCENT, BG)).toBeGreaterThanOrEqual(AA_NORMAL);
+    expect(contrast(ACCENT, SURFACE)).toBeGreaterThanOrEqual(AA_NORMAL);
+    expect(contrast("#ffffff", ACCENT)).toBeLessThan(AA_NORMAL); // documents the refusal
   });
 
   it("the recorded ratios in _tokens.ts match a fresh computation", () => {
     // TEXT_CONTRAST is documentation; documentation that drifts from the code is worse than
     // none, so it is recomputed rather than trusted.
-    expect(contrast("#e5e7eb", BG)).toBeCloseTo(TEXT_CONTRAST["gray-200"], 1);
-    expect(contrast("#d1d5db", BG)).toBeCloseTo(TEXT_CONTRAST["gray-300"], 1);
-    expect(contrast("#9ca3af", BG)).toBeCloseTo(TEXT_CONTRAST["gray-400"], 1);
+    expect(contrast("#e2e8f0", BG)).toBeCloseTo(TEXT_CONTRAST["slate-200"], 1);
+    expect(contrast("#cbd5e1", BG)).toBeCloseTo(TEXT_CONTRAST["slate-300"], 1);
+    expect(contrast("#94a3b8", BG)).toBeCloseTo(TEXT_CONTRAST["slate-400"], 1);
     expect(contrast(TEXT_FAINT, BG)).toBeCloseTo(TEXT_CONTRAST.TEXT_FAINT, 1);
   });
 });

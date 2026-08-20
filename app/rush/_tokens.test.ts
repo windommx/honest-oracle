@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
-import { ALLOWED_HEX, PALETTE, BG, GOLD, GOLD_BRIGHT, GOLD_DEEP, SURFACE } from "./_tokens";
+import { ALLOWED_HEX, LEGACY_ORACLE_HEX, PALETTE, BG, ACCENT, ACCENT_BRIGHT, ACCENT_DEEP, SURFACE } from "./_tokens";
 
 const RUSH_DIR = join(process.cwd(), "app", "rush");
 const GLOBALS = join(process.cwd(), "app", "globals.css");
@@ -45,7 +45,11 @@ describe("design tokens — consistency is enforced, not merely intended", () =>
     // disagrees with the palette is drift with extra steps.
     const cfg = readFileSync(join(process.cwd(), "tailwind.config.ts"), "utf8");
     for (const hex of hexesIn(cfg)) {
-      expect(ALLOWED_HEX.has(hex), `tailwind.config.ts has non-canonical ${hex}`).toBe(true);
+      // The `gold` scale is the ORACLE app's brand (register/login/oracle pages) and is
+      // declared as such in LEGACY_ORACLE_HEX — allowed in the shared theme config, still
+      // barred from app/rush components by the scan above.
+      const ok = ALLOWED_HEX.has(hex) || LEGACY_ORACLE_HEX.has(hex);
+      expect(ok, `tailwind.config.ts has non-canonical ${hex}`).toBe(true);
     }
   });
 
@@ -54,9 +58,9 @@ describe("design tokens — consistency is enforced, not merely intended", () =>
     const root = css.slice(css.indexOf(":root"), css.indexOf("}", css.indexOf(":root")));
     expect(root).toContain(`--background: ${BG}`);
     expect(root).toContain(`--surface: ${SURFACE}`);
-    expect(root).toContain(`--gold: ${GOLD}`);
-    expect(root).toContain(`--gold-bright: ${GOLD_BRIGHT}`);
-    expect(root).toContain(`--gold-deep: ${GOLD_DEEP}`);
+    expect(root).toContain(`--accent: ${ACCENT}`);
+    expect(root).toContain(`--accent-bright: ${ACCENT_BRIGHT}`);
+    expect(root).toContain(`--accent-deep: ${ACCENT_DEEP}`);
   });
 
   it("exactly one page background exists", () => {

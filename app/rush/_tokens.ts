@@ -2,85 +2,88 @@
 // ║  DESIGN TOKENS — the canonical palette, and the ONLY hex literals  ║
 // ║  allowed in app/rush.                                              ║
 // ║                                                                    ║
-// ║  Measured drift that motivated this (counted, not guessed):        ║
-// ║   · TWO page backgrounds — #0a0a0f on 5 pages, #08080e on 4 files, ║
-// ║     while :root already declared --background as the latter. The   ║
-// ║     background visibly shifted when navigating between them.       ║
-// ║   · TWO "bright gold" values used for the SAME hover — fix/page    ║
-// ║     had hover:bg-[#d8b45a], explore/page had hover:bg-[#e6c86a].   ║
+// ║  THEME: premium dark fintech (deep-navy ground, purple accent),    ║
+// ║  migrated from the original gold theme against a mandated palette. ║
+// ║  Mandates were ACCEPTED only where they clear WCAG AA — measured   ║
+// ║  with this repo's own contrast maths, not assumed:                 ║
+// ║   · Accent was mandated #a855f7 → measured 4.39:1 on SURFACE       ║
+// ║     (fails AA for text on cards). Nudged to #ab5bf7 (4.61 worst),  ║
+// ║     visually indistinguishable, arithmetically compliant.          ║
+// ║   · "Text Muted #64748b" was mandated → measured 3.18:1 worst-case ║
+// ║     (fails AA badly). REFUSED for text; the faint tier is #8290a6, ║
+// ║     the same slate hue recalibrated to clear 4.5:1 on ALL surfaces.║
+// ║   · White-on-accent measured 3.96:1 → button text is dark, never   ║
+// ║     white (5.31:1 for near-black on accent).                       ║
 // ║                                                                    ║
-// ║  That is drift, not taste: one concept rendered as two values. The ║
-// ║  companion test (_tokens.test.ts) scans app/rush and FAILS on any  ║
-// ║  hex outside this set, so consistency is enforced rather than       ║
-// ║  merely intended — the same move as every other guard in this repo.║
+// ║  The companion test (_tokens.test.ts) scans app/rush and FAILS on  ║
+// ║  any hex outside this set; _contrast.test.ts recomputes every      ║
+// ║  ratio recorded here. Consistency is enforced, not intended.       ║
 // ║                                                                    ║
-// ║  Tailwind arbitrary values need a literal hex, so these are strings ║
-// ║  rather than CSS vars at the call site; globals.css mirrors them as ║
-// ║  :root vars for plain CSS. Keep the two in sync (a test checks).    ║
+// ║  The gold palette did not die — it belongs to the ORACLE app       ║
+// ║  (see LEGACY_ORACLE_HEX below) and is barred from app/rush.        ║
 // ╚══════════════════════════════════════════════════════════════════╝
 
-/** Page background. Canonical: the value the majority of pages already used;
- *  globals.css :root --background is set to match, so body and pages agree. */
-export const BG = "#0a0a0f";
+/** Page background — deep navy-black (mandated #0B0E17). */
+export const BG = "#0b0e17";
 
-/** Raised surface (toast, popover) — one step lighter than the page. */
-export const SURFACE = "#12121a";
+/** Card / primary surface (mandated #151A27). */
+export const SURFACE = "#151a27";
 
-/** The brand accent. */
-export const GOLD = "#c9a84c";
+/** Elevated card / secondary surface — one step above SURFACE (mandated #1C2233). */
+export const ELEVATED = "#1c2233";
 
-/** Brighter accent: hover, active, emphasis. Consolidates the former #d8b45a. */
-export const GOLD_BRIGHT = "#e6c86a";
+/** Hairline border (mandated #1F2535). Most borders remain white/10 utilities. */
+export const BORDER = "#1f2535";
 
-/** Deep accent — gradient stop only (never a standalone fill). */
-export const GOLD_DEEP = "#a08030";
+/** The brand accent. Mandate #a855f7 nudged +AA (see header). */
+export const ACCENT = "#ab5bf7";
 
-/** Default foreground on the dark surface. */
-export const FOREGROUND = "#ffffff";
+/** Brighter accent: hover, active, emphasis on raised surfaces (7.30:1 on BG). */
+export const ACCENT_BRIGHT = "#c084fc";
 
-/** Darker accent shade — theme scale only (tailwind gold.dark), never a page fill. */
-export const GOLD_DARK = "#a8893d";
+/** Deep accent — gradient stop only, never standalone text (3.38:1 on BG). */
+export const ACCENT_DEEP = "#7c3aed";
 
-/** Print/paper foreground — the manuscript preview only, where the surface is light. */
+/** Darker accent shade — theme scale only, never a page fill. */
+export const ACCENT_DARK = "#6d28d9";
+
+/** Default foreground (mandated Text Primary #F8FAFC — softer than pure white). */
+export const FOREGROUND = "#f8fafc";
+
+/** Print/paper foreground — the manuscript preview only, where the surface is light.
+ *  Deliberately outside the dark theme: it previews PAPER. */
 export const PAPER = "#f0ece4";
 
-/** Muted foreground (Tailwind gray-400). 7.78:1 on BG — passes WCAG AA. */
-export const MUTED = "#9ca3af";
+/** Muted foreground (mandated Text Secondary #94A3B8 = slate-400). 7.52:1 on BG. */
+export const MUTED = "#94a3b8";
 
-/** Faintest text tier. Tailwind gray-500 (#6b7280) measured 4.09:1 on BG — it FAILS AA for
- *  normal text, and it was the app's most-used text colour (116 uses) on 0.62-0.72rem type,
- *  which is normal text by any reading. gray-600 (2.61:1) and gray-700 (1.92:1) failed even
- *  the 3:1 large-text floor.
- *
- *  Calibrated against the LIGHTEST surface a faint label can land on, not just the page
- *  background. The first attempt (#757d8c) cleared 4.77:1 on BG but fell to 4.35:1 on
- *  bg-white/5 and 3.78:1 on bg-white/10 — a value tuned for one background silently fails
- *  on every card and chip drawn over it. This one clears 4.5:1 on ALL nine surfaces the app
- *  actually uses (page, raised, white/0.02-0.10, gold/0.06-0.15), worst case 4.51:1, and is
- *  still visibly fainter than gray-400. */
-export const TEXT_FAINT = "#828a99";
+/** Faintest text tier. The mandate's "Text Muted #64748b" measured 3.18:1 on the
+ *  lightest surface (white/10 over BG) and 4.05:1 even on the page — below AA for
+ *  normal text, which is what 0.62–0.72rem labels are. Same slate hue, recalibrated
+ *  against ALL nine surfaces the app draws on (page, SURFACE, ELEVATED, white/0.02–0.10,
+ *  accent/0.06–0.15): worst case 4.67:1, still visibly fainter than MUTED. */
+export const TEXT_FAINT = "#8290a6";
 
 /** Measured WCAG contrast of each text tier against BG. Recomputed by _contrast.test.ts —
  *  these are recorded so the choice is auditable, not asserted from memory. */
 export const TEXT_CONTRAST = {
-  "gray-200": 15.95,
-  "gray-300": 13.40,
-  "gray-400": 7.78,
-  TEXT_FAINT: 5.69, // on BG; worst case across all surfaces is 4.51:1
+  "slate-200": 15.64,
+  "slate-300": 12.98,
+  "slate-400": 7.52,
+  TEXT_FAINT: 5.96, // on BG; worst case across all surfaces is 4.67:1
 } as const;
 
 // ── Epistemic tier colours ─────────────────────────────────────────────────────
-// SEMANTIC, not decorative: each encodes one tier from epistemics.ts, and they were
-// duplicated verbatim across _components.tsx (EpistemicPanel) and honesty/page.tsx —
-// two copies of a meaning is exactly how a palette rots. Named once here.
-/** ประจักษ์ — direct count. */
-export const TIER_DIRECT = "#34d399";
-/** อนุมาน — derived by disclosed formula. */
+// SEMANTIC, not decorative: each encodes one tier from epistemics.ts. Re-anchored to
+// the theme's own semantic hues (positive/chart-blue/negative); each measured ≥5:1 on BG.
+/** ประจักษ์ — direct count (theme positive, 8.46:1). */
+export const TIER_DIRECT = "#22c55e";
+/** อนุมาน — derived by disclosed formula (theme chart blue, 9.00:1). */
 export const TIER_DERIVED = "#38bdf8";
-/** สัญญา — heuristic label. */
+/** สัญญา — heuristic label (amber kept: the theme has no caution hue, 11.55:1). */
 export const TIER_HEURISTIC = "#fbbf24";
-/** อวิสัย — refused. */
-export const TIER_REFUSED = "#fb7185";
+/** อวิสัย — refused (theme negative, 5.12:1). */
+export const TIER_REFUSED = "#ef4444";
 
 /** Every hex literal permitted in app/rush. The guard test enforces this list.
  *  Adding a colour means adding it HERE first, with a reason — which is the point:
@@ -88,10 +91,12 @@ export const TIER_REFUSED = "#fb7185";
 export const PALETTE = {
   BG,
   SURFACE,
-  GOLD,
-  GOLD_BRIGHT,
-  GOLD_DEEP,
-  GOLD_DARK,
+  ELEVATED,
+  BORDER,
+  ACCENT,
+  ACCENT_BRIGHT,
+  ACCENT_DEEP,
+  ACCENT_DARK,
   FOREGROUND,
   PAPER,
   MUTED,
@@ -106,3 +111,10 @@ export const PALETTE = {
 export const ALLOWED_HEX: ReadonlySet<string> = new Set(
   Object.values(PALETTE).map((h) => h.toLowerCase())
 );
+
+/** The gold palette now belongs ONLY to the oracle app (register/login/oracle pages
+ *  and their tailwind `gold` utilities + `.gold-gradient`). Named here so the
+ *  tailwind guard can allow it there while app/rush remains barred from using it. */
+export const LEGACY_ORACLE_HEX: ReadonlySet<string> = new Set([
+  "#c9a84c", "#e6c86a", "#a8893d",
+]);

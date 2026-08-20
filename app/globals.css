@@ -8,12 +8,13 @@
   /* Canonical palette — mirrored in app/rush/_tokens.ts, kept in sync by a test.
      --background was #08080e while 5 pages hardcoded #0a0a0f, so the page
      background shifted as you navigated. One value now. */
-  --background: #0a0a0f;
-  --surface: #12121a;
-  --foreground: #ffffff;
-  --gold: #c9a84c;
-  --gold-bright: #e6c86a;
-  --gold-deep: #a08030;
+  --background: #0b0e17;
+  --surface: #151a27;
+  --elevated: #1c2233;
+  --foreground: #f8fafc;
+  --accent: #ab5bf7;
+  --accent-bright: #c084fc;
+  --accent-deep: #7c3aed;
 }
 
 * {
@@ -42,10 +43,17 @@ a {
 
 .gold-gradient {
   /* Uses the canonical vars so the gradient can never drift from the palette. */
-  background: linear-gradient(135deg, var(--gold) 0%, var(--gold-bright) 50%, var(--gold) 100%);
+  background: linear-gradient(135deg, #c9a84c 0%, #e6c86a 50%, #c9a84c 100%); /* oracle brand — frozen, no longer token-driven */
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+}
+
+.accent-gradient {
+  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-bright) 50%, var(--accent) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
 .gold-border {
@@ -81,7 +89,7 @@ a {
    WCAG 2.4.7 (Focus Visible). :focus-visible only paints for keyboard/AT focus, so mouse
    users never see a stray ring. */
 :where(a, button, input, select, textarea, [tabindex]):focus-visible {
-  outline: 2px solid var(--gold-bright);
+  outline: 2px solid var(--accent-bright);
   outline-offset: 2px;
   border-radius: 4px;
 }
@@ -99,6 +107,6 @@ a {
   color: #e5e7eb;
   transition: border-color 0.15s;
 }
-.input::placeholder { color: #6b7280; }
+.input::placeholder { color: #8290a6; } /* faint tier — #6b7280 measured 3.5:1, below AA */
 .input:hover { border-color: rgba(255, 255, 255, 0.20); }
-.input:focus { border-color: var(--gold); }
+.input:focus { border-color: var(--accent); }

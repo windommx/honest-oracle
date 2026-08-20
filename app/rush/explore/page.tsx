@@ -35,35 +35,35 @@ export default function RushExplore() {
   const types = Object.entries(BOOK_TYPES) as [BookTypeKey, (typeof BOOK_TYPES)[BookTypeKey]][];
 
   return (
-    <main className="min-h-screen bg-[#0a0a0f] text-gray-200">
+    <main className="min-h-screen bg-[#0b0e17] text-slate-200">
       {/* hero */}
       <section className="max-w-5xl mx-auto px-5 pt-16 pb-10 text-center">
-        <p className="text-xs tracking-[0.2em] uppercase text-[#c9a84c] font-semibold mb-3">Rush Engine · แต่งหนังสือด้วย prompt ที่นับได้จริง</p>
+        <p className="text-xs tracking-[0.2em] uppercase text-[#ab5bf7] font-semibold mb-3">Rush Engine · แต่งหนังสือด้วย prompt ที่นับได้จริง</p>
         <h1 className="text-3xl sm:text-5xl font-bold leading-tight">
-          แต่งหนังสือได้ <span className="bg-gradient-to-r from-[#e6c86a] to-[#a08030] bg-clip-text text-transparent">8 ประเภท</span>
+          แต่งหนังสือได้ <span className="bg-gradient-to-r from-[#c084fc] to-[#7c3aed] bg-clip-text text-transparent">8 ประเภท</span>
           <br className="hidden sm:block" /> ครบทั้งแนวย่อย โครงเรื่อง และโมดูลเสริม
         </h1>
-        <p className="mt-4 text-gray-400 max-w-2xl mx-auto">
+        <p className="mt-4 text-slate-400 max-w-2xl mx-auto">
           เลือกประเภท → สร้าง prompt pack ครบชุด → เอาไปใช้กับ LLM ตัวโปรด. บวกเครื่องมือวิเคราะห์ภาษาไทยที่นับได้จริง ไม่มีคะแนนเดา
         </p>
         {/* live counts — computed from the engine registries, never hardcoded */}
-        <div className="mt-5 flex flex-wrap gap-2 justify-center text-[0.7rem] text-gray-400">
+        <div className="mt-5 flex flex-wrap gap-2 justify-center text-[0.7rem] text-slate-400">
           <span className="px-2.5 py-1 rounded-full border border-white/10">{Object.keys(BOOK_TYPES).length} ประเภทหนังสือ</span>
           <span className="px-2.5 py-1 rounded-full border border-white/10">{MODULE_CATALOG.length} โมดูล prompt</span>
           <span className="px-2.5 py-1 rounded-full border border-white/10">{NARRATIVE_STRUCTURES.length} โครงเรื่อง (รวมพื้นถิ่นไทย/เอเชีย)</span>
           <span className="px-2.5 py-1 rounded-full border border-white/10">{BOOTSTRAPS.length} แม่แบบตั้งต้น</span>
         </div>
         <div className="mt-7 flex flex-wrap gap-3 justify-center">
-          <Link href="/rush/start" className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-[#c9a84c] text-black font-semibold hover:bg-[#e6c86a] transition">
+          <Link href="/rush/start" className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-[#ab5bf7] text-black font-semibold hover:bg-[#c084fc] transition">
             เริ่มสร้าง Prompt Pack <ArrowRight className="w-4 h-4" />
           </Link>
-          <Link href="/rush/fix" className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg border border-white/15 text-gray-200 hover:bg-white/5 transition">
+          <Link href="/rush/fix" className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg border border-white/15 text-slate-200 hover:bg-white/5 transition">
             เขียนอยู่แล้วแต่ติด — หาโมดูลจากอาการ
           </Link>
-          <Link href="/rush/honesty" className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg border border-white/15 text-gray-200 hover:bg-white/5 transition">
+          <Link href="/rush/honesty" className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg border border-white/15 text-slate-200 hover:bg-white/5 transition">
             ทำไมเชื่อตัวเลขเราได้ — ชั้นความซื่อสัตย์
           </Link>
-          <a href="#types" className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg border border-white/15 text-gray-200 hover:bg-white/5 transition">
+          <a href="#types" className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg border border-white/15 text-slate-200 hover:bg-white/5 transition">
             ดู 8 ประเภท
           </a>
         </div>
@@ -77,13 +77,13 @@ export default function RushExplore() {
           {types.map(([key, t]) => {
             const isOpen = open === key;
             return (
-              <div key={key} className={`rounded-2xl border p-5 transition ${isOpen ? "border-[#c9a84c] bg-[#c9a84c]/[0.05]" : "border-white/10 bg-white/[0.02] hover:border-white/20"}`}>
+              <div key={key} className={`rounded-2xl border p-5 transition ${isOpen ? "border-[#ab5bf7] bg-[#ab5bf7]/[0.05]" : "border-white/10 bg-white/[0.02] hover:border-white/20"}`}>
                 <button onClick={() => setOpen(isOpen ? null : key)} className="w-full text-left">
                   <div className="flex items-start gap-3">
                     <span className="text-3xl leading-none">{t.icon}</span>
                     <div className="min-w-0">
-                      <h3 className="font-semibold text-gray-100">{t.label}</h3>
-                      <p className="text-xs text-gray-400 mt-0.5">{TYPE_TH[key]}</p>
+                      <h3 className="font-semibold text-slate-100">{t.label}</h3>
+                      <p className="text-xs text-slate-400 mt-0.5">{TYPE_TH[key]}</p>
                     </div>
                   </div>
                   <div className="flex flex-wrap gap-1.5 mt-3 text-[0.65rem] text-faint">
@@ -98,7 +98,7 @@ export default function RushExplore() {
                       <p className="text-[0.65rem] uppercase tracking-wide text-faint mb-1.5">แนวย่อย</p>
                       <div className="flex flex-wrap gap-1.5">
                         {t.sub_genres.map((g) => (
-                          <span key={g} className="text-[0.68rem] px-2 py-0.5 rounded-full border border-[#c9a84c]/30 text-[#e6c86a]">{g.replace(/_/g, " ")}</span>
+                          <span key={g} className="text-[0.68rem] px-2 py-0.5 rounded-full border border-[#ab5bf7]/30 text-[#c084fc]">{g.replace(/_/g, " ")}</span>
                         ))}
                       </div>
                     </div>
@@ -106,13 +106,13 @@ export default function RushExplore() {
                       <p className="text-[0.65rem] uppercase tracking-wide text-faint mb-1.5">โครงเรื่อง</p>
                       <div className="flex flex-wrap gap-1.5">
                         {t.structures.map((s) => (
-                          <span key={s} className="text-[0.68rem] px-2 py-0.5 rounded-full border border-white/10 text-gray-300">{s.replace(/_/g, " ")}</span>
+                          <span key={s} className="text-[0.68rem] px-2 py-0.5 rounded-full border border-white/10 text-slate-300">{s.replace(/_/g, " ")}</span>
                         ))}
                       </div>
                     </div>
                     <Link
                       href={`/rush?type=${key}`}
-                      className="inline-flex items-center gap-1.5 mt-1 text-sm px-4 py-2 rounded-lg bg-[#c9a84c] text-black font-semibold hover:bg-[#e6c86a] transition"
+                      className="inline-flex items-center gap-1.5 mt-1 text-sm px-4 py-2 rounded-lg bg-[#ab5bf7] text-black font-semibold hover:bg-[#c084fc] transition"
                     >
                       เลือกประเภทนี้เพื่อสร้าง Prompt Pack <ArrowRight className="w-4 h-4" />
                     </Link>
@@ -131,10 +131,10 @@ export default function RushExplore() {
           {HOW.map((h) => (
             <div key={h.title} className="rounded-2xl border border-white/10 bg-white/[0.02] p-5">
               <div className="flex items-center gap-2.5 mb-2">
-                <span className="grid place-items-center w-9 h-9 rounded-lg bg-[#c9a84c]/15 text-[#e6c86a]"><h.icon className="w-5 h-5" /></span>
-                <h3 className="font-semibold text-gray-100">{h.title}</h3>
+                <span className="grid place-items-center w-9 h-9 rounded-lg bg-[#ab5bf7]/15 text-[#c084fc]"><h.icon className="w-5 h-5" /></span>
+                <h3 className="font-semibold text-slate-100">{h.title}</h3>
               </div>
-              <p className="text-sm text-gray-400 leading-relaxed">{h.body}</p>
+              <p className="text-sm text-slate-400 leading-relaxed">{h.body}</p>
             </div>
           ))}
         </div>
@@ -148,8 +148,8 @@ export default function RushExplore() {
           {MODULE_GROUPS.map((g) => (
             <div key={g.key} className="rounded-xl border border-white/10 bg-white/[0.02] p-4">
               <div className="flex items-center gap-2">
-                <Check className="w-4 h-4 text-[#c9a84c] shrink-0" />
-                <h3 className="font-medium text-sm text-gray-100">{g.label}</h3>
+                <Check className="w-4 h-4 text-[#ab5bf7] shrink-0" />
+                <h3 className="font-medium text-sm text-slate-100">{g.label}</h3>
               </div>
               <p className="text-[0.72rem] text-faint mt-1.5 leading-relaxed">{g.desc}</p>
             </div>
@@ -160,8 +160,8 @@ export default function RushExplore() {
       {/* footer cta */}
       <section className="max-w-5xl mx-auto px-5 py-14 text-center">
         <h2 className="text-2xl font-bold">พร้อมแต่งหนังสือแล้ว?</h2>
-        <p className="mt-2 text-gray-400">เลือกประเภท ปรับแต่ง แล้ว generate prompt pack ได้เลย — ฟรี ไม่ต้องล็อกอิน</p>
-        <Link href="/rush" className="mt-6 inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-[#c9a84c] text-black font-semibold hover:bg-[#e6c86a] transition">
+        <p className="mt-2 text-slate-400">เลือกประเภท ปรับแต่ง แล้ว generate prompt pack ได้เลย — ฟรี ไม่ต้องล็อกอิน</p>
+        <Link href="/rush" className="mt-6 inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-[#ab5bf7] text-black font-semibold hover:bg-[#c084fc] transition">
           เปิด Rush Studio <ArrowRight className="w-4 h-4" />
         </Link>
       </section>

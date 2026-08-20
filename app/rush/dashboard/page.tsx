@@ -208,17 +208,17 @@ export default function DashboardPage() {
   }, [projects, query, filter, sort]);
 
   return (
-    <div className="min-h-screen text-slate-200" style={{ background: "#0a0a0f" }}>
+    <div className="min-h-screen text-slate-200" style={{ background: "#0b0e17" }}>
       {/* Top nav */}
-      <nav className="border-b border-white/10 bg-[#0a0a0f]/95 backdrop-blur-xl sticky top-0 z-50">
+      <nav className="border-b border-white/10 bg-[#0b0e17]/95 backdrop-blur-xl sticky top-0 z-50">
         <div className="max-w-screen-2xl mx-auto px-4 sm:px-8 py-4 flex items-center justify-between">
           <div className="flex items-center gap-x-8">
             <Link href="/" className="flex items-center gap-x-3">
-              <div className="w-9 h-9 rounded-2xl bg-gradient-to-br from-amber-400 to-yellow-600 flex items-center justify-center">
-                <BookOpen className="w-5 h-5 text-[#0a0a0f]" />
+              <div className="w-9 h-9 rounded-2xl bg-gradient-to-br from-[#ab5bf7] to-[#7c3aed] flex items-center justify-center">
+                <BookOpen className="w-5 h-5 text-[#0b0e17]" />
               </div>
               <div className="text-2xl font-semibold tracking-tight">
-                Nara<span className="gold-gradient">Suite</span>
+                Nara<span className="accent-gradient">Suite</span>
               </div>
             </Link>
             <div className="hidden md:flex items-center gap-x-1 text-sm">
@@ -236,14 +236,14 @@ export default function DashboardPage() {
               <span className="text-emerald-400/80 text-[10px]">deterministic</span>
             </div>
             {isPaid ? (
-              <span className="flex items-center gap-x-1.5 px-3 py-1.5 rounded-2xl bg-[#c9a84c]/15 border border-[#c9a84c]/40 text-xs font-semibold text-[#c9a84c]" title="แผนปัจจุบัน">
+              <span className="flex items-center gap-x-1.5 px-3 py-1.5 rounded-2xl bg-[#ab5bf7]/15 border border-[#ab5bf7]/40 text-xs font-semibold text-[#ab5bf7]" title="แผนปัจจุบัน">
                 <Crown className="w-3.5 h-3.5" /> {plan === "team" ? "Team" : "Pro"}
               </span>
             ) : (
               <button
                 onClick={upgrade}
                 disabled={upgrading || needLogin}
-                className="flex items-center gap-x-1.5 px-3.5 py-1.5 rounded-2xl bg-[#c9a84c] text-[#0a0a0f] text-xs font-semibold hover:bg-amber-300 disabled:opacity-50 transition-colors"
+                className="flex items-center gap-x-1.5 px-3.5 py-1.5 rounded-2xl bg-[#ab5bf7] text-[#0b0e17] text-xs font-semibold hover:bg-[#c084fc] disabled:opacity-50 transition-colors"
                 title="อัปเกรดเป็น Pro — cloud sync, version history, saga เต็มระบบ"
               >
                 {upgrading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Crown className="w-3.5 h-3.5" />}
@@ -260,12 +260,12 @@ export default function DashboardPage() {
           <div>
             <div className="flex items-center gap-x-3">
               <h1 className="text-3xl sm:text-4xl font-semibold tracking-tight">หนังสือของฉัน</h1>
-              <span className="px-3 py-1 text-xs font-mono tracking-wider bg-white/5 border border-white/10 rounded-full text-amber-400 self-start mt-2">RUSH ENGINE</span>
+              <span className="px-3 py-1 text-xs font-mono tracking-wider bg-white/5 border border-white/10 rounded-full text-[#ab5bf7] self-start mt-2">RUSH ENGINE</span>
             </div>
             <p className="text-slate-400 mt-1 text-[15px]">จัดการโปรเจกต์ ต้นฉบับ และเครื่องมือ Rush Engine — ทุกตัวเลขวัดได้จริง</p>
           </div>
           <div className="flex items-center gap-x-3">
-            <Link href="/rush" className="flex items-center gap-x-2 px-6 py-3 rounded-3xl bg-white text-[#0a0a0f] font-semibold text-sm hover:bg-amber-100 active:scale-[0.985] transition-all">
+            <Link href="/rush" className="flex items-center gap-x-2 px-6 py-3 rounded-3xl bg-[#ab5bf7] text-[#0b0e17] font-semibold text-sm hover:bg-[#c084fc] active:scale-[0.985] transition-all">
               <Plus className="w-4 h-4" /> สร้างหนังสือใหม่
             </Link>
             <button onClick={loadProjects} className="flex items-center justify-center w-11 h-11 rounded-3xl border border-white/10 hover:bg-white/5 text-slate-400 hover:text-white transition-colors" aria-label="รีเฟรชรายการ">
@@ -276,7 +276,7 @@ export default function DashboardPage() {
 
         {/* KPI stats — all real */}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
-          <Kpi label="หนังสือทั้งหมด" value={String(stats.count)} icon={<BookOpen className="w-7 h-7" />} tint="text-amber-400/30" />
+          <Kpi label="หนังสือทั้งหมด" value={String(stats.count)} icon={<BookOpen className="w-7 h-7" />} tint="text-[#ab5bf7]/30" />
           <Kpi label="คำทั้งหมด (ประเมิน)" value={fmt(stats.words)} icon={<FileText className="w-7 h-7" />} tint="text-sky-400/30" />
           <Kpi label="แชร์สาธารณะ" value={String(stats.shared)} icon={<Share2 className="w-7 h-7" />} tint="text-violet-400/30" />
           <Kpi label="ต้นฉบับ (ในเครื่อง)" value={String(manuscripts.length)} icon={<HardDrive className="w-7 h-7" />} tint="text-emerald-400/30" />
@@ -288,7 +288,7 @@ export default function DashboardPage() {
           <div className="section-header mb-3 px-1 text-xs uppercase tracking-wider text-faint font-semibold">การดำเนินการด่วน</div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <QuickAction href="/rush" icon={<Wand2 className="w-6 h-6" />} title="เครื่องมือ prompt" sub="สร้างชุด prompt แต่งหนังสือคุณภาพสูง" cta="เปิดเครื่องมือ" tone="from-indigo-500/20 to-violet-500/10 text-indigo-400" />
-            <QuickAction href="/rush/studio" icon={<Play className="w-6 h-6" />} title="Rush Studio" sub="รัน prompt ด้วย API key ของคุณเอง" cta="เปิด Studio" tone="from-amber-500/20 to-yellow-500/10 text-amber-400" />
+            <QuickAction href="/rush/studio" icon={<Play className="w-6 h-6" />} title="Rush Studio" sub="รัน prompt ด้วย API key ของคุณเอง" cta="เปิด Studio" tone="from-[#ab5bf7]/20 to-[#7c3aed]/10 text-[#ab5bf7]" />
             <QuickAction href="/rush?tool=thai" icon={<Search className="w-6 h-6" />} title="วิเคราะห์ร้อยแก้ว" sub="ตรวจไทย/EN + NIS audit ฟรี ไม่เรียก AI" cta="เริ่มวิเคราะห์" tone="from-emerald-500/20 to-teal-500/10 text-emerald-400" />
           </div>
         </div>
@@ -307,7 +307,7 @@ export default function DashboardPage() {
               </div>
               <div className="flex items-center bg-white/5 border border-white/10 rounded-3xl p-1 text-xs">
                 {([["all", "ทั้งหมด"], ["private", "ส่วนตัว"], ["public", "แชร์"]] as const).map(([k, label]) => (
-                  <button key={k} onClick={() => setFilter(k)} aria-pressed={filter === k} className={`px-3.5 py-1.5 rounded-[20px] font-medium transition-colors ${filter === k ? "bg-[#c9a84c] text-[#0a0a0f]" : "text-slate-400 hover:text-white"}`}>{label}</button>
+                  <button key={k} onClick={() => setFilter(k)} aria-pressed={filter === k} className={`px-3.5 py-1.5 rounded-[20px] font-medium transition-colors ${filter === k ? "bg-[#ab5bf7] text-[#0b0e17]" : "text-slate-400 hover:text-white"}`}>{label}</button>
                 ))}
               </div>
               <select value={sort} onChange={(e) => setSort(e.target.value as Sort)} className="bg-white/5 border border-white/10 rounded-3xl px-3 py-2 text-xs text-slate-300 outline-none">
@@ -327,24 +327,24 @@ export default function DashboardPage() {
 
           {!loading && needLogin && (
             <div className="glass-card rounded-3xl p-10 text-center">
-              <Lock className="w-10 h-10 mx-auto mb-3 text-[#c9a84c]/40" />
+              <Lock className="w-10 h-10 mx-auto mb-3 text-[#ab5bf7]/40" />
               <p className="text-slate-300">เข้าสู่ระบบเพื่อบันทึกและจัดการหนังสือของคุณ</p>
-              <Link href="/login?callbackUrl=/rush/dashboard" className="inline-block mt-4 text-sm text-[#c9a84c] hover:underline">ไปหน้าเข้าสู่ระบบ →</Link>
-              <p className="text-xs text-faint mt-4">หรือ <Link href="/rush" className="text-[#c9a84c] hover:underline">สร้าง prompt โดยไม่ต้องล็อกอิน</Link> (จะไม่ถูกบันทึก)</p>
+              <Link href="/login?callbackUrl=/rush/dashboard" className="inline-block mt-4 text-sm text-[#ab5bf7] hover:underline">ไปหน้าเข้าสู่ระบบ →</Link>
+              <p className="text-xs text-faint mt-4">หรือ <Link href="/rush" className="text-[#ab5bf7] hover:underline">สร้าง prompt โดยไม่ต้องล็อกอิน</Link> (จะไม่ถูกบันทึก)</p>
             </div>
           )}
 
           {!loading && !needLogin && setupDetail && (
             <div className="glass-card rounded-3xl p-10 text-center">
-              <Wrench className="w-10 h-10 mx-auto mb-3 text-[#c9a84c]/50" />
+              <Wrench className="w-10 h-10 mx-auto mb-3 text-[#ab5bf7]/50" />
               <p className="text-slate-300">เซิร์ฟเวอร์ยังตั้งค่าไม่เสร็จ</p>
               <p className="text-xs text-faint mt-1.5 max-w-md mx-auto">{setupDetail}</p>
               <p className="text-xs text-faint mt-3">
-                ถ้าคุณไม่ใช่ผู้ดูแลระบบ: ต้นฉบับในเครื่องยังใช้ได้ตามปกติ และ<Link href="/rush" className="text-[#c9a84c] hover:underline">เครื่องมือ prompt ทำงานได้โดยไม่ต้องมีเซิร์ฟเวอร์</Link>
+                ถ้าคุณไม่ใช่ผู้ดูแลระบบ: ต้นฉบับในเครื่องยังใช้ได้ตามปกติ และ<Link href="/rush" className="text-[#ab5bf7] hover:underline">เครื่องมือ prompt ทำงานได้โดยไม่ต้องมีเซิร์ฟเวอร์</Link>
               </p>
               <button
                 onClick={loadProjects}
-                className="inline-flex items-center gap-1.5 mt-4 text-sm px-4 py-2 rounded-lg border border-[#c9a84c]/40 text-[#c9a84c] hover:bg-[#c9a84c]/10 transition"
+                className="inline-flex items-center gap-1.5 mt-4 text-sm px-4 py-2 rounded-lg border border-[#ab5bf7]/40 text-[#ab5bf7] hover:bg-[#ab5bf7]/10 transition"
               >
                 <RefreshCw className="w-4 h-4" /> ตรวจอีกครั้ง
               </button>
@@ -360,7 +360,7 @@ export default function DashboardPage() {
               </p>
               <button
                 onClick={loadProjects}
-                className="inline-flex items-center gap-1.5 mt-4 text-sm px-4 py-2 rounded-lg border border-[#c9a84c]/40 text-[#c9a84c] hover:bg-[#c9a84c]/10 transition"
+                className="inline-flex items-center gap-1.5 mt-4 text-sm px-4 py-2 rounded-lg border border-[#ab5bf7]/40 text-[#ab5bf7] hover:bg-[#ab5bf7]/10 transition"
               >
                 <RefreshCw className="w-4 h-4" /> ลองอีกครั้ง
               </button>
@@ -369,9 +369,9 @@ export default function DashboardPage() {
 
           {!loading && !needLogin && !setupDetail && !loadError && projects.length === 0 && (
             <div className="glass-card rounded-3xl p-10 text-center text-faint">
-              <BookOpen className="w-10 h-10 mx-auto mb-3 text-[#c9a84c]/40" />
+              <BookOpen className="w-10 h-10 mx-auto mb-3 text-[#ab5bf7]/40" />
               <p>ยังไม่มีหนังสือที่บันทึกไว้</p>
-              <Link href="/rush" className="inline-flex items-center gap-1 mt-4 text-sm text-[#c9a84c] hover:underline">เริ่มเล่มแรก <ArrowRight className="w-4 h-4" /></Link>
+              <Link href="/rush" className="inline-flex items-center gap-1 mt-4 text-sm text-[#ab5bf7] hover:underline">เริ่มเล่มแรก <ArrowRight className="w-4 h-4" /></Link>
             </div>
           )}
 
@@ -411,7 +411,7 @@ export default function DashboardPage() {
                         <td className="px-4 py-4 text-right font-mono text-xs">{fmt(words(p))}</td>
                         <td className="px-6 py-4 text-right text-xs text-slate-400">{fmtDate(p.updatedAt)}</td>
                         <td className="px-4 py-4 text-right">
-                          <button onClick={() => router.push(`/rush?project=${p.id}`)} className="text-amber-400 text-xs px-3 py-1 rounded-xl border border-white/10 hover:bg-white/5">เปิด</button>
+                          <button onClick={() => router.push(`/rush?project=${p.id}`)} className="text-[#ab5bf7] text-xs px-3 py-1 rounded-xl border border-white/10 hover:bg-white/5">เปิด</button>
                         </td>
                       </tr>
                     );
@@ -457,7 +457,7 @@ export default function DashboardPage() {
                           <td className="px-5 text-right text-xs text-slate-400">{fmtDate(m.updatedAt)}</td>
                           <td className="px-3 text-right whitespace-nowrap">
                             <button onClick={() => router.push(`/rush?analyze=${m.id}`)} className="text-emerald-400 hover:text-emerald-300 p-1.5" aria-label="Analyze"><Search className="w-4 h-4" /></button>
-                            <button onClick={() => exportEpub(m)} className="text-[#c9a84c] hover:text-amber-300 p-1.5" aria-label="Export EPUB" title="ดาวน์โหลด .epub"><BookDown className="w-4 h-4" /></button>
+                            <button onClick={() => exportEpub(m)} className="text-[#ab5bf7] hover:text-[#c084fc] p-1.5" aria-label="Export EPUB" title="ดาวน์โหลด .epub"><BookDown className="w-4 h-4" /></button>
                             <DeleteButton
                               onDelete={() => delManuscript(m.id)}
                               what="ต้นฉบับ"
@@ -487,7 +487,7 @@ export default function DashboardPage() {
                 ตัวเลขทั้งหมดมาจากข้อมูลจริง (โปรเจกต์ที่บันทึก + ต้นฉบับในเบราว์เซอร์) — ไม่มีสถิติประดิษฐ์
               </p>
               <div className="mt-auto pt-4 space-y-2">
-                <Link href="/rush/studio" className="w-full py-2.5 text-xs rounded-2xl border border-white/10 hover:bg-white/5 flex items-center justify-center gap-x-2 text-amber-400 font-medium">
+                <Link href="/rush/studio" className="w-full py-2.5 text-xs rounded-2xl border border-white/10 hover:bg-white/5 flex items-center justify-center gap-x-2 text-[#ab5bf7] font-medium">
                   เปิด Rush Studio <ArrowRight className="w-3.5 h-3.5" />
                 </Link>
                 <Link href="/rush?tool=thai" className="w-full py-2.5 text-xs rounded-2xl border border-white/10 hover:bg-white/5 flex items-center justify-center gap-x-2 text-emerald-400 font-medium">
@@ -534,7 +534,7 @@ function DeleteButton({ onDelete, what, idleClass, armedClass }: {
 
 function NavTab({ href, icon, label, active }: { href: string; icon: React.ReactNode; label: string; active?: boolean }) {
   return (
-    <Link href={href} className={`px-4 py-2 rounded-xl font-medium flex items-center gap-x-2 transition-colors ${active ? "text-amber-400" : "text-slate-300 hover:bg-white/5 hover:text-[#c9a84c]"}`}>
+    <Link href={href} className={`px-4 py-2 rounded-xl font-medium flex items-center gap-x-2 transition-colors ${active ? "text-[#ab5bf7]" : "text-slate-300 hover:bg-white/5 hover:text-[#ab5bf7]"}`}>
       {icon}<span>{label}</span>
     </Link>
   );
@@ -556,12 +556,12 @@ function Kpi({ label, value, icon, tint }: { label: string; value: string; icon:
 
 function QuickAction({ href, icon, title, sub, cta, tone }: { href: string; icon: React.ReactNode; title: string; sub: string; cta: string; tone: string }) {
   return (
-    <Link href={href} className="group glass-card rounded-3xl p-5 hover:border-amber-400/40 transition-colors flex gap-x-4">
+    <Link href={href} className="group glass-card rounded-3xl p-5 hover:border-[#ab5bf7]/40 transition-colors flex gap-x-4">
       <div className={`w-11 h-11 flex-shrink-0 rounded-2xl bg-gradient-to-br ${tone} flex items-center justify-center group-hover:scale-110 transition-transform`}>{icon}</div>
       <div className="flex-1 min-w-0">
         <div className="font-semibold text-lg tracking-tight">{title}</div>
         <div className="text-sm text-slate-400 mt-0.5">{sub}</div>
-        <div className="mt-3 flex items-center text-xs text-amber-400 font-medium">
+        <div className="mt-3 flex items-center text-xs text-[#ab5bf7] font-medium">
           <span>{cta}</span><ArrowRight className="w-3.5 h-3.5 ml-1.5 group-hover:translate-x-0.5 transition-transform" />
         </div>
       </div>
@@ -592,7 +592,7 @@ function ProjectCard({ p, onOpen, onDelete }: { p: Project; onOpen: () => void; 
           <span>{fmtDate(p.updatedAt)}</span>
         </div>
         <div className="flex items-center gap-x-2 mt-3 pt-4 border-t border-white/10">
-          <button onClick={onOpen} className="flex-1 text-xs py-2 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 font-medium text-amber-400 transition-colors">เปิดใน Rush →</button>
+          <button onClick={onOpen} className="flex-1 text-xs py-2 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 font-medium text-[#ab5bf7] transition-colors">เปิดใน Rush →</button>
           <DeleteButton
             onDelete={onDelete}
             what="หนังสือ"

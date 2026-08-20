@@ -10,10 +10,10 @@ import { TIERS, REFUSED_CONSTRUCTS } from "@/lib/rush-engine/epistemics";
 import { CITATIONS, disputed } from "@/lib/rush-engine/citations";
 
 const TIER_TONE: Record<string, string> = {
-  paccakkha: "#34d399", anumana: "#38bdf8", sanna: "#fbbf24", avisaya: "#fb7185",
+  paccakkha: "#22c55e", anumana: "#38bdf8", sanna: "#fbbf24", avisaya: "#ef4444",
 };
 const CITE_TONE: Record<string, string> = {
-  primary: "#34d399", index: "#38bdf8", memory: "#fbbf24", disputed: "#fb7185",
+  primary: "#22c55e", index: "#38bdf8", memory: "#fbbf24", disputed: "#ef4444",
 };
 const CITE_LABEL: Record<string, string> = {
   primary: "เปิดต้นฉบับจริง",
@@ -53,21 +53,21 @@ export default function RushHonesty() {
   }, []);
 
   return (
-    <main className="min-h-screen bg-[#0a0a0f] text-gray-200">
+    <main className="min-h-screen bg-[#0b0e17] text-slate-200">
       <div className="max-w-3xl mx-auto px-5 py-12">
         <div className="flex items-center justify-between mb-2">
-          <p className="text-xs tracking-[0.2em] uppercase text-[#c9a84c] font-semibold">Rush · ความซื่อสัตย์ทางญาณวิทยา</p>
-          <Link href="/rush/explore" className="text-xs text-faint hover:text-gray-300">← กลับ</Link>
+          <p className="text-xs tracking-[0.2em] uppercase text-[#ab5bf7] font-semibold">Rush · ความซื่อสัตย์ทางญาณวิทยา</p>
+          <Link href="/rush/explore" className="text-xs text-faint hover:text-slate-300">← กลับ</Link>
         </div>
-        <h1 className="text-2xl font-bold text-gray-100 mb-1">เราถือมาตรฐานเดียวกับที่เราใช้ตรวจงานคุณ</h1>
+        <h1 className="text-2xl font-bold text-slate-100 mb-1">เราถือมาตรฐานเดียวกับที่เราใช้ตรวจงานคุณ</h1>
         <p className="text-sm text-faint mb-8">
           Rush ปฏิเสธที่จะให้คะแนน 0–100 แบบเดา และหน้านี้แสดงว่าเราใช้กฎเดียวกันนั้นกับ<strong>ตัวเลขของเราเอง</strong>และ<strong>แหล่งอ้างอิงของเราเอง</strong>
         </p>
 
         {/* Tiers */}
         <section className="mb-10">
-          <h2 className="flex items-center gap-2 text-sm font-semibold text-gray-200 mb-3">
-            <ShieldCheck className="w-4 h-4 text-[#c9a84c]" /> ทุกตัวเลขถูกจัดชั้นว่ามาจากการรู้แบบไหน
+          <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-200 mb-3">
+            <ShieldCheck className="w-4 h-4 text-[#ab5bf7]" /> ทุกตัวเลขถูกจัดชั้นว่ามาจากการรู้แบบไหน
           </h2>
           <div className="space-y-2">
             {TIERS.map((t) => (
@@ -88,12 +88,12 @@ export default function RushHonesty() {
 
         {/* Refused */}
         <section className="mb-10">
-          <h2 className="flex items-center gap-2 text-sm font-semibold text-gray-200 mb-3">
+          <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-200 mb-3">
             <XCircle className="w-4 h-4 text-rose-400" /> {REFUSED_CONSTRUCTS.length} ค่าที่เราปฏิเสธจะให้คะแนน — และเหตุผล
           </h2>
           <div className="grid gap-1.5">
             {REFUSED_CONSTRUCTS.map((c) => (
-              <div key={c.id} className="text-[0.72rem] text-gray-400 rounded border border-rose-500/15 bg-rose-500/[0.03] px-3 py-1.5">
+              <div key={c.id} className="text-[0.72rem] text-slate-400 rounded border border-rose-500/15 bg-rose-500/[0.03] px-3 py-1.5">
                 <span className="text-rose-300/90 line-through">{c.thai}</span> — {c.why}
               </div>
             ))}
@@ -102,16 +102,16 @@ export default function RushHonesty() {
 
         {/* Citations */}
         <section>
-          <h2 className="flex items-center gap-2 text-sm font-semibold text-gray-200 mb-1">
-            <BookMarked className="w-4 h-4 text-[#c9a84c]" /> เราจัดชั้นแหล่งอ้างอิงของเราเองด้วย
+          <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-200 mb-1">
+            <BookMarked className="w-4 h-4 text-[#ab5bf7]" /> เราจัดชั้นแหล่งอ้างอิงของเราเองด้วย
           </h2>
           <p className="text-[0.72rem] text-faint mb-3">
             ชั้นบอกว่า <strong>ตรวจมาแรงแค่ไหน</strong> ไม่ได้บอกว่างานดีแค่ไหน
           </p>
 
-          <div className="rounded-lg border border-white/10 p-3 mb-3 text-[0.72rem] text-gray-400 leading-relaxed">
-            <span className="text-gray-200 font-medium">{registered}</span> แหล่งอ้างอิงลงทะเบียนแล้ว จาก
-            ~<span className="text-gray-200 font-medium">{mentionsEstimate ?? "…"}</span> การอ้างอิงในโมดูล (ประมาณการแบบนับเกิน).{" "}
+          <div className="rounded-lg border border-white/10 p-3 mb-3 text-[0.72rem] text-slate-400 leading-relaxed">
+            <span className="text-slate-200 font-medium">{registered}</span> แหล่งอ้างอิงลงทะเบียนแล้ว จาก
+            ~<span className="text-slate-200 font-medium">{mentionsEstimate ?? "…"}</span> การอ้างอิงในโมดูล (ประมาณการแบบนับเกิน).{" "}
             <span className={primaryCount === 0 ? "text-rose-300/90" : "text-emerald-300/90"}>
               เปิดต้นฉบับจริง {primaryCount} ฉบับ
             </span>{" "}
@@ -133,8 +133,8 @@ export default function RushHonesty() {
           <div className="space-y-2">
             {disputed().map((c) => (
               <div key={c.id} className="rounded-lg border border-rose-500/15 bg-rose-500/[0.03] p-3">
-                <p className="text-[0.75rem] text-gray-200">
-                  {c.who} <span className="text-faint">({c.year})</span> — <span className="text-gray-400">{c.claim}</span>
+                <p className="text-[0.75rem] text-slate-200">
+                  {c.who} <span className="text-faint">({c.year})</span> — <span className="text-slate-400">{c.claim}</span>
                 </p>
                 {c.note && <p className="text-[0.68rem] text-faint mt-1">{c.note}</p>}
               </div>

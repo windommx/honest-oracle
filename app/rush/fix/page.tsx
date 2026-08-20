@@ -25,13 +25,13 @@ export default function RushFix() {
   const samples = SAMPLE_RUNGS.map((id) => SYMPTOM_LADDER.find((r) => r.id === id)!).filter(Boolean);
 
   return (
-    <main className="min-h-screen bg-[#0a0a0f] text-gray-200">
+    <main className="min-h-screen bg-[#0b0e17] text-slate-200">
       <div className="max-w-3xl mx-auto px-5 py-12">
         <div className="flex items-center justify-between mb-2">
-          <p className="text-xs tracking-[0.2em] uppercase text-[#c9a84c] font-semibold">Rush · หาโมดูลจากอาการ</p>
-          <Link href="/rush/start" className="text-xs text-faint hover:text-gray-300">เริ่มเล่มใหม่ →</Link>
+          <p className="text-xs tracking-[0.2em] uppercase text-[#ab5bf7] font-semibold">Rush · หาโมดูลจากอาการ</p>
+          <Link href="/rush/start" className="text-xs text-faint hover:text-slate-300">เริ่มเล่มใหม่ →</Link>
         </div>
-        <h1 className="text-2xl font-bold text-gray-100 mb-1">ติดตรงไหน?</h1>
+        <h1 className="text-2xl font-bold text-slate-100 mb-1">ติดตรงไหน?</h1>
         <p className="text-sm text-faint mb-1">
           พิมพ์อาการด้วยคำของคุณเอง — ระบบจะบอกว่าควรเปิดโมดูลไหนใน {MODULE_CATALOG.length} ตัว
         </p>
@@ -46,7 +46,7 @@ export default function RushFix() {
             onChange={(e) => setSymptom(e.target.value)}
             placeholder="เช่น จบบทแล้ววางได้ ไม่มีใครอ่านต่อ"
             aria-label="อาการที่เจอ"
-            className="w-full rounded-xl border border-white/10 bg-white/[0.03] pl-10 pr-4 py-3 text-sm text-gray-100 placeholder:text-faint focus:border-[#c9a84c] focus:outline-none"
+            className="w-full rounded-xl border border-white/10 bg-white/[0.03] pl-10 pr-4 py-3 text-sm text-slate-100 placeholder:text-faint focus:border-[#ab5bf7] focus:outline-none"
           />
         </label>
 
@@ -62,7 +62,7 @@ export default function RushFix() {
                 <button
                   key={r.id}
                   onClick={() => setSymptom(r.th)}
-                  className="text-[0.68rem] px-2.5 py-1 rounded-full border border-white/10 text-gray-400 hover:border-[#c9a84c]/60 hover:text-[#e6c86a] transition text-left"
+                  className="text-[0.68rem] px-2.5 py-1 rounded-full border border-white/10 text-slate-400 hover:border-[#ab5bf7]/60 hover:text-[#c084fc] transition text-left"
                 >
                   {r.th}
                 </button>
@@ -76,20 +76,20 @@ export default function RushFix() {
             <p className="flex items-center gap-2 text-sm font-semibold text-amber-300/90 mb-2">
               <AlertCircle className="w-4 h-4" /> ไม่พบขั้นที่ตรง (R0)
             </p>
-            <p className="text-[0.8rem] leading-relaxed text-gray-400">{result.noMatch}</p>
+            <p className="text-[0.8rem] leading-relaxed text-slate-400">{result.noMatch}</p>
           </div>
         )}
 
         {result?.primary && (
           <div className="space-y-4">
-            <div className="rounded-xl border border-[#c9a84c]/40 bg-[#c9a84c]/[0.05] p-5">
-              <p className="text-[0.62rem] tracking-widest uppercase text-[#c9a84c] mb-1">
+            <div className="rounded-xl border border-[#ab5bf7]/40 bg-[#ab5bf7]/[0.05] p-5">
+              <p className="text-[0.62rem] tracking-widest uppercase text-[#ab5bf7] mb-1">
                 {result.primary.rung.id} · เปิดตัวนี้ก่อน
               </p>
-              <p className="text-lg font-bold text-gray-100">{meta(result.primary.rung.primary).name}</p>
-              <p className="text-[0.7rem] font-mono text-[#e6c86a] mb-2">{result.primary.rung.primary}</p>
-              <p className="text-[0.78rem] text-gray-300 mb-3">{meta(result.primary.rung.primary).desc}</p>
-              <p className="text-[0.8rem] leading-relaxed text-gray-400 mb-3">{result.primary.rung.why}</p>
+              <p className="text-lg font-bold text-slate-100">{meta(result.primary.rung.primary).name}</p>
+              <p className="text-[0.7rem] font-mono text-[#c084fc] mb-2">{result.primary.rung.primary}</p>
+              <p className="text-[0.78rem] text-slate-300 mb-3">{meta(result.primary.rung.primary).desc}</p>
+              <p className="text-[0.8rem] leading-relaxed text-slate-400 mb-3">{result.primary.rung.why}</p>
               <p className="text-[0.68rem] text-faint">
                 คำที่ทำให้เข้าขั้นนี้:{" "}
                 {result.primary.matched.map((k) => (
@@ -101,7 +101,7 @@ export default function RushFix() {
 
             {result.runFirst.length > 0 && (
               <div className="rounded-xl border border-white/10 p-4">
-                <p className="text-xs font-semibold text-gray-300 mb-1.5">ต้องมีก่อน</p>
+                <p className="text-xs font-semibold text-slate-300 mb-1.5">ต้องมีก่อน</p>
                 <p className="text-[0.72rem] text-faint mb-2">ข้ามขั้นนี้ไป ผลลัพธ์จะมั่นใจบนความว่างเปล่า</p>
                 <div className="flex flex-wrap gap-1.5">
                   {result.runFirst.map((id) => (
@@ -115,10 +115,10 @@ export default function RushFix() {
 
             {result.primary.rung.also.length > 0 && (
               <div className="rounded-xl border border-white/10 p-4">
-                <p className="text-xs font-semibold text-gray-300 mb-2">มุมอื่นของอาการเดียวกัน</p>
+                <p className="text-xs font-semibold text-slate-300 mb-2">มุมอื่นของอาการเดียวกัน</p>
                 <div className="grid gap-1.5 sm:grid-cols-2">
                   {result.primary.rung.also.map((id) => (
-                    <span key={id} className="text-[0.72rem] text-gray-400">
+                    <span key={id} className="text-[0.72rem] text-slate-400">
                       <span className="font-mono text-faint mr-1.5">{id}</span>
                       {meta(id).name}
                     </span>
@@ -129,7 +129,7 @@ export default function RushFix() {
 
             {result.secondary.length > 0 && (
               <div className="rounded-xl border border-white/10 p-4">
-                <p className="text-xs font-semibold text-gray-300 mb-1">ขั้นอื่นที่ก็เข้าเงื่อนไขด้วย</p>
+                <p className="text-xs font-semibold text-slate-300 mb-1">ขั้นอื่นที่ก็เข้าเงื่อนไขด้วย</p>
                 <p className="text-[0.72rem] text-faint mb-3">ไม่ตัดทิ้งให้ — คุณเลือกเองว่าอันไหนตรงกว่า</p>
                 <ul className="space-y-2">
                   {result.secondary.map((s) => (
@@ -137,9 +137,9 @@ export default function RushFix() {
                       <CornerDownRight className="w-3.5 h-3.5 text-faint shrink-0 mt-0.5" />
                       <span>
                         <span className="font-mono text-faint mr-1.5">{s.rung.id}</span>
-                        <span className="text-gray-400">{s.rung.th}</span>
+                        <span className="text-slate-400">{s.rung.th}</span>
                         <span className="block text-faint mt-0.5">
-                          → <span className="font-mono text-[#c9a84c]/70">{s.rung.primary}</span> (จาก: {s.matched.join(", ")})
+                          → <span className="font-mono text-[#ab5bf7]/70">{s.rung.primary}</span> (จาก: {s.matched.join(", ")})
                         </span>
                       </span>
                     </li>
@@ -150,7 +150,7 @@ export default function RushFix() {
 
             <Link
               href="/rush/start"
-              className="inline-flex items-center gap-2 rounded-xl bg-[#c9a84c] px-5 py-2.5 text-sm font-semibold text-[#0a0a0f] hover:bg-[#e6c86a] transition"
+              className="inline-flex items-center gap-2 rounded-xl bg-[#ab5bf7] px-5 py-2.5 text-sm font-semibold text-[#0b0e17] hover:bg-[#c084fc] transition"
             >
               สร้าง Prompt Pack ที่มีโมดูลเหล่านี้ <ArrowRight className="w-4 h-4" />
             </Link>

@@ -56,13 +56,13 @@ export default function RushStart() {
   const t = BOOK_TYPES[type];
 
   return (
-    <main className="min-h-screen bg-[#0a0a0f] text-gray-200">
+    <main className="min-h-screen bg-[#0b0e17] text-slate-200">
       <div className="max-w-3xl mx-auto px-5 py-12">
         <div className="flex items-center justify-between mb-2">
-          <p className="text-xs tracking-[0.2em] uppercase text-[#c9a84c] font-semibold">Rush Studio · สร้าง Prompt Pack</p>
+          <p className="text-xs tracking-[0.2em] uppercase text-[#ab5bf7] font-semibold">Rush Studio · สร้าง Prompt Pack</p>
           <div className="flex items-center gap-3">
-            <Link href="/rush/fix" className="text-xs text-faint hover:text-gray-300">ติดอยู่? หาจากอาการ</Link>
-            <Link href="/rush/explore" className="text-xs text-faint hover:text-gray-300">← ดู 8 ประเภท</Link>
+            <Link href="/rush/fix" className="text-xs text-faint hover:text-slate-300">ติดอยู่? หาจากอาการ</Link>
+            <Link href="/rush/explore" className="text-xs text-faint hover:text-slate-300">← ดู 8 ประเภท</Link>
           </div>
         </div>
 
@@ -70,8 +70,8 @@ export default function RushStart() {
         <div className="flex items-center gap-1.5 mb-8">
           {STEPS.map((s, i) => (
             <div key={s} className="flex-1">
-              <div className={`h-1 rounded-full ${i <= step ? "bg-[#c9a84c]" : "bg-white/10"}`} />
-              <p className={`text-[0.62rem] mt-1.5 ${i === step ? "text-[#e6c86a]" : "text-faint"}`}>{i + 1}. {s}</p>
+              <div className={`h-1 rounded-full ${i <= step ? "bg-[#ab5bf7]" : "bg-white/10"}`} />
+              <p className={`text-[0.62rem] mt-1.5 ${i === step ? "text-[#c084fc]" : "text-faint"}`}>{i + 1}. {s}</p>
             </div>
           ))}
         </div>
@@ -85,26 +85,26 @@ export default function RushStart() {
                 <button
                   key={key}
                   onClick={() => chooseType(key)}
-                  className={`flex items-center gap-3 rounded-xl border p-4 text-left transition ${type === key ? "border-[#c9a84c] bg-[#c9a84c]/[0.06]" : "border-white/10 hover:border-white/25"}`}
+                  className={`flex items-center gap-3 rounded-xl border p-4 text-left transition ${type === key ? "border-[#ab5bf7] bg-[#ab5bf7]/[0.06]" : "border-white/10 hover:border-white/25"}`}
                 >
                   <span className="text-2xl">{bt.icon}</span>
                   <span>
-                    <span className="block font-medium text-gray-100">{bt.label}</span>
+                    <span className="block font-medium text-slate-100">{bt.label}</span>
                     <span className="block text-[0.68rem] text-faint">{bt.sub_genres.length} แนวย่อย · {bt.default_chapters} บท</span>
                   </span>
-                  {type === key && <Check className="w-4 h-4 text-[#c9a84c] ml-auto" />}
+                  {type === key && <Check className="w-4 h-4 text-[#ab5bf7] ml-auto" />}
                 </button>
               ))}
             </div>
 
             {/* bootstraps — one-click starting points (skip the wizard entirely) */}
             <div className="mt-10">
-              <h3 className="text-sm font-semibold text-gray-300 mb-1">หรือเริ่มเร็วจากแม่แบบตั้งต้น ({BOOTSTRAPS.length})</h3>
+              <h3 className="text-sm font-semibold text-slate-300 mb-1">หรือเริ่มเร็วจากแม่แบบตั้งต้น ({BOOTSTRAPS.length})</h3>
               <p className="text-[0.68rem] text-faint mb-3">กดแล้วได้ config ครบ (ประเภท·แนว·โครงเรื่อง·ความยาว) — ปรับต่อได้ทุกอย่างในหน้าถัดไป</p>
               <div className="flex flex-wrap gap-1.5 mb-3">
                 <button
                   onClick={() => setPresetFilter("all")}
-                  className={`text-[0.68rem] px-2.5 py-1 rounded-full border transition ${presetFilter === "all" ? "border-[#c9a84c] bg-[#c9a84c]/10 text-[#e6c86a]" : "border-white/10 text-gray-400 hover:border-white/25"}`}
+                  className={`text-[0.68rem] px-2.5 py-1 rounded-full border transition ${presetFilter === "all" ? "border-[#ab5bf7] bg-[#ab5bf7]/10 text-[#c084fc]" : "border-white/10 text-slate-400 hover:border-white/25"}`}
                 >
                   ทั้งหมด ({BOOTSTRAPS.length})
                 </button>
@@ -112,7 +112,7 @@ export default function RushStart() {
                   <button
                     key={k}
                     onClick={() => setPresetFilter(k)}
-                    className={`text-[0.68rem] px-2.5 py-1 rounded-full border transition ${presetFilter === k ? "border-[#c9a84c] bg-[#c9a84c]/10 text-[#e6c86a]" : "border-white/10 text-gray-400 hover:border-white/25"}`}
+                    className={`text-[0.68rem] px-2.5 py-1 rounded-full border transition ${presetFilter === k ? "border-[#ab5bf7] bg-[#ab5bf7]/10 text-[#c084fc]" : "border-white/10 text-slate-400 hover:border-white/25"}`}
                   >
                     {BOOK_TYPES[k].icon} {BOOK_TYPES[k].label} ({BOOTSTRAPS.filter((b) => b.type === k).length})
                   </button>
@@ -123,11 +123,11 @@ export default function RushStart() {
                   <Link
                     key={b.id}
                     href={`/rush?${bootstrapQuery(b)}`}
-                    className="rounded-lg border border-white/10 p-3 hover:border-[#c9a84c]/50 transition group"
+                    className="rounded-lg border border-white/10 p-3 hover:border-[#ab5bf7]/50 transition group"
                   >
                     <span className="flex items-center gap-2">
                       <span className="text-base">{BOOK_TYPES[b.type].icon}</span>
-                      <span className="text-sm font-medium text-gray-100 group-hover:text-[#e6c86a]">{b.nameTh}</span>
+                      <span className="text-sm font-medium text-slate-100 group-hover:text-[#c084fc]">{b.nameTh}</span>
                     </span>
                     <span className="block text-[0.65rem] text-faint mt-1">{b.taglineTh}</span>
                     <span className="block text-[0.6rem] text-faint mt-1">
@@ -150,7 +150,7 @@ export default function RushStart() {
                 <button
                   key={g}
                   onClick={() => setGenre(g)}
-                  className={`text-sm px-3 py-1.5 rounded-full border transition ${genre === g ? "border-[#c9a84c] bg-[#c9a84c]/10 text-[#e6c86a]" : "border-white/10 text-gray-300 hover:border-white/25"}`}
+                  className={`text-sm px-3 py-1.5 rounded-full border transition ${genre === g ? "border-[#ab5bf7] bg-[#ab5bf7]/10 text-[#c084fc]" : "border-white/10 text-slate-300 hover:border-white/25"}`}
                 >
                   {g.replace(/_/g, " ")}
                 </button>
@@ -162,7 +162,7 @@ export default function RushStart() {
                 <button
                   key={l}
                   onClick={() => setLang(l)}
-                  className={`text-sm px-4 py-2 rounded-lg border transition ${lang === l ? "border-[#c9a84c] bg-[#c9a84c]/10 text-[#e6c86a]" : "border-white/10 text-gray-300 hover:border-white/25"}`}
+                  className={`text-sm px-4 py-2 rounded-lg border transition ${lang === l ? "border-[#ab5bf7] bg-[#ab5bf7]/10 text-[#c084fc]" : "border-white/10 text-slate-300 hover:border-white/25"}`}
                 >
                   {l === "th" ? "ไทย (Thai-native)" : "อังกฤษ (English)"}
                 </button>
@@ -176,18 +176,18 @@ export default function RushStart() {
                 <div className="grid gap-2 sm:grid-cols-2">
                   <button
                     onClick={() => setStructure("")}
-                    className={`rounded-xl border p-3 text-left transition ${structure === "" ? "border-[#c9a84c] bg-[#c9a84c]/[0.06]" : "border-white/10 hover:border-white/25"}`}
+                    className={`rounded-xl border p-3 text-left transition ${structure === "" ? "border-[#ab5bf7] bg-[#ab5bf7]/[0.06]" : "border-white/10 hover:border-white/25"}`}
                   >
-                    <span className="block text-sm font-medium text-gray-100">โครงมาตรฐาน (3 องก์)</span>
+                    <span className="block text-sm font-medium text-slate-100">โครงมาตรฐาน (3 องก์)</span>
                     <span className="block text-[0.66rem] text-faint mt-0.5">conflict → climax → resolution</span>
                   </button>
                   {NARRATIVE_STRUCTURES.map((s) => (
                     <button
                       key={s.id}
                       onClick={() => setStructure(s.id)}
-                      className={`rounded-xl border p-3 text-left transition ${structure === s.id ? "border-[#c9a84c] bg-[#c9a84c]/[0.06]" : "border-white/10 hover:border-white/25"}`}
+                      className={`rounded-xl border p-3 text-left transition ${structure === s.id ? "border-[#ab5bf7] bg-[#ab5bf7]/[0.06]" : "border-white/10 hover:border-white/25"}`}
                     >
-                      <span className="block text-sm font-medium text-gray-100">{s.thai}</span>
+                      <span className="block text-sm font-medium text-slate-100">{s.thai}</span>
                       <span className="block text-[0.66rem] text-faint mt-0.5">{s.origin}</span>
                     </button>
                   ))}
@@ -203,12 +203,12 @@ export default function RushStart() {
             <h2 className="text-lg font-bold mb-4">ความยาว</h2>
             <div className="grid gap-5 sm:grid-cols-2">
               <label className="block">
-                <span className="text-sm text-gray-400">จำนวนบท</span>
-                <input type="number" min={1} max={100} value={chapters} onChange={(e) => setChapters(Math.max(1, Math.min(100, parseInt(e.target.value) || 1)))} className="mt-1.5 w-full px-3 py-2 rounded-lg border border-white/10 bg-white/5 text-gray-100 focus:border-[#c9a84c]/50 focus:outline-none" />
+                <span className="text-sm text-slate-400">จำนวนบท</span>
+                <input type="number" min={1} max={100} value={chapters} onChange={(e) => setChapters(Math.max(1, Math.min(100, parseInt(e.target.value) || 1)))} className="mt-1.5 w-full px-3 py-2 rounded-lg border border-white/10 bg-white/5 text-slate-100 focus:border-[#ab5bf7]/50 focus:outline-none" />
               </label>
               <label className="block">
-                <span className="text-sm text-gray-400">คำต่อบท (โดยประมาณ)</span>
-                <input type="number" min={100} max={20000} step={100} value={words} onChange={(e) => setWords(Math.max(100, Math.min(20000, parseInt(e.target.value) || 100)))} className="mt-1.5 w-full px-3 py-2 rounded-lg border border-white/10 bg-white/5 text-gray-100 focus:border-[#c9a84c]/50 focus:outline-none" />
+                <span className="text-sm text-slate-400">คำต่อบท (โดยประมาณ)</span>
+                <input type="number" min={100} max={20000} step={100} value={words} onChange={(e) => setWords(Math.max(100, Math.min(20000, parseInt(e.target.value) || 100)))} className="mt-1.5 w-full px-3 py-2 rounded-lg border border-white/10 bg-white/5 text-slate-100 focus:border-[#ab5bf7]/50 focus:outline-none" />
               </label>
             </div>
             <p className="text-[0.72rem] text-faint mt-3">รวมประมาณ {(chapters * words).toLocaleString()} คำ · ค่าเริ่มต้นของ {t.label}: {t.default_chapters} บท × {t.default_words.toLocaleString()} คำ</p>
@@ -227,13 +227,13 @@ export default function RushStart() {
                   <button
                     key={g.key}
                     onClick={() => toggleGroup(g.key)}
-                    className={`flex items-start gap-2.5 rounded-xl border p-3 text-left transition ${on ? "border-[#c9a84c] bg-[#c9a84c]/[0.06]" : "border-white/10 hover:border-white/25"}`}
+                    className={`flex items-start gap-2.5 rounded-xl border p-3 text-left transition ${on ? "border-[#ab5bf7] bg-[#ab5bf7]/[0.06]" : "border-white/10 hover:border-white/25"}`}
                   >
-                    <span className={`mt-0.5 grid place-items-center w-4 h-4 rounded border ${on ? "bg-[#c9a84c] border-[#c9a84c]" : "border-white/25"}`}>
+                    <span className={`mt-0.5 grid place-items-center w-4 h-4 rounded border ${on ? "bg-[#ab5bf7] border-[#ab5bf7]" : "border-white/25"}`}>
                       {on && <Check className="w-3 h-3 text-black" />}
                     </span>
                     <span>
-                      <span className="block text-sm font-medium text-gray-100">{g.label}</span>
+                      <span className="block text-sm font-medium text-slate-100">{g.label}</span>
                       <span className="block text-[0.68rem] text-faint leading-snug mt-0.5">{g.desc}</span>
                     </span>
                   </button>
@@ -258,11 +258,11 @@ export default function RushStart() {
               ].map(([k, v]) => (
                 <div key={k} className="flex gap-3 px-4 py-2.5">
                   <dt className="w-28 shrink-0 text-faint">{k}</dt>
-                  <dd className="text-gray-200">{v}</dd>
+                  <dd className="text-slate-200">{v}</dd>
                 </div>
               ))}
             </dl>
-            <Link href={href} className="mt-6 inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-[#c9a84c] text-black font-semibold hover:bg-[#e6c86a] transition">
+            <Link href={href} className="mt-6 inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-[#ab5bf7] text-black font-semibold hover:bg-[#c084fc] transition">
               สร้าง Prompt Pack ใน Rush Studio <ArrowRight className="w-4 h-4" />
             </Link>
             <p className="text-[0.68rem] text-faint mt-3">จะเปิด /rush พร้อมตั้งค่าทุกอย่างให้ — กด Generate ได้เลย</p>
@@ -274,14 +274,14 @@ export default function RushStart() {
           <button
             onClick={() => setStep((s) => Math.max(0, s - 1))}
             disabled={step === 0}
-            className="inline-flex items-center gap-1.5 text-sm px-4 py-2 rounded-lg border border-white/10 text-gray-300 hover:bg-white/5 disabled:opacity-30 disabled:cursor-not-allowed"
+            className="inline-flex items-center gap-1.5 text-sm px-4 py-2 rounded-lg border border-white/10 text-slate-300 hover:bg-white/5 disabled:opacity-30 disabled:cursor-not-allowed"
           >
             <ArrowLeft className="w-4 h-4" /> ย้อนกลับ
           </button>
           {canNext && (
             <button
               onClick={() => setStep((s) => Math.min(STEPS.length - 1, s + 1))}
-              className="inline-flex items-center gap-1.5 text-sm px-5 py-2 rounded-lg bg-[#c9a84c] text-black font-semibold hover:bg-[#e6c86a]"
+              className="inline-flex items-center gap-1.5 text-sm px-5 py-2 rounded-lg bg-[#ab5bf7] text-black font-semibold hover:bg-[#c084fc]"
             >
               ถัดไป <ArrowRight className="w-4 h-4" />
             </button>

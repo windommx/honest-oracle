@@ -75,7 +75,7 @@ function subscribe(l: Listener): () => void {
 }
 
 const TONE: Record<ToastVariant, { border: string; dot: string; label: string }> = {
-  info: { border: "border-[#c9a84c]/40", dot: "bg-[#c9a84c]", label: "แจ้งเตือน" },
+  info: { border: "border-[#ab5bf7]/40", dot: "bg-[#ab5bf7]", label: "แจ้งเตือน" },
   success: { border: "border-emerald-500/40", dot: "bg-emerald-400", label: "สำเร็จ" },
   error: { border: "border-rose-500/45", dot: "bg-rose-400", label: "ผิดพลาด" },
 };
@@ -99,14 +99,14 @@ export function Toaster() {
             key={t.id}
             role="status"
             aria-live={t.variant === "error" ? "assertive" : "polite"}
-            className={`flex items-start gap-2.5 rounded-xl border ${tone.border} bg-[#12121a] px-3.5 py-3 shadow-lg shadow-black/40 backdrop-blur`}
+            className={`flex items-start gap-2.5 rounded-xl border ${tone.border} bg-[#151a27] px-3.5 py-3 shadow-lg shadow-black/40 backdrop-blur`}
           >
             <span className={`mt-1.5 inline-block h-2 w-2 shrink-0 rounded-full ${tone.dot}`} aria-hidden />
-            <p className="flex-1 text-[0.8rem] leading-snug text-gray-200">{t.message}</p>
+            <p className="flex-1 text-[0.8rem] leading-snug text-slate-200">{t.message}</p>
             <button
               onClick={() => dismissToast(t.id)}
               aria-label="ปิดการแจ้งเตือน"
-              className="shrink-0 text-faint hover:text-gray-200 transition text-sm leading-none px-1"
+              className="shrink-0 text-faint hover:text-slate-200 transition text-sm leading-none px-1"
             >
               ✕
             </button>
