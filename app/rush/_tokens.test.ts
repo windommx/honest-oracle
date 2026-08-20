@@ -53,14 +53,41 @@ describe("design tokens — consistency is enforced, not merely intended", () =>
     }
   });
 
-  it("globals.css :root mirrors the TS tokens — the two cannot drift apart", () => {
+  it("the [data-app=\"rush\"] CSS block mirrors the TS tokens — the two cannot drift apart", () => {
+    // NOT :root. This repo ships two products from one stylesheet: :root carries the
+    // ORACLE palette (gold), and the rush theme is scoped to its own segment. Asserting
+    // :root here is what let the rush theme leak product-wide in the first place —
+    // a navy body behind oracle's near-black pages, and purple focus rings on a
+    // gold-branded product.
+    const css = readFileSync(GLOBALS, "utf8");
+    const start = css.indexOf('[data-app="rush"]');
+    expect(start, "globals.css has no [data-app=\"rush\"] block").toBeGreaterThan(-1);
+    const block = css.slice(start, css.indexOf("}", start));
+    expect(block).toContain(`--background: ${BG}`);
+    expect(block).toContain(`--surface: ${SURFACE}`);
+    expect(block).toContain(`--accent: ${ACCENT}`);
+    expect(block).toContain(`--accent-bright: ${ACCENT_BRIGHT}`);
+    expect(block).toContain(`--accent-deep: ${ACCENT_DEEP}`);
+  });
+
+  it("the rush palette does not leak into :root, where the oracle product lives", () => {
+    // Each rush colour must be absent from :root. A regression here is invisible in
+    // the rush app (it looks right) and only shows up as the WRONG product changing.
     const css = readFileSync(GLOBALS, "utf8");
     const root = css.slice(css.indexOf(":root"), css.indexOf("}", css.indexOf(":root")));
-    expect(root).toContain(`--background: ${BG}`);
-    expect(root).toContain(`--surface: ${SURFACE}`);
-    expect(root).toContain(`--accent: ${ACCENT}`);
-    expect(root).toContain(`--accent-bright: ${ACCENT_BRIGHT}`);
-    expect(root).toContain(`--accent-deep: ${ACCENT_DEEP}`);
+    for (const hex of Array.from(ALLOWED_HEX)) {
+      // PAPER previews print stock and TIER colours are semantic, not theme chrome —
+      // only the surfaces/accent can leak, and those are what :root defines.
+      if (!/^#(0b0e17|151a27|1c2233|ab5bf7|c084fc|7c3aed)$/.test(hex)) continue;
+      expect(root.includes(hex), `:root leaks the rush colour ${hex} into the oracle app`).toBe(false);
+    }
+  });
+
+  it("the rush segment is actually marked, or the scoped block never applies", () => {
+    // The CSS above is inert unless something sets data-app="rush". This asserts the
+    // wiring exists, so the two halves cannot drift apart silently.
+    const layout = readFileSync(join(RUSH_DIR, "layout.tsx"), "utf8");
+    expect(layout).toContain('data-app="rush"');
   });
 
   it("exactly one page background exists", () => {

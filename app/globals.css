@@ -5,9 +5,23 @@
 @import url('https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
 
 :root {
-  /* Canonical palette — mirrored in app/rush/_tokens.ts, kept in sync by a test.
-     --background was #08080e while 5 pages hardcoded #0a0a0f, so the page
-     background shifted as you navigated. One value now. */
+  /* ROOT = the ORACLE product (astrology; gold brand). Seventeen oracle pages paint
+     #08080e themselves, so the shared body must agree with THEM — otherwise their
+     overscroll area shows a different ground than the page sitting on it. */
+  --background: #08080e;
+  --surface: #12121a;
+  --foreground: #ffffff;
+  --accent: #c9a84c;
+  --accent-bright: #e6c86a;
+  --accent-deep: #a08030;
+}
+
+/* RUSH = the book-writing product (dark fintech; purple accent). Mirrors
+   app/rush/_tokens.ts — a test asserts THIS block, not :root, matches the tokens.
+   Applied by app/rush/layout.tsx, so shared rules below (focus ring, .input:focus,
+   .accent-gradient) resolve to gold on oracle pages and purple inside /rush without
+   either product needing its own copy of the rule. */
+[data-app="rush"] {
   --background: #0b0e17;
   --surface: #151a27;
   --elevated: #1c2233;
@@ -15,6 +29,13 @@
   --accent: #ab5bf7;
   --accent-bright: #c084fc;
   --accent-deep: #7c3aed;
+}
+
+/* The body paints the overscroll/rubber-band area, which sits OUTSIDE the segment
+   wrapper — so it has to be told which product is on screen. */
+body:has([data-app="rush"]) {
+  background-color: #0b0e17;
+  color: #f8fafc;
 }
 
 * {
