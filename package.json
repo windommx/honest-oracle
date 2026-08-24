@@ -14,7 +14,8 @@
     "typecheck": "tsc --noEmit",
     "verify": "npm run typecheck && npm run lint && npm run test && npm run build",
     "rush": "tsx scripts/rush.ts",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "gtaa": "tsx scripts/gtaa.ts"
   },
   "dependencies": {
     "@prisma/client": "^5.14.0",
