@@ -19,8 +19,8 @@
 // ║  any hex outside this set; _contrast.test.ts recomputes every      ║
 // ║  ratio recorded here. Consistency is enforced, not intended.       ║
 // ║                                                                    ║
-// ║  The gold palette did not die — it belongs to the ORACLE app       ║
-// ║  (see LEGACY_ORACLE_HEX below) and is barred from app/bookisdom.        ║
+// ║  The gold palette did not die — it belongs to the LIFEMAP app       ║
+// ║  (see LEGACY_LIFEMAP_HEX below) and is barred from app/bookisdom.        ║
 // ╚══════════════════════════════════════════════════════════════════╝
 
 /** Page background — deep navy-black (mandated #0B0E17). */
@@ -112,9 +112,9 @@ export const ALLOWED_HEX: ReadonlySet<string> = new Set(
   Object.values(PALETTE).map((h) => h.toLowerCase())
 );
 
-/** The gold palette now belongs ONLY to the oracle app (register/login/oracle pages
+/** The gold palette now belongs ONLY to the lifemap app (register/login/lifemap pages
  *  and their tailwind `gold` utilities + `.gold-gradient`). Named here so the
  *  tailwind guard can allow it there while app/bookisdom remains barred from using it. */
-export const LEGACY_ORACLE_HEX: ReadonlySet<string> = new Set([
+export const LEGACY_LIFEMAP_HEX: ReadonlySet<string> = new Set([
   "#c9a84c", "#e6c86a", "#a8893d",
 ]);

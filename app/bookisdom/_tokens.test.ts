@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
-import { ALLOWED_HEX, LEGACY_ORACLE_HEX, PALETTE, BG, ACCENT, ACCENT_BRIGHT, ACCENT_DEEP, SURFACE } from "./_tokens";
+import { ALLOWED_HEX, LEGACY_LIFEMAP_HEX, PALETTE, BG, ACCENT, ACCENT_BRIGHT, ACCENT_DEEP, SURFACE } from "./_tokens";
 
 const BOOKISDOM_DIR = join(process.cwd(), "app", "bookisdom");
 const GLOBALS = join(process.cwd(), "app", "globals.css");
@@ -45,19 +45,19 @@ describe("design tokens — consistency is enforced, not merely intended", () =>
     // disagrees with the palette is drift with extra steps.
     const cfg = readFileSync(join(process.cwd(), "tailwind.config.ts"), "utf8");
     for (const hex of hexesIn(cfg)) {
-      // The `gold` scale is the ORACLE app's brand (register/login/oracle pages) and is
-      // declared as such in LEGACY_ORACLE_HEX — allowed in the shared theme config, still
+      // The `gold` scale is the LIFEMAP app's brand (register/login/lifemap pages) and is
+      // declared as such in LEGACY_LIFEMAP_HEX — allowed in the shared theme config, still
       // barred from app/bookisdom components by the scan above.
-      const ok = ALLOWED_HEX.has(hex) || LEGACY_ORACLE_HEX.has(hex);
+      const ok = ALLOWED_HEX.has(hex) || LEGACY_LIFEMAP_HEX.has(hex);
       expect(ok, `tailwind.config.ts has non-canonical ${hex}`).toBe(true);
     }
   });
 
   it("the [data-app=\"bookisdom\"] CSS block mirrors the TS tokens — the two cannot drift apart", () => {
     // NOT :root. This repo ships two products from one stylesheet: :root carries the
-    // ORACLE palette (gold), and the bookisdom theme is scoped to its own segment. Asserting
+    // LIFEMAP palette (gold), and the bookisdom theme is scoped to its own segment. Asserting
     // :root here is what let the bookisdom theme leak product-wide in the first place —
-    // a navy body behind oracle's near-black pages, and purple focus rings on a
+    // a navy body behind lifemap's near-black pages, and purple focus rings on a
     // gold-branded product.
     const css = readFileSync(GLOBALS, "utf8");
     const start = css.indexOf('[data-app="bookisdom"]');
@@ -70,7 +70,7 @@ describe("design tokens — consistency is enforced, not merely intended", () =>
     expect(block).toContain(`--accent-deep: ${ACCENT_DEEP}`);
   });
 
-  it("the bookisdom palette does not leak into :root, where the oracle product lives", () => {
+  it("the bookisdom palette does not leak into :root, where the lifemap product lives", () => {
     // Each bookisdom colour must be absent from :root. A regression here is invisible in
     // the bookisdom app (it looks right) and only shows up as the WRONG product changing.
     const css = readFileSync(GLOBALS, "utf8");
@@ -79,7 +79,7 @@ describe("design tokens — consistency is enforced, not merely intended", () =>
       // PAPER previews print stock and TIER colours are semantic, not theme chrome —
       // only the surfaces/accent can leak, and those are what :root defines.
       if (!/^#(0b0e17|151a27|1c2233|ab5bf7|c084fc|7c3aed)$/.test(hex)) continue;
-      expect(root.includes(hex), `:root leaks the bookisdom colour ${hex} into the oracle app`).toBe(false);
+      expect(root.includes(hex), `:root leaks the bookisdom colour ${hex} into the lifemap app`).toBe(false);
     }
   });
 

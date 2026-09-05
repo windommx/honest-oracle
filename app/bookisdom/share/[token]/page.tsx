@@ -59,7 +59,7 @@ export default function SharePage({ params }: { params: Promise<{ token: string 
         <div className="max-w-5xl mx-auto px-4 py-4 flex justify-between items-center">
           <Link href="/" className="flex items-center gap-2">
             <Crown className="w-7 h-7 text-[#ab5bf7]" />
-            <span className="text-lg font-semibold accent-gradient">NaraSuite</span>
+            <span className="text-lg font-semibold accent-gradient">NaraClear</span>
           </Link>
           <span className="flex items-center gap-2 text-sm text-slate-300">
             <BookOpen className="w-4 h-4 text-[#ab5bf7]" />

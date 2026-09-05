@@ -4,7 +4,7 @@ import { getAuth } from "@/lib/server/session";
 import { getEnv } from "@/lib/server/env";
 import { getStripe } from "@/lib/server/stripe";
 
-const RETURN_PATHS: Record<string, string> = { bookisdom: "/bookisdom/dashboard", oracle: "/oracle/pricing" };
+const RETURN_PATHS: Record<string, string> = { bookisdom: "/bookisdom/dashboard", lifemap: "/lifemap/pricing" };
 
 export async function POST(request: NextRequest) {
   const { user, unavailable } = await getAuth();
@@ -13,8 +13,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // Optional { returnTo: "bookisdom" | "oracle" } so each product returns to its own page.
-  let returnTo = "/oracle/pricing";
+  // Optional { returnTo: "bookisdom" | "lifemap" } so each product returns to its own page.
+  let returnTo = "/lifemap/pricing";
   try {
     const body = (await request.json()) as { returnTo?: string };
     if (body?.returnTo && body.returnTo in RETURN_PATHS) returnTo = RETURN_PATHS[body.returnTo];

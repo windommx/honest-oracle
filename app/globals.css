@@ -5,7 +5,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
 
 :root {
-  /* ROOT = the ORACLE product (astrology; gold brand). Seventeen oracle pages paint
+  /* ROOT = the LIFEMAP product (astrology; gold brand). Seventeen lifemap pages paint
      #08080e themselves, so the shared body must agree with THEM — otherwise their
      overscroll area shows a different ground than the page sitting on it. */
   --background: #08080e;
@@ -19,7 +19,7 @@
 /* BOOKISDOM = the book-writing product (dark fintech; purple accent). Mirrors
    app/bookisdom/_tokens.ts — a test asserts THIS block, not :root, matches the tokens.
    Applied by app/bookisdom/layout.tsx, so shared rules below (focus ring, .input:focus,
-   .accent-gradient) resolve to gold on oracle pages and purple inside /bookisdom without
+   .accent-gradient) resolve to gold on lifemap pages and purple inside /bookisdom without
    either product needing its own copy of the rule. */
 [data-app="bookisdom"] {
   --background: #0b0e17;
@@ -64,7 +64,7 @@ a {
 
 .gold-gradient {
   /* Uses the canonical vars so the gradient can never drift from the palette. */
-  background: linear-gradient(135deg, #c9a84c 0%, #e6c86a 50%, #c9a84c 100%); /* oracle brand — frozen, no longer token-driven */
+  background: linear-gradient(135deg, #c9a84c 0%, #e6c86a 50%, #c9a84c 100%); /* lifemap brand — frozen, no longer token-driven */
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;

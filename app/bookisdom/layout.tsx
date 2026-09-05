@@ -7,7 +7,7 @@ import { Toaster } from "./_toast";
  *  2. Marks the subtree as the BOOKISDOM product, which switches the CSS custom properties
  *     to the dark-fintech palette (see the [data-app="bookisdom"] block in globals.css).
  *     This repo ships TWO products from one stylesheet: without the marker, the bookisdom
- *     theme leaked into the oracle pages — a navy body behind their near-black
+ *     theme leaked into the lifemap pages — a navy body behind their near-black
  *     containers, and purple focus rings on a gold-branded product.
  */
 export default function BookisdomLayout({ children }: { children: React.ReactNode }) {

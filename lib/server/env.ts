@@ -5,7 +5,7 @@ const schema = z.object({
   NEXTAUTH_SECRET: z.string().min(1),
   NEXTAUTH_URL: z.string().url(),
 
-  FREE_ORACLE_DAILY_LIMIT: z.coerce.number().int().min(0).optional(),
+  FREE_LIFEMAP_DAILY_LIMIT: z.coerce.number().int().min(0).optional(),
   FREE_API_DAILY_LIMIT: z.coerce.number().int().min(0).optional(),
 
   STRIPE_SECRET_KEY: z.string().min(1).optional(),

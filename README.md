@@ -1,6 +1,6 @@
-# NaraSuite + Honest Oracle
+# NaraClear + โครงสร้างชีวิต
 
-โปรเจกต์ Next.js (App Router) + TypeScript + Tailwind + Prisma + NextAuth (Credentials) พร้อมโมดูล Honest Oracle สำหรับ “แผนที่ชีวิต 100 ปี” แบบโปร่งใส
+โปรเจกต์ Next.js (App Router) + TypeScript + Tailwind + Prisma + NextAuth (Credentials) พร้อมโมดูล โครงสร้างชีวิต สำหรับ “แผนที่ชีวิต 100 ปี” แบบโปร่งใส
 
 ## Run (Local)
 
@@ -22,19 +22,19 @@ npm run dev
 
 เปิด `http://localhost:3000`
 
-## Honest Oracle
+## โครงสร้างชีวิต
 
-- Landing: `/oracle`
-- App: `/oracle/app`
-- History: `/oracle/history`
-- API Keys: `/oracle/api-keys`
-- Pricing: `/oracle/pricing`
-- Admin: `/oracle/admin`
+- Landing: `/lifemap`
+- App: `/lifemap/app`
+- History: `/lifemap/history`
+- API Keys: `/lifemap/api-keys`
+- Pricing: `/lifemap/pricing`
+- Admin: `/lifemap/admin`
 
 ### Public API (Premium)
 
 ```http
-POST /api/public/oracle
+POST /api/public/lifemap
 x-api-key: <YOUR_KEY>
 Content-Type: application/json
 

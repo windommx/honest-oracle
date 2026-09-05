@@ -8,9 +8,9 @@ export async function GET() {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const [users, oracleReadings, apiKeys, plans] = await Promise.all([
+  const [users, lifemapReadings, apiKeys, plans] = await Promise.all([
     prisma.user.count(),
-    prisma.oracleReading.count(),
+    prisma.lifemapReading.count(),
     prisma.apiKey.count({ where: { revokedAt: null } }),
     prisma.user.groupBy({
       by: ["plan"],
@@ -21,7 +21,7 @@ export async function GET() {
 
   return NextResponse.json({
     users,
-    oracleReadings,
+    lifemapReadings,
     activeApiKeys: apiKeys,
     plans: plans.map((p) => ({ plan: p.plan, count: p._count.plan })),
   });

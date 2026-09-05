@@ -58,10 +58,10 @@ export default function RegisterPage() {
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center gap-2 mb-6">
             <Crown className="w-10 h-10 text-[#c9a84c]" />
-            <span className="text-2xl font-semibold gold-gradient">NaraSuite</span>
+            <span className="text-2xl font-semibold gold-gradient">NaraClear</span>
           </Link>
           <h1 className="text-2xl font-bold mb-2">สมัครสมาชิก</h1>
-          <p className="text-gray-400">สร้างบัญชีเพื่อใช้งาน NaraSuite</p>
+          <p className="text-gray-400">สร้างบัญชีเพื่อใช้งาน NaraClear</p>
         </div>
 
         <div className="glass-card rounded-2xl p-8">

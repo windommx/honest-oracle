@@ -64,7 +64,7 @@ describe("getAuth — two truths kept apart", () => {
     expect((await r.unavailable!.json()).detail).toContain("DATABASE_URL");
   });
 
-  it("requireUser keeps its original throwing contract (oracle/admin routes unchanged)", async () => {
+  it("requireUser keeps its original throwing contract (lifemap/admin routes unchanged)", async () => {
     sessionFn.mockRejectedValue(new Error("boom"));
     await expect(requireUser()).rejects.toThrow("boom");
   });

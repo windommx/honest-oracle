@@ -20,7 +20,7 @@ model User {
   corporateAnalyses CorporateAnalysis[]
   childAnalyses ChildAnalysis[]
   renameAnalyses RenameAnalysis[]
-  oracleReadings OracleReading[]
+  lifemapReadings LifemapReading[]
   apiKeys   ApiKey[]
   usage     UsageDay[]
   subscription Subscription?
@@ -98,7 +98,7 @@ model RenameAnalysis {
   user                 User?    @relation(fields: [userId], references: [id])
 }
 
-model OracleReading {
+model LifemapReading {
   id          String   @id @default(cuid())
   userId      String?
   inputName   String
@@ -146,7 +146,7 @@ model UsageDay {
   id         String   @id @default(cuid())
   userId     String
   day        DateTime
-  oracleReads Int     @default(0)
+  lifemapReads Int     @default(0)
   apiCalls   Int      @default(0)
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt

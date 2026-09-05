@@ -38,9 +38,9 @@ const SERVICES = [
   },
   {
     icon: Sparkles,
-    title: "Honest Oracle",
+    title: "โครงสร้างชีวิต",
     description: "แผนที่ชีวิต 100 ปี",
-    href: "/oracle",
+    href: "/lifemap",
     color: "from-[#c9a84c] to-[#5a9e6a]",
     features: ["Life Graph", "Timeline", "Sharing", "Premium API"],
   },
@@ -76,7 +76,7 @@ export default function HomePage() {
         <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
           <div className="flex items-center gap-2">
             <Crown className="w-8 h-8 text-[#c9a84c]" />
-            <span className="text-xl font-semibold gold-gradient">NaraSuite</span>
+            <span className="text-xl font-semibold gold-gradient">NaraClear</span>
           </div>
           <div className="flex gap-6 items-center">
             <Link href="/analyze" className="text-gray-300 hover:text-[#c9a84c] transition-colors">
@@ -91,8 +91,8 @@ export default function HomePage() {
             <Link href="/rename" className="text-gray-300 hover:text-[#c9a84c] transition-colors">
               เปลี่ยนชื่อ
             </Link>
-            <Link href="/oracle" className="text-gray-300 hover:text-[#c9a84c] transition-colors">
-              Honest Oracle
+            <Link href="/lifemap" className="text-gray-300 hover:text-[#c9a84c] transition-colors">
+              โครงสร้างชีวิต
             </Link>
             <Link
               href="/login"
@@ -111,7 +111,7 @@ export default function HomePage() {
             <span>Full-Stack Thai Name SaaS</span>
           </div>
           <h1 className="text-5xl md:text-7xl font-bold mb-6">
-            <span className="gold-gradient">NaraSuite</span>
+            <span className="gold-gradient">NaraClear</span>
           </h1>
           <p className="text-xl text-gray-400 mb-4 max-w-2xl mx-auto">
             ระบบวิเคราะห์และออกแบบชื่อมงคลครบทุกมิติ
@@ -201,10 +201,10 @@ export default function HomePage() {
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
           <div className="flex items-center gap-2">
             <Crown className="w-6 h-6 text-[#c9a84c]" />
-            <span className="font-semibold gold-gradient">NaraSuite</span>
+            <span className="font-semibold gold-gradient">NaraClear</span>
           </div>
           <p className="text-gray-500 text-sm">
-            © 2024 NaraSuite. สงวนลิขสิทธิ์ | ระบบวิเคราะห์ชื่อมงคลไทย
+            © 2024 NaraClear. สงวนลิขสิทธิ์ | ระบบวิเคราะห์ชื่อมงคลไทย
           </p>
         </div>
       </footer>

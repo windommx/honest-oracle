@@ -136,7 +136,7 @@ export default function StudioPage() {
         <div className="max-w-5xl mx-auto px-4 py-4 flex justify-between items-center">
           <Link href="/" className="flex items-center gap-2">
             <Crown className="w-7 h-7 text-[#ab5bf7]" />
-            <span className="text-lg font-semibold accent-gradient">NaraSuite</span>
+            <span className="text-lg font-semibold accent-gradient">NaraClear</span>
           </Link>
           <div className="flex items-center gap-3 text-xs">
             <Link href="/bookisdom" className="text-slate-400 hover:text-[#ab5bf7]">เครื่องมือ prompt</Link>

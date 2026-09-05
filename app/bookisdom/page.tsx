@@ -544,7 +544,7 @@ export default function BookisdomPage() {
         <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
           <Link href="/" className="flex items-center gap-2">
             <Crown className="w-7 h-7 text-[#ab5bf7]" />
-            <span className="text-lg font-semibold accent-gradient">NaraSuite</span>
+            <span className="text-lg font-semibold accent-gradient">NaraClear</span>
           </Link>
           {/* Five gold pills with no breakpoint overflowed a phone. Wrapping + a smaller
               gap keeps every action reachable on a narrow screen instead of pushing some

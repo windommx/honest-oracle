@@ -82,7 +82,7 @@ export default function AnalyzePage() {
         <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
           <Link href="/" className="flex items-center gap-2">
             <Crown className="w-8 h-8 text-[#c9a84c]" />
-            <span className="text-xl font-semibold gold-gradient">NaraSuite</span>
+            <span className="text-xl font-semibold gold-gradient">NaraClear</span>
           </Link>
           <div className="flex gap-6 items-center">
             <Link href="/analyze" className="text-[#c9a84c]">วิเคราะห์ชื่อ</Link>
