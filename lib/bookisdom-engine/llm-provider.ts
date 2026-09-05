@@ -1,7 +1,9 @@
 // ╔══════════════════════════════════════════════════════════════════╗
 // ║  Bookisdom Studio — BYO-key LLM provider layer (pure request builders). ║
-// ║  The platform never stores the key; the proxy route passes it      ║
-// ║  through per request. These builders are pure & unit-testable.     ║
+// ║  The platform never stores the key. Two transports share these     ║
+// ║  builders: DIRECT (browser → provider, our server sees nothing)    ║
+// ║  and RELAY (browser → our route → provider, an explicit fallback). ║
+// ║  Both apply validateRunInput, so the limits cannot drift apart.    ║
 // ╚══════════════════════════════════════════════════════════════════╝
 
 export type Provider = "anthropic" | "openai" | "gemini" | "groq";
@@ -102,14 +104,54 @@ export interface RunInput {
   maxTokens?: number;
 }
 
+/** Hard limits every Studio run obeys, on either transport. */
+export const RUN_LIMITS = { maxInputChars: 200_000, maxTokensFloor: 1, maxTokensCeil: 8192, defaultMaxTokens: 4096 } as const;
+
+export type RunValidation = { ok: true; input: RunInput } | { ok: false; error: string; status: number };
+
+/** The ONE set of rules for a Studio run: supported provider, endorsed model, required
+ *  fields, input-size cap, completion-length clamp. The relay route and the direct-browser
+ *  path both call this, so a limit cannot be enforced on one transport and forgotten on
+ *  the other. Pure; never logs the key. */
+export function validateRunInput(body: unknown): RunValidation {
+  const b = (body ?? {}) as Partial<RunInput> & { provider?: unknown };
+  if (!isProvider(b.provider)) return { ok: false, error: "Unsupported provider", status: 400 };
+  if (!b.apiKey || !b.model || !b.prompt) return { ok: false, error: "Missing apiKey, model, or prompt", status: 400 };
+  if (!isEndorsedModel(b.provider, b.model)) return { ok: false, error: "Unsupported model", status: 400 };
+  if (b.prompt.length > RUN_LIMITS.maxInputChars || (b.system?.length ?? 0) > RUN_LIMITS.maxInputChars) {
+    return { ok: false, error: "Prompt or system text too large", status: 413 };
+  }
+  const maxTokens = Math.min(Math.max(Number(b.maxTokens) || RUN_LIMITS.defaultMaxTokens, RUN_LIMITS.maxTokensFloor), RUN_LIMITS.maxTokensCeil);
+  return { ok: true, input: { provider: b.provider, model: b.model, apiKey: b.apiKey, system: b.system || undefined, prompt: b.prompt, maxTokens } };
+}
+
 export interface ProviderRequest {
   url: string;
   headers: Record<string, string>;
   body: string;
 }
 
-/** Build the provider-specific HTTP request. Pure: no I/O, no key logging. */
-export function buildProviderRequest(input: RunInput): ProviderRequest {
+/** Whether a provider's API answers a browser's CORS preflight, so the manuscript can go
+ *  browser → provider WITHOUT passing through Bookisdom's server. "verified" means WE sent
+ *  an OPTIONS preflight and read the Access-Control-Allow-* headers back on the date given;
+ *  "unverified" means we could not (the measuring environment's egress gateway refused the
+ *  CONNECT, or the preflight came back 403 through that network) — the toggle still exists
+ *  for those providers, labelled as untested, and a failure is reported, never hidden. */
+export const DIRECT_BROWSER: Record<Provider, { cors: "verified" | "unverified"; asOf: string; note: string }> = {
+  anthropic: {
+    cors: "verified", asOf: "2026-09",
+    note: "OPTIONS /v1/messages → 200, access-control-allow-origin: *, and the anthropic-dangerous-direct-browser-access header is in the allow-list",
+  },
+  openai: { cors: "unverified", asOf: "2026-09", note: "preflight could not be sent — egress gateway answered 403 to CONNECT api.openai.com; the vendor SDK's dangerouslyAllowBrowser flag suggests the API accepts browser origins, but that is not our measurement" },
+  groq: { cors: "unverified", asOf: "2026-09", note: "preflight could not be sent — egress gateway answered 403 to CONNECT api.groq.com" },
+  gemini: { cors: "unverified", asOf: "2026-09", note: "OPTIONS generateContent answered 403 with no Access-Control headers through the measuring network — inconclusive" },
+};
+
+/** Build the provider-specific HTTP request. Pure: no I/O, no key logging.
+ *  `directBrowser` adds the header Anthropic requires before it will honour a request
+ *  that carries an API key from a browser origin (it exists so a developer opts in
+ *  knowingly). Other providers need no extra header; the flag is a no-op for them. */
+export function buildProviderRequest(input: RunInput, opts: { directBrowser?: boolean } = {}): ProviderRequest {
   const maxTokens = input.maxTokens ?? 4096;
   if (input.provider === "anthropic") {
     return {
@@ -118,6 +160,7 @@ export function buildProviderRequest(input: RunInput): ProviderRequest {
         "x-api-key": input.apiKey,
         "anthropic-version": "2023-06-01",
         "content-type": "application/json",
+        ...(opts.directBrowser ? { "anthropic-dangerous-direct-browser-access": "true" } : {}),
       },
       body: JSON.stringify({
         model: input.model,

@@ -64,8 +64,15 @@ describe("realGaps", () => {
     const ids = gaps.map((g) => g.cap.id);
     expect(ids).not.toContain("ai_inline"); // intentional
     expect(ids).not.toContain("bsr"); // intentional
-    expect(ids).toContain("kdp"); // BookyAI has it, Bookisdom partial
+    // 2026-09: the two gaps that were closable in code were closed — and the closure is
+    // pinned here so a regression in either screen would have to flip the matrix back.
+    expect(ids).not.toContain("kdp"); // /bookisdom/kdp exposes kdp.ts
+    expect(ids).not.toContain("privacy"); // Studio is browser → provider by default
+    expect(mark("kdp", "bookisdom")).toBe("yes");
+    expect(mark("privacy", "bookisdom")).toBe("yes");
+    // What remains cannot be closed by code alone — and must stay listed until users say otherwise.
     expect(ids).toContain("mature_ux"); // soft gap, honestly surfaced
+    expect(ids).toContain("community");
     // sorted descending by how many rivals have it
     for (let i = 1; i < gaps.length; i++) expect(gaps[i - 1].tableStakes).toBeGreaterThanOrEqual(gaps[i].tableStakes);
     // the biggest table-stakes gap has more rivals than the smallest
@@ -84,9 +91,13 @@ describe("intentionalNonGoals", () => {
 describe("headToHead", () => {
   it("splits rival advantages into real vs intentional", () => {
     const h = headToHead("bookyai");
-    expect(h.rivalOnly).toContain("kdp"); // a real gap BookyAI exposes
+    expect(h.both).toContain("kdp"); // was a real gap BookyAI exposed; closed 2026-09
     expect(h.rivalOnlyIntentional).toContain("bsr"); // Bookisdom abstains on purpose
     expect(h.both).toContain("epub"); // both have it
+    // Scrivener's remaining edge is the two soft dimensions only — privacy no longer.
+    const sc = headToHead("scrivener");
+    expect(sc.rivalOnly).not.toContain("privacy");
+    expect(sc.both).toContain("privacy");
   });
   it("is internally consistent (every capability lands in exactly one bucket or none)", () => {
     const h = headToHead("sudowrite");

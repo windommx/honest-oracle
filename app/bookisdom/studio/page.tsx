@@ -3,9 +3,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "../_toast";
 import Link from "next/link";
-import { Crown, BookOpen, Play, Loader2, Save, Check, KeyRound } from "lucide-react";
-import { PROVIDERS, type Provider } from "@/lib/bookisdom-engine/llm-provider";
+import { Crown, BookOpen, Play, Loader2, Save, Check, KeyRound, ShieldCheck, Server, BookMarked } from "lucide-react";
+import { PROVIDERS, DIRECT_BROWSER, validateRunInput, type Provider } from "@/lib/bookisdom-engine/llm-provider";
 import { saveManuscript } from "../_manuscript-store";
+import { runDirect } from "../_studio-direct";
 
 export default function StudioPage() {
   const [provider, setProvider] = useState<Provider>("anthropic");
@@ -20,6 +21,14 @@ export default function StudioPage() {
   const [error, setError] = useState("");
   const [saved, setSaved] = useState(false);
   const [saveLang, setSaveLang] = useState<"th" | "en">("th");
+  // Transport. DIRECT = browser → provider (Bookisdom's server never sees the text or the
+  // key). RELAY = through /api/bookisdom/studio/run. Direct is the default wherever we have
+  // MEASURED that the provider's API accepts a browser preflight; elsewhere it is offered
+  // but labelled untested. A blocked direct call never falls back silently — the writer
+  // is told, and chooses.
+  const [direct, setDirect] = useState(true);
+  const [offerRelay, setOfferRelay] = useState(false);
+  const support = DIRECT_BROWSER[provider];
 
   // One-time migration: delete any provider keys a previous build leaked to
   // localStorage (it now lives in memory, or tab-scoped sessionStorage on opt-in).
@@ -36,6 +45,8 @@ export default function StudioPage() {
   // Load the key only if the user opted into tab-scoped persistence (sessionStorage).
   useEffect(() => {
     setModel(meta.models[0]);
+    setDirect(true);
+    setOfferRelay(false);
     try {
       const saved = window.sessionStorage.getItem(`bookisdom.studio.key.${provider}`);
       setApiKey(saved ?? "");
@@ -88,24 +99,38 @@ export default function StudioPage() {
     }
   };
 
-  async function run() {
+  async function run(useDirect: boolean = direct) {
     setError("");
     setOutput("");
+    setOfferRelay(false);
     if (!apiKey.trim() || !prompt.trim()) {
       setError("ใส่ API key และ prompt ก่อน");
       return;
     }
+    const body = { provider, model, apiKey, system: system || undefined, prompt };
+    // Same gate as the server, before anything leaves the tab.
+    const v = validateRunInput(body);
+    if (!v.ok) { setError(v.error); return; }
     setLoading(true);
     try {
+      if (useDirect) {
+        const r = await runDirect(body);
+        if (r.ok) setOutput(r.text);
+        else {
+          setError(r.kind === "auth" ? `key ถูกปฏิเสธโดยผู้ให้บริการ: ${r.message}` : r.message);
+          if (r.kind === "blocked") setOfferRelay(true);
+        }
+        return;
+      }
       const res = await fetch("/api/bookisdom/studio/run", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ provider, model, apiKey, system: system || undefined, prompt }),
+        body: JSON.stringify(body),
       });
       const data = await res.json();
       if (!res.ok) {
         setError(data.error ?? "รันไม่สำเร็จ");
-        if (res.status === 401) setError(data.error === "Unauthorized" ? "ต้องเข้าสู่ระบบก่อน" : data.error);
+        if (res.status === 401) setError(data.error === "Unauthorized" ? "ต้องเข้าสู่ระบบก่อน (โหมดผ่านเซิร์ฟเวอร์ต้องมีบัญชี — โหมดส่งตรงไม่ต้อง)" : data.error);
       } else {
         setOutput(data.text ?? "");
       }
@@ -141,6 +166,7 @@ export default function StudioPage() {
           <div className="flex items-center gap-3 text-xs">
             <Link href="/bookisdom" className="text-slate-400 hover:text-[#ab5bf7]">เครื่องมือ prompt</Link>
             <Link href="/bookisdom/dashboard" className="text-slate-400 hover:text-[#ab5bf7]">แดชบอร์ด</Link>
+            <Link href="/bookisdom/kdp" className="text-slate-400 hover:text-[#ab5bf7] flex items-center gap-1"><BookMarked className="w-3.5 h-3.5" />KDP</Link>
             <span className="flex items-center gap-1.5 text-[#ab5bf7] border border-[#ab5bf7]/30 rounded-lg px-3 py-1.5">
               <BookOpen className="w-3.5 h-3.5" /> Bookisdom Studio
             </span>
@@ -154,9 +180,41 @@ export default function StudioPage() {
           <p className="text-slate-400 mt-1 text-sm mb-2">
             รัน prompt ด้วย <span className="text-[#ab5bf7]">API key ของคุณเอง</span> — เซิร์ฟเวอร์ไม่เก็บ key และไม่จ่าย token ให้
           </p>
-          <p className="text-[0.7rem] text-amber-300/80 mb-6 flex items-center gap-1.5">
-            <KeyRound className="w-3.5 h-3.5" /> ปกติ key อยู่ในหน่วยความจำหน้านี้เท่านั้น (หายเมื่อรีเฟรช) และส่งผ่าน proxy เฉพาะตอนกดรัน — ไม่ลงเซิร์ฟเวอร์/ดิสก์ เว้นแต่คุณติ๊ก &quot;จำ key ไว้ในแท็บนี้&quot;
+          <p className="text-[0.7rem] text-amber-300/80 mb-4 flex items-center gap-1.5">
+            <KeyRound className="w-3.5 h-3.5" /> key อยู่ในหน่วยความจำหน้านี้เท่านั้น (หายเมื่อรีเฟรช) — ไม่ลงเซิร์ฟเวอร์/ดิสก์ เว้นแต่คุณติ๊ก &quot;จำ key ไว้ในแท็บนี้&quot;
           </p>
+
+          {/* Transport — the privacy claim is made HERE, per provider, with the evidence. */}
+          <div className="mb-6 rounded-xl border border-white/10 bg-[#151a27] p-3 text-xs" role="group" aria-label="เส้นทางการส่ง">
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => { setDirect(true); setOfferRelay(false); }}
+                aria-pressed={direct}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border transition-colors ${direct ? "border-[#ab5bf7] text-[#ab5bf7] bg-[#ab5bf7]/10" : "border-white/10 text-slate-400 hover:border-[#ab5bf7]/40"}`}
+              >
+                <ShieldCheck className="w-3.5 h-3.5" /> ส่งตรงจากเบราว์เซอร์
+              </button>
+              <button
+                type="button"
+                onClick={() => { setDirect(false); setOfferRelay(false); }}
+                aria-pressed={!direct}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border transition-colors ${!direct ? "border-[#ab5bf7] text-[#ab5bf7] bg-[#ab5bf7]/10" : "border-white/10 text-slate-400 hover:border-[#ab5bf7]/40"}`}
+              >
+                <Server className="w-3.5 h-3.5" /> ผ่านเซิร์ฟเวอร์ Bookisdom
+              </button>
+              {direct && (
+                <span className={`ml-auto text-[0.65rem] ${support.cors === "verified" ? "text-[#22c55e]" : "text-amber-300/80"}`}>
+                  {support.cors === "verified" ? `ตรวจแล้วว่ารับคำขอตรง (ณ ${support.asOf})` : `ยังไม่ได้ตรวจกับ ${meta.label} (ณ ${support.asOf}) — ถ้าถูกปฏิเสธจะบอก ไม่สลับเงียบ ๆ`}
+                </span>
+              )}
+            </div>
+            <p className="text-faint mt-2 leading-relaxed">
+              {direct
+                ? <>ต้นฉบับและ key เดินทางจากแท็บนี้ไป {meta.label} โดยตรง — <span className="text-slate-300">เซิร์ฟเวอร์ Bookisdom ไม่เห็นทั้งสองอย่าง</span> และไม่ต้องเข้าสู่ระบบ สิ่งที่ยังจริงอยู่: ผู้ให้บริการที่คุณเลือกเห็นต้นฉบับ (ตามข้อตกลงของเขา ไม่ใช่ของเรา)</>
+                : <>ต้นฉบับผ่านเซิร์ฟเวอร์ Bookisdom ไป {meta.label} — เซิร์ฟเวอร์ไม่เก็บ key และไม่เก็บข้อความ แต่ <span className="text-slate-300">ข้อความผ่านเครื่องเราหนึ่งครั้ง</span> ใช้เมื่อผู้ให้บริการปฏิเสธคำขอตรงจากเบราว์เซอร์ (ต้องมีบัญชี)</>}
+            </p>
+          </div>
 
           <div className="grid lg:grid-cols-2 gap-5">
             {/* left: inputs */}
@@ -195,7 +253,7 @@ export default function StudioPage() {
                 <textarea value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder="วาง prompt บท/โมดูลที่นี่…" className="input min-h-[150px] resize-y" />
               </label>
               <button
-                onClick={run}
+                onClick={() => run()}
                 disabled={loading}
                 className="w-full py-2.5 bg-[#ab5bf7] text-black font-semibold rounded-xl hover:bg-[#c084fc] transition-colors flex items-center justify-center gap-2 text-sm disabled:opacity-50"
               >
@@ -203,6 +261,15 @@ export default function StudioPage() {
                 {loading ? "กำลังรัน…" : "รัน"}
               </button>
               {error && <p className="text-xs text-red-400">{error}</p>}
+              {offerRelay && (
+                <button
+                  type="button"
+                  onClick={() => { setDirect(false); void run(false); }}
+                  className="text-xs px-3 py-1.5 rounded-lg border border-amber-300/40 text-amber-300 hover:bg-amber-300/10 flex items-center gap-1.5"
+                >
+                  <Server className="w-3.5 h-3.5" /> ส่งผ่านเซิร์ฟเวอร์ Bookisdom แทน (ข้อความจะผ่านเครื่องเราหนึ่งครั้ง)
+                </button>
+              )}
             </div>
 
             {/* right: output */}

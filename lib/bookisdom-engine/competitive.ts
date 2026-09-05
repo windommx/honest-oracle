@@ -118,17 +118,32 @@ const ROWS: Row[] = [
   { id: "saga", label: "Multi-season / saga planning", moat: true, marks: "y  p  p  n  n  n  n  n  n  n  n  p  p  y  y  u  y  n  n  n  y" },
   { id: "ai_inline", label: "Inline AI generation (one-click)", marks: "p  y  y  y  y  y  y  n  p  y  y  n  n  n  n  y  y  n  y  y  n" },
   { id: "byo_key", label: "BYO API key / no lock-in", moat: true, marks: "y  y  n  n  u  n  n  n  n  y  n  n  n  n  n  n  n  n  n  n  n" },
-  // 2026-08 self-correction, found by auditing our own Studio route: the analyzer and
-  // prompt generation are 100% local (browser worker over IndexedDB), but Bookisdom Studio
-  // RELAYS the manuscript through our server to the provider using the user's own key.
-  // Scrivener's claim is strictly stronger — "Scrivener does not do anything with your
-  // text in the background that would cause it to be sent anywhere from your machine to
-  // any other server" — so Bookisdom drops to partial. Plottr also drops: Pro is
-  // cloud-authoritative (you cannot even open a file offline) and its AI features send
-  // story data to Plottr's servers and OpenAI, so only the classic offline tier is local.
-  { id: "privacy", label: "No server LLM cost / privacy", moat: true, marks: "p  p  n  n  p  n  n  n  p  n  n  y  p  p  p  n  n  p  n  p  p" },
+// 2026-08 self-correction, found by auditing our own Studio route: the analyzer and
+// prompt generation are 100% local (browser worker over IndexedDB), but Bookisdom Studio
+// RELAYED the manuscript through our server to the provider using the user's own key.
+// Scrivener's claim is strictly stronger — "Scrivener does not do anything with your
+// text in the background that would cause it to be sent anywhere from your machine to
+// any other server" — so Bookisdom dropped to partial.
+// 2026-09 closed: Studio now sends browser → provider DIRECTLY by default (app/bookisdom/
+// _studio-direct.ts); our server sees neither text nor key, and no account is needed.
+// The relay route remains only as an explicit, labelled fallback the writer chooses when
+// a provider rejects a browser preflight. Scope of the evidence, stated plainly: the
+// direct path is MEASURED to work for Anthropic (OPTIONS → 200, allow-origin *); the other
+// three providers are offered as untested (llm-provider.ts DIRECT_BROWSER). "yes" here
+// means what the label says — no server LLM cost, and the platform's server is out of the
+// data path — not that the manuscript never reaches the LLM vendor the writer picked.
+// Plottr also dropped: Pro is cloud-authoritative (you cannot even open a file offline)
+// and its AI features send story data to Plottr's servers and OpenAI, so only the classic
+// offline tier is local.
+  { id: "privacy", label: "No server LLM cost / privacy", moat: true, marks: "y  p  n  n  p  n  n  n  p  n  n  y  p  p  p  n  n  p  n  p  p" },
   { id: "epub", label: "EPUB export", marks: "y  n  n  n  y  n  y  n  n  n  u  y  y  n  n  y  y  n  n  n  n" },
-  { id: "kdp", label: "KDP publishing (spine/metadata)", marks: "p  n  n  n  y  n  n  n  n  n  p  p  y  n  n  p  p  n  n  n  n" },
+// 2026-09: partial → yes. kdp.ts (spine width by PPI, page estimate, full-wrap cover
+// canvas at 300 dpi, metadata limits, AI-disclosure guidance) had existed with tests but
+// no screen — a library is not a feature a writer can use. /bookisdom/kdp now exposes it:
+// word count from a saved manuscript or typed in, trim/paper/binding, metadata checklist
+// against Amazon's published limits, paste-ready package. What it still does NOT do, and
+// says so on the page: produce the print-ready interior PDF (Atticus and BookyAI do).
+  { id: "kdp", label: "KDP publishing (spine/metadata)", marks: "y  n  n  n  y  n  n  n  n  n  p  p  y  n  n  p  p  n  n  n  n" },
   { id: "bsr", label: "Market / BSR research", marks: "n  n  n  n  y  n  n  n  n  n  u  n  n  n  n  n  p  n  n  n  n" },
   { id: "prose_qa", label: "Prose QA (readability/AI-slop)", marks: "y  n  p  n  n  n  n  p  y  n  p  p  n  n  p  p  y  y  y  y  n" },
   // ── soft dimensions, added to counter the Bookisdom-favouring selection above ──

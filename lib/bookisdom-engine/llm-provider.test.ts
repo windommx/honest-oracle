@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildProviderRequest, parseProviderResponse, parseProviderError, isEndorsedModel, recommendProvider, PROVIDERS } from "./llm-provider";
+import { buildProviderRequest, parseProviderResponse, parseProviderError, isEndorsedModel, recommendProvider, PROVIDERS, DIRECT_BROWSER, validateRunInput, RUN_LIMITS } from "./llm-provider";
 
 describe("recommendProvider", () => {
   it("picks a huge-context provider when the task is large", () => {
@@ -123,5 +123,63 @@ describe("buildProviderRequest escapes the Gemini model in the URL (audit fix)",
     expect(r.url).not.toContain("gemini?key=EVIL"); // not an unescaped second query param
     expect(r.url).toContain("gemini%3Fkey%3DEVIL%20x");
     expect(r.url).toContain("key=sk-REAL"); // the real key is still the only real query param
+  });
+});
+
+describe("DIRECT_BROWSER — measured CORS support, not assumed", () => {
+  it("every provider has an entry with an as-of month and a note saying what was actually observed", () => {
+    for (const p of PROVIDERS) {
+      const d = DIRECT_BROWSER[p.id];
+      expect(d, `no DIRECT_BROWSER entry for ${p.id}`).toBeTruthy();
+      expect(d.asOf).toMatch(/^\d{4}-\d{2}$/);
+      expect(d.note.length).toBeGreaterThan(20);
+      expect(["verified", "unverified"]).toContain(d.cors);
+    }
+  });
+  it("Anthropic is the one provider verified so far (preflight 200 + allow-origin * on 2026-09)", () => {
+    expect(DIRECT_BROWSER.anthropic.cors).toBe("verified");
+    // The unverified ones must SAY they are unverified — never quietly upgraded.
+    for (const id of ["openai", "gemini", "groq"] as const) expect(DIRECT_BROWSER[id].cors).toBe("unverified");
+  });
+});
+
+describe("buildProviderRequest — direct-browser header", () => {
+  const base = { model: "claude-sonnet-4-6", apiKey: "k", prompt: "p" } as const;
+  it("adds anthropic-dangerous-direct-browser-access ONLY when opted in", () => {
+    const relay = buildProviderRequest({ ...base, provider: "anthropic" });
+    expect(relay.headers["anthropic-dangerous-direct-browser-access"]).toBeUndefined();
+    const direct = buildProviderRequest({ ...base, provider: "anthropic" }, { directBrowser: true });
+    expect(direct.headers["anthropic-dangerous-direct-browser-access"]).toBe("true");
+  });
+  it("is a no-op for providers that need no extra header", () => {
+    const r = buildProviderRequest({ ...base, provider: "openai", model: "gpt-4o" }, { directBrowser: true });
+    expect(Object.keys(r.headers).some((h) => h.includes("browser"))).toBe(false);
+  });
+});
+
+describe("validateRunInput — one rule set for both transports", () => {
+  const ok = { provider: "anthropic", model: "claude-sonnet-4-6", apiKey: "k", prompt: "hello" };
+  it("accepts a valid body and fills the default completion length", () => {
+    const v = validateRunInput(ok);
+    expect(v.ok).toBe(true);
+    if (v.ok) expect(v.input.maxTokens).toBe(RUN_LIMITS.defaultMaxTokens);
+  });
+  it("rejects an unknown provider, missing fields, and an unendorsed model with 400", () => {
+    expect(validateRunInput({ ...ok, provider: "mistral" })).toMatchObject({ ok: false, status: 400, error: "Unsupported provider" });
+    expect(validateRunInput({ ...ok, apiKey: "" })).toMatchObject({ ok: false, status: 400 });
+    expect(validateRunInput({ ...ok, model: "claude-99" })).toMatchObject({ ok: false, status: 400, error: "Unsupported model" });
+    expect(validateRunInput(null)).toMatchObject({ ok: false, status: 400 });
+  });
+  it("caps input size at 413 and clamps maxTokens into [1, 8192]", () => {
+    expect(validateRunInput({ ...ok, prompt: "x".repeat(RUN_LIMITS.maxInputChars + 1) })).toMatchObject({ ok: false, status: 413 });
+    expect(validateRunInput({ ...ok, system: "x".repeat(RUN_LIMITS.maxInputChars + 1) })).toMatchObject({ ok: false, status: 413 });
+    const hi = validateRunInput({ ...ok, maxTokens: 999_999 });
+    const lo = validateRunInput({ ...ok, maxTokens: -5 });
+    if (hi.ok) expect(hi.input.maxTokens).toBe(RUN_LIMITS.maxTokensCeil);
+    if (lo.ok) expect(lo.input.maxTokens).toBe(RUN_LIMITS.maxTokensFloor);
+  });
+  it("normalises an empty system string to undefined so no empty system block is sent", () => {
+    const v = validateRunInput({ ...ok, system: "" });
+    if (v.ok) expect(v.input.system).toBeUndefined();
   });
 });

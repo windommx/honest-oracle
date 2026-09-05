@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   Crown, BookOpen, FileText, Share2, HardDrive, Type, Plus, RefreshCw, Search,
-  LayoutGrid, List, Lock, Globe, ArrowRight, Play, Wand2, Sparkles, Loader2, BookDown, CloudOff, Wrench, ClipboardList,
+  LayoutGrid, List, Lock, Globe, ArrowRight, Play, Wand2, Sparkles, Loader2, BookDown, CloudOff, Wrench, ClipboardList, BookMarked,
 } from "lucide-react";
 import { BOOK_TYPES, buildEpub, type BookConfig, type BookTypeKey } from "@/lib/bookisdom-engine/engine";
 import { splitChapters } from "@/lib/bookisdom-engine/chapters";
@@ -221,7 +221,7 @@ export default function DashboardPage() {
                 <BookOpen className="w-5 h-5 text-[#0b0e17]" />
               </div>
               <div className="text-2xl font-semibold tracking-tight">
-                Nara<span className="accent-gradient">Suite</span>
+                Nara<span className="accent-gradient">Clear</span>
               </div>
             </Link>
             <div className="hidden md:flex items-center gap-x-1 text-sm">
@@ -229,6 +229,7 @@ export default function DashboardPage() {
               <NavTab href="/bookisdom" icon={<Wand2 className="w-4 h-4" />} label="เครื่องมือ" />
               <NavTab href="/bookisdom/studio" icon={<Play className="w-4 h-4" />} label="Bookisdom Studio" />
               <NavTab href="/bookisdom?tool=thai" icon={<Sparkles className="w-4 h-4" />} label="วิเคราะห์" />
+              <NavTab href="/bookisdom/kdp" icon={<BookMarked className="w-4 h-4" />} label="KDP" />
             </div>
           </div>
           <div className="flex items-center gap-x-3">
@@ -289,10 +290,11 @@ export default function DashboardPage() {
         {/* Quick actions */}
         <div className="mb-8">
           <div className="section-header mb-3 px-1 text-xs uppercase tracking-wider text-faint font-semibold">การดำเนินการด่วน</div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
             <QuickAction href="/bookisdom" icon={<Wand2 className="w-6 h-6" />} title="เครื่องมือ prompt" sub="สร้างชุด prompt แต่งหนังสือคุณภาพสูง" cta="เปิดเครื่องมือ" tone="from-indigo-500/20 to-violet-500/10 text-indigo-400" />
             <QuickAction href="/bookisdom/studio" icon={<Play className="w-6 h-6" />} title="Bookisdom Studio" sub="รัน prompt ด้วย API key ของคุณเอง" cta="เปิด Studio" tone="from-[#ab5bf7]/20 to-[#7c3aed]/10 text-[#ab5bf7]" />
             <QuickAction href="/bookisdom?tool=thai" icon={<Search className="w-6 h-6" />} title="วิเคราะห์ร้อยแก้ว" sub="ตรวจไทย/EN + NIS audit ฟรี ไม่เรียก AI" cta="เริ่มวิเคราะห์" tone="from-emerald-500/20 to-teal-500/10 text-emerald-400" />
+            <QuickAction href="/bookisdom/kdp" icon={<BookMarked className="w-6 h-6" />} title="เตรียมส่ง KDP" sub="สันปก ขนาดปก และเช็กลิสต์ metadata — สูตรจริงของ Amazon" cta="คำนวณ" tone="from-amber-500/20 to-orange-500/10 text-amber-400" />
           </div>
         </div>
 
