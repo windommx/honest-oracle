@@ -37,6 +37,18 @@ gated[0].agree, gated[0].k;     // 7, 8 — the count the reader can re-derive
 selectPortfolio(gated, { maxPositions: 20, maxPerSector: 4, minYield: null, allowWatch: false });
 ```
 
+## Surfaces
+
+| Surface | Where | Notes |
+|---|---|---|
+| Web | `/dividend` (`app/dividend/page.tsx`) | paste/upload CSV or JSON, or load the synthetic demo; screen, gate, select, validate; download the Markdown reports. Runs entirely in the browser. |
+| CLI | `npm run dividend -- <cmd>` (`scripts/dividend.ts` → `cli.ts`) | `screen <file>`, `validate <file>`, `demo [--validate]`, `template`; `--json` for machine output |
+| Library | `import { runScreen, runValidation } from "@/lib/dividend/io"` | the page and the CLI call exactly these |
+
+Input format: one row per (ticker, fiscal year) with the columns in `csvTemplate()`;
+required columns are listed in `REQUIRED_COLUMNS`. A bad row is dropped with a named
+error, never filled in.
+
 ## What the validation harness has and has not shown
 
 `fixtures.ts` generates a **synthetic** universe with a planted mechanism (a loss or

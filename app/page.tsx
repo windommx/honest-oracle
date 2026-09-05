@@ -44,6 +44,14 @@ const SERVICES = [
     color: "from-[#c9a84c] to-[#5a9e6a]",
     features: ["Life Graph", "Timeline", "Sharing", "Premium API"],
   },
+  {
+    icon: TrendingUp,
+    title: "Dividend Screen",
+    description: "คัดกรองความยั่งยืนปันผล — นับ ไม่ตัดสิน",
+    href: "/dividend",
+    color: "from-emerald-500 to-emerald-700",
+    features: ["Loss / FCF gates", "Piotroski · Altman · Beneish", "Stability gate", "Walk-forward harness"],
+  },
 ];
 
 const MCAS_FEATURES = [

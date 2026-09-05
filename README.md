@@ -22,6 +22,12 @@ npm run dev
 
 เปิด `http://localhost:3000`
 
+## Dividend Screen
+
+- App: `/dividend` — คัดกรองความยั่งยืนปันผลจากงบรายปี (CSV/JSON) ฝั่ง client ทั้งหมด ไม่มีคะแนน 0–100
+- CLI: `npm run dividend -- demo --validate` · `npm run dividend -- screen filings.csv`
+- Engine + harness: `lib/dividend/` · ที่มาของกฎ: `docs/research/dividend-algorithm.md`
+
 ## Honest Oracle
 
 - Landing: `/oracle`

@@ -14,6 +14,7 @@
     "typecheck": "tsc --noEmit",
     "verify": "npm run typecheck && npm run lint && npm run test && npm run build",
     "rush": "tsx scripts/rush.ts",
+    "dividend": "tsx scripts/dividend.ts",
     "postinstall": "prisma generate"
   },
   "dependencies": {
