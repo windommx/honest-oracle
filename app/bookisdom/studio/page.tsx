@@ -3,7 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "../_toast";
 import Link from "next/link";
-import { Crown, BookOpen, Play, Loader2, Save, Check, KeyRound, ShieldCheck, Server, BookMarked } from "lucide-react";
+import { BookisdomLogo } from "../_logo";
+import { BookOpen, Play, Loader2, Save, Check, KeyRound, ShieldCheck, Server, BookMarked } from "lucide-react";
 import { PROVIDERS, DIRECT_BROWSER, validateRunInput, type Provider } from "@/lib/bookisdom-engine/llm-provider";
 import { saveManuscript } from "../_manuscript-store";
 import { runDirect } from "../_studio-direct";
@@ -159,10 +160,7 @@ export default function StudioPage() {
     <div className="min-h-screen bg-[#f3f5f9]">
       <nav className="fixed top-0 left-0 right-0 z-50 glass-card">
         <div className="max-w-5xl mx-auto px-4 py-4 flex justify-between items-center">
-          <Link href="/" className="flex items-center gap-2">
-            <Crown className="w-7 h-7 text-[#7a5c12]" />
-            <span className="text-lg font-semibold accent-gradient">NaraClear</span>
-          </Link>
+          <BookisdomLogo />
           <div className="flex items-center gap-3 text-xs">
             <Link href="/bookisdom" className="text-slate-600 hover:text-[#6b5010]">เครื่องมือ prompt</Link>
             <Link href="/bookisdom/dashboard" className="text-slate-600 hover:text-[#6b5010]">แดชบอร์ด</Link>

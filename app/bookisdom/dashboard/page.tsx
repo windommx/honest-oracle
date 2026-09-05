@@ -13,6 +13,7 @@ import { splitChapters } from "@/lib/bookisdom-engine/chapters";
 import { titleCase } from "../_utils";
 import { listManuscripts, deleteManuscript, type StoredManuscript } from "../_manuscript-store";
 import { DeleteButton } from "../_ui";
+import { BookisdomLogo } from "../_logo";
 import { ProductionLogPanel } from "../_production-log-panel";
 
 type Project = {
@@ -216,14 +217,7 @@ export default function DashboardPage() {
       <nav className="border-b border-black/10 bg-[#f3f5f9]/95 backdrop-blur-xl sticky top-0 z-50">
         <div className="max-w-screen-2xl mx-auto px-4 sm:px-8 py-4 flex items-center justify-between">
           <div className="flex items-center gap-x-8">
-            <Link href="/" className="flex items-center gap-x-3">
-              <div className="w-9 h-9 rounded-2xl bg-gradient-to-br from-[#d9a63a] to-[#c8901f] flex items-center justify-center">
-                <BookOpen className="w-5 h-5 text-[#14161c]" />
-              </div>
-              <div className="text-2xl font-semibold tracking-tight">
-                Nara<span className="accent-gradient">Clear</span>
-              </div>
-            </Link>
+            <BookisdomLogo tagline />
             <div className="hidden md:flex items-center gap-x-1 text-sm">
               <NavTab href="/bookisdom/dashboard" icon={<LayoutGrid className="w-4 h-4" />} label="ภาพรวม" active />
               <NavTab href="/bookisdom" icon={<Wand2 className="w-4 h-4" />} label="เครื่องมือ" />

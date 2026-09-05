@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import { use } from "react";
 import Link from "next/link";
-import { Crown, BookOpen, Copy, Check, ChevronDown, AlertCircle } from "lucide-react";
+import { BookisdomLogo } from "../../_logo";
+import { BookOpen, Copy, Check, ChevronDown, AlertCircle } from "lucide-react";
 import { generateAllPrompts, defaultGroupsFor, type BookConfig, type GeneratedPrompt } from "@/lib/bookisdom-engine/engine";
 
 async function copyText(text: string) {
@@ -57,10 +58,7 @@ export default function SharePage({ params }: { params: Promise<{ token: string 
     <div className="min-h-screen bg-[#f3f5f9]">
       <nav className="fixed top-0 left-0 right-0 z-50 glass-card">
         <div className="max-w-5xl mx-auto px-4 py-4 flex justify-between items-center">
-          <Link href="/" className="flex items-center gap-2">
-            <Crown className="w-7 h-7 text-[#7a5c12]" />
-            <span className="text-lg font-semibold accent-gradient">NaraClear</span>
-          </Link>
+          <BookisdomLogo />
           <span className="flex items-center gap-2 text-sm text-slate-700">
             <BookOpen className="w-4 h-4 text-[#7a5c12]" />
             Bookisdom · แชร์

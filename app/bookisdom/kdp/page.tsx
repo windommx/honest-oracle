@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Crown, BookMarked, Copy, Check, LayoutGrid, Play, Wand2, AlertTriangle } from "lucide-react";
+import { BookisdomLogo } from "../_logo";
+import { BookMarked, Copy, Check, LayoutGrid, Play, Wand2, AlertTriangle } from "lucide-react";
 import { toast } from "../_toast";
 import {
   kdpReadiness, kdpMetadataChecks, formatKdpPackage, TRIM, KDP_LIMITS, KDP_AI_DISCLOSURE, MIN_PAGES_PAPERBACK, MIN_PAGES_HARDCOVER,
@@ -102,10 +103,7 @@ export default function KdpPage() {
     <div className="min-h-screen bg-[#f3f5f9]">
       <nav className="fixed top-0 left-0 right-0 z-50 glass-card">
         <div className="max-w-5xl mx-auto px-4 py-4 flex justify-between items-center">
-          <Link href="/" className="flex items-center gap-2">
-            <Crown className="w-7 h-7 text-[#7a5c12]" />
-            <span className="text-lg font-semibold accent-gradient">NaraClear</span>
-          </Link>
+          <BookisdomLogo />
           <div className="flex items-center gap-3 text-xs">
             <Link href="/bookisdom" className="text-slate-600 hover:text-[#6b5010] flex items-center gap-1"><Wand2 className="w-3.5 h-3.5" />เครื่องมือ prompt</Link>
             <Link href="/bookisdom/dashboard" className="text-slate-600 hover:text-[#6b5010] flex items-center gap-1"><LayoutGrid className="w-3.5 h-3.5" />แดชบอร์ด</Link>

@@ -3,8 +3,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
+import { BookisdomLogo } from "./_logo";
 import {
-  Crown,
   AlertCircle,
   Download,
   BookOpen,
@@ -543,10 +543,7 @@ export default function BookisdomPage() {
     <div className="min-h-screen bg-[#f3f5f9]">
       <nav className="fixed top-0 left-0 right-0 z-50 glass-card">
         <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
-          <Link href="/" className="flex items-center gap-2">
-            <Crown className="w-7 h-7 text-[#7a5c12]" />
-            <span className="text-lg font-semibold accent-gradient">NaraClear</span>
-          </Link>
+          <BookisdomLogo />
           {/* Five gold pills with no breakpoint overflowed a phone. Wrapping + a smaller
               gap keeps every action reachable on a narrow screen instead of pushing some
               off-canvas — many Thai writers are mobile-first. */}
@@ -575,10 +572,6 @@ export default function BookisdomPage() {
               <HelpCircle className="w-3.5 h-3.5" />
               วิธีใช้
             </button>
-            <span className="hidden lg:flex items-center gap-2">
-              <BookOpen className="w-4 h-4 text-[#7a5c12]" />
-              Bookisdom
-            </span>
           </div>
         </div>
       </nav>
