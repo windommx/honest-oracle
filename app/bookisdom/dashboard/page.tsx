@@ -6,12 +6,14 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   Crown, BookOpen, FileText, Share2, HardDrive, Type, Plus, RefreshCw, Search,
-  LayoutGrid, List, Lock, Globe, Trash2, ArrowRight, Play, Wand2, Sparkles, Loader2, BookDown, CloudOff, Wrench,
+  LayoutGrid, List, Lock, Globe, ArrowRight, Play, Wand2, Sparkles, Loader2, BookDown, CloudOff, Wrench, ClipboardList,
 } from "lucide-react";
 import { BOOK_TYPES, buildEpub, type BookConfig, type BookTypeKey } from "@/lib/bookisdom-engine/engine";
 import { splitChapters } from "@/lib/bookisdom-engine/chapters";
 import { titleCase } from "../_utils";
 import { listManuscripts, deleteManuscript, type StoredManuscript } from "../_manuscript-store";
+import { DeleteButton } from "../_ui";
+import { ProductionLogPanel } from "../_production-log-panel";
 
 type Project = {
   id: string;
@@ -60,6 +62,7 @@ export default function DashboardPage() {
   const [filter, setFilter] = useState<Filter>("all");
   const [sort, setSort] = useState<Sort>("recent");
   const [view, setView] = useState<View>("grid");
+  const [logProject, setLogProject] = useState<Project | null>(null);
   const [manuscripts, setManuscripts] = useState<StoredManuscript[]>([]);
   const [plan, setPlan] = useState<string>("free");
   const [upgrading, setUpgrading] = useState(false);
@@ -382,7 +385,15 @@ export default function DashboardPage() {
           {/* Grid */}
           {!loading && !needLogin && view === "grid" && visible.length > 0 && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-              {visible.map((p) => <ProjectCard key={p.id} p={p} onOpen={() => router.push(`/bookisdom?project=${p.id}`)} onDelete={() => del(p.id)} />)}
+              {visible.map((p) => (
+                <ProjectCard
+                  key={p.id}
+                  p={p}
+                  onOpen={() => router.push(`/bookisdom?project=${p.id}`)}
+                  onDelete={() => del(p.id)}
+                  onOpenLog={() => setLogProject(p)}
+                />
+              ))}
             </div>
           )}
 
@@ -410,8 +421,9 @@ export default function DashboardPage() {
                         <td className="px-4 py-4 text-right font-mono text-xs">{p.config?.chapters ?? "—"}</td>
                         <td className="px-4 py-4 text-right font-mono text-xs">{fmt(words(p))}</td>
                         <td className="px-6 py-4 text-right text-xs text-slate-400">{fmtDate(p.updatedAt)}</td>
-                        <td className="px-4 py-4 text-right">
+                        <td className="px-4 py-4 text-right whitespace-nowrap">
                           <button onClick={() => router.push(`/bookisdom?project=${p.id}`)} className="text-[#ab5bf7] text-xs px-3 py-1 rounded-xl border border-white/10 hover:bg-white/5">เปิด</button>
+                          <button onClick={() => setLogProject(p)} aria-label="บันทึกการผลิต" title="บันทึกการผลิต" className="ml-1.5 text-slate-400 hover:text-[#ab5bf7] p-1.5"><ClipboardList className="w-4 h-4 inline" /></button>
                         </td>
                       </tr>
                     );
@@ -498,37 +510,11 @@ export default function DashboardPage() {
           </div>
         </div>
       </main>
-    </div>
-  );
-}
 
-// Deleting is permanent — a server project has no undo endpoint and a local
-// manuscript is gone from IndexedDB for good. One slipped click must never be
-// enough. First click ARMS the button (it turns red and says so); the second
-// click within 4 seconds deletes; doing nothing disarms it again. This keeps
-// the flow keyboard-accessible (same button, no dialog) and un-blockable
-// (no window.confirm, which an earlier maturity pass removed on purpose).
-function DeleteButton({ onDelete, what, idleClass, armedClass }: {
-  onDelete: () => void; what: string; idleClass: string; armedClass: string;
-}) {
-  const [armed, setArmed] = useState(false);
-  useEffect(() => {
-    if (!armed) return;
-    const t = setTimeout(() => setArmed(false), 4000);
-    return () => clearTimeout(t);
-  }, [armed]);
-  return armed ? (
-    <button
-      onClick={() => { setArmed(false); onDelete(); }}
-      aria-label={`ยืนยันลบ${what}`}
-      className={armedClass}
-    >
-      ยืนยันลบ?
-    </button>
-  ) : (
-    <button onClick={() => setArmed(true)} aria-label={`ลบ${what}`} title="ลบ" className={idleClass}>
-      <Trash2 className="w-4 h-4" />
-    </button>
+      {logProject && (
+        <ProductionLogPanel projectId={logProject.id} projectTitle={logProject.title} onClose={() => setLogProject(null)} />
+      )}
+    </div>
   );
 }
 
@@ -569,7 +555,7 @@ function QuickAction({ href, icon, title, sub, cta, tone }: { href: string; icon
   );
 }
 
-function ProjectCard({ p, onOpen, onDelete }: { p: Project; onOpen: () => void; onDelete: () => void }) {
+function ProjectCard({ p, onOpen, onDelete, onOpenLog }: { p: Project; onOpen: () => void; onDelete: () => void; onOpenLog: () => void }) {
   const bt = BOOK_TYPES[p.type as BookTypeKey];
   const w = words(p);
   return (
@@ -593,6 +579,14 @@ function ProjectCard({ p, onOpen, onDelete }: { p: Project; onOpen: () => void; 
         </div>
         <div className="flex items-center gap-x-2 mt-3 pt-4 border-t border-white/10">
           <button onClick={onOpen} className="flex-1 text-xs py-2 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 font-medium text-[#ab5bf7] transition-colors">เปิดใน Bookisdom →</button>
+          <button
+            onClick={onOpenLog}
+            aria-label="บันทึกการผลิต"
+            title="บันทึกการผลิต — ต้นทุนและตัวชี้วัดที่คุณกรอกเอง"
+            className="w-9 h-9 flex items-center justify-center rounded-2xl border border-white/10 hover:bg-white/10 hover:text-[#ab5bf7] text-slate-400 transition-colors"
+          >
+            <ClipboardList className="w-4 h-4" />
+          </button>
           <DeleteButton
             onDelete={onDelete}
             what="หนังสือ"

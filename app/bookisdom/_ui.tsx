@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect, useState } from "react";
+import { Trash2 } from "lucide-react";
 import type { PromptGroup } from "@/lib/bookisdom-engine/types";
 
 // ╔══════════════════════════════════════════════════════════════════╗
@@ -56,6 +58,36 @@ export function FilterChip({ active, onClick, label }: { active: boolean; onClic
       }`}
     >
       {label}
+    </button>
+  );
+}
+
+// Deleting is permanent — a server project has no undo endpoint and a local record is gone
+// from IndexedDB for good. One slipped click must never be enough. First click ARMS the
+// button (it turns red and says so); the second click within 4 seconds deletes; doing
+// nothing disarms it again. Same-button flow keeps this keyboard-accessible (no dialog) and
+// un-blockable (no window.confirm). Shared by the dashboard and the production log so both
+// destructive-delete flows behave identically.
+export function DeleteButton({ onDelete, what, idleClass, armedClass }: {
+  onDelete: () => void; what: string; idleClass: string; armedClass: string;
+}) {
+  const [armed, setArmed] = useState(false);
+  useEffect(() => {
+    if (!armed) return;
+    const t = setTimeout(() => setArmed(false), 4000);
+    return () => clearTimeout(t);
+  }, [armed]);
+  return armed ? (
+    <button
+      onClick={() => { setArmed(false); onDelete(); }}
+      aria-label={`ยืนยันลบ${what}`}
+      className={armedClass}
+    >
+      ยืนยันลบ?
+    </button>
+  ) : (
+    <button onClick={() => setArmed(true)} aria-label={`ลบ${what}`} title="ลบ" className={idleClass}>
+      <Trash2 className="w-4 h-4" />
     </button>
   );
 }
