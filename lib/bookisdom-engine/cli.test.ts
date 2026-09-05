@@ -1,0 +1,250 @@
+import { describe, it, expect } from "vitest";
+import { runCli } from "./cli";
+
+describe("runCli", () => {
+  it("prints help with no args", () => {
+    const r = runCli([]);
+    expect(r.code).toBe(0);
+    expect(r.stdout).toContain("bookisdom — deterministic");
+    expect(r.stdout).toContain("prompts");
+  });
+
+  it("generates a prompt pack for a book config", () => {
+    const r = runCli(["prompts", "--type", "novel", "--genre", "romance", "--chapters", "6"]);
+    expect(r.code).toBe(0);
+    expect(r.stdout).toMatch(/# \d+ prompts · novel\/romance/);
+    expect(r.stdout).toContain("MASTER");
+    expect(r.stdout).toContain("CH_1");
+  });
+
+  it("errors on an unknown type", () => {
+    const r = runCli(["prompts", "--type", "bogus"]);
+    expect(r.code).toBe(2);
+    expect(r.stderr).toContain("unknown --type");
+  });
+
+  it("analyzes a Thai manuscript from an injected reader", () => {
+    const text =
+      "## บทที่ 1\nแสงอาทิตย์สาดจ้าเป็นประกาย เสียงลมหวีดดังก้อง กลิ่นดินหอมกรุ่นอบอวล " +
+      "มะลิยืนนิ่งริมหน้าผา มองเงาทอดยาว ผิวหินเย็นเฉียบใต้ฝ่ามือ\n" +
+      "## บทที่ 2\nรุ่งเช้ามะลิเดินเข้าเมือง ผู้คนพลุกพล่าน เธอสูดลมหายใจลึกแล้วก้าวเดินจากไป";
+    const r = runCli(["analyze", "book.md"], { read: () => text });
+    expect(r.code).toBe(0);
+    expect(r.stdout).toContain("bookisdom analyze");
+    expect(r.stdout).toContain("(th)");
+    expect(r.stdout).toContain("sensory density");
+  });
+
+  it("errors when analyze has no file", () => {
+    expect(runCli(["analyze"]).code).toBe(2);
+  });
+
+  it("reports a bad command", () => {
+    const r = runCli(["frobnicate"]);
+    expect(r.code).toBe(2);
+    expect(r.stderr).toContain("unknown command");
+  });
+
+  it("renames a character and prints a per-chapter audit", () => {
+    const text = "## บทที่ 1\nวิกกี้เดินมา วิกกี้ยิ้ม\n## บทที่ 2\nเธอเรียกวิกกี้";
+    const r = runCli(["rename", "b.md", "--from", "วิกกี้", "--to", "อาโน่"], { read: () => text });
+    expect(r.code).toBe(0);
+    expect(r.stdout).toContain("3 hit");
+    expect(r.stdout).toContain("chapter 1: 2");
+  });
+
+  it("rename --write outputs the rewritten manuscript", () => {
+    const r = runCli(["rename", "b.md", "--from", "วิกกี้", "--to", "อาโน่", "--write"], { read: () => "วิกกี้" });
+    expect(r.stdout).toBe("อาโน่");
+  });
+
+  it("errors when rename lacks --from/--to", () => {
+    expect(runCli(["rename", "b.md"], { read: () => "x" }).code).toBe(2);
+  });
+
+  it("prints a relationship graph from --names", () => {
+    const text = "## 1\nเอิ่มกับลีอาห์เดินทาง\n## 2\nเอิ่มกับลีอาห์พัก";
+    const r = runCli(["relations", "b.md", "--names", "เอิ่ม,ลีอาห์"], { read: () => text });
+    expect(r.code).toBe(0);
+    expect(r.stdout).toContain("เอิ่ม ↔ ลีอาห์");
+  });
+
+  it("radar flags an off-canon name against the declared cast", () => {
+    const text = "## บทที่ 1\nกรรณเดินมา กรรณยิ้ม กรรณพูดกับริน";
+    const r = runCli(["radar", "b.md", "--canon", "เดนโอ,ริน"], { read: () => text });
+    expect(r.code).toBe(0);
+    expect(r.stdout).toContain("off-canon");
+    expect(r.stdout).toContain("กรรณ");
+    expect(r.stdout).toContain("เดนโอ"); // unused canon name
+  });
+
+  it("codex audits a draft against a declared story bible", () => {
+    const bible = "[ตัวละคร]\nอนันต์: นักสืบ\nมาลี: น้องสาว\nเสือ: ตัวร้าย";
+    const draft = "## บทที่ 1\nอนันต์ เดินไปหา มาลี ที่บ้าน";
+    const files: Record<string, string> = { "bible.md": bible, "draft.md": draft };
+    const r = runCli(["codex", "draft.md", "--bible", "bible.md"], { read: (p) => files[p] });
+    expect(r.code).toBe(0);
+    expect(r.stdout).toContain("codex audit");
+    expect(r.stdout).toContain("ปรากฏในดราฟต์"); // Thai draft → Thai report
+    expect(r.stdout).toContain("อนันต์");
+    expect(r.stdout).toContain("เสือ"); // declared but not referenced
+  });
+
+  it("codex requires --bible", () => {
+    const r = runCli(["codex", "draft.md"], { read: () => "x" });
+    expect(r.code).toBe(2);
+    expect(r.stderr).toContain("--bible");
+  });
+
+  it("saga reports series continuity across ordered book codices", () => {
+    const files: Record<string, string> = {
+      "b1.md": "[ตัวละคร]\nอนันต์: x\nมาลี: y",
+      "b2.md": "[ตัวละคร]\nอนันต์: x\nเสือ: z",
+    };
+    const r = runCli(["saga", "--books", "b1.md,b2.md", "--titles", "เล่ม1,เล่ม2"], { read: (p) => files[p] });
+    expect(r.code).toBe(0);
+    expect(r.stdout).toContain("saga");
+    expect(r.stdout).toContain("แกนซีรีส์"); // backbone section
+    expect(r.stdout).toContain("อนันต์");    // spans both books
+    expect(r.stdout).toContain("หายจากเล่มก่อน"); // มาลี dropped in book 2
+  });
+
+  it("saga needs at least two books", () => {
+    const r = runCli(["saga", "--books", "only.md"], { read: () => "[ตัวละคร]\nA: x" });
+    expect(r.code).toBe(2);
+    expect(r.stderr).toContain("≥2");
+  });
+
+  it("openers flags a repeated sentence start", () => {
+    const r = runCli(["openers", "d.md", "--lang", "en"], { read: () => "He ran. He fell. He wept. She left." });
+    expect(r.code).toBe(0);
+    expect(r.stdout).toContain("openers");
+    expect(r.stdout).toContain('"he" ×3');
+  });
+
+  it("scene readout prints measured signals and no fake 0–100 vibe score", () => {
+    const text =
+      "แสงอาทิตย์สาดจ้าเป็นประกาย เสียงลมหวีดดังก้อง กลิ่นดินหอมกรุ่นอบอวล " +
+      '"เธอมาทำไม" เขาถาม เธอเงียบ รู้สึกกลัวจับใจ ผิวหินเย็นเฉียบใต้ฝ่ามือ';
+    const r = runCli(["scene", "b.md"], { read: () => text });
+    expect(r.code).toBe(0);
+    expect(r.stdout).toContain("scene readout");
+    expect(r.stdout).toContain("words");
+    expect(r.stdout).toContain("rhythm cv");
+    // no invented panel scores — the readout disclaims them by name
+    expect(r.stdout).not.toMatch(/momentum\s+\d/i);
+    expect(r.stdout).not.toMatch(/\bclarity\s+\d/i);
+    expect(r.stdout).toContain("no subjective momentum/clarity/tension");
+  });
+
+  it("scene readout refuses a non-Thai manuscript", () => {
+    const r = runCli(["scene", "b.md"], { read: () => "The sun rose over the hills." });
+    expect(r.code).toBe(2);
+    expect(r.stderr).toContain("Thai-only");
+  });
+
+  it("narrative prints deterministic presence + pacing, no 0–100 score", () => {
+    const text =
+      "## บทที่ 1\nเดนโอเดินทางกับริน แสงจ้าเป็นประกาย\n" +
+      "## บทที่ 2\nรินอยู่คนเดียว เธอคิดถึงบ้าน\n" +
+      "## บทที่ 3\nเดนโอกลับมา ทั้งคู่เดินต่อ";
+    const r = runCli(["narrative", "b.md", "--names", "เดนโอ,ริน", "--motifs", "แสง"], { read: () => text });
+    expect(r.code).toBe(0);
+    expect(r.stdout).toContain("character presence");
+    expect(r.stdout).toContain("pacing by act");
+    expect(r.stdout).toContain("no invented arc/pacing/resonance score");
+  });
+
+  it("narrative refuses a non-Thai manuscript for now", () => {
+    const r = runCli(["narrative", "b.md"], { read: () => "The sun rose over the quiet hills again." });
+    expect(r.code).toBe(2);
+    expect(r.stderr).toContain("Thai-only");
+  });
+
+  it("register suggestions appear in a Thai analyze", () => {
+    const text = "## บท 1\n" + "เขาจะอัพเดทข้อมูลแล้วเช็คอีเมล์ทุกวัน ".repeat(3);
+    const r = runCli(["analyze", "b.md"], { read: () => text });
+    expect(r.stdout).toContain("word/spelling suggestions");
+    expect(r.stdout).toContain("อัปเดต");
+  });
+});
+
+describe("bookisdom route", () => {
+  it("routes a Thai symptom and shows the audit trail", () => {
+    const r = runCli(["route", "จบบทแล้ววางได้ ไม่มีใครอ่านต่อ"]);
+    expect(r.code).toBe(0);
+    expect(r.stdout).toContain("HOOK_CRAFT");
+    expect(r.stdout).toContain("คำที่ทำให้เข้าขั้นนี้");
+  });
+  it("exits 1 on no match (grep convention) and refuses to guess", () => {
+    const r = runCli(["route", "วันนี้อากาศดี"]);
+    expect(r.code).toBe(1);
+    expect(r.stdout).toContain("R0");
+    expect(r.stdout).not.toMatch(/เปิดตัวนี้ก่อน/);
+  });
+  it("errors with usage when the symptom is missing", () => {
+    const r = runCli(["route"]);
+    expect(r.code).toBe(2);
+    expect(r.stderr).toContain("bookisdom route");
+  });
+  it("is listed in help", () => {
+    expect(runCli(["help"]).stdout).toContain("bookisdom route");
+  });
+});
+
+describe("bookisdom receipt", () => {
+  const th = "บทที่ 1\n\nเขายืนอยู่ตรงนั้น ฝนตกหนัก เขารู้สึกเศร้า\n";
+  const read = () => th;
+  it("prints tiers, instruments and the reproduce command", () => {
+    const r = runCli(["receipt", "d.md"], { read });
+    expect(r.code).toBe(0);
+    expect(r.stdout).toContain("ประจักษ์");
+    expect(r.stdout).toContain("Thai segmenter");
+    expect(r.stdout).toContain("npm run bookisdom -- receipt d.md");
+  });
+  it("carries no date — the engine has no clock", () => {
+    const r = runCli(["receipt", "d.md"], { read });
+    expect(r.stdout).not.toMatch(/20\d{2}-\d{2}-\d{2}/);
+    expect(r.stdout).toContain("ไม่มีวันที่");
+  });
+  it("--verify re-derives and passes on a pure engine", () => {
+    const r = runCli(["receipt", "d.md", "--verify"], { read });
+    expect(r.code).toBe(0);
+    expect(r.stdout).toContain("PASS");
+    expect(r.stdout).toContain("drifted      0");
+  });
+  it("names the tokenizer that actually ran, per language", () => {
+    // Regression: the English path printed "Thai segmenter" because the registry entry
+    // names a family. For a receipt, an imprecise instrument is the defect itself.
+    const en = runCli(["receipt", "d.md"], { read: () => "He walked slowly. She felt sad.\n" });
+    expect(en.stdout).toContain("whitespace tokenizer");
+    expect(en.stdout).not.toContain("Thai segmenter");
+  });
+  it("is listed in help", () => {
+    expect(runCli(["help"]).stdout).toContain("bookisdom receipt");
+  });
+});
+
+describe("bookisdom cite", () => {
+  it("prints the ledger grouped by verification tier", () => {
+    const r = runCli(["cite"]);
+    expect(r.code).toBe(0);
+    expect(r.stdout).toContain("ตรวจแค่ไหน ไม่ใช่ดีแค่ไหน");
+    expect(r.stdout).toContain("ไม่ได้เปิดหน้าเอกสาร");
+  });
+  it("--recheck lists weakest first and excludes disputed", () => {
+    const r = runCli(["cite", "--recheck"]);
+    expect(r.stdout.indexOf("[memory]")).toBeLessThan(r.stdout.indexOf("[index]"));
+    expect(r.stdout).not.toContain("[disputed]");
+    expect(r.stdout).toMatch(/still want a primary source/);
+  });
+  it("--module filters, and says 'unaudited' rather than 'none' when empty", () => {
+    expect(runCli(["cite", "--module", "RECAP"]).stdout).toContain("BooookScore");
+    const none = runCli(["cite", "--module", "TRANSLATE"]);
+    expect(none.code).toBe(1);
+    expect(none.stderr).toContain("unaudited");
+  });
+  it("is listed in help", () => {
+    expect(runCli(["help"]).stdout).toContain("bookisdom cite");
+  });
+});

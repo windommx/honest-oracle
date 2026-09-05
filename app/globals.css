@@ -16,12 +16,12 @@
   --accent-deep: #a08030;
 }
 
-/* RUSH = the book-writing product (dark fintech; purple accent). Mirrors
-   app/rush/_tokens.ts — a test asserts THIS block, not :root, matches the tokens.
-   Applied by app/rush/layout.tsx, so shared rules below (focus ring, .input:focus,
-   .accent-gradient) resolve to gold on oracle pages and purple inside /rush without
+/* BOOKISDOM = the book-writing product (dark fintech; purple accent). Mirrors
+   app/bookisdom/_tokens.ts — a test asserts THIS block, not :root, matches the tokens.
+   Applied by app/bookisdom/layout.tsx, so shared rules below (focus ring, .input:focus,
+   .accent-gradient) resolve to gold on oracle pages and purple inside /bookisdom without
    either product needing its own copy of the rule. */
-[data-app="rush"] {
+[data-app="bookisdom"] {
   --background: #0b0e17;
   --surface: #151a27;
   --elevated: #1c2233;
@@ -33,7 +33,7 @@
 
 /* The body paints the overscroll/rubber-band area, which sits OUTSIDE the segment
    wrapper — so it has to be told which product is on screen. */
-body:has([data-app="rush"]) {
+body:has([data-app="bookisdom"]) {
   background-color: #0b0e17;
   color: #f8fafc;
 }
@@ -105,7 +105,7 @@ a {
 
 /* ── Accessibility: a visible focus ring ──────────────────────────────────────
    Measured before this: `focus-visible:` appeared ZERO times across 154 interactive
-   elements in app/rush, while `focus:outline-none` appeared 7 times — actively removing
+   elements in app/bookisdom, while `focus:outline-none` appeared 7 times — actively removing
    the browser's ring with no replacement. A keyboard user could not see where they were.
    WCAG 2.4.7 (Focus Visible). :focus-visible only paints for keyboard/AT focus, so mouse
    users never see a stray ring. */
@@ -115,7 +115,7 @@ a {
   border-radius: 4px;
 }
 
-/* ── .input — the form-field class used 11 times across /rush and /rush/studio.
+/* ── .input — the form-field class used 11 times across /bookisdom and /bookisdom/studio.
    It was NEVER DEFINED: not here, not in tailwind.config, nowhere. Those fields rendered
    with no border, background or padding at all. Defined now, with the focus ring above. */
 .input {
