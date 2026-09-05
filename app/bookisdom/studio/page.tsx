@@ -156,18 +156,18 @@ export default function StudioPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0b0e17]">
+    <div className="min-h-screen bg-[#f3f5f9]">
       <nav className="fixed top-0 left-0 right-0 z-50 glass-card">
         <div className="max-w-5xl mx-auto px-4 py-4 flex justify-between items-center">
           <Link href="/" className="flex items-center gap-2">
-            <Crown className="w-7 h-7 text-[#ab5bf7]" />
+            <Crown className="w-7 h-7 text-[#7a5c12]" />
             <span className="text-lg font-semibold accent-gradient">NaraClear</span>
           </Link>
           <div className="flex items-center gap-3 text-xs">
-            <Link href="/bookisdom" className="text-slate-400 hover:text-[#ab5bf7]">เครื่องมือ prompt</Link>
-            <Link href="/bookisdom/dashboard" className="text-slate-400 hover:text-[#ab5bf7]">แดชบอร์ด</Link>
-            <Link href="/bookisdom/kdp" className="text-slate-400 hover:text-[#ab5bf7] flex items-center gap-1"><BookMarked className="w-3.5 h-3.5" />KDP</Link>
-            <span className="flex items-center gap-1.5 text-[#ab5bf7] border border-[#ab5bf7]/30 rounded-lg px-3 py-1.5">
+            <Link href="/bookisdom" className="text-slate-600 hover:text-[#6b5010]">เครื่องมือ prompt</Link>
+            <Link href="/bookisdom/dashboard" className="text-slate-600 hover:text-[#6b5010]">แดชบอร์ด</Link>
+            <Link href="/bookisdom/kdp" className="text-slate-600 hover:text-[#6b5010] flex items-center gap-1"><BookMarked className="w-3.5 h-3.5" />KDP</Link>
+            <span className="flex items-center gap-1.5 text-[#7a5c12] border border-[#7a5c12]/30 rounded-lg px-3 py-1.5">
               <BookOpen className="w-3.5 h-3.5" /> Bookisdom Studio
             </span>
           </div>
@@ -177,21 +177,21 @@ export default function StudioPage() {
       <div className="pt-24 pb-16 px-4">
         <div className="max-w-5xl mx-auto">
           <h1 className="text-3xl font-bold accent-gradient">Bookisdom Studio</h1>
-          <p className="text-slate-400 mt-1 text-sm mb-2">
-            รัน prompt ด้วย <span className="text-[#ab5bf7]">API key ของคุณเอง</span> — เซิร์ฟเวอร์ไม่เก็บ key และไม่จ่าย token ให้
+          <p className="text-slate-600 mt-1 text-sm mb-2">
+            รัน prompt ด้วย <span className="text-[#7a5c12]">API key ของคุณเอง</span> — เซิร์ฟเวอร์ไม่เก็บ key และไม่จ่าย token ให้
           </p>
-          <p className="text-[0.7rem] text-amber-300/80 mb-4 flex items-center gap-1.5">
+          <p className="text-[0.7rem] text-amber-800 mb-4 flex items-center gap-1.5">
             <KeyRound className="w-3.5 h-3.5" /> key อยู่ในหน่วยความจำหน้านี้เท่านั้น (หายเมื่อรีเฟรช) — ไม่ลงเซิร์ฟเวอร์/ดิสก์ เว้นแต่คุณติ๊ก &quot;จำ key ไว้ในแท็บนี้&quot;
           </p>
 
           {/* Transport — the privacy claim is made HERE, per provider, with the evidence. */}
-          <div className="mb-6 rounded-xl border border-white/10 bg-[#151a27] p-3 text-xs" role="group" aria-label="เส้นทางการส่ง">
+          <div className="mb-6 rounded-xl border border-black/10 bg-[#ffffff] p-3 text-xs" role="group" aria-label="เส้นทางการส่ง">
             <div className="flex flex-wrap items-center gap-2">
               <button
                 type="button"
                 onClick={() => { setDirect(true); setOfferRelay(false); }}
                 aria-pressed={direct}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border transition-colors ${direct ? "border-[#ab5bf7] text-[#ab5bf7] bg-[#ab5bf7]/10" : "border-white/10 text-slate-400 hover:border-[#ab5bf7]/40"}`}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border transition-colors ${direct ? "border-[#7a5c12] text-[#7a5c12] bg-[#d9a63a]/10" : "border-black/10 text-slate-600 hover:border-[#7a5c12]/40"}`}
               >
                 <ShieldCheck className="w-3.5 h-3.5" /> ส่งตรงจากเบราว์เซอร์
               </button>
@@ -199,20 +199,20 @@ export default function StudioPage() {
                 type="button"
                 onClick={() => { setDirect(false); setOfferRelay(false); }}
                 aria-pressed={!direct}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border transition-colors ${!direct ? "border-[#ab5bf7] text-[#ab5bf7] bg-[#ab5bf7]/10" : "border-white/10 text-slate-400 hover:border-[#ab5bf7]/40"}`}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border transition-colors ${!direct ? "border-[#7a5c12] text-[#7a5c12] bg-[#d9a63a]/10" : "border-black/10 text-slate-600 hover:border-[#7a5c12]/40"}`}
               >
                 <Server className="w-3.5 h-3.5" /> ผ่านเซิร์ฟเวอร์ Bookisdom
               </button>
               {direct && (
-                <span className={`ml-auto text-[0.65rem] ${support.cors === "verified" ? "text-[#22c55e]" : "text-amber-300/80"}`}>
+                <span className={`ml-auto text-[0.65rem] ${support.cors === "verified" ? "text-[#166534]" : "text-amber-800"}`}>
                   {support.cors === "verified" ? `ตรวจแล้วว่ารับคำขอตรง (ณ ${support.asOf})` : `ยังไม่ได้ตรวจกับ ${meta.label} (ณ ${support.asOf}) — ถ้าถูกปฏิเสธจะบอก ไม่สลับเงียบ ๆ`}
                 </span>
               )}
             </div>
             <p className="text-faint mt-2 leading-relaxed">
               {direct
-                ? <>ต้นฉบับและ key เดินทางจากแท็บนี้ไป {meta.label} โดยตรง — <span className="text-slate-300">เซิร์ฟเวอร์ Bookisdom ไม่เห็นทั้งสองอย่าง</span> และไม่ต้องเข้าสู่ระบบ สิ่งที่ยังจริงอยู่: ผู้ให้บริการที่คุณเลือกเห็นต้นฉบับ (ตามข้อตกลงของเขา ไม่ใช่ของเรา)</>
-                : <>ต้นฉบับผ่านเซิร์ฟเวอร์ Bookisdom ไป {meta.label} — เซิร์ฟเวอร์ไม่เก็บ key และไม่เก็บข้อความ แต่ <span className="text-slate-300">ข้อความผ่านเครื่องเราหนึ่งครั้ง</span> ใช้เมื่อผู้ให้บริการปฏิเสธคำขอตรงจากเบราว์เซอร์ (ต้องมีบัญชี)</>}
+                ? <>ต้นฉบับและ key เดินทางจากแท็บนี้ไป {meta.label} โดยตรง — <span className="text-slate-700">เซิร์ฟเวอร์ Bookisdom ไม่เห็นทั้งสองอย่าง</span> และไม่ต้องเข้าสู่ระบบ สิ่งที่ยังจริงอยู่: ผู้ให้บริการที่คุณเลือกเห็นต้นฉบับ (ตามข้อตกลงของเขา ไม่ใช่ของเรา)</>
+                : <>ต้นฉบับผ่านเซิร์ฟเวอร์ Bookisdom ไป {meta.label} — เซิร์ฟเวอร์ไม่เก็บ key และไม่เก็บข้อความ แต่ <span className="text-slate-700">ข้อความผ่านเครื่องเราหนึ่งครั้ง</span> ใช้เมื่อผู้ให้บริการปฏิเสธคำขอตรงจากเบราว์เซอร์ (ต้องมีบัญชี)</>}
             </p>
           </div>
 
@@ -221,51 +221,51 @@ export default function StudioPage() {
             <div className="space-y-3">
               <div className="grid grid-cols-2 gap-2">
                 <label className="block">
-                  <span className="block text-[0.7rem] text-slate-400 mb-1">ผู้ให้บริการ</span>
+                  <span className="block text-[0.7rem] text-slate-600 mb-1">ผู้ให้บริการ</span>
                   <select value={provider} onChange={(e) => setProvider(e.target.value as Provider)} className="input">
                     {PROVIDERS.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
                   </select>
                 </label>
                 <label className="block">
-                  <span className="block text-[0.7rem] text-slate-400 mb-1">โมเดล</span>
+                  <span className="block text-[0.7rem] text-slate-600 mb-1">โมเดล</span>
                   <select value={model} onChange={(e) => setModel(e.target.value)} className="input">
                     {meta.models.map((m) => <option key={m} value={m}>{m}</option>)}
                   </select>
                 </label>
               </div>
               <label className="block">
-                <span className="flex items-center justify-between text-[0.7rem] text-slate-400 mb-1">
+                <span className="flex items-center justify-between text-[0.7rem] text-slate-600 mb-1">
                   <span>API key ({meta.keyHint})</span>
-                  {apiKey && <button type="button" onClick={clearKey} className="text-[#ab5bf7] hover:underline">ล้าง key</button>}
+                  {apiKey && <button type="button" onClick={clearKey} className="text-[#7a5c12] hover:underline">ล้าง key</button>}
                 </span>
                 <input type="password" value={apiKey} onChange={(e) => onKey(e.target.value)} placeholder={meta.keyHint} className="input" />
                 <label className="flex items-center gap-1.5 text-[0.65rem] text-faint mt-1.5 cursor-pointer">
-                  <input type="checkbox" checked={rememberKey} onChange={(e) => toggleRemember(e.target.checked)} className="accent-[#ab5bf7]" />
+                  <input type="checkbox" checked={rememberKey} onChange={(e) => toggleRemember(e.target.checked)} className="accent-[#c8901f]" />
                   จำ key ไว้ในแท็บนี้ (ล้างเมื่อปิดแท็บ)
                 </label>
               </label>
               <label className="block">
-                <span className="block text-[0.7rem] text-slate-400 mb-1">System prompt (เช่น MASTER จากเครื่องมือ prompt)</span>
+                <span className="block text-[0.7rem] text-slate-600 mb-1">System prompt (เช่น MASTER จากเครื่องมือ prompt)</span>
                 <textarea value={system} onChange={(e) => setSystem(e.target.value)} placeholder="ไม่บังคับ — วาง MASTER system prompt ที่นี่" className="input min-h-[90px] resize-y" />
               </label>
               <label className="block">
-                <span className="block text-[0.7rem] text-slate-400 mb-1">Prompt</span>
+                <span className="block text-[0.7rem] text-slate-600 mb-1">Prompt</span>
                 <textarea value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder="วาง prompt บท/โมดูลที่นี่…" className="input min-h-[150px] resize-y" />
               </label>
               <button
                 onClick={() => run()}
                 disabled={loading}
-                className="w-full py-2.5 bg-[#ab5bf7] text-black font-semibold rounded-xl hover:bg-[#c084fc] transition-colors flex items-center justify-center gap-2 text-sm disabled:opacity-50"
+                className="w-full py-2.5 bg-[#d9a63a] text-black font-semibold rounded-xl hover:bg-[#c8901f] transition-colors flex items-center justify-center gap-2 text-sm disabled:opacity-50"
               >
                 {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
                 {loading ? "กำลังรัน…" : "รัน"}
               </button>
-              {error && <p className="text-xs text-red-400">{error}</p>}
+              {error && <p className="text-xs text-red-700">{error}</p>}
               {offerRelay && (
                 <button
                   type="button"
                   onClick={() => { setDirect(false); void run(false); }}
-                  className="text-xs px-3 py-1.5 rounded-lg border border-amber-300/40 text-amber-300 hover:bg-amber-300/10 flex items-center gap-1.5"
+                  className="text-xs px-3 py-1.5 rounded-lg border border-amber-700/40 text-amber-800 hover:bg-amber-300/10 flex items-center gap-1.5"
                 >
                   <Server className="w-3.5 h-3.5" /> ส่งผ่านเซิร์ฟเวอร์ Bookisdom แทน (ข้อความจะผ่านเครื่องเราหนึ่งครั้ง)
                 </button>
@@ -275,21 +275,21 @@ export default function StudioPage() {
             {/* right: output */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <span className="text-[0.7rem] text-slate-400">ผลลัพธ์</span>
+                <span className="text-[0.7rem] text-slate-600">ผลลัพธ์</span>
                 {output && (
                   <div className="flex items-center gap-2">
-                    <select value={saveLang} onChange={(e) => setSaveLang(e.target.value as "th" | "en")} className="text-[0.65rem] bg-[#0b0e17] border border-white/10 rounded px-1.5 py-0.5 text-slate-300">
+                    <select value={saveLang} onChange={(e) => setSaveLang(e.target.value as "th" | "en")} className="text-[0.65rem] bg-[#f3f5f9] border border-black/10 rounded px-1.5 py-0.5 text-slate-700">
                       <option value="th">ไทย</option>
                       <option value="en">EN</option>
                     </select>
-                    <button onClick={saveOutput} className="text-[0.65rem] px-2 py-1 rounded border border-[#ab5bf7]/40 text-[#ab5bf7] hover:bg-[#ab5bf7]/10 flex items-center gap-1">
-                      {saved ? <Check className="w-3 h-3 text-green-400" /> : <Save className="w-3 h-3" />}
+                    <button onClick={saveOutput} className="text-[0.65rem] px-2 py-1 rounded border border-[#7a5c12]/40 text-[#7a5c12] hover:bg-[#d9a63a]/15 flex items-center gap-1">
+                      {saved ? <Check className="w-3 h-3 text-green-800" /> : <Save className="w-3 h-3" />}
                       {saved ? "บันทึกแล้ว → แดชบอร์ด" : "บันทึกเป็นต้นฉบับ"}
                     </button>
                   </div>
                 )}
               </div>
-              <div className="bg-[#151a27] border border-white/10 rounded-xl p-4 text-sm text-slate-200 whitespace-pre-wrap min-h-[420px] max-h-[600px] overflow-y-auto">
+              <div className="bg-[#ffffff] border border-black/10 rounded-xl p-4 text-sm text-slate-800 whitespace-pre-wrap min-h-[420px] max-h-[600px] overflow-y-auto">
                 {output || <span className="text-faint">ผลลัพธ์จะแสดงที่นี่ — บันทึกเป็นต้นฉบับเพื่อนำไปวิเคราะห์/รัน NIS ต่อ</span>}
               </div>
             </div>

@@ -69,15 +69,15 @@ export default function LifemapAdminPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#08080e]">
+    <div className="min-h-screen bg-[#f3f5f9]">
       <nav className="fixed top-0 left-0 right-0 z-50 glass-card">
         <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
           <Link href="/" className="flex items-center gap-2">
-            <Crown className="w-8 h-8 text-[#c9a84c]" />
+            <Crown className="w-8 h-8 text-[#7a5c12]" />
             <span className="text-xl font-semibold gold-gradient">NaraClear</span>
           </Link>
           <div className="flex gap-6 items-center">
-            <Link href="/lifemap/app" className="text-gray-300 hover:text-[#c9a84c] transition-colors">
+            <Link href="/lifemap/app" className="text-gray-700 hover:text-[#6b5010] transition-colors">
               โครงสร้างชีวิต
             </Link>
           </div>
@@ -92,12 +92,12 @@ export default function LifemapAdminPage() {
 
           <div className="glass-card rounded-2xl p-6 mb-8">
             {loading ? (
-              <div className="flex items-center justify-center gap-2 text-gray-400 py-10">
+              <div className="flex items-center justify-center gap-2 text-gray-600 py-10">
                 <Loader2 className="w-5 h-5 animate-spin" />
                 กำลังโหลด...
               </div>
             ) : error ? (
-              <div className="text-red-400 text-sm">{error}</div>
+              <div className="text-red-700 text-sm">{error}</div>
             ) : stats ? (
               <>
                 <div className="grid md:grid-cols-4 gap-4">
@@ -107,20 +107,20 @@ export default function LifemapAdminPage() {
                     { label: "Active API Keys", value: stats.activeApiKeys },
                     { label: "Plans", value: stats.plans.reduce((a, p) => a + p.count, 0) },
                   ].map((c) => (
-                    <div key={c.label} className="p-4 bg-white/5 rounded-xl border border-white/5">
-                      <p className="text-gray-500 text-xs">{c.label}</p>
-                      <p className="text-3xl font-bold text-[#c9a84c] mt-1">{c.value}</p>
+                    <div key={c.label} className="p-4 bg-black/[0.03] rounded-xl border border-black/5">
+                      <p className="text-gray-600 text-xs">{c.label}</p>
+                      <p className="text-3xl font-bold text-[#7a5c12] mt-1">{c.value}</p>
                     </div>
                   ))}
                 </div>
 
-                <div className="mt-6 p-4 bg-white/5 rounded-xl border border-white/5">
-                  <p className="text-gray-300 text-sm font-semibold mb-3">Plan distribution</p>
+                <div className="mt-6 p-4 bg-black/[0.03] rounded-xl border border-black/5">
+                  <p className="text-gray-700 text-sm font-semibold mb-3">Plan distribution</p>
                   <div className="grid md:grid-cols-3 gap-3">
                     {stats.plans.map((p) => (
-                      <div key={p.plan} className="p-3 bg-black/20 rounded-lg">
-                        <p className="text-gray-500 text-xs">{p.plan}</p>
-                        <p className="text-white/90 font-semibold">{p.count}</p>
+                      <div key={p.plan} className="p-3 bg-black/[0.04] rounded-lg">
+                        <p className="text-gray-600 text-xs">{p.plan}</p>
+                        <p className="text-[#14161c]/90 font-semibold">{p.count}</p>
                       </div>
                     ))}
                   </div>
@@ -131,10 +131,10 @@ export default function LifemapAdminPage() {
 
           <div className="glass-card rounded-2xl p-6">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-white/90">Users</h2>
+              <h2 className="text-lg font-semibold text-[#14161c]/90">Users</h2>
               <button
                 onClick={() => load().catch((e) => setError(e instanceof Error ? e.message : "Failed"))}
-                className="px-4 py-2 bg-white/5 border border-gold/20 text-white rounded-xl hover:border-gold/40 transition-colors text-sm"
+                className="px-4 py-2 bg-black/[0.03] border border-[#7a5c12]/25 text-[#14161c] rounded-xl hover:border-[#7a5c12]/50 transition-colors text-sm"
               >
                 รีเฟรช
               </button>
@@ -143,7 +143,7 @@ export default function LifemapAdminPage() {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="text-gray-500 text-xs uppercase tracking-wider border-b border-white/5">
+                  <tr className="text-gray-600 text-xs uppercase tracking-wider border-b border-black/5">
                     <th className="py-3 px-3 text-left">Email</th>
                     <th className="py-3 px-3 text-left">Name</th>
                     <th className="py-3 px-3 text-left">Plan</th>
@@ -153,9 +153,9 @@ export default function LifemapAdminPage() {
                 </thead>
                 <tbody>
                   {users.map((u) => (
-                    <tr key={u.id} className="border-b border-white/5">
-                      <td className="py-3 px-3 text-white/90">{u.email}</td>
-                      <td className="py-3 px-3 text-gray-300">{u.name ?? "-"}</td>
+                    <tr key={u.id} className="border-b border-black/5">
+                      <td className="py-3 px-3 text-[#14161c]/90">{u.email}</td>
+                      <td className="py-3 px-3 text-gray-700">{u.name ?? "-"}</td>
                       <td className="py-3 px-3">
                         <select
                           value={u.plan}
@@ -164,15 +164,15 @@ export default function LifemapAdminPage() {
                               .then(() => load())
                               .catch((err) => setError(err.message))
                           }
-                          className="px-3 py-2 bg-white/5 border border-gold/20 rounded-xl text-white focus:outline-none focus:border-gold/40"
+                          className="px-3 py-2 bg-black/[0.03] border border-[#7a5c12]/25 rounded-xl text-[#14161c] focus:outline-none focus:border-[#7a5c12]/50"
                         >
-                          <option value="free" className="bg-[#08080e]">
+                          <option value="free" className="bg-[#f3f5f9]">
                             free
                           </option>
-                          <option value="pro" className="bg-[#08080e]">
+                          <option value="pro" className="bg-[#f3f5f9]">
                             pro
                           </option>
-                          <option value="premium" className="bg-[#08080e]">
+                          <option value="premium" className="bg-[#f3f5f9]">
                             premium
                           </option>
                         </select>
@@ -185,17 +185,17 @@ export default function LifemapAdminPage() {
                               .then(() => load())
                               .catch((err) => setError(err.message))
                           }
-                          className="px-3 py-2 bg-white/5 border border-gold/20 rounded-xl text-white focus:outline-none focus:border-gold/40"
+                          className="px-3 py-2 bg-black/[0.03] border border-[#7a5c12]/25 rounded-xl text-[#14161c] focus:outline-none focus:border-[#7a5c12]/50"
                         >
-                          <option value="user" className="bg-[#08080e]">
+                          <option value="user" className="bg-[#f3f5f9]">
                             user
                           </option>
-                          <option value="admin" className="bg-[#08080e]">
+                          <option value="admin" className="bg-[#f3f5f9]">
                             admin
                           </option>
                         </select>
                       </td>
-                      <td className="py-3 px-3 text-gray-400">
+                      <td className="py-3 px-3 text-gray-600">
                         {new Date(u.createdAt).toLocaleString()}
                       </td>
                     </tr>

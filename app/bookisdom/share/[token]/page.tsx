@@ -54,15 +54,15 @@ export default function SharePage({ params }: { params: Promise<{ token: string 
   }
 
   return (
-    <div className="min-h-screen bg-[#0b0e17]">
+    <div className="min-h-screen bg-[#f3f5f9]">
       <nav className="fixed top-0 left-0 right-0 z-50 glass-card">
         <div className="max-w-5xl mx-auto px-4 py-4 flex justify-between items-center">
           <Link href="/" className="flex items-center gap-2">
-            <Crown className="w-7 h-7 text-[#ab5bf7]" />
+            <Crown className="w-7 h-7 text-[#7a5c12]" />
             <span className="text-lg font-semibold accent-gradient">NaraClear</span>
           </Link>
-          <span className="flex items-center gap-2 text-sm text-slate-300">
-            <BookOpen className="w-4 h-4 text-[#ab5bf7]" />
+          <span className="flex items-center gap-2 text-sm text-slate-700">
+            <BookOpen className="w-4 h-4 text-[#7a5c12]" />
             Bookisdom · แชร์
           </span>
         </div>
@@ -72,7 +72,7 @@ export default function SharePage({ params }: { params: Promise<{ token: string 
         <div className="max-w-3xl mx-auto">
           {loading && <p className="text-faint text-center">กำลังโหลด…</p>}
           {error && (
-            <div className="glass-card rounded-2xl p-6 flex items-start gap-2 text-red-400">
+            <div className="glass-card rounded-2xl p-6 flex items-start gap-2 text-red-700">
               <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
               <span>{error}</span>
             </div>
@@ -87,20 +87,20 @@ export default function SharePage({ params }: { params: Promise<{ token: string 
                 {prompts.map((p) => {
                   const open = openId === p.id;
                   return (
-                    <div key={p.id} className="glass-card rounded-2xl overflow-hidden border border-white/5">
+                    <div key={p.id} className="glass-card rounded-2xl overflow-hidden border border-black/5">
                       <div className="flex items-center justify-between gap-3 px-5 py-3">
                         <button onClick={() => setOpenId(open ? null : p.id)} aria-expanded={open} className="flex items-center gap-3 min-w-0 flex-1 text-left">
                           <ChevronDown className={`w-4 h-4 text-faint transition-transform ${open ? "rotate-180" : ""}`} />
-                          <span className="text-sm font-semibold text-slate-100 whitespace-nowrap">{p.id}</span>
+                          <span className="text-sm font-semibold text-slate-900 whitespace-nowrap">{p.id}</span>
                           <span className="text-xs text-faint truncate">{p.name}</span>
                         </button>
-                        <button onClick={() => copyPrompt(p)} className="text-slate-400 hover:text-[#ab5bf7]" aria-label={`Copy ${p.id}`}>
-                          {copiedId === p.id ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
+                        <button onClick={() => copyPrompt(p)} className="text-slate-600 hover:text-[#6b5010]" aria-label={`Copy ${p.id}`}>
+                          {copiedId === p.id ? <Check className="w-4 h-4 text-green-800" /> : <Copy className="w-4 h-4" />}
                         </button>
                       </div>
                       {open && (
                         <div className="px-5 pb-5">
-                          <pre className="bg-[#0b0e17] border border-white/5 rounded-lg p-4 text-xs leading-6 text-slate-300 whitespace-pre-wrap max-h-[480px] overflow-y-auto">
+                          <pre className="bg-[#f3f5f9] border border-black/5 rounded-lg p-4 text-xs leading-6 text-slate-700 whitespace-pre-wrap max-h-[480px] overflow-y-auto">
                             {p.prompt}
                           </pre>
                         </div>
@@ -110,7 +110,7 @@ export default function SharePage({ params }: { params: Promise<{ token: string 
                 })}
               </div>
               <div className="mt-8 text-center">
-                <Link href="/bookisdom" className="text-xs text-[#ab5bf7] hover:underline">
+                <Link href="/bookisdom" className="text-xs text-[#7a5c12] hover:underline">
                   สร้าง prompt pack ของคุณเองด้วย Bookisdom →
                 </Link>
               </div>

@@ -56,22 +56,22 @@ export default function ComparePage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#08080e]">
+    <div className="min-h-screen bg-[#f3f5f9]">
       <nav className="fixed top-0 left-0 right-0 z-50 glass-card">
         <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
           <Link href="/" className="flex items-center gap-2">
-            <Crown className="w-8 h-8 text-[#c9a84c]" />
+            <Crown className="w-8 h-8 text-[#7a5c12]" />
             <span className="text-xl font-semibold gold-gradient">NaraClear</span>
           </Link>
           <div className="flex gap-6 items-center">
-            <Link href="/analyze" className="text-gray-300 hover:text-[#c9a84c] transition-colors">วิเคราะห์ชื่อ</Link>
-            <Link href="/corporate" className="text-gray-300 hover:text-[#c9a84c] transition-colors">องค์กร</Link>
-            <Link href="/child" className="text-gray-300 hover:text-[#c9a84c] transition-colors">ตั้งชื่อเด็ก</Link>
-            <Link href="/rename" className="text-gray-300 hover:text-[#c9a84c] transition-colors">เปลี่ยนชื่อ</Link>
+            <Link href="/analyze" className="text-gray-700 hover:text-[#6b5010] transition-colors">วิเคราะห์ชื่อ</Link>
+            <Link href="/corporate" className="text-gray-700 hover:text-[#6b5010] transition-colors">องค์กร</Link>
+            <Link href="/child" className="text-gray-700 hover:text-[#6b5010] transition-colors">ตั้งชื่อเด็ก</Link>
+            <Link href="/rename" className="text-gray-700 hover:text-[#6b5010] transition-colors">เปลี่ยนชื่อ</Link>
             {session ? (
-              <Link href="/history" className="text-gray-300 hover:text-[#c9a84c] transition-colors">ประวัติ</Link>
+              <Link href="/history" className="text-gray-700 hover:text-[#6b5010] transition-colors">ประวัติ</Link>
             ) : (
-              <Link href="/login" className="text-gray-300 hover:text-[#c9a84c] transition-colors">เข้าสู่ระบบ</Link>
+              <Link href="/login" className="text-gray-700 hover:text-[#6b5010] transition-colors">เข้าสู่ระบบ</Link>
             )}
           </div>
         </div>
@@ -80,29 +80,29 @@ export default function ComparePage() {
       <div className="pt-28 pb-16 px-4">
         <div className="max-w-4xl mx-auto">
           <h1 className="text-3xl font-bold text-center mb-2 gold-gradient">เปรียบเทียบวันเกิด</h1>
-          <p className="text-gray-400 text-center mb-8">วิเคราะห์ชื่อเดียวกันในทุกวันเกิด</p>
+          <p className="text-gray-600 text-center mb-8">วิเคราะห์ชื่อเดียวกันในทุกวันเกิด</p>
 
           <div className="glass-card rounded-2xl p-8 mb-8">
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="grid md:grid-cols-2 gap-6">
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">ชื่อ</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">ชื่อ</label>
                   <input
                     type="text"
                     value={firstName}
                     onChange={(e) => setFirstName(e.target.value)}
-                    className="w-full px-4 py-3 bg-white/5 border border-gold/20 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-gold/50 transition-colors"
+                    className="w-full px-4 py-3 bg-black/[0.03] border border-[#7a5c12]/25 rounded-xl text-[#14161c] placeholder-gray-500 focus:outline-none focus:border-[#7a5c12]/60 transition-colors"
                     placeholder="กรอกชื่อ"
                     required
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">นามสกุล</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">นามสกุล</label>
                   <input
                     type="text"
                     value={lastName}
                     onChange={(e) => setLastName(e.target.value)}
-                    className="w-full px-4 py-3 bg-white/5 border border-gold/20 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-gold/50 transition-colors"
+                    className="w-full px-4 py-3 bg-black/[0.03] border border-[#7a5c12]/25 rounded-xl text-[#14161c] placeholder-gray-500 focus:outline-none focus:border-[#7a5c12]/60 transition-colors"
                     placeholder="กรอกนามสกุล"
                     required
                   />
@@ -112,7 +112,7 @@ export default function ComparePage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-4 bg-gold text-black font-semibold rounded-xl hover:bg-gold-light transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                className="w-full py-4 bg-[#d9a63a] text-black font-semibold rounded-xl hover:bg-[#c8901f] transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 {loading && <Loader2 className="w-5 h-5 animate-spin" />}
                 {loading ? "กำลังเปรียบเทียบ..." : "เปรียบเทียบ"}
@@ -120,7 +120,7 @@ export default function ComparePage() {
             </form>
 
             {error && (
-              <div className="mt-6 p-4 bg-red-500/10 border border-red-500/30 rounded-xl flex items-center gap-3 text-red-400">
+              <div className="mt-6 p-4 bg-red-500/10 border border-red-500/30 rounded-xl flex items-center gap-3 text-red-700">
                 <AlertCircle className="w-5 h-5 flex-shrink-0" />
                 {error}
               </div>
@@ -133,17 +133,17 @@ export default function ComparePage() {
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead>
-                    <tr className="border-b border-gold/20">
-                      <th className="text-left py-3 px-4 text-gray-400 font-medium">วันเกิด</th>
-                      <th className="text-center py-3 px-4 text-gray-400 font-medium">คะแนนรวม</th>
-                      <th className="text-center py-3 px-4 text-gray-400 font-medium">กาลกิณี</th>
-                      <th className="text-center py-3 px-4 text-gray-400 font-medium">เลขศาสตร์</th>
-                      <th className="text-left py-3 px-4 text-gray-400 font-medium">ตัวต้องห้าม</th>
+                    <tr className="border-b border-[#7a5c12]/25">
+                      <th className="text-left py-3 px-4 text-gray-600 font-medium">วันเกิด</th>
+                      <th className="text-center py-3 px-4 text-gray-600 font-medium">คะแนนรวม</th>
+                      <th className="text-center py-3 px-4 text-gray-600 font-medium">กาลกิณี</th>
+                      <th className="text-center py-3 px-4 text-gray-600 font-medium">เลขศาสตร์</th>
+                      <th className="text-left py-3 px-4 text-gray-600 font-medium">ตัวต้องห้าม</th>
                     </tr>
                   </thead>
                   <tbody>
                     {results.map((item, index) => (
-                      <tr key={index} className="border-b border-gold/10 hover:bg-white/5">
+                      <tr key={index} className="border-b border-[#7a5c12]/15 hover:bg-black/[0.04]">
                         <td className="py-4 px-4 font-medium">{item.birthday}</td>
                         <td className={`text-center py-4 px-4 font-bold text-xl ${getScoreClass(item.score)}`}>
                           {item.score}
@@ -154,7 +154,7 @@ export default function ComparePage() {
                         <td className={`text-center py-4 px-4 ${getScoreClass(item.numerologyScore)}`}>
                           {item.numerologyScore}
                         </td>
-                        <td className="py-4 px-4 text-red-400 text-sm">
+                        <td className="py-4 px-4 text-red-700 text-sm">
                           {item.violations.length > 0 ? item.violations.join(", ") : "-"}
                         </td>
                       </tr>

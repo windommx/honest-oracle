@@ -48,11 +48,11 @@ function ReportActions({ report, filename }: { report: string; filename: string 
   };
   return (
     <div className="flex gap-2">
-      <button onClick={copy} className="inline-flex items-center gap-1.5 text-[0.65rem] px-2.5 py-1 rounded border border-[#ab5bf7]/40 text-[#ab5bf7] hover:bg-[#ab5bf7]/10">
-        {copied ? <Check className="w-3 h-3 text-green-400" /> : <Copy className="w-3 h-3" />}
+      <button onClick={copy} className="inline-flex items-center gap-1.5 text-[0.65rem] px-2.5 py-1 rounded border border-[#7a5c12]/40 text-[#7a5c12] hover:bg-[#d9a63a]/15">
+        {copied ? <Check className="w-3 h-3 text-green-800" /> : <Copy className="w-3 h-3" />}
         {copied ? "คัดลอกแล้ว / Copied" : "Copy report"}
       </button>
-      <button onClick={download} className="inline-flex items-center gap-1.5 text-[0.65rem] px-2.5 py-1 rounded border border-[#ab5bf7]/40 text-[#ab5bf7] hover:bg-[#ab5bf7]/10">
+      <button onClick={download} className="inline-flex items-center gap-1.5 text-[0.65rem] px-2.5 py-1 rounded border border-[#7a5c12]/40 text-[#7a5c12] hover:bg-[#d9a63a]/15">
         <Download className="w-3 h-3" />
         Download .md
       </button>
@@ -81,7 +81,7 @@ function EpubButton({ text, lang }: { text: string; lang: "th" | "en" }) {
     URL.revokeObjectURL(url);
   };
   return (
-    <button onClick={download} className="inline-flex items-center gap-1.5 text-[0.65rem] px-2.5 py-1 rounded border border-[#ab5bf7]/40 text-[#ab5bf7] hover:bg-[#ab5bf7]/10">
+    <button onClick={download} className="inline-flex items-center gap-1.5 text-[0.65rem] px-2.5 py-1 rounded border border-[#7a5c12]/40 text-[#7a5c12] hover:bg-[#d9a63a]/15">
       <Download className="w-3 h-3" /> .epub
     </button>
   );
@@ -100,7 +100,7 @@ function BibleButton({ text, lang, protect }: { text: string; lang: "th" | "en";
     URL.revokeObjectURL(url);
   };
   return (
-    <button onClick={download} className="inline-flex items-center gap-1.5 text-[0.65rem] px-2.5 py-1 rounded border border-[#ab5bf7]/40 text-[#ab5bf7] hover:bg-[#ab5bf7]/10">
+    <button onClick={download} className="inline-flex items-center gap-1.5 text-[0.65rem] px-2.5 py-1 rounded border border-[#7a5c12]/40 text-[#7a5c12] hover:bg-[#d9a63a]/15">
       <Download className="w-3 h-3" /> {lang === "th" ? "คลังเนื้อเรื่อง" : "Story Bible"}
     </button>
   );
@@ -114,15 +114,15 @@ function SensoryView({ text, lang }: { text: string; lang: "th" | "en" }) {
   const th = lang === "th";
   return (
     <div>
-      <h3 className="text-xs font-semibold tracking-widest text-slate-400 uppercase mb-2">
+      <h3 className="text-xs font-semibold tracking-widest text-slate-600 uppercase mb-2">
         {th ? "ความหนาแน่นประสาทสัมผัส" : "Sensory density"}
       </h3>
       <div className="space-y-1.5">
         {led.senses.map((s) => (
           <div key={s.sense} className="flex items-center gap-2 text-xs">
-            <span className="w-20 shrink-0 text-slate-400">{SENSE_LABEL[s.sense as Sense][th ? "th" : "en"]}</span>
-            <div className="flex-1 h-3 rounded bg-white/5 overflow-hidden">
-              <div className="h-full bg-[#ab5bf7]/50" style={{ width: `${(s.per1k / max) * 100}%` }} />
+            <span className="w-20 shrink-0 text-slate-600">{SENSE_LABEL[s.sense as Sense][th ? "th" : "en"]}</span>
+            <div className="flex-1 h-3 rounded bg-black/[0.03] overflow-hidden">
+              <div className="h-full bg-[#d9a63a]/50" style={{ width: `${(s.per1k / max) * 100}%` }} />
             </div>
             <span className="w-24 shrink-0 text-right tabular-nums text-faint">
               {s.count}× · {s.per1k}/1k
@@ -131,7 +131,7 @@ function SensoryView({ text, lang }: { text: string; lang: "th" | "en" }) {
         ))}
       </div>
       {led.unused.length > 0 && (
-        <p className="text-[0.65rem] text-orange-300/80 mt-1.5">
+        <p className="text-[0.65rem] text-orange-800 mt-1.5">
           {th ? "ไม่ได้ใช้เลย: " : "Never used: "}
           {led.unused.map((u) => SENSE_LABEL[u][th ? "th" : "en"]).join(", ")}
         </p>
@@ -164,7 +164,7 @@ function GlossaryInput({ value, onChange, suggestions = [] }: { value: string; o
         onChange={(e) => onChange(e.target.value)}
         placeholder="ชื่อตัวละคร/สถานที่ คั่นด้วยจุลภาค เช่น มะลี, ธนกร"
         aria-label="ชื่อเฉพาะสำหรับกันการตัดคำ"
-        className="w-full text-xs px-2.5 py-1.5 rounded border border-white/10 bg-white/5 text-slate-200 placeholder:text-faint focus:border-[#ab5bf7]/50 focus:outline-none"
+        className="w-full text-xs px-2.5 py-1.5 rounded border border-black/10 bg-black/[0.03] text-slate-800 placeholder:text-faint focus:border-[#7a5c12]/50 focus:outline-none"
       />
       {suggestions.length > 0 && (
         <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
@@ -173,7 +173,7 @@ function GlossaryInput({ value, onChange, suggestions = [] }: { value: string; o
             <button
               key={s}
               onClick={() => add(s)}
-              className="text-[0.7rem] px-2 py-0.5 rounded-full border border-[#ab5bf7]/40 text-[#ab5bf7] hover:bg-[#ab5bf7]/10"
+              className="text-[0.7rem] px-2 py-0.5 rounded-full border border-[#7a5c12]/40 text-[#7a5c12] hover:bg-[#d9a63a]/15"
             >
               + {s}
             </button>
@@ -193,7 +193,7 @@ function ConsistencyView({ text, lang, protect }: { text: string; lang: "th" | "
   if (led.chapters < 2 || (led.variantClusters.length === 0 && led.dropped.length === 0)) return null;
   return (
     <div>
-      <h3 className="text-xs font-semibold tracking-widest text-slate-400 uppercase mb-2">
+      <h3 className="text-xs font-semibold tracking-widest text-slate-600 uppercase mb-2">
         {lang === "th" ? "ความสม่ำเสมอข้ามบท" : "Cross-chapter consistency"}
       </h3>
       {led.variantClusters.length > 0 && (
@@ -201,7 +201,7 @@ function ConsistencyView({ text, lang, protect }: { text: string; lang: "th" | "
           <p className="text-[0.65rem] text-faint mb-1">{lang === "th" ? "สะกดไม่ตรงกัน (อาจเป็นชื่อเดียวกัน):" : "Spelling variants (maybe the same name):"}</p>
           <div className="flex flex-wrap gap-1.5">
             {led.variantClusters.slice(0, 12).map((c, i) => (
-              <span key={i} className="text-xs px-2 py-0.5 rounded border border-amber-400/40 text-amber-300">
+              <span key={i} className="text-xs px-2 py-0.5 rounded border border-amber-700/40 text-amber-800">
                 {c.map((t) => `${t.term}×${t.count}`).join(" ≈ ")}
               </span>
             ))}
@@ -213,7 +213,7 @@ function ConsistencyView({ text, lang, protect }: { text: string; lang: "th" | "
           <p className="text-[0.65rem] text-faint mb-1">{lang === "th" ? "โผล่แล้วหายกลางเล่ม:" : "Introduced then dropped:"}</p>
           <div className="flex flex-wrap gap-1.5">
             {led.dropped.slice(0, 12).map((t) => (
-              <span key={t.term} className="text-xs px-2 py-0.5 rounded border border-orange-400/40 text-orange-300">
+              <span key={t.term} className="text-xs px-2 py-0.5 rounded border border-orange-700/40 text-orange-800">
                 {t.term} ×{t.count} ({lang === "th" ? "บท" : "ch"} {t.chapters.join(",")})
               </span>
             ))}
@@ -238,11 +238,11 @@ function RadarView({ text, lang, canon }: { text: string; lang: "th" | "en"; can
   const th = lang === "th";
   return (
     <div>
-      <h3 className="text-xs font-semibold tracking-widest text-slate-400 uppercase mb-2">
+      <h3 className="text-xs font-semibold tracking-widest text-slate-600 uppercase mb-2">
         {th ? "เรดาร์ความต่อเนื่อง (เทียบ canon)" : "Continuity radar (vs. canon)"}
       </h3>
       {findings.length === 0 ? (
-        <p className="text-xs text-green-400">
+        <p className="text-xs text-green-800">
           ✓ {th ? "ชื่อใน canon ถูกใช้ครบ และไม่มีชื่อแปลกปลอมโผล่ซ้ำ" : "Every canon name is used and no undeclared name recurs."}
         </p>
       ) : (
@@ -252,7 +252,7 @@ function RadarView({ text, lang, canon }: { text: string; lang: "th" | "en"; can
               <p className="text-[0.65rem] text-faint mb-1">{th ? "ชื่อใน canon ที่ไม่พบในเนื้อหา:" : "Canon names never used:"}</p>
               <div className="flex flex-wrap gap-1.5">
                 {unused.map((f) => (
-                  <span key={f.term} className="text-xs px-2 py-0.5 rounded border border-sky-400/40 text-sky-300">{f.term}</span>
+                  <span key={f.term} className="text-xs px-2 py-0.5 rounded border border-sky-400/40 text-sky-700">{f.term}</span>
                 ))}
               </div>
             </div>
@@ -262,7 +262,7 @@ function RadarView({ text, lang, canon }: { text: string; lang: "th" | "en"; can
               <p className="text-[0.65rem] text-faint mb-1">{th ? "ชื่อที่ใช้ซ้ำแต่ไม่อยู่ใน canon (ดริฟต์/เปลี่ยนชื่อ/พิมพ์ผิด?):" : "Recurring names not in canon (drift/rename/typo?):"}</p>
               <div className="flex flex-wrap gap-1.5">
                 {off.map((f) => (
-                  <span key={f.term} className="text-xs px-2 py-0.5 rounded border border-rose-400/40 text-rose-300">{f.term} ×{f.count}</span>
+                  <span key={f.term} className="text-xs px-2 py-0.5 rounded border border-rose-700/40 text-rose-700">{f.term} ×{f.count}</span>
                 ))}
               </div>
             </div>
@@ -285,7 +285,7 @@ function OpenerView({ text, lang }: { text: string; lang: "th" | "en" }) {
   const pct = (r: number) => `${Math.round(r * 100)}%`;
   return (
     <div>
-      <h3 className="text-xs font-semibold tracking-widest text-slate-400 uppercase mb-2">
+      <h3 className="text-xs font-semibold tracking-widest text-slate-600 uppercase mb-2">
         {th ? "คำขึ้นต้นประโยค/วรรค" : "Sentence / clause openers"}
       </h3>
       {report.monotone.length > 0 ? (
@@ -293,21 +293,21 @@ function OpenerView({ text, lang }: { text: string; lang: "th" | "en" }) {
           <p className="text-[0.65rem] text-faint mb-1">{th ? "ขึ้นต้นซ้ำมาก (ลองสลับจังหวะ):" : "over-used openers (consider varying):"}</p>
           <div className="flex flex-wrap gap-1.5">
             {report.monotone.map((s) => (
-              <span key={s.opener} className="text-xs px-2 py-0.5 rounded border border-amber-400/40 text-amber-300">
+              <span key={s.opener} className="text-xs px-2 py-0.5 rounded border border-amber-700/40 text-amber-800">
                 {s.opener} ×{s.count} · {pct(s.ratio)}
               </span>
             ))}
           </div>
         </div>
       ) : (
-        <p className="text-xs text-green-400">
+        <p className="text-xs text-green-800">
           ✓ {th ? "ไม่มีคำขึ้นต้นที่ซ้ำเกินเกณฑ์ — จังหวะเปิดหลากหลายดี" : "No opener repeats past the threshold — varied openings."}
         </p>
       )}
       <p className="text-[0.65rem] text-faint mt-2 mb-1">{th ? "พบบ่อยสุด:" : "most frequent:"}</p>
       <div className="flex flex-wrap gap-1.5">
         {report.top.map((s) => (
-          <span key={s.opener} className="text-xs px-2 py-0.5 rounded border border-white/10 text-slate-400">
+          <span key={s.opener} className="text-xs px-2 py-0.5 rounded border border-black/10 text-slate-600">
             {s.opener} ×{s.count}
           </span>
         ))}
@@ -327,18 +327,18 @@ function RestatementView({ text, lang }: { text: string; lang: "th" | "en" }) {
   if (!report || report.totalTokens < 40) return null;
   return (
     <div>
-      <h3 className="text-xs font-semibold tracking-widest text-slate-400 uppercase mb-2">
+      <h3 className="text-xs font-semibold tracking-widest text-slate-600 uppercase mb-2">
         {th ? "เล่าซ้ำคำต่อคำ (verbatim)" : "Verbatim restatements"}
       </h3>
       {report.found.length === 0 ? (
-        <p className="text-xs text-green-400">✓ {th ? "ไม่พบวลียาวที่ซ้ำคำต่อคำ" : "No long word-for-word repeats."}</p>
+        <p className="text-xs text-green-800">✓ {th ? "ไม่พบวลียาวที่ซ้ำคำต่อคำ" : "No long word-for-word repeats."}</p>
       ) : (
         <div className="space-y-1">
           {report.found.slice(0, 8).map((r) => (
-            <div key={r.phrase} className="text-xs text-slate-300">
-              <span className="text-amber-300">×{r.count}</span>
+            <div key={r.phrase} className="text-xs text-slate-700">
+              <span className="text-amber-800">×{r.count}</span>
               {r.chapters.length > 1 && <span className="text-faint"> ({th ? "บท" : "ch"} {r.chapters.join(",")})</span>}
-              <span className="text-slate-400"> “{r.phrase.length > 70 ? r.phrase.slice(0, 70) + "…" : r.phrase}”</span>
+              <span className="text-slate-600"> “{r.phrase.length > 70 ? r.phrase.slice(0, 70) + "…" : r.phrase}”</span>
             </div>
           ))}
         </div>
@@ -378,7 +378,7 @@ function SagaView({ lang }: { lang: "th" | "en" }) {
 
   return (
     <div>
-      <h3 className="text-xs font-semibold tracking-widest text-slate-400 uppercase mb-1">
+      <h3 className="text-xs font-semibold tracking-widest text-slate-600 uppercase mb-1">
         {th ? "ความต่อเนื่องซีรีส์ (Saga — หลายเล่ม)" : "Series continuity (Saga — multi-book)"}
       </h3>
       <p className="text-[0.62rem] text-faint mb-2">
@@ -403,7 +403,7 @@ function SagaView({ lang }: { lang: "th" | "en" }) {
               />
             </div>
             {books.length > 2 && (
-              <button onClick={() => setBooks((p) => p.filter((_, j) => j !== i))} className="text-faint hover:text-red-400 mt-2" aria-label="remove book">
+              <button onClick={() => setBooks((p) => p.filter((_, j) => j !== i))} className="text-faint hover:text-red-700 mt-2" aria-label="remove book">
                 <Trash2 className="w-3.5 h-3.5" />
               </button>
             )}
@@ -412,7 +412,7 @@ function SagaView({ lang }: { lang: "th" | "en" }) {
       </div>
       <button
         onClick={() => setBooks((p) => [...p, { title: "", bible: "" }])}
-        className="mt-2 text-[0.65rem] text-[#ab5bf7] hover:text-[#c084fc]"
+        className="mt-2 text-[0.65rem] text-[#7a5c12] hover:text-[#6b5010]"
       >
         {th ? "+ เพิ่มเล่ม" : "+ add book"}
       </button>
@@ -420,18 +420,18 @@ function SagaView({ lang }: { lang: "th" | "en" }) {
       {report && (
         <div className="mt-3 space-y-3">
           {report.books.map((b) => (
-            <div key={b.index} className="border-l-2 border-[#ab5bf7]/30 pl-2.5">
-              <p className="text-[0.7rem] text-slate-300 mb-1">[{b.index}] {b.title}</p>
+            <div key={b.index} className="border-l-2 border-[#7a5c12]/30 pl-2.5">
+              <p className="text-[0.7rem] text-slate-700 mb-1">[{b.index}] {b.title}</p>
               <div className="flex flex-wrap gap-1.5">
-                {b.introduced.map((e) => chip(e.name, "border-emerald-400/40 text-emerald-300"))}
-                {b.carried.map((n) => chip(n, "border-sky-400/30 text-sky-300"))}
-                {b.dropped.map((n) => chip(`${n} ↓`, "border-amber-400/40 text-amber-300"))}
+                {b.introduced.map((e) => chip(e.name, "border-emerald-700/40 text-emerald-700"))}
+                {b.carried.map((n) => chip(n, "border-sky-400/30 text-sky-700"))}
+                {b.dropped.map((n) => chip(`${n} ↓`, "border-amber-700/40 text-amber-800"))}
               </div>
             </div>
           ))}
           <div className="text-[0.68rem] text-faint pt-1">
-            <p>{th ? "แกนซีรีส์ (อยู่ ≥2 เล่ม): " : "series backbone (≥2 books): "}<span className="text-slate-300">{report.recurring.join(", ") || "—"}</span></p>
-            <p className="mt-0.5">{th ? "ปรากฏเล่มเดียว: " : "single-book: "}<span className="text-slate-400">{report.standalone.join(", ") || "—"}</span></p>
+            <p>{th ? "แกนซีรีส์ (อยู่ ≥2 เล่ม): " : "series backbone (≥2 books): "}<span className="text-slate-700">{report.recurring.join(", ") || "—"}</span></p>
+            <p className="mt-0.5">{th ? "ปรากฏเล่มเดียว: " : "single-book: "}<span className="text-slate-600">{report.standalone.join(", ") || "—"}</span></p>
           </div>
           <p className="text-[0.6rem] text-faint">
             {th ? "สีเขียว=แนะนำใหม่ · ฟ้า=สืบเนื่อง · เหลือง↓=หายจากเล่มก่อน (สัญญาณ ไม่ใช่ error) · deterministic ไม่มี LLM" : "green=introduced · blue=carried · amber↓=dropped vs prev (a signal, not an error) · deterministic, no LLM"}
@@ -453,7 +453,7 @@ function CodexView({ text, lang }: { text: string; lang: "th" | "en" }) {
   const th = lang === "th";
   return (
     <div>
-      <h3 className="text-xs font-semibold tracking-widest text-slate-400 uppercase mb-2">
+      <h3 className="text-xs font-semibold tracking-widest text-slate-600 uppercase mb-2">
         {th ? "ตรวจ Codex (เทียบคาสต์ที่ประกาศ)" : "Codex audit (vs. declared cast)"}
       </h3>
       <textarea
@@ -477,7 +477,7 @@ function CodexView({ text, lang }: { text: string; lang: "th" | "en" }) {
             <div className="flex flex-wrap gap-1.5">
               {audit.present.length === 0 && <span className="text-xs text-faint">—</span>}
               {audit.present.map((e) => (
-                <span key={e.name} className="text-xs px-2 py-0.5 rounded border border-emerald-400/40 text-emerald-300">{e.name}</span>
+                <span key={e.name} className="text-xs px-2 py-0.5 rounded border border-emerald-700/40 text-emerald-700">{e.name}</span>
               ))}
             </div>
           </div>
@@ -486,7 +486,7 @@ function CodexView({ text, lang }: { text: string; lang: "th" | "en" }) {
               <p className="text-[0.65rem] text-faint mb-1">{th ? "⚠ สถานะขัดแย้ง — ตาย/หายตัว แต่ปรากฏ (ย้อนอดีต? ผี? หลุด?):" : "⚠ Status conflict — dead/missing yet appears (flashback? ghost? slip?):"}</p>
               <div className="flex flex-wrap gap-1.5">
                 {audit.statusConflicts.map((e) => (
-                  <span key={e.name} className="text-xs px-2 py-0.5 rounded border border-rose-400/40 text-rose-300">{e.name} — {e.status}</span>
+                  <span key={e.name} className="text-xs px-2 py-0.5 rounded border border-rose-700/40 text-rose-700">{e.name} — {e.status}</span>
                 ))}
               </div>
             </div>
@@ -496,7 +496,7 @@ function CodexView({ text, lang }: { text: string; lang: "th" | "en" }) {
               <p className="text-[0.65rem] text-faint mb-1">{th ? "🗣 voice guard — คำต้องห้ามปรากฏในดราฟต์ (ตรวจเองว่าใครพูด):" : "🗣 Voice guard — a never-says word occurs (check who says it):"}</p>
               <div className="flex flex-wrap gap-1.5">
                 {audit.forbiddenHits.map((h) => (
-                  <span key={`${h.name}-${h.word}`} className="text-xs px-2 py-0.5 rounded border border-amber-400/40 text-amber-300">{h.name}: “{h.word}” ×{h.count}</span>
+                  <span key={`${h.name}-${h.word}`} className="text-xs px-2 py-0.5 rounded border border-amber-700/40 text-amber-800">{h.name}: “{h.word}” ×{h.count}</span>
                 ))}
               </div>
             </div>
@@ -506,7 +506,7 @@ function CodexView({ text, lang }: { text: string; lang: "th" | "en" }) {
               <p className="text-[0.65rem] text-faint mb-1">{th ? "อาจสะกดเพี้ยน (เช็กความสอดคล้อง):" : "Possible misspellings (check consistency):"}</p>
               <div className="flex flex-wrap gap-1.5">
                 {audit.variants.map((v) => (
-                  <span key={v.declared} className="text-xs px-2 py-0.5 rounded border border-amber-400/40 text-amber-300">{v.declared} ~ {v.found}</span>
+                  <span key={v.declared} className="text-xs px-2 py-0.5 rounded border border-amber-700/40 text-amber-800">{v.declared} ~ {v.found}</span>
                 ))}
               </div>
             </div>
@@ -516,7 +516,7 @@ function CodexView({ text, lang }: { text: string; lang: "th" | "en" }) {
               <p className="text-[0.65rem] text-faint mb-1">{th ? "ไม่ถูกอ้างถึง (ตั้งใจ หรือช่องว่าง continuity?):" : "Not referenced (intentional, or a continuity gap?):"}</p>
               <div className="flex flex-wrap gap-1.5">
                 {audit.missing.map((e) => (
-                  <span key={e.name} className="text-xs px-2 py-0.5 rounded border border-gray-500/40 text-slate-400">{e.name}</span>
+                  <span key={e.name} className="text-xs px-2 py-0.5 rounded border border-gray-500/40 text-slate-600">{e.name}</span>
                 ))}
               </div>
             </div>
@@ -525,18 +525,18 @@ function CodexView({ text, lang }: { text: string; lang: "th" | "en" }) {
       )}
       {mermaid && (
         <details className="mt-2">
-          <summary className="text-[0.65rem] text-[#ab5bf7] cursor-pointer hover:text-[#c084fc]">
+          <summary className="text-[0.65rem] text-[#7a5c12] cursor-pointer hover:text-[#6b5010]">
             {th ? "กราฟความสัมพันธ์ (Mermaid — คัดลอกไปเรนเดอร์ที่ไหนก็ได้)" : "Relationship graph (Mermaid — copy & render anywhere)"}
           </summary>
           <div className="relative mt-1.5">
             <button
               onClick={() => { navigator.clipboard?.writeText(mermaid); setCopied(true); setTimeout(() => setCopied(false), 1200); }}
-              className="absolute top-1.5 right-1.5 flex items-center gap-1 text-[0.6rem] px-1.5 py-0.5 rounded border border-white/15 text-slate-300 hover:border-[#ab5bf7]/50 bg-black/40"
+              className="absolute top-1.5 right-1.5 flex items-center gap-1 text-[0.6rem] px-1.5 py-0.5 rounded border border-black/15 text-slate-700 hover:border-[#7a5c12]/50 bg-black/[0.05]"
             >
-              {copied ? <Check className="w-3 h-3 text-green-400" /> : <Copy className="w-3 h-3" />}
+              {copied ? <Check className="w-3 h-3 text-green-800" /> : <Copy className="w-3 h-3" />}
               {copied ? (th ? "คัดลอกแล้ว" : "copied") : (th ? "คัดลอก" : "copy")}
             </button>
-            <pre className="text-[0.62rem] text-slate-400 bg-black/40 border border-white/10 rounded p-2 pr-16 overflow-x-auto font-mono whitespace-pre">{mermaid}</pre>
+            <pre className="text-[0.62rem] text-slate-600 bg-black/[0.05] border border-black/10 rounded p-2 pr-16 overflow-x-auto font-mono whitespace-pre">{mermaid}</pre>
           </div>
         </details>
       )}
@@ -557,12 +557,12 @@ function RelationshipView({ text, lang, names }: { text: string; lang: "th" | "e
   const th = lang === "th";
   return (
     <div>
-      <h3 className="text-xs font-semibold tracking-widest text-slate-400 uppercase mb-2">
+      <h3 className="text-xs font-semibold tracking-widest text-slate-600 uppercase mb-2">
         {th ? "ความสัมพันธ์ตัวละคร (แชร์ฉากกัน)" : "Character relationships (shared scenes)"}
       </h3>
       <div className="flex flex-wrap gap-1.5 mb-2">
         {g.nodes.map((n) => (
-          <span key={n.name} className="text-xs px-2 py-0.5 rounded border border-white/10 text-slate-300">
+          <span key={n.name} className="text-xs px-2 py-0.5 rounded border border-black/10 text-slate-700">
             {n.name} ×{n.mentions} · {th ? "บท" : "ch"} {n.chapters.join(",")}
           </span>
         ))}
@@ -573,9 +573,9 @@ function RelationshipView({ text, lang, names }: { text: string; lang: "th" | "e
         <div className="space-y-1.5">
           {g.edges.slice(0, 12).map((e) => (
             <div key={`${e.a}-${e.b}`} className="flex items-center gap-2 text-xs">
-              <span className="w-40 shrink-0 text-slate-300 truncate" title={`${e.a} ↔ ${e.b}`}>{e.a} ↔ {e.b}</span>
-              <div className="flex-1 h-3 rounded bg-white/5 overflow-hidden">
-                <div className="h-full bg-[#ab5bf7]/50" style={{ width: `${(e.weight / maxW) * 100}%` }} />
+              <span className="w-40 shrink-0 text-slate-700 truncate" title={`${e.a} ↔ ${e.b}`}>{e.a} ↔ {e.b}</span>
+              <div className="flex-1 h-3 rounded bg-black/[0.03] overflow-hidden">
+                <div className="h-full bg-[#d9a63a]/50" style={{ width: `${(e.weight / maxW) * 100}%` }} />
               </div>
               <span className="w-28 shrink-0 text-right tabular-nums text-faint">{e.weight}× ({th ? "บท" : "ch"} {e.chapters.join(",")})</span>
             </div>
@@ -609,14 +609,14 @@ function SceneReadoutView({ text }: { text: string }) {
     { label: "คลิเช AI", value: String(r.aiTells), hint: "วลีคลิเชที่ตรวจพบ" },
   ];
   return (
-    <div className="rounded-xl border border-[#ab5bf7]/25 bg-[#ab5bf7]/[0.04] p-3">
-      <h3 className="text-xs font-semibold tracking-widest text-[#ab5bf7] uppercase mb-2">
+    <div className="rounded-xl border border-[#7a5c12]/25 bg-[#d9a63a]/[0.04] p-3">
+      <h3 className="text-xs font-semibold tracking-widest text-[#7a5c12] uppercase mb-2">
         อ่านค่าฉากนี้ — สัญญาณที่วัดได้ (ไม่ใช่คะแนน 0–100)
       </h3>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
         {cells.map((c) => (
-          <div key={c.label} className="rounded-lg border border-white/10 bg-white/[0.03] px-2.5 py-1.5" title={c.hint}>
-            <div className="tabular-nums text-base font-semibold text-slate-100">{c.value}</div>
+          <div key={c.label} className="rounded-lg border border-black/10 bg-black/[0.02] px-2.5 py-1.5" title={c.hint}>
+            <div className="tabular-nums text-base font-semibold text-slate-900">{c.value}</div>
             <div className="text-[0.6rem] text-faint leading-tight">{c.label}</div>
           </div>
         ))}
@@ -637,7 +637,7 @@ function RenameView({ text, lang }: { text: string; lang: "th" | "en" }) {
   const res = useMemo(() => (from.trim() && to.trim() ? renameTerm(text, from.trim(), to.trim(), lang) : null), [text, from, to, lang]);
   return (
     <div>
-      <h3 className="text-xs font-semibold tracking-widest text-slate-400 uppercase mb-2">
+      <h3 className="text-xs font-semibold tracking-widest text-slate-600 uppercase mb-2">
         {th ? "เปลี่ยนชื่อทั้งเล่ม (ในเบราว์เซอร์)" : "Rename across the manuscript (in-browser)"}
       </h3>
       <div className="flex items-center gap-2 mb-2">
@@ -646,7 +646,7 @@ function RenameView({ text, lang }: { text: string; lang: "th" | "en" }) {
           onChange={(e) => setFrom(e.target.value)}
           placeholder={th ? "ชื่อเดิม" : "old name"}
           aria-label={th ? "ชื่อเดิม" : "old name"}
-          className="flex-1 text-xs px-2.5 py-1.5 rounded border border-white/10 bg-white/5 text-slate-200 placeholder:text-faint focus:border-[#ab5bf7]/50 focus:outline-none"
+          className="flex-1 text-xs px-2.5 py-1.5 rounded border border-black/10 bg-black/[0.03] text-slate-800 placeholder:text-faint focus:border-[#7a5c12]/50 focus:outline-none"
         />
         <span className="text-faint text-xs">→</span>
         <input
@@ -654,28 +654,28 @@ function RenameView({ text, lang }: { text: string; lang: "th" | "en" }) {
           onChange={(e) => setTo(e.target.value)}
           placeholder={th ? "ชื่อใหม่" : "new name"}
           aria-label={th ? "ชื่อใหม่" : "new name"}
-          className="flex-1 text-xs px-2.5 py-1.5 rounded border border-white/10 bg-white/5 text-slate-200 placeholder:text-faint focus:border-[#ab5bf7]/50 focus:outline-none"
+          className="flex-1 text-xs px-2.5 py-1.5 rounded border border-black/10 bg-black/[0.03] text-slate-800 placeholder:text-faint focus:border-[#7a5c12]/50 focus:outline-none"
         />
       </div>
       {res && (
         <div className="space-y-2">
           <div className="flex items-center gap-2 flex-wrap text-xs">
-            <span className="text-slate-300">{res.total} {th ? "จุดที่พบ" : "hit(s)"}</span>
+            <span className="text-slate-700">{res.total} {th ? "จุดที่พบ" : "hit(s)"}</span>
             {res.perChapter.map((p) => (
-              <span key={p.chapter} className="px-2 py-0.5 rounded border border-white/10 text-slate-400">
+              <span key={p.chapter} className="px-2 py-0.5 rounded border border-black/10 text-slate-600">
                 {th ? "บท" : "ch"} {p.chapter}: {p.count}
               </span>
             ))}
           </div>
           {res.targetPreexisting > 0 && (
-            <p className="text-[0.65rem] text-amber-300/90">
+            <p className="text-[0.65rem] text-amber-800">
               ⚠ {th ? `"${to}" มีอยู่แล้ว ${res.targetPreexisting} ครั้ง (อาจชนกัน)` : `"${to}" already appears ${res.targetPreexisting}× (possible collision)`}
             </p>
           )}
           {res.total > 0 && (
             <button
               onClick={() => downloadBlob(`renamed-${to.trim() || "manuscript"}.md`, res.text, "text/markdown")}
-              className="inline-flex items-center gap-1.5 text-[0.7rem] px-2.5 py-1 rounded border border-[#ab5bf7]/40 text-[#ab5bf7] hover:bg-[#ab5bf7]/10"
+              className="inline-flex items-center gap-1.5 text-[0.7rem] px-2.5 py-1 rounded border border-[#7a5c12]/40 text-[#7a5c12] hover:bg-[#d9a63a]/15"
             >
               <Download className="w-3 h-3" />
               {th ? "ดาวน์โหลดฉบับที่เปลี่ยนชื่อแล้ว" : "Download the rewritten manuscript"}
@@ -700,13 +700,13 @@ function RegisterView({ text, protect }: { text: string; protect?: string[] }) {
   if (findings.length === 0) return null;
   return (
     <div>
-      <h3 className="text-xs font-semibold tracking-widest text-slate-400 uppercase mb-2">คำ/การสะกด (ภาษาไทยมาตรฐาน — ไม่ใช่ข้อผิด)</h3>
+      <h3 className="text-xs font-semibold tracking-widest text-slate-600 uppercase mb-2">คำ/การสะกด (ภาษาไทยมาตรฐาน — ไม่ใช่ข้อผิด)</h3>
       <div className="space-y-1">
         {findings.slice(0, 20).map((r) => (
           <div key={r.term} className="flex items-center gap-2 text-xs">
-            <span className="px-2 py-0.5 rounded border border-teal-400/40 text-teal-300">{r.term} ×{r.count}</span>
+            <span className="px-2 py-0.5 rounded border border-teal-700/40 text-teal-700">{r.term} ×{r.count}</span>
             <span className="text-faint">→</span>
-            <span className="text-slate-200">{r.suggest}</span>
+            <span className="text-slate-800">{r.suggest}</span>
             {r.note && <span className="text-[0.6rem] text-faint">({r.note})</span>}
           </div>
         ))}
@@ -738,7 +738,7 @@ function TranslationView({ source }: { source: string }) {
   const terms = useMemo(() => (source.trim() && dtarget.trim() && rules.length ? checkTranslation(source, dtarget, rules) : []), [source, dtarget, rules]);
   return (
     <div>
-      <button onClick={() => setOpen((v) => !v)} className="text-[0.7rem] text-[#ab5bf7] hover:underline">
+      <button onClick={() => setOpen((v) => !v)} className="text-[0.7rem] text-[#7a5c12] hover:underline">
         {open ? "− ซ่อนการตรวจการแปล" : "+ ตรวจการแปล (ไทย → อังกฤษ)"}
       </button>
       {open && (
@@ -772,17 +772,17 @@ function TranslationView({ source }: { source: string }) {
               <div className="space-y-1">
                 {terms.map((t, i) => (
                   <div key={`${t.rule}-${i}`} className="flex items-center gap-2 text-xs">
-                    <span className="px-2 py-0.5 rounded border border-rose-400/40 text-rose-300">
+                    <span className="px-2 py-0.5 rounded border border-rose-700/40 text-rose-700">
                       {t.kind === "dropped-term" ? "หาย" : t.kind === "wrong-case" ? "ตัวพิมพ์" : "คำต้องห้าม"} ×{t.count}
                     </span>
-                    <span className="text-slate-300">{t.detail}</span>
+                    <span className="text-slate-700">{t.detail}</span>
                   </div>
                 ))}
               </div>
             </div>
           )}
           {exp && terms.length === 0 && rules.length > 0 && (
-            <p className="text-xs text-green-400">✓ ศัพท์เฉพาะครบตามที่ประกาศไว้</p>
+            <p className="text-xs text-green-800">✓ ศัพท์เฉพาะครบตามที่ประกาศไว้</p>
           )}
           <p className="text-[0.6rem] text-faint">ทุกอย่างทำงานในเบราว์เซอร์ ไม่เรียก AI · อัตราส่วนความยาวและการนับศัพท์เป็นสัญญาณ ไม่ใช่คำตัดสินคุณภาพการแปล</p>
         </div>
@@ -801,7 +801,7 @@ function PresenceStrip({ series }: { series: number[] }) {
         <span
           key={i}
           className="inline-block w-2.5 h-4 rounded-sm"
-          style={{ background: c === 0 ? "rgba(255,255,255,0.06)" : `rgba(201,168,76,${0.25 + 0.6 * (c / max)})` }}
+          style={{ background: c === 0 ? "rgba(20,22,28,0.05)" : `rgba(217,166,58,${0.25 + 0.6 * (c / max)})` }}
         />
       ))}
     </div>
@@ -822,7 +822,7 @@ function NarrativeView({ text, lang, names, chapterSignals }: { text: string; la
   if (chapterSignals.length < 2) return null;
   return (
     <div className="space-y-4">
-      <h3 className="text-xs font-semibold tracking-widest text-slate-400 uppercase">
+      <h3 className="text-xs font-semibold tracking-widest text-slate-600 uppercase">
         {th ? "ปัญญาการเล่าเรื่อง (นับได้ · ไม่ใช่คะแนน 0–100)" : "Narrative intelligence (counted · not a 0–100 score)"}
       </h3>
 
@@ -832,11 +832,11 @@ function NarrativeView({ text, lang, names, chapterSignals }: { text: string; la
           <div className="space-y-1.5">
             {arcs.characters.filter((c) => c.total > 0).map((c) => (
               <div key={c.name} className="flex items-center gap-2 flex-wrap text-xs">
-                <span className="w-24 shrink-0 truncate text-slate-300" title={c.name}>{c.name}</span>
+                <span className="w-24 shrink-0 truncate text-slate-700" title={c.name}>{c.name}</span>
                 <PresenceStrip series={c.perChapter} />
                 <span className="text-[0.62rem] text-faint">{th ? "บท" : "ch"} {c.firstChapter}–{c.lastChapter}</span>
-                {c.gaps.length > 0 && <span className="text-[0.62rem] text-amber-300/90">⚠ {th ? "หายช่วงบท" : "gap ch"} {c.gaps.map((g) => `${g.from}-${g.to}`).join(", ")}</span>}
-                {c.exitsEarly && <span className="text-[0.62rem] text-orange-300/90">⚠ {th ? "หายก่อนจบ" : "exits early"}</span>}
+                {c.gaps.length > 0 && <span className="text-[0.62rem] text-amber-800">⚠ {th ? "หายช่วงบท" : "gap ch"} {c.gaps.map((g) => `${g.from}-${g.to}`).join(", ")}</span>}
+                {c.exitsEarly && <span className="text-[0.62rem] text-orange-800">⚠ {th ? "หายก่อนจบ" : "exits early"}</span>}
               </div>
             ))}
           </div>
@@ -846,10 +846,10 @@ function NarrativeView({ text, lang, names, chapterSignals }: { text: string; la
       {pacing.acts.length > 0 && (
         <div>
           <p className="text-[0.65rem] text-faint mb-1.5">{th ? "จังหวะรายองก์ (ค่าเฉลี่ยสัญญาณที่วัดได้):" : "Pacing by act (measured-signal averages):"}</p>
-          <div className="overflow-x-auto rounded-lg border border-white/10">
+          <div className="overflow-x-auto rounded-lg border border-black/10">
             <table className="w-full text-[0.7rem]">
               <thead>
-                <tr className="text-faint border-b border-white/10">
+                <tr className="text-faint border-b border-black/10">
                   <th className="text-left px-2 py-1.5 font-medium">{th ? "องก์" : "Act"}</th>
                   <th className="px-2 py-1.5 font-medium">{th ? "คำ/บท" : "words"}</th>
                   <th className="px-2 py-1.5 font-medium">{th ? "บทพูด%" : "dialogue%"}</th>
@@ -859,19 +859,19 @@ function NarrativeView({ text, lang, names, chapterSignals }: { text: string; la
               </thead>
               <tbody>
                 {pacing.acts.map((a) => (
-                  <tr key={a.act} className="border-b border-white/5 last:border-0">
-                    <td className="text-left px-2 py-1 text-slate-300">{th ? { beginning: "เปิด", middle: "กลาง", end: "ปิด" }[a.act] : a.act} <span className="text-faint">({a.chapters[0]}–{a.chapters[a.chapters.length - 1]})</span></td>
-                    <td className="px-2 py-1 text-center tabular-nums text-slate-400">{a.avgWords}</td>
-                    <td className="px-2 py-1 text-center tabular-nums text-slate-400">{a.avgDialogue}</td>
-                    <td className="px-2 py-1 text-center tabular-nums text-slate-400">{a.avgTelling}</td>
-                    <td className="px-2 py-1 text-center tabular-nums text-slate-400">{a.avgSensory}</td>
+                  <tr key={a.act} className="border-b border-black/5 last:border-0">
+                    <td className="text-left px-2 py-1 text-slate-700">{th ? { beginning: "เปิด", middle: "กลาง", end: "ปิด" }[a.act] : a.act} <span className="text-faint">({a.chapters[0]}–{a.chapters[a.chapters.length - 1]})</span></td>
+                    <td className="px-2 py-1 text-center tabular-nums text-slate-600">{a.avgWords}</td>
+                    <td className="px-2 py-1 text-center tabular-nums text-slate-600">{a.avgDialogue}</td>
+                    <td className="px-2 py-1 text-center tabular-nums text-slate-600">{a.avgTelling}</td>
+                    <td className="px-2 py-1 text-center tabular-nums text-slate-600">{a.avgSensory}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
           {pacing.flags.map((f, i) => (
-            <p key={i} className="text-[0.62rem] text-cyan-300/80 mt-1">• {f}</p>
+            <p key={i} className="text-[0.62rem] text-cyan-700 mt-1">• {f}</p>
           ))}
         </div>
       )}
@@ -882,16 +882,16 @@ function NarrativeView({ text, lang, names, chapterSignals }: { text: string; la
           value={motifRaw}
           onChange={(e) => setMotifRaw(e.target.value)}
           placeholder={th ? "เช่น ดาบ, คำสัญญา, สายฝน" : "e.g. sword, promise, rain"}
-          className="w-full text-xs px-2.5 py-1.5 rounded border border-white/10 bg-white/5 text-slate-200 placeholder:text-faint focus:border-[#ab5bf7]/50 focus:outline-none"
+          className="w-full text-xs px-2.5 py-1.5 rounded border border-black/10 bg-black/[0.03] text-slate-800 placeholder:text-faint focus:border-[#7a5c12]/50 focus:outline-none"
         />
         {motifs && motifs.motifs.length > 0 && (
           <div className="space-y-1.5 mt-2">
             {motifs.motifs.map((m) => (
               <div key={m.term} className="flex items-center gap-2 flex-wrap text-xs">
-                <span className="w-24 shrink-0 truncate text-slate-300" title={m.term}>{m.term}</span>
+                <span className="w-24 shrink-0 truncate text-slate-700" title={m.term}>{m.term}</span>
                 <PresenceStrip series={m.perChapter} />
                 <span className="text-[0.62rem] text-faint">{m.total}× · {th ? "อยู่" : "in"} {m.chaptersPresent}/{motifs.chapters} {th ? "บท" : "ch"}</span>
-                {m.longestAbsentRun >= 3 && <span className="text-[0.62rem] text-amber-300/90">⚠ {th ? "เงียบยาว" : "silent"} {m.longestAbsentRun} {th ? "บท" : "ch"}</span>}
+                {m.longestAbsentRun >= 3 && <span className="text-[0.62rem] text-amber-800">⚠ {th ? "เงียบยาว" : "silent"} {m.longestAbsentRun} {th ? "บท" : "ch"}</span>}
               </div>
             ))}
           </div>
@@ -909,9 +909,9 @@ function NarrativeView({ text, lang, names, chapterSignals }: { text: string; la
  *  heuristic label), then shows the constructs Bookisdom REFUSES to score and why. Foldable;
  *  it's the "why you can trust this number — and where its limit is" layer. */
 const TIER_TONE: Record<string, string> = {
-  paccakkha: "var(--tier-1, #22c55e)",
-  anumana: "var(--tier-2, #38bdf8)",
-  sanna: "var(--tier-3, #fbbf24)",
+  paccakkha: "var(--tier-1, #166534)",
+  anumana: "var(--tier-2, #1d4ed8)",
+  sanna: "var(--tier-3, #92400e)",
 };
 function EpistemicPanel({ ids }: { ids: string[] }) {
   const [open, setOpen] = useState(false);
@@ -919,9 +919,9 @@ function EpistemicPanel({ ids }: { ids: string[] }) {
   const kalama = useMemo(() => llmKalamaViolations(), []);
   if (!groups.length) return null;
   return (
-    <div className="rounded-xl border border-[#ab5bf7]/25 bg-[#ab5bf7]/[0.04] p-3">
+    <div className="rounded-xl border border-[#7a5c12]/25 bg-[#d9a63a]/[0.04] p-3">
       <button onClick={() => setOpen((v) => !v)} className="w-full text-left">
-        <h3 className="text-xs font-semibold tracking-widest text-[#ab5bf7] uppercase">
+        <h3 className="text-xs font-semibold tracking-widest text-[#7a5c12] uppercase">
           ญาณวิทยา · ทำไมเชื่อตัวเลขนี้ได้ (และเส้นที่เราไม่ข้าม) {open ? "−" : "+"}
         </h3>
       </button>
@@ -931,8 +931,8 @@ function EpistemicPanel({ ids }: { ids: string[] }) {
           {groups.map((g) => (
             <div key={g.tier.id}>
               <div className="flex items-center gap-2 mb-1">
-                <span className="inline-block w-2 h-2 rounded-full" style={{ background: TIER_TONE[g.tier.id] ?? "#94a3b8" }} />
-                <span className="text-xs font-semibold text-slate-200">{g.tier.thai}</span>
+                <span className="inline-block w-2 h-2 rounded-full" style={{ background: TIER_TONE[g.tier.id] ?? "#4b5563" }} />
+                <span className="text-xs font-semibold text-slate-800">{g.tier.thai}</span>
                 <span className="text-[0.6rem] text-faint italic">{g.tier.pali}</span>
               </div>
               <p className="text-[0.62rem] text-faint mb-1.5 pl-4">{g.tier.gloss}</p>
@@ -942,7 +942,7 @@ function EpistemicPanel({ ids }: { ids: string[] }) {
                     key={s.id}
                     title={warrant(s.id) ?? ""}
                     className="text-[0.68rem] px-2 py-0.5 rounded border cursor-help"
-                    style={{ borderColor: (TIER_TONE[g.tier.id] ?? "#94a3b8") + "66", color: TIER_TONE[g.tier.id] ?? "#94a3b8" }}
+                    style={{ borderColor: (TIER_TONE[g.tier.id] ?? "#4b5563") + "66", color: TIER_TONE[g.tier.id] ?? "#4b5563" }}
                   >
                     {s.thai} · {s.level}
                   </span>
@@ -950,20 +950,20 @@ function EpistemicPanel({ ids }: { ids: string[] }) {
               </div>
             </div>
           ))}
-          <div className="pt-1 border-t border-white/10">
+          <div className="pt-1 border-t border-black/10">
             <div className="flex items-center gap-2 mb-1">
               <span className="inline-block w-2 h-2 rounded-full bg-rose-400/70" />
-              <span className="text-xs font-semibold text-rose-300">อวิสัย · เกินวิสัยของเครื่องนี้ — เราปฏิเสธที่จะให้คะแนน</span>
+              <span className="text-xs font-semibold text-rose-700">อวิสัย · เกินวิสัยของเครื่องนี้ — เราปฏิเสธที่จะให้คะแนน</span>
             </div>
             <div className="flex flex-col gap-1 pl-4">
               {REFUSED_CONSTRUCTS.map((c) => (
-                <div key={c.id} className="text-[0.66rem] text-slate-400">
-                  <span className="text-rose-300/90 line-through">{c.thai}</span> — {c.why}
+                <div key={c.id} className="text-[0.66rem] text-slate-600">
+                  <span className="text-rose-700 line-through">{c.thai}</span> — {c.why}
                 </div>
               ))}
             </div>
           </div>
-          <p className="text-[0.62rem] text-faint pl-4 pt-1 border-t border-white/10">
+          <p className="text-[0.62rem] text-faint pl-4 pt-1 border-t border-black/10">
             กาลามสูตรระบุ {kalama.length} ใน 10 ฐานที่คะแนน LLM พึ่งพา — รวมข้อ 6 “เพราะการอนุมาน” และข้อ 9 “เพราะดูน่าเชื่อถือ”.
             ตัวเลขทุกตัวข้างบนตรวจซ้ำเองได้ (paccakkha/anumāna) — เราเปิดเผยเครื่องมือเสมอ (ชี้ที่ป้ายเพื่อดู warrant)
           </p>
@@ -978,14 +978,14 @@ type Delta = { label: string; before: number; after: number; delta: number; good
 function DeltaTable({ title, deltas, note }: { title: string; deltas: Delta[]; note: string }) {
   return (
     <div className="mt-4">
-      <h3 className="text-xs font-semibold tracking-widest text-slate-400 uppercase mb-2">{title}</h3>
-      <div className="rounded-lg border border-white/10 overflow-hidden">
+      <h3 className="text-xs font-semibold tracking-widest text-slate-600 uppercase mb-2">{title}</h3>
+      <div className="rounded-lg border border-black/10 overflow-hidden">
         {deltas.map((d) => {
           const improved = d.good === "lower" ? d.delta < 0 : d.good === "higher" ? d.delta > 0 : null;
-          const color = d.delta === 0 || improved === null ? "text-slate-400" : improved ? "text-green-400" : "text-red-400";
+          const color = d.delta === 0 || improved === null ? "text-slate-600" : improved ? "text-green-800" : "text-red-700";
           return (
-            <div key={d.label} className="flex items-center justify-between px-3 py-1.5 text-xs border-b border-white/5 last:border-0">
-              <span className="text-slate-300">{d.label}</span>
+            <div key={d.label} className="flex items-center justify-between px-3 py-1.5 text-xs border-b border-black/5 last:border-0">
+              <span className="text-slate-700">{d.label}</span>
               <span className="flex items-center gap-2">
                 <span className="text-faint">{d.before} → {d.after}</span>
                 <span className={`w-12 text-right tabular-nums ${color}`}>{d.delta > 0 ? `+${d.delta}` : d.delta}</span>
@@ -1008,11 +1008,11 @@ function Heatmap({ title, headers, rows, note, onRowClick }: {
 }) {
   return (
     <div className="mt-3">
-      <h3 className="text-xs font-semibold tracking-widest text-slate-400 uppercase mb-2">{title}</h3>
-      <div className="overflow-x-auto rounded-lg border border-white/10">
+      <h3 className="text-xs font-semibold tracking-widest text-slate-600 uppercase mb-2">{title}</h3>
+      <div className="overflow-x-auto rounded-lg border border-black/10">
         <table className="w-full text-[0.7rem]">
           <thead>
-            <tr className="text-faint border-b border-white/10">
+            <tr className="text-faint border-b border-black/10">
               <th className="text-left px-2 py-1.5 font-medium">Chapter</th>
               {headers.map((h) => (
                 <th key={h} className="px-2 py-1.5 font-medium">{h}</th>
@@ -1024,11 +1024,11 @@ function Heatmap({ title, headers, rows, note, onRowClick }: {
               <tr
                 key={`${r.title}-${i}`}
                 onClick={onRowClick ? () => onRowClick(i) : undefined}
-                className={`border-b border-white/5 last:border-0 ${onRowClick ? "cursor-pointer hover:bg-white/5" : ""}`}
+                className={`border-b border-black/5 last:border-0 ${onRowClick ? "cursor-pointer hover:bg-black/[0.04]" : ""}`}
               >
-                <td className="text-left px-2 py-1 text-slate-300 truncate max-w-[160px]" title={r.title}>{r.title}</td>
+                <td className="text-left px-2 py-1 text-slate-700 truncate max-w-[160px]" title={r.title}>{r.title}</td>
                 {r.cells.map((c, j) => (
-                  <td key={j} className={`px-2 py-1 text-center tabular-nums ${c.bad ? "text-red-400 font-semibold" : "text-slate-400"}`}>{c.value}</td>
+                  <td key={j} className={`px-2 py-1 text-center tabular-nums ${c.bad ? "text-red-700 font-semibold" : "text-slate-600"}`}>{c.value}</td>
                 ))}
               </tr>
             ))}
@@ -1043,14 +1043,14 @@ function Heatmap({ title, headers, rows, note, onRowClick }: {
 function DiffView({ ops }: { ops: DiffOp[] | null }) {
   if (!ops) return <p className="text-[0.65rem] text-faint mt-2">ข้อความยาวเกินไปสำหรับ inline diff — ดูที่ตาราง metric ด้านบน / Too long for inline diff.</p>;
   return (
-    <div className="mt-2 text-xs leading-6 bg-[#0b0e17] border border-white/5 rounded-lg p-3 max-h-[200px] overflow-y-auto whitespace-pre-wrap">
+    <div className="mt-2 text-xs leading-6 bg-[#f3f5f9] border border-black/5 rounded-lg p-3 max-h-[200px] overflow-y-auto whitespace-pre-wrap">
       {ops.map((op, i) =>
         op.type === "same" ? (
           <span key={i} className="text-faint">{op.text} </span>
         ) : op.type === "add" ? (
-          <span key={i} className="text-green-400 bg-green-400/10">{op.text} </span>
+          <span key={i} className="text-green-800 bg-green-400/10">{op.text} </span>
         ) : (
-          <span key={i} className="text-red-400/80 line-through">{op.text} </span>
+          <span key={i} className="text-red-700 line-through">{op.text} </span>
         )
       )}
     </div>
@@ -1060,13 +1060,13 @@ function DiffView({ ops }: { ops: DiffOp[] | null }) {
 function Mechanics({ items, title }: { items: { issue: string; count: number }[]; title: string }) {
   return (
     <div>
-      <h3 className="text-xs font-semibold tracking-widest text-slate-400 uppercase mb-2">{title}</h3>
+      <h3 className="text-xs font-semibold tracking-widest text-slate-600 uppercase mb-2">{title}</h3>
       {items.length === 0 ? (
-        <p className="text-xs text-green-400">✓ —</p>
+        <p className="text-xs text-green-800">✓ —</p>
       ) : (
         <div className="flex flex-wrap gap-1.5">
           {items.map((mm) => (
-            <span key={mm.issue} className="text-xs px-2 py-0.5 rounded border border-amber-400/40 text-amber-300">
+            <span key={mm.issue} className="text-xs px-2 py-0.5 rounded border border-amber-700/40 text-amber-800">
               {mm.issue} ×{mm.count}
             </span>
           ))}
@@ -1129,7 +1129,7 @@ function ManuscriptBar({ lang, text, onLoad }: { lang: "th" | "en"; text: string
         value={selected}
         onChange={(e) => load(e.target.value)}
         aria-label={lang === "th" ? "โหลดฉบับที่บันทึก" : "Load saved manuscript"}
-        className="text-xs bg-[#0b0e17] border border-white/10 rounded px-2 py-1 text-slate-300 max-w-[180px]"
+        className="text-xs bg-[#f3f5f9] border border-black/10 rounded px-2 py-1 text-slate-700 max-w-[180px]"
       >
         <option value="">{lang === "th" ? `— โหลดฉบับ (${items.length}) —` : `— Load saved (${items.length}) —`}</option>
         {items.map((m) => (
@@ -1137,7 +1137,7 @@ function ManuscriptBar({ lang, text, onLoad }: { lang: "th" | "en"; text: string
         ))}
       </select>
       {selected && (
-        <button onClick={remove} className="text-[0.65rem] px-2 py-1 rounded border border-red-400/40 text-red-300 hover:bg-red-400/10" aria-label="Delete saved manuscript">
+        <button onClick={remove} className="text-[0.65rem] px-2 py-1 rounded border border-red-700/40 text-red-700 hover:bg-red-400/10" aria-label="Delete saved manuscript">
           <Trash2 className="w-3 h-3" />
         </button>
       )}
@@ -1145,9 +1145,9 @@ function ManuscriptBar({ lang, text, onLoad }: { lang: "th" | "en"; text: string
         value={name}
         onChange={(e) => setName(e.target.value)}
         placeholder={lang === "th" ? "ชื่อฉบับ…" : "name…"}
-        className="text-xs bg-[#0b0e17] border border-white/10 rounded px-2 py-1 text-slate-300 w-28"
+        className="text-xs bg-[#f3f5f9] border border-black/10 rounded px-2 py-1 text-slate-700 w-28"
       />
-      <button onClick={save} className="text-[0.65rem] px-2.5 py-1 rounded border border-[#ab5bf7]/40 text-[#ab5bf7] hover:bg-[#ab5bf7]/10">
+      <button onClick={save} className="text-[0.65rem] px-2.5 py-1 rounded border border-[#7a5c12]/40 text-[#7a5c12] hover:bg-[#d9a63a]/15">
         {lang === "th" ? "บันทึกฉบับ" : "Save draft"}
       </button>
     </div>
@@ -1244,19 +1244,19 @@ export function ThaiAnalyzerModal({ onClose, initialText }: { onClose: () => voi
   const AuditButton = ({ id, label }: { id: string; label: string }) => (
     <button
       onClick={() => copyAudit(id)}
-      className="mt-2 inline-flex items-center gap-1.5 text-[0.65rem] px-2.5 py-1 rounded border border-red-400/40 text-red-300 hover:bg-red-400/10"
+      className="mt-2 inline-flex items-center gap-1.5 text-[0.65rem] px-2.5 py-1 rounded border border-red-700/40 text-red-700 hover:bg-red-400/10"
     >
-      {copiedAudit === id ? <Check className="w-3 h-3 text-green-400" /> : <Copy className="w-3 h-3" />}
+      {copiedAudit === id ? <Check className="w-3 h-3 text-green-800" /> : <Copy className="w-3 h-3" />}
       {copiedAudit === id ? "คัดลอกแล้ว — วางใน LLM ได้เลย" : label}
     </button>
   );
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70" onClick={onClose}>
-      <div role="dialog" aria-modal="true" aria-label="Thai Analyzer" className="glass-card rounded-2xl max-w-2xl w-full max-h-[85vh] overflow-y-auto p-6 border border-[#ab5bf7]/30" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50" onClick={onClose}>
+      <div role="dialog" aria-modal="true" aria-label="Thai Analyzer" className="glass-card rounded-2xl max-w-2xl w-full max-h-[85vh] overflow-y-auto p-6 border border-[#7a5c12]/30" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-2">
           <h2 className="text-lg font-bold accent-gradient">วิเคราะห์ภาษาไทย</h2>
-          <button onClick={onClose} className="text-slate-400 hover:text-white" aria-label="Close">
+          <button onClick={onClose} className="text-slate-600 hover:text-[#14161c]" aria-label="Close">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -1270,7 +1270,7 @@ export function ThaiAnalyzerModal({ onClose, initialText }: { onClose: () => voi
           placeholder="วางข้อความภาษาไทยที่นี่…"
           className="input min-h-[140px] resize-y"
         />
-        <button onClick={() => setShowCompare((v) => !v)} className="mt-2 text-[0.7rem] text-[#ab5bf7] hover:underline">
+        <button onClick={() => setShowCompare((v) => !v)} className="mt-2 text-[0.7rem] text-[#7a5c12] hover:underline">
           {showCompare ? "− ซ่อนการเทียบฉบับแก้" : "+ เทียบฉบับแก้ (ก่อน → หลัง)"}
         </button>
         {showCompare && (
@@ -1288,7 +1288,7 @@ export function ThaiAnalyzerModal({ onClose, initialText }: { onClose: () => voi
           </>
         )}
         {scan.length > 1 && (
-          <button onClick={() => setShowScan((v) => !v)} className="mt-2 ml-3 text-[0.7rem] text-[#ab5bf7] hover:underline">
+          <button onClick={() => setShowScan((v) => !v)} className="mt-2 ml-3 text-[0.7rem] text-[#7a5c12] hover:underline">
             {showScan ? "− ซ่อนสแกนรายบท" : `+ สแกนรายบท (${scan.length} บท)`}
           </button>
         )}
@@ -1378,7 +1378,7 @@ export function ThaiAnalyzerModal({ onClose, initialText }: { onClose: () => voi
             </div>
             {a.sentences.count >= 4 && (a.rhythm.cv < 35 || a.rhythm.monotonyRun >= 5) && (
               <div>
-                <p className="text-[0.65rem] text-cyan-300/80">
+                <p className="text-[0.65rem] text-cyan-700">
                   ⚠️ จังหวะค่อนข้างแบน — ความยาวประโยคใกล้เคียงกันมาก (CV {a.rhythm.cv}%
                   {a.rhythm.monotonyRun >= 5 ? ` · ยาวพอกัน ${a.rhythm.monotonyRun} ประโยคติด` : ""}). ลองสลับประโยคสั้น-ยาว
                 </p>
@@ -1392,7 +1392,7 @@ export function ThaiAnalyzerModal({ onClose, initialText }: { onClose: () => voi
             </div>
             {(a.dialogue.talkingHeadRun >= 6 || a.dialogue.ratio > 70) && (
               <div>
-                <p className="text-[0.65rem] text-orange-300/80">
+                <p className="text-[0.65rem] text-orange-800">
                   ⚠️ {a.dialogue.talkingHeadRun >= 6 ? `บทพูดต่อเนื่อง ${a.dialogue.talkingHeadRun} บรรทัดโดยไม่มี action คั่น (talking-heads)` : ""}
                   {a.dialogue.ratio > 70 ? ` · บทพูด ${a.dialogue.ratio}% อาจมากเกินไป` : ""}
                 </p>
@@ -1401,23 +1401,23 @@ export function ThaiAnalyzerModal({ onClose, initialText }: { onClose: () => voi
             )}
 
             <div>
-              <h3 className="text-xs font-semibold tracking-widest text-slate-400 uppercase mb-2">
+              <h3 className="text-xs font-semibold tracking-widest text-slate-600 uppercase mb-2">
                 บอก vs แสดง — คำบอกอารมณ์ตรง ๆ ({a.telling.ratio}/100 คำ)
               </h3>
               {a.telling.words.length === 0 ? (
-                <p className="text-xs text-green-400">✓ ไม่พบกริยากรอง/คำบอกอารมณ์ตรง ๆ</p>
+                <p className="text-xs text-green-800">✓ ไม่พบกริยากรอง/คำบอกอารมณ์ตรง ๆ</p>
               ) : (
                 <>
                   <div className="flex flex-wrap gap-1.5">
                     {a.telling.words.slice(0, 20).map((t) => (
-                      <span key={t.word} className="text-xs px-2 py-0.5 rounded border border-fuchsia-400/40 text-fuchsia-300">
+                      <span key={t.word} className="text-xs px-2 py-0.5 rounded border border-fuchsia-700/40 text-fuchsia-700">
                         {t.word} ×{t.count}
                       </span>
                     ))}
                   </div>
                   {a.telling.ratio >= 2 && (
                     <div className="mt-1.5">
-                      <p className="text-[0.65rem] text-fuchsia-300/70">
+                      <p className="text-[0.65rem] text-fuchsia-700">
                         ความหนาแน่นของคำ &quot;บอก&quot; ค่อนข้างสูง — ลองเปลี่ยนช่วงที่บอกตรง ๆ ให้ &quot;แสดง&quot;
                       </p>
                       <AuditButton id="NIS_SHOW" label="คัดลอก NIS Show-vs-Tell audit + ข้อความนี้" />
@@ -1428,13 +1428,13 @@ export function ThaiAnalyzerModal({ onClose, initialText }: { onClose: () => voi
             </div>
 
             <div>
-              <h3 className="text-xs font-semibold tracking-widest text-slate-400 uppercase mb-2">AI-tell / คำคลิเช</h3>
+              <h3 className="text-xs font-semibold tracking-widest text-slate-600 uppercase mb-2">AI-tell / คำคลิเช</h3>
               {a.aiTells.length === 0 ? (
-                <p className="text-xs text-green-400">✓ ไม่พบคำคลิเชแบบ AI</p>
+                <p className="text-xs text-green-800">✓ ไม่พบคำคลิเชแบบ AI</p>
               ) : (
                 <div className="flex flex-wrap gap-1.5">
                   {a.aiTells.map((t) => (
-                    <span key={t.phrase} className="text-xs px-2 py-0.5 rounded border border-red-500/40 text-red-400">
+                    <span key={t.phrase} className="text-xs px-2 py-0.5 rounded border border-red-500/40 text-red-700">
                       {t.phrase} ×{t.count}
                     </span>
                   ))}
@@ -1443,13 +1443,13 @@ export function ThaiAnalyzerModal({ onClose, initialText }: { onClose: () => voi
             </div>
 
             <div>
-              <h3 className="text-xs font-semibold tracking-widest text-slate-400 uppercase mb-2">คำซ้ำใกล้กัน (ภายใน 40 คำ)</h3>
+              <h3 className="text-xs font-semibold tracking-widest text-slate-600 uppercase mb-2">คำซ้ำใกล้กัน (ภายใน 40 คำ)</h3>
               {a.nearRepeats.length === 0 ? (
                 <p className="text-xs text-faint">— ไม่พบคำเนื้อหาที่ซ้ำใกล้กัน</p>
               ) : (
                 <div className="flex flex-wrap gap-1.5">
                   {a.nearRepeats.slice(0, 20).map((e) => (
-                    <span key={e.word} className="text-xs px-2 py-0.5 rounded border border-yellow-400/40 text-yellow-300">
+                    <span key={e.word} className="text-xs px-2 py-0.5 rounded border border-yellow-700/40 text-yellow-800">
                       {e.word} ×{e.count}
                     </span>
                   ))}
@@ -1458,13 +1458,13 @@ export function ThaiAnalyzerModal({ onClose, initialText }: { onClose: () => voi
             </div>
 
             <div>
-              <h3 className="text-xs font-semibold tracking-widest text-slate-400 uppercase mb-2">คำซ้ำบ่อย (echoes ≥3)</h3>
+              <h3 className="text-xs font-semibold tracking-widest text-slate-600 uppercase mb-2">คำซ้ำบ่อย (echoes ≥3)</h3>
               {a.echoes.length === 0 ? (
                 <p className="text-xs text-faint">— ไม่มีคำเนื้อหาที่ซ้ำเกิน 3 ครั้ง</p>
               ) : (
                 <div className="flex flex-wrap gap-1.5">
                   {a.echoes.slice(0, 20).map((e) => (
-                    <span key={e.word} className="text-xs px-2 py-0.5 rounded border border-orange-400/40 text-orange-300">
+                    <span key={e.word} className="text-xs px-2 py-0.5 rounded border border-orange-700/40 text-orange-800">
                       {e.word} ×{e.count}
                     </span>
                   ))}
@@ -1475,10 +1475,10 @@ export function ThaiAnalyzerModal({ onClose, initialText }: { onClose: () => voi
             <Mechanics items={a.mechanics} title="ข้อผิดพลาดเชิงกล" />
 
             <div>
-              <h3 className="text-xs font-semibold tracking-widest text-slate-400 uppercase mb-2">คำที่ใช้บ่อยสุด</h3>
+              <h3 className="text-xs font-semibold tracking-widest text-slate-600 uppercase mb-2">คำที่ใช้บ่อยสุด</h3>
               <div className="flex flex-wrap gap-1.5">
                 {a.topWords.map((w) => (
-                  <span key={w.word} className="text-xs px-2 py-0.5 rounded border border-white/10 text-slate-300">
+                  <span key={w.word} className="text-xs px-2 py-0.5 rounded border border-black/10 text-slate-700">
                     {w.word} ×{w.count}
                   </span>
                 ))}
@@ -1505,41 +1505,41 @@ export function GuideModal({ onClose }: { onClose: () => void }) {
     "เคล็ดจากงานวิจัย: เปิดแชทใหม่ต่อบทแทนการลากแชทเดียวยาว ๆ (บทสนทนายาวทำคุณภาพตกเฉลี่ย ~39% — arXiv:2505.06120) และอย่าคาดหวังให้โมเดลจำรายละเอียดที่ลึกเกิน ~32k token — บล็อก STATE + Codex ต่อบทของระบบนี้คือทางแก้ที่ตรงกับหลักฐาน",
   ];
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70" onClick={onClose}>
-      <div role="dialog" aria-modal="true" aria-label="Bookisdom วิธีใช้" className="glass-card rounded-2xl max-w-2xl w-full max-h-[85vh] overflow-y-auto p-6 border border-[#ab5bf7]/30" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50" onClick={onClose}>
+      <div role="dialog" aria-modal="true" aria-label="Bookisdom วิธีใช้" className="glass-card rounded-2xl max-w-2xl w-full max-h-[85vh] overflow-y-auto p-6 border border-[#7a5c12]/30" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-bold accent-gradient">Bookisdom — วิธีใช้</h2>
-          <button onClick={onClose} className="text-slate-400 hover:text-white" aria-label="Close">
+          <button onClick={onClose} className="text-slate-600 hover:text-[#14161c]" aria-label="Close">
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        <p className="text-sm text-slate-300 mb-5">
-          แพลตฟอร์มสร้าง <span className="text-[#ab5bf7]">ชุด prompt</span> สำหรับแต่งหนังสือทุกประเภท คัดลอกไปใช้กับ LLM ตัวไหนก็ได้ (ChatGPT / Claude / Gemini) —
+        <p className="text-sm text-slate-700 mb-5">
+          แพลตฟอร์มสร้าง <span className="text-[#7a5c12]">ชุด prompt</span> สำหรับแต่งหนังสือทุกประเภท คัดลอกไปใช้กับ LLM ตัวไหนก็ได้ (ChatGPT / Claude / Gemini) —
           ไม่ต้องมี API key ไม่มีค่า token
         </p>
 
-        <h3 className="text-xs font-semibold tracking-widest text-slate-400 uppercase mb-2">เวิร์กโฟลว์แนะนำ</h3>
+        <h3 className="text-xs font-semibold tracking-widest text-slate-600 uppercase mb-2">เวิร์กโฟลว์แนะนำ</h3>
         <ol className="space-y-2 mb-5">
           {steps.map((s, i) => (
-            <li key={i} className="flex gap-3 text-sm text-slate-200">
-              <span className="flex-shrink-0 w-5 h-5 rounded-full bg-[#ab5bf7]/15 text-[#ab5bf7] text-xs flex items-center justify-center font-semibold">{i + 1}</span>
+            <li key={i} className="flex gap-3 text-sm text-slate-800">
+              <span className="flex-shrink-0 w-5 h-5 rounded-full bg-[#d9a63a]/15 text-[#7a5c12] text-xs flex items-center justify-center font-semibold">{i + 1}</span>
               <span className="leading-relaxed">{s}</span>
             </li>
           ))}
         </ol>
 
-        <h3 className="text-xs font-semibold tracking-widest text-slate-400 uppercase mb-2">กลุ่ม Module เสริม</h3>
+        <h3 className="text-xs font-semibold tracking-widest text-slate-600 uppercase mb-2">กลุ่ม Module เสริม</h3>
         <div className="space-y-1.5 mb-5">
           {MODULE_GROUPS.map((g) => (
             <div key={g.key} className="text-sm">
-              <span className="text-[#ab5bf7]">{g.label}</span>
+              <span className="text-[#7a5c12]">{g.label}</span>
               <span className="text-faint"> — {g.desc}</span>
             </div>
           ))}
         </div>
 
-        <h3 className="text-xs font-semibold tracking-widest text-slate-400 uppercase mb-2">เลือก module อันไหน?</h3>
+        <h3 className="text-xs font-semibold tracking-widest text-slate-600 uppercase mb-2">เลือก module อันไหน?</h3>
         <div className="space-y-2 mb-5 text-sm">
           {[
             { goal: "ทำให้ร้อยแก้วดีขึ้น", items: "Anti-Slop (ลบสำนวนกลาง ๆ แบบ AI) · Anti-Safe (กล้าเสี่ยง ไม่จบแบบเซฟ) · Line Edit (แก้ระดับประโยค) · Readability (คุมระดับความยาก)" },
@@ -1550,32 +1550,32 @@ export function GuideModal({ onClose }: { onClose: () => void }) {
             { goal: "หลายเอเจนต์ (ขั้นสูง)", items: "Agent Pack — ต้องมี multi-agent setup เอง (เช่น Claude Projects); ไม่ได้รันในแอปนี้" },
           ].map((r) => (
             <div key={r.goal}>
-              <span className="text-[#ab5bf7]">{r.goal}:</span>
-              <span className="text-slate-400"> {r.items}</span>
+              <span className="text-[#7a5c12]">{r.goal}:</span>
+              <span className="text-slate-600"> {r.items}</span>
             </div>
           ))}
         </div>
 
-        <h3 className="text-xs font-semibold tracking-widest text-slate-400 uppercase mb-2">เครื่องมือวิเคราะห์ (ฟรี ไม่เรียก AI)</h3>
+        <h3 className="text-xs font-semibold tracking-widest text-slate-600 uppercase mb-2">เครื่องมือวิเคราะห์ (ฟรี ไม่เรียก AI)</h3>
         <div className="space-y-2 mb-5 text-sm">
-          <p className="text-slate-400">
-            ปุ่ม <span className="text-[#ab5bf7]">วิเคราะห์ไทย</span> และ <span className="text-[#ab5bf7]">Prose (EN)</span> ที่หัวหน้าจอ —
+          <p className="text-slate-600">
+            ปุ่ม <span className="text-[#7a5c12]">วิเคราะห์ไทย</span> และ <span className="text-[#7a5c12]">Prose (EN)</span> ที่หัวหน้าจอ —
             ตรวจร้อยแก้วฝั่งเบราว์เซอร์แบบ deterministic (วัดได้ โชว์ทุกคำที่ match ไม่ใช่คะแนนลอย ๆ)
           </p>
-          <div><span className="text-[#ab5bf7]">หาจุดน่าสงสัย:</span><span className="text-slate-400"> คำคลิเช AI · คำบอกอารมณ์ (telling) · จังหวะประโยคแบน · คำซ้ำ · (EN) AI-slop, filter words, -ly adverbs, passive, Flesch readability</span></div>
-          <div><span className="text-[#ab5bf7]">เทียบฉบับแก้:</span><span className="text-slate-400"> วางก่อน→หลัง เห็น delta ว่าการแก้ดีขึ้นจริงไหมตามตัวเลข</span></div>
-          <div><span className="text-[#ab5bf7]">สแกนรายบท:</span><span className="text-slate-400"> วางทั้งเล่ม → heatmap บอกบทที่อ่อนสุดต่อ signal</span></div>
-          <div><span className="text-[#ab5bf7]">ปิด loop:</span><span className="text-slate-400"> เจอจุดอ่อนแล้วกดปุ่มเดียว คัดลอก NIS audit ที่เกี่ยวพร้อมแปะข้อความให้ → วางใน LLM เจาะเฉพาะจุด (ประหยัด token)</span></div>
-          <div><span className="text-[#ab5bf7]">ส่งออก:</span><span className="text-slate-400"> Copy report / Download .md เก็บไว้เทียบ draft</span></div>
+          <div><span className="text-[#7a5c12]">หาจุดน่าสงสัย:</span><span className="text-slate-600"> คำคลิเช AI · คำบอกอารมณ์ (telling) · จังหวะประโยคแบน · คำซ้ำ · (EN) AI-slop, filter words, -ly adverbs, passive, Flesch readability</span></div>
+          <div><span className="text-[#7a5c12]">เทียบฉบับแก้:</span><span className="text-slate-600"> วางก่อน→หลัง เห็น delta ว่าการแก้ดีขึ้นจริงไหมตามตัวเลข</span></div>
+          <div><span className="text-[#7a5c12]">สแกนรายบท:</span><span className="text-slate-600"> วางทั้งเล่ม → heatmap บอกบทที่อ่อนสุดต่อ signal</span></div>
+          <div><span className="text-[#7a5c12]">ปิด loop:</span><span className="text-slate-600"> เจอจุดอ่อนแล้วกดปุ่มเดียว คัดลอก NIS audit ที่เกี่ยวพร้อมแปะข้อความให้ → วางใน LLM เจาะเฉพาะจุด (ประหยัด token)</span></div>
+          <div><span className="text-[#7a5c12]">ส่งออก:</span><span className="text-slate-600"> Copy report / Download .md เก็บไว้เทียบ draft</span></div>
         </div>
 
-        <h3 className="text-xs font-semibold tracking-widest text-slate-400 uppercase mb-2">เคล็ดลับ</h3>
-        <ul className="space-y-1.5 text-sm text-slate-300 list-disc list-inside marker:text-[#ab5bf7]">
-          <li><span className="text-slate-200">ภาษา prompt:</span> สลับ “ไทยทั้งชุด” ได้ที่ Prompt Language</li>
-          <li><span className="text-slate-200">Continuity:</span> Story Bible / STATE ฉีดเข้าทุกบท — แก้ที่เดียวใช้ทั้งเล่ม</li>
-          <li><span className="text-slate-200">เซฟงาน:</span> ปุ่ม Save เก็บ project ไว้ในบัญชี (ต้องล็อกอิน); การตั้งค่าล่าสุด (รวม Story Bible) ถูกเก็บอัตโนมัติในเบราว์เซอร์ ไม่หายตอน reload</li>
-          <li><span className="text-slate-200">ส่งออก:</span> Copy ราย prompt / Copy all / Download .md หรือ .json</li>
-          <li><span className="text-slate-200">Preset:</span> แนะนำ / ทั้งหมด / ล้าง เลือกกลุ่ม module ได้เร็ว</li>
+        <h3 className="text-xs font-semibold tracking-widest text-slate-600 uppercase mb-2">เคล็ดลับ</h3>
+        <ul className="space-y-1.5 text-sm text-slate-700 list-disc list-inside marker:text-[#7a5c12]">
+          <li><span className="text-slate-800">ภาษา prompt:</span> สลับ “ไทยทั้งชุด” ได้ที่ Prompt Language</li>
+          <li><span className="text-slate-800">Continuity:</span> Story Bible / STATE ฉีดเข้าทุกบท — แก้ที่เดียวใช้ทั้งเล่ม</li>
+          <li><span className="text-slate-800">เซฟงาน:</span> ปุ่ม Save เก็บ project ไว้ในบัญชี (ต้องล็อกอิน); การตั้งค่าล่าสุด (รวม Story Bible) ถูกเก็บอัตโนมัติในเบราว์เซอร์ ไม่หายตอน reload</li>
+          <li><span className="text-slate-800">ส่งออก:</span> Copy ราย prompt / Copy all / Download .md หรือ .json</li>
+          <li><span className="text-slate-800">Preset:</span> แนะนำ / ทั้งหมด / ล้าง เลือกกลุ่ม module ได้เร็ว</li>
         </ul>
       </div>
     </div>
@@ -1643,19 +1643,19 @@ export function ProseAnalyzerModal({ onClose, initialText }: { onClose: () => vo
   const AuditButton = ({ id, label }: { id: string; label: string }) => (
     <button
       onClick={() => copyAudit(id)}
-      className="mt-2 inline-flex items-center gap-1.5 text-[0.65rem] px-2.5 py-1 rounded border border-red-400/40 text-red-300 hover:bg-red-400/10"
+      className="mt-2 inline-flex items-center gap-1.5 text-[0.65rem] px-2.5 py-1 rounded border border-red-700/40 text-red-700 hover:bg-red-400/10"
     >
-      {copiedAudit === id ? <Check className="w-3 h-3 text-green-400" /> : <Copy className="w-3 h-3" />}
+      {copiedAudit === id ? <Check className="w-3 h-3 text-green-800" /> : <Copy className="w-3 h-3" />}
       {copiedAudit === id ? "Copied — paste into any LLM" : label}
     </button>
   );
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70" onClick={onClose}>
-      <div role="dialog" aria-modal="true" aria-label="Prose Analyzer" className="glass-card rounded-2xl max-w-2xl w-full max-h-[85vh] overflow-y-auto p-6 border border-[#ab5bf7]/30" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50" onClick={onClose}>
+      <div role="dialog" aria-modal="true" aria-label="Prose Analyzer" className="glass-card rounded-2xl max-w-2xl w-full max-h-[85vh] overflow-y-auto p-6 border border-[#7a5c12]/30" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-2">
           <h2 className="text-lg font-bold accent-gradient">Prose Analyzer (English)</h2>
-          <button onClick={onClose} className="text-slate-400 hover:text-white" aria-label="Close">
+          <button onClick={onClose} className="text-slate-600 hover:text-[#14161c]" aria-label="Close">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -1671,7 +1671,7 @@ export function ProseAnalyzerModal({ onClose, initialText }: { onClose: () => vo
         />
         <button
           onClick={() => setShowCompare((v) => !v)}
-          className="mt-2 text-[0.7rem] text-[#ab5bf7] hover:underline"
+          className="mt-2 text-[0.7rem] text-[#7a5c12] hover:underline"
         >
           {showCompare ? "− Hide revision compare" : "+ Compare a revision (before → after)"}
         </button>
@@ -1692,7 +1692,7 @@ export function ProseAnalyzerModal({ onClose, initialText }: { onClose: () => vo
         {scan.length > 1 && (
           <button
             onClick={() => setShowScan((v) => !v)}
-            className="mt-2 ml-3 text-[0.7rem] text-[#ab5bf7] hover:underline"
+            className="mt-2 ml-3 text-[0.7rem] text-[#7a5c12] hover:underline"
           >
             {showScan ? "− Hide per-chapter scan" : `+ Per-chapter scan (${scan.length} chapters)`}
           </button>
@@ -1761,7 +1761,7 @@ export function ProseAnalyzerModal({ onClose, initialText }: { onClose: () => vo
             </div>
             {a.sentences.count >= 4 && (a.rhythm.cv < 35 || a.rhythm.monotonyRun >= 5) && (
               <div>
-                <p className="text-[0.65rem] text-cyan-300/80">
+                <p className="text-[0.65rem] text-cyan-700">
                   ⚠️ Flat rhythm — sentence lengths are very uniform (CV {a.rhythm.cv}%
                   {a.rhythm.monotonyRun >= 5 ? ` · ${a.rhythm.monotonyRun} same-length in a row` : ""}). Vary short and long.
                 </p>
@@ -1770,64 +1770,64 @@ export function ProseAnalyzerModal({ onClose, initialText }: { onClose: () => vo
             )}
 
             <div>
-              <h3 className="text-xs font-semibold tracking-widest text-slate-400 uppercase mb-2">AI-slop words / formulas</h3>
+              <h3 className="text-xs font-semibold tracking-widest text-slate-600 uppercase mb-2">AI-slop words / formulas</h3>
               {a.slop.length === 0 ? (
-                <p className="text-xs text-green-400">✓ No AI-slop terms found</p>
+                <p className="text-xs text-green-800">✓ No AI-slop terms found</p>
               ) : (
                 <>
-                  <Chips items={a.slop} tone="border-red-500/40 text-red-400" />
+                  <Chips items={a.slop} tone="border-red-500/40 text-red-700" />
                   <AuditButton id="ANTI_SLOP" label="Copy Anti-AI-Slop rewrite + this text" />
                 </>
               )}
             </div>
 
             <div>
-              <h3 className="text-xs font-semibold tracking-widest text-slate-400 uppercase mb-2">
+              <h3 className="text-xs font-semibold tracking-widest text-slate-600 uppercase mb-2">
                 Told emotions ({a.telling.ratio}/100 words)
               </h3>
               {a.telling.words.length === 0 ? (
-                <p className="text-xs text-green-400">✓ No directly-named emotions</p>
+                <p className="text-xs text-green-800">✓ No directly-named emotions</p>
               ) : (
                 <>
-                  <Chips items={a.telling.words} tone="border-fuchsia-400/40 text-fuchsia-300" />
+                  <Chips items={a.telling.words} tone="border-fuchsia-700/40 text-fuchsia-700" />
                   {a.telling.ratio >= 1.5 && <AuditButton id="NIS_SHOW" label="Copy NIS Show-vs-Tell audit + this text" />}
                 </>
               )}
             </div>
 
             <div>
-              <h3 className="text-xs font-semibold tracking-widest text-slate-400 uppercase mb-2">
+              <h3 className="text-xs font-semibold tracking-widest text-slate-600 uppercase mb-2">
                 Filter / crutch words ({a.filterWords.reduce((s, w) => s + w.count, 0)})
               </h3>
               {a.filterWords.length === 0 ? (
                 <p className="text-xs text-faint">— none</p>
               ) : (
-                <Chips items={a.filterWords} tone="border-yellow-400/40 text-yellow-300" />
+                <Chips items={a.filterWords} tone="border-yellow-700/40 text-yellow-800" />
               )}
             </div>
 
             <div>
-              <h3 className="text-xs font-semibold tracking-widest text-slate-400 uppercase mb-2">
+              <h3 className="text-xs font-semibold tracking-widest text-slate-600 uppercase mb-2">
                 -ly adverbs ({a.adverbs.ratio}/100 words)
               </h3>
               {a.adverbs.words.length === 0 ? (
                 <p className="text-xs text-faint">— none</p>
               ) : (
-                <Chips items={a.adverbs.words} tone="border-orange-400/40 text-orange-300" />
+                <Chips items={a.adverbs.words} tone="border-orange-700/40 text-orange-800" />
               )}
             </div>
 
             <div>
-              <h3 className="text-xs font-semibold tracking-widest text-slate-400 uppercase mb-2">
+              <h3 className="text-xs font-semibold tracking-widest text-slate-600 uppercase mb-2">
                 Possible passive voice ({a.passive.count})
               </h3>
               {a.passive.count === 0 ? (
-                <p className="text-xs text-green-400">✓ No likely passive constructions</p>
+                <p className="text-xs text-green-800">✓ No likely passive constructions</p>
               ) : (
                 <>
                   <div className="flex flex-wrap gap-1.5">
                     {a.passive.samples.map((s, i) => (
-                      <span key={`${s}-${i}`} className="text-xs px-2 py-0.5 rounded border border-blue-400/40 text-blue-300">
+                      <span key={`${s}-${i}`} className="text-xs px-2 py-0.5 rounded border border-blue-700/40 text-blue-700">
                         {s}
                       </span>
                     ))}
@@ -1839,11 +1839,11 @@ export function ProseAnalyzerModal({ onClose, initialText }: { onClose: () => vo
             </div>
 
             <div>
-              <h3 className="text-xs font-semibold tracking-widest text-slate-400 uppercase mb-2">Repeated words (echoes ≥4)</h3>
+              <h3 className="text-xs font-semibold tracking-widest text-slate-600 uppercase mb-2">Repeated words (echoes ≥4)</h3>
               {a.echoes.length === 0 ? (
                 <p className="text-xs text-faint">— no over-repeated content words</p>
               ) : (
-                <Chips items={a.echoes} tone="border-orange-400/40 text-orange-300" />
+                <Chips items={a.echoes} tone="border-orange-700/40 text-orange-800" />
               )}
             </div>
 

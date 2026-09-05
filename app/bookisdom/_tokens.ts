@@ -1,89 +1,91 @@
 // ╔══════════════════════════════════════════════════════════════════╗
 // ║  DESIGN TOKENS — the canonical palette, and the ONLY hex literals  ║
-// ║  allowed in app/bookisdom.                                              ║
+// ║  allowed in app/bookisdom.                                         ║
 // ║                                                                    ║
-// ║  THEME: premium dark fintech (deep-navy ground, purple accent),    ║
-// ║  migrated from the original gold theme against a mandated palette. ║
+// ║  THEME (2026-09): light, warm, gold-accented — one look for the    ║
+// ║  WHOLE platform (Bookisdom and the lifemap/naming apps alike),     ║
+// ║  adopted from a mandated reference screen: pale blue-grey ground   ║
+// ║  with a warm glow, white rounded cards, near-black ink, bronze-    ║
+// ║  gold accent, green "live" pills. It replaces both the dark        ║
+// ║  fintech palette and the dark gold one.                            ║
+// ║                                                                    ║
 // ║  Mandates were ACCEPTED only where they clear WCAG AA — measured   ║
-// ║  with this repo's own contrast maths, not assumed:                 ║
-// ║   · Accent was mandated #a855f7 → measured 4.39:1 on SURFACE       ║
-// ║     (fails AA for text on cards). Nudged to #ab5bf7 (4.61 worst),  ║
-// ║     visually indistinguishable, arithmetically compliant.          ║
-// ║   · "Text Muted #64748b" was mandated → measured 3.18:1 worst-case ║
-// ║     (fails AA badly). REFUSED for text; the faint tier is #8290a6, ║
-// ║     the same slate hue recalibrated to clear 4.5:1 on ALL surfaces.║
-// ║   · White-on-accent measured 3.96:1 → button text is dark, never   ║
-// ║     white (5.31:1 for near-black on accent).                       ║
+// ║  with this repo's own contrast maths (_contrast.test.ts):          ║
+// ║   · The reference's eyebrow gold (~#9a7418) measures 3.94:1 on the ║
+// ║     ground and 4.30:1 on white — REFUSED for text. Accent TEXT is  ║
+// ║     #7a5c12: 5.71:1 on the ground, worst case 4.58:1 on the        ║
+// ║     darkest overlay in use (black/10).                             ║
+// ║   · The reference's badge gold (~#d9a63a) is kept as the FILL for  ║
+// ║     buttons and badges — dark ink on it is 8.15:1, white on it     ║
+// ║     is 2.22:1, so button text is dark, never white (same rule the  ║
+// ║     purple theme had, for the same arithmetic reason).             ║
+// ║   · Faint text is #566174: worst case 4.60:1 across the nine       ║
+// ║     surfaces the app draws (ground, white, elevated, black/0.02–   ║
+// ║     0.10 overlays, gold tints at 15–25 %).                          ║
 // ║                                                                    ║
-// ║  The companion test (_tokens.test.ts) scans app/bookisdom and FAILS on  ║
-// ║  any hex outside this set; _contrast.test.ts recomputes every      ║
+// ║  The companion test (_tokens.test.ts) scans app/bookisdom and FAILS║
+// ║  on any hex outside this set; _contrast.test.ts recomputes every   ║
 // ║  ratio recorded here. Consistency is enforced, not intended.       ║
-// ║                                                                    ║
-// ║  The gold palette did not die — it belongs to the LIFEMAP app       ║
-// ║  (see LEGACY_LIFEMAP_HEX below) and is barred from app/bookisdom.        ║
 // ╚══════════════════════════════════════════════════════════════════╝
 
-/** Page background — deep navy-black (mandated #0B0E17). */
-export const BG = "#0b0e17";
+/** Page ground — pale blue-grey. The body adds a warm radial glow on top (globals.css)
+ *  at ≤16 % gold, which is lighter than the gold tints measured below. */
+export const BG = "#f3f5f9";
 
-/** Card / primary surface (mandated #151A27). */
-export const SURFACE = "#151a27";
+/** Card / primary surface — white. */
+export const SURFACE = "#ffffff";
 
-/** Elevated card / secondary surface — one step above SURFACE (mandated #1C2233). */
-export const ELEVATED = "#1c2233";
+/** Elevated / secondary surface: nav bars, search pills, inset panels. */
+export const ELEVATED = "#eaedf3";
 
-/** Hairline border (mandated #1F2535). Most borders remain white/10 utilities. */
-export const BORDER = "#1f2535";
+/** Hairline border. Most borders remain black/5–black/15 utilities. */
+export const BORDER = "#e2e6ee";
 
-/** The brand accent. Mandate #a855f7 nudged +AA (see header). */
-export const ACCENT = "#ab5bf7";
+/** Accent for TEXT, icons and borders — bronze gold. See header for why not brighter. */
+export const ACCENT = "#7a5c12";
 
-/** Brighter accent: hover, active, emphasis on raised surfaces (7.30:1 on BG). */
-export const ACCENT_BRIGHT = "#c084fc";
+/** Accent FILL for buttons, badges, chips (dark text on it: 8.15:1). Never used as text. */
+export const ACCENT_BRIGHT = "#d9a63a";
 
-/** Deep accent — gradient stop only, never standalone text (3.38:1 on BG). */
-export const ACCENT_DEEP = "#7c3aed";
+/** Deeper fill — button hover and the far gradient stop (dark text: 6.43:1). */
+export const ACCENT_DEEP = "#c8901f";
 
-/** Darker accent shade — theme scale only, never a page fill. */
-export const ACCENT_DARK = "#6d28d9";
+/** Darkest accent — hover state for accent TEXT (6.92:1 on the ground). */
+export const ACCENT_DARK = "#6b5010";
 
-/** Default foreground (mandated Text Primary #F8FAFC — softer than pure white). */
-export const FOREGROUND = "#f8fafc";
+/** Default foreground — near-black ink (16.6:1 on the ground). */
+export const FOREGROUND = "#14161c";
 
-/** Print/paper foreground — the manuscript preview only, where the surface is light.
- *  Deliberately outside the dark theme: it previews PAPER. */
+/** Print/paper foreground — the manuscript preview, which previews PAPER. */
 export const PAPER = "#f0ece4";
 
-/** Muted foreground (mandated Text Secondary #94A3B8 = slate-400). 7.52:1 on BG. */
-export const MUTED = "#94a3b8";
+/** Muted foreground (gray-600). 6.92:1 on the ground, ≥5.5:1 on every surface. */
+export const MUTED = "#4b5563";
 
-/** Faintest text tier. The mandate's "Text Muted #64748b" measured 3.18:1 on the
- *  lightest surface (white/10 over BG) and 4.05:1 even on the page — below AA for
- *  normal text, which is what 0.62–0.72rem labels are. Same slate hue, recalibrated
- *  against ALL nine surfaces the app draws on (page, SURFACE, ELEVATED, white/0.02–0.10,
- *  accent/0.06–0.15): worst case 4.67:1, still visibly fainter than MUTED. */
-export const TEXT_FAINT = "#8290a6";
+/** Faintest text tier. Recalibrated against ALL surfaces in use — worst case 4.60:1 on a
+ *  black/10 overlay — and still visibly fainter than MUTED. */
+export const TEXT_FAINT = "#566174";
 
 /** Measured WCAG contrast of each text tier against BG. Recomputed by _contrast.test.ts —
  *  these are recorded so the choice is auditable, not asserted from memory. */
 export const TEXT_CONTRAST = {
-  "slate-200": 15.64,
-  "slate-300": 12.98,
-  "slate-400": 7.52,
-  TEXT_FAINT: 5.96, // on BG; worst case across all surfaces is 4.67:1
+  "slate-600": 6.94,
+  "slate-700": 9.49,
+  "slate-800": 13.4,
+  TEXT_FAINT: 5.73, // on BG; worst case across all surfaces is 4.60:1
 } as const;
 
 // ── Epistemic tier colours ─────────────────────────────────────────────────────
 // SEMANTIC, not decorative: each encodes one tier from epistemics.ts. Re-anchored to
-// the theme's own semantic hues (positive/chart-blue/negative); each measured ≥5:1 on BG.
-/** ประจักษ์ — direct count (theme positive, 8.46:1). */
-export const TIER_DIRECT = "#22c55e";
-/** อนุมาน — derived by disclosed formula (theme chart blue, 9.00:1). */
-export const TIER_DERIVED = "#38bdf8";
-/** สัญญา — heuristic label (amber kept: the theme has no caution hue, 11.55:1). */
-export const TIER_HEURISTIC = "#fbbf24";
-/** อวิสัย — refused (theme negative, 5.12:1). */
-export const TIER_REFUSED = "#ef4444";
+// shades that clear AA on a LIGHT ground; each measured ≥4.75:1 on every surface.
+/** ประจักษ์ — direct count (green-800, 6.53:1 on the ground). */
+export const TIER_DIRECT = "#166534";
+/** อนุมาน — derived by disclosed formula (blue-700, 6.14:1). */
+export const TIER_DERIVED = "#1d4ed8";
+/** สัญญา — heuristic label (amber-800, 6.50:1). */
+export const TIER_HEURISTIC = "#92400e";
+/** อวิสัย — refused (red-700, 5.93:1). */
+export const TIER_REFUSED = "#b91c1c";
 
 /** Every hex literal permitted in app/bookisdom. The guard test enforces this list.
  *  Adding a colour means adding it HERE first, with a reason — which is the point:
@@ -111,10 +113,3 @@ export const PALETTE = {
 export const ALLOWED_HEX: ReadonlySet<string> = new Set(
   Object.values(PALETTE).map((h) => h.toLowerCase())
 );
-
-/** The gold palette now belongs ONLY to the lifemap app (register/login/lifemap pages
- *  and their tailwind `gold` utilities + `.gold-gradient`). Named here so the
- *  tailwind guard can allow it there while app/bookisdom remains barred from using it. */
-export const LEGACY_LIFEMAP_HEX: ReadonlySet<string> = new Set([
-  "#c9a84c", "#e6c86a", "#a8893d",
-]);

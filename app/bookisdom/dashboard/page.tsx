@@ -211,14 +211,14 @@ export default function DashboardPage() {
   }, [projects, query, filter, sort]);
 
   return (
-    <div className="min-h-screen text-slate-200" style={{ background: "#0b0e17" }}>
+    <div className="min-h-screen text-slate-800" style={{ background: "#f3f5f9" }}>
       {/* Top nav */}
-      <nav className="border-b border-white/10 bg-[#0b0e17]/95 backdrop-blur-xl sticky top-0 z-50">
+      <nav className="border-b border-black/10 bg-[#f3f5f9]/95 backdrop-blur-xl sticky top-0 z-50">
         <div className="max-w-screen-2xl mx-auto px-4 sm:px-8 py-4 flex items-center justify-between">
           <div className="flex items-center gap-x-8">
             <Link href="/" className="flex items-center gap-x-3">
-              <div className="w-9 h-9 rounded-2xl bg-gradient-to-br from-[#ab5bf7] to-[#7c3aed] flex items-center justify-center">
-                <BookOpen className="w-5 h-5 text-[#0b0e17]" />
+              <div className="w-9 h-9 rounded-2xl bg-gradient-to-br from-[#d9a63a] to-[#c8901f] flex items-center justify-center">
+                <BookOpen className="w-5 h-5 text-[#14161c]" />
               </div>
               <div className="text-2xl font-semibold tracking-tight">
                 Nara<span className="accent-gradient">Clear</span>
@@ -233,21 +233,21 @@ export default function DashboardPage() {
             </div>
           </div>
           <div className="flex items-center gap-x-3">
-            <div className="hidden sm:flex items-center gap-x-2 px-3 py-1.5 rounded-2xl bg-emerald-950/50 border border-emerald-900/50 text-xs">
+            <div className="hidden sm:flex items-center gap-x-2 px-3 py-1.5 rounded-2xl bg-emerald-50 border border-emerald-200 text-xs">
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-              <span className="text-emerald-400 font-medium">Bookisdom</span>
-              <span className="text-emerald-500/50">•</span>
-              <span className="text-emerald-400/80 text-[10px]">deterministic</span>
+              <span className="text-emerald-700 font-medium">Bookisdom</span>
+              <span className="text-emerald-700">•</span>
+              <span className="text-emerald-700 text-[10px]">deterministic</span>
             </div>
             {isPaid ? (
-              <span className="flex items-center gap-x-1.5 px-3 py-1.5 rounded-2xl bg-[#ab5bf7]/15 border border-[#ab5bf7]/40 text-xs font-semibold text-[#ab5bf7]" title="แผนปัจจุบัน">
+              <span className="flex items-center gap-x-1.5 px-3 py-1.5 rounded-2xl bg-[#d9a63a]/15 border border-[#7a5c12]/40 text-xs font-semibold text-[#7a5c12]" title="แผนปัจจุบัน">
                 <Crown className="w-3.5 h-3.5" /> {plan === "team" ? "Team" : "Pro"}
               </span>
             ) : (
               <button
                 onClick={upgrade}
                 disabled={upgrading || needLogin}
-                className="flex items-center gap-x-1.5 px-3.5 py-1.5 rounded-2xl bg-[#ab5bf7] text-[#0b0e17] text-xs font-semibold hover:bg-[#c084fc] disabled:opacity-50 transition-colors"
+                className="flex items-center gap-x-1.5 px-3.5 py-1.5 rounded-2xl bg-[#d9a63a] text-[#14161c] text-xs font-semibold hover:bg-[#c8901f] disabled:opacity-50 transition-colors"
                 title="อัปเกรดเป็น Pro — cloud sync, version history, saga เต็มระบบ"
               >
                 {upgrading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Crown className="w-3.5 h-3.5" />}
@@ -264,15 +264,15 @@ export default function DashboardPage() {
           <div>
             <div className="flex items-center gap-x-3">
               <h1 className="text-3xl sm:text-4xl font-semibold tracking-tight">หนังสือของฉัน</h1>
-              <span className="px-3 py-1 text-xs font-mono tracking-wider bg-white/5 border border-white/10 rounded-full text-[#ab5bf7] self-start mt-2">BOOKISDOM</span>
+              <span className="px-3 py-1 text-xs font-mono tracking-wider bg-black/[0.03] border border-black/10 rounded-full text-[#7a5c12] self-start mt-2">BOOKISDOM</span>
             </div>
-            <p className="text-slate-400 mt-1 text-[15px]">จัดการโปรเจกต์ ต้นฉบับ และเครื่องมือ Bookisdom — ทุกตัวเลขวัดได้จริง</p>
+            <p className="text-slate-600 mt-1 text-[15px]">จัดการโปรเจกต์ ต้นฉบับ และเครื่องมือ Bookisdom — ทุกตัวเลขวัดได้จริง</p>
           </div>
           <div className="flex items-center gap-x-3">
-            <Link href="/bookisdom" className="flex items-center gap-x-2 px-6 py-3 rounded-3xl bg-[#ab5bf7] text-[#0b0e17] font-semibold text-sm hover:bg-[#c084fc] active:scale-[0.985] transition-all">
+            <Link href="/bookisdom" className="flex items-center gap-x-2 px-6 py-3 rounded-3xl bg-[#d9a63a] text-[#14161c] font-semibold text-sm hover:bg-[#c8901f] active:scale-[0.985] transition-all">
               <Plus className="w-4 h-4" /> สร้างหนังสือใหม่
             </Link>
-            <button onClick={loadProjects} className="flex items-center justify-center w-11 h-11 rounded-3xl border border-white/10 hover:bg-white/5 text-slate-400 hover:text-white transition-colors" aria-label="รีเฟรชรายการ">
+            <button onClick={loadProjects} className="flex items-center justify-center w-11 h-11 rounded-3xl border border-black/10 hover:bg-black/[0.04] text-slate-600 hover:text-[#14161c] transition-colors" aria-label="รีเฟรชรายการ">
               <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
             </button>
           </div>
@@ -280,21 +280,21 @@ export default function DashboardPage() {
 
         {/* KPI stats — all real */}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
-          <Kpi label="หนังสือทั้งหมด" value={String(stats.count)} icon={<BookOpen className="w-7 h-7" />} tint="text-[#ab5bf7]/30" />
-          <Kpi label="คำทั้งหมด (ประเมิน)" value={fmt(stats.words)} icon={<FileText className="w-7 h-7" />} tint="text-sky-400/30" />
-          <Kpi label="แชร์สาธารณะ" value={String(stats.shared)} icon={<Share2 className="w-7 h-7" />} tint="text-violet-400/30" />
-          <Kpi label="ต้นฉบับ (ในเครื่อง)" value={String(manuscripts.length)} icon={<HardDrive className="w-7 h-7" />} tint="text-emerald-400/30" />
-          <Kpi label="ตัวอักษรที่บันทึก" value={fmt(localChars)} icon={<Type className="w-7 h-7" />} tint="text-fuchsia-400/30" />
+          <Kpi label="หนังสือทั้งหมด" value={String(stats.count)} icon={<BookOpen className="w-7 h-7" />} tint="text-[#7a5c12]/30" />
+          <Kpi label="คำทั้งหมด (ประเมิน)" value={fmt(stats.words)} icon={<FileText className="w-7 h-7" />} tint="text-sky-700" />
+          <Kpi label="แชร์สาธารณะ" value={String(stats.shared)} icon={<Share2 className="w-7 h-7" />} tint="text-violet-700" />
+          <Kpi label="ต้นฉบับ (ในเครื่อง)" value={String(manuscripts.length)} icon={<HardDrive className="w-7 h-7" />} tint="text-emerald-700" />
+          <Kpi label="ตัวอักษรที่บันทึก" value={fmt(localChars)} icon={<Type className="w-7 h-7" />} tint="text-fuchsia-700" />
         </div>
 
         {/* Quick actions */}
         <div className="mb-8">
           <div className="section-header mb-3 px-1 text-xs uppercase tracking-wider text-faint font-semibold">การดำเนินการด่วน</div>
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-            <QuickAction href="/bookisdom" icon={<Wand2 className="w-6 h-6" />} title="เครื่องมือ prompt" sub="สร้างชุด prompt แต่งหนังสือคุณภาพสูง" cta="เปิดเครื่องมือ" tone="from-indigo-500/20 to-violet-500/10 text-indigo-400" />
-            <QuickAction href="/bookisdom/studio" icon={<Play className="w-6 h-6" />} title="Bookisdom Studio" sub="รัน prompt ด้วย API key ของคุณเอง" cta="เปิด Studio" tone="from-[#ab5bf7]/20 to-[#7c3aed]/10 text-[#ab5bf7]" />
-            <QuickAction href="/bookisdom?tool=thai" icon={<Search className="w-6 h-6" />} title="วิเคราะห์ร้อยแก้ว" sub="ตรวจไทย/EN + NIS audit ฟรี ไม่เรียก AI" cta="เริ่มวิเคราะห์" tone="from-emerald-500/20 to-teal-500/10 text-emerald-400" />
-            <QuickAction href="/bookisdom/kdp" icon={<BookMarked className="w-6 h-6" />} title="เตรียมส่ง KDP" sub="สันปก ขนาดปก และเช็กลิสต์ metadata — สูตรจริงของ Amazon" cta="คำนวณ" tone="from-amber-500/20 to-orange-500/10 text-amber-400" />
+            <QuickAction href="/bookisdom" icon={<Wand2 className="w-6 h-6" />} title="เครื่องมือ prompt" sub="สร้างชุด prompt แต่งหนังสือคุณภาพสูง" cta="เปิดเครื่องมือ" tone="from-indigo-500/20 to-violet-500/10 text-indigo-700" />
+            <QuickAction href="/bookisdom/studio" icon={<Play className="w-6 h-6" />} title="Bookisdom Studio" sub="รัน prompt ด้วย API key ของคุณเอง" cta="เปิด Studio" tone="from-[#d9a63a]/20 to-[#c8901f]/10 text-[#7a5c12]" />
+            <QuickAction href="/bookisdom?tool=thai" icon={<Search className="w-6 h-6" />} title="วิเคราะห์ร้อยแก้ว" sub="ตรวจไทย/EN + NIS audit ฟรี ไม่เรียก AI" cta="เริ่มวิเคราะห์" tone="from-emerald-500/20 to-teal-500/10 text-emerald-700" />
+            <QuickAction href="/bookisdom/kdp" icon={<BookMarked className="w-6 h-6" />} title="เตรียมส่ง KDP" sub="สันปก ขนาดปก และเช็กลิสต์ metadata — สูตรจริงของ Amazon" cta="คำนวณ" tone="from-amber-500/20 to-orange-500/10 text-amber-800" />
           </div>
         </div>
 
@@ -303,25 +303,25 @@ export default function DashboardPage() {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-y-3 mb-4 px-1">
             <div>
               <div className="text-xs uppercase tracking-wider text-faint font-semibold mb-1">โปรเจกต์นิยายและหนังสือ</div>
-              <div className="text-xl font-semibold tracking-tight">My Library <span className="text-slate-400 font-normal text-base">({stats.count})</span></div>
+              <div className="text-xl font-semibold tracking-tight">My Library <span className="text-slate-600 font-normal text-base">({stats.count})</span></div>
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <div className="relative w-full sm:w-64">
-                <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="ค้นหาหนังสือ…" aria-label="ค้นหาหนังสือ" className="w-full bg-white/5 border border-white/10 focus:border-white/30 text-sm placeholder:text-faint rounded-3xl py-2.5 pl-10 pr-4 outline-none" />
+                <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="ค้นหาหนังสือ…" aria-label="ค้นหาหนังสือ" className="w-full bg-black/[0.03] border border-black/10 focus:border-black/30 text-sm placeholder:text-faint rounded-3xl py-2.5 pl-10 pr-4 outline-none" />
                 <Search className="w-4 h-4 absolute left-4 top-3 text-faint" />
               </div>
-              <div className="flex items-center bg-white/5 border border-white/10 rounded-3xl p-1 text-xs">
+              <div className="flex items-center bg-black/[0.03] border border-black/10 rounded-3xl p-1 text-xs">
                 {([["all", "ทั้งหมด"], ["private", "ส่วนตัว"], ["public", "แชร์"]] as const).map(([k, label]) => (
-                  <button key={k} onClick={() => setFilter(k)} aria-pressed={filter === k} className={`px-3.5 py-1.5 rounded-[20px] font-medium transition-colors ${filter === k ? "bg-[#ab5bf7] text-[#0b0e17]" : "text-slate-400 hover:text-white"}`}>{label}</button>
+                  <button key={k} onClick={() => setFilter(k)} aria-pressed={filter === k} className={`px-3.5 py-1.5 rounded-[20px] font-medium transition-colors ${filter === k ? "bg-[#d9a63a] text-[#14161c]" : "text-slate-600 hover:text-[#14161c]"}`}>{label}</button>
                 ))}
               </div>
-              <select value={sort} onChange={(e) => setSort(e.target.value as Sort)} className="bg-white/5 border border-white/10 rounded-3xl px-3 py-2 text-xs text-slate-300 outline-none">
+              <select value={sort} onChange={(e) => setSort(e.target.value as Sort)} className="bg-black/[0.03] border border-black/10 rounded-3xl px-3 py-2 text-xs text-slate-700 outline-none">
                 <option value="recent">ใหม่ล่าสุด</option>
                 <option value="title">ชื่อ A-Z</option>
               </select>
-              <div className="flex items-center border border-white/10 rounded-3xl p-1 text-xs bg-white/5">
-                <button onClick={() => setView("grid")} aria-pressed={view === "grid"} className={`px-3 py-1.5 rounded-[20px] flex items-center gap-1.5 ${view === "grid" ? "bg-white/10 text-white" : "text-slate-400"}`} aria-label="มุมมองการ์ด"><LayoutGrid className="w-3.5 h-3.5" /></button>
-                <button onClick={() => setView("list")} aria-pressed={view === "list"} className={`px-3 py-1.5 rounded-[20px] flex items-center gap-1.5 ${view === "list" ? "bg-white/10 text-white" : "text-slate-400"}`} aria-label="มุมมองตาราง"><List className="w-3.5 h-3.5" /></button>
+              <div className="flex items-center border border-black/10 rounded-3xl p-1 text-xs bg-black/[0.03]">
+                <button onClick={() => setView("grid")} aria-pressed={view === "grid"} className={`px-3 py-1.5 rounded-[20px] flex items-center gap-1.5 ${view === "grid" ? "bg-black/[0.06] text-[#14161c]" : "text-slate-600"}`} aria-label="มุมมองการ์ด"><LayoutGrid className="w-3.5 h-3.5" /></button>
+                <button onClick={() => setView("list")} aria-pressed={view === "list"} className={`px-3 py-1.5 rounded-[20px] flex items-center gap-1.5 ${view === "list" ? "bg-black/[0.06] text-[#14161c]" : "text-slate-600"}`} aria-label="มุมมองตาราง"><List className="w-3.5 h-3.5" /></button>
               </div>
             </div>
           </div>
@@ -332,24 +332,24 @@ export default function DashboardPage() {
 
           {!loading && needLogin && (
             <div className="glass-card rounded-3xl p-10 text-center">
-              <Lock className="w-10 h-10 mx-auto mb-3 text-[#ab5bf7]/40" />
-              <p className="text-slate-300">เข้าสู่ระบบเพื่อบันทึกและจัดการหนังสือของคุณ</p>
-              <Link href="/login?callbackUrl=/bookisdom/dashboard" className="inline-block mt-4 text-sm text-[#ab5bf7] hover:underline">ไปหน้าเข้าสู่ระบบ →</Link>
-              <p className="text-xs text-faint mt-4">หรือ <Link href="/bookisdom" className="text-[#ab5bf7] hover:underline">สร้าง prompt โดยไม่ต้องล็อกอิน</Link> (จะไม่ถูกบันทึก)</p>
+              <Lock className="w-10 h-10 mx-auto mb-3 text-[#7a5c12]/40" />
+              <p className="text-slate-700">เข้าสู่ระบบเพื่อบันทึกและจัดการหนังสือของคุณ</p>
+              <Link href="/login?callbackUrl=/bookisdom/dashboard" className="inline-block mt-4 text-sm text-[#7a5c12] hover:underline">ไปหน้าเข้าสู่ระบบ →</Link>
+              <p className="text-xs text-faint mt-4">หรือ <Link href="/bookisdom" className="text-[#7a5c12] hover:underline">สร้าง prompt โดยไม่ต้องล็อกอิน</Link> (จะไม่ถูกบันทึก)</p>
             </div>
           )}
 
           {!loading && !needLogin && setupDetail && (
             <div className="glass-card rounded-3xl p-10 text-center">
-              <Wrench className="w-10 h-10 mx-auto mb-3 text-[#ab5bf7]/50" />
-              <p className="text-slate-300">เซิร์ฟเวอร์ยังตั้งค่าไม่เสร็จ</p>
+              <Wrench className="w-10 h-10 mx-auto mb-3 text-[#7a5c12]/50" />
+              <p className="text-slate-700">เซิร์ฟเวอร์ยังตั้งค่าไม่เสร็จ</p>
               <p className="text-xs text-faint mt-1.5 max-w-md mx-auto">{setupDetail}</p>
               <p className="text-xs text-faint mt-3">
-                ถ้าคุณไม่ใช่ผู้ดูแลระบบ: ต้นฉบับในเครื่องยังใช้ได้ตามปกติ และ<Link href="/bookisdom" className="text-[#ab5bf7] hover:underline">เครื่องมือ prompt ทำงานได้โดยไม่ต้องมีเซิร์ฟเวอร์</Link>
+                ถ้าคุณไม่ใช่ผู้ดูแลระบบ: ต้นฉบับในเครื่องยังใช้ได้ตามปกติ และ<Link href="/bookisdom" className="text-[#7a5c12] hover:underline">เครื่องมือ prompt ทำงานได้โดยไม่ต้องมีเซิร์ฟเวอร์</Link>
               </p>
               <button
                 onClick={loadProjects}
-                className="inline-flex items-center gap-1.5 mt-4 text-sm px-4 py-2 rounded-lg border border-[#ab5bf7]/40 text-[#ab5bf7] hover:bg-[#ab5bf7]/10 transition"
+                className="inline-flex items-center gap-1.5 mt-4 text-sm px-4 py-2 rounded-lg border border-[#7a5c12]/40 text-[#7a5c12] hover:bg-[#d9a63a]/15 transition"
               >
                 <RefreshCw className="w-4 h-4" /> ตรวจอีกครั้ง
               </button>
@@ -358,14 +358,14 @@ export default function DashboardPage() {
 
           {!loading && !needLogin && !setupDetail && loadError && (
             <div className="glass-card rounded-3xl p-10 text-center">
-              <CloudOff className="w-10 h-10 mx-auto mb-3 text-rose-400/50" />
-              <p className="text-slate-300">โหลดรายการหนังสือไม่สำเร็จ</p>
+              <CloudOff className="w-10 h-10 mx-auto mb-3 text-rose-700" />
+              <p className="text-slate-700">โหลดรายการหนังสือไม่สำเร็จ</p>
               <p className="text-xs text-faint mt-1.5">
                 นี่<strong>ไม่ได้</strong>แปลว่าคุณไม่มีหนังสือ — แค่ตอนนี้เราติดต่อเซิร์ฟเวอร์ไม่ได้ ต้นฉบับที่เก็บในเครื่องยังอยู่ครบ
               </p>
               <button
                 onClick={loadProjects}
-                className="inline-flex items-center gap-1.5 mt-4 text-sm px-4 py-2 rounded-lg border border-[#ab5bf7]/40 text-[#ab5bf7] hover:bg-[#ab5bf7]/10 transition"
+                className="inline-flex items-center gap-1.5 mt-4 text-sm px-4 py-2 rounded-lg border border-[#7a5c12]/40 text-[#7a5c12] hover:bg-[#d9a63a]/15 transition"
               >
                 <RefreshCw className="w-4 h-4" /> ลองอีกครั้ง
               </button>
@@ -374,9 +374,9 @@ export default function DashboardPage() {
 
           {!loading && !needLogin && !setupDetail && !loadError && projects.length === 0 && (
             <div className="glass-card rounded-3xl p-10 text-center text-faint">
-              <BookOpen className="w-10 h-10 mx-auto mb-3 text-[#ab5bf7]/40" />
+              <BookOpen className="w-10 h-10 mx-auto mb-3 text-[#7a5c12]/40" />
               <p>ยังไม่มีหนังสือที่บันทึกไว้</p>
-              <Link href="/bookisdom" className="inline-flex items-center gap-1 mt-4 text-sm text-[#ab5bf7] hover:underline">เริ่มเล่มแรก <ArrowRight className="w-4 h-4" /></Link>
+              <Link href="/bookisdom" className="inline-flex items-center gap-1 mt-4 text-sm text-[#7a5c12] hover:underline">เริ่มเล่มแรก <ArrowRight className="w-4 h-4" /></Link>
             </div>
           )}
 
@@ -404,7 +404,7 @@ export default function DashboardPage() {
             <div className="glass-card rounded-3xl overflow-hidden overflow-x-auto">
               <table className="w-full text-sm min-w-[640px]">
                 <thead>
-                  <tr className="border-b border-white/10 text-xs text-slate-400">
+                  <tr className="border-b border-black/10 text-xs text-slate-600">
                     <th className="text-left py-3 px-6 font-normal">ชื่อเรื่อง</th>
                     <th className="text-left py-3 px-4 font-normal">ประเภท</th>
                     <th className="text-right py-3 px-4 font-normal">บท (วางแผน)</th>
@@ -413,19 +413,19 @@ export default function DashboardPage() {
                     <th className="w-24" />
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-white/5">
+                <tbody className="divide-y divide-black/5">
                   {visible.map((p) => {
                     const bt = BOOK_TYPES[p.type as BookTypeKey];
                     return (
-                      <tr key={p.id} className="hover:bg-white/5">
+                      <tr key={p.id} className="hover:bg-black/[0.04]">
                         <td className="px-6 py-4 font-medium">{p.title}</td>
-                        <td className="px-4 py-4 text-xs text-slate-400">{bt?.label ?? p.type} • {titleCase(p.subGenre)}</td>
+                        <td className="px-4 py-4 text-xs text-slate-600">{bt?.label ?? p.type} • {titleCase(p.subGenre)}</td>
                         <td className="px-4 py-4 text-right font-mono text-xs">{p.config?.chapters ?? "—"}</td>
                         <td className="px-4 py-4 text-right font-mono text-xs">{fmt(words(p))}</td>
-                        <td className="px-6 py-4 text-right text-xs text-slate-400">{fmtDate(p.updatedAt)}</td>
+                        <td className="px-6 py-4 text-right text-xs text-slate-600">{fmtDate(p.updatedAt)}</td>
                         <td className="px-4 py-4 text-right whitespace-nowrap">
-                          <button onClick={() => router.push(`/bookisdom?project=${p.id}`)} className="text-[#ab5bf7] text-xs px-3 py-1 rounded-xl border border-white/10 hover:bg-white/5">เปิด</button>
-                          <button onClick={() => setLogProject(p)} aria-label="บันทึกการผลิต" title="บันทึกการผลิต" className="ml-1.5 text-slate-400 hover:text-[#ab5bf7] p-1.5"><ClipboardList className="w-4 h-4 inline" /></button>
+                          <button onClick={() => router.push(`/bookisdom?project=${p.id}`)} className="text-[#7a5c12] text-xs px-3 py-1 rounded-xl border border-black/10 hover:bg-black/[0.04]">เปิด</button>
+                          <button onClick={() => setLogProject(p)} aria-label="บันทึกการผลิต" title="บันทึกการผลิต" className="ml-1.5 text-slate-600 hover:text-[#6b5010] p-1.5"><ClipboardList className="w-4 h-4 inline" /></button>
                         </td>
                       </tr>
                     );
@@ -442,7 +442,7 @@ export default function DashboardPage() {
             <div className="flex items-center justify-between mb-3 px-1">
               <div>
                 <div className="text-xs uppercase tracking-wider text-faint font-semibold">ต้นฉบับที่บันทึก (ในเครื่องนี้)</div>
-                <div className="text-sm text-slate-400">เก็บฝั่งเบราว์เซอร์ ไม่ขึ้น server — เปิดได้เฉพาะเครื่องนี้</div>
+                <div className="text-sm text-slate-600">เก็บฝั่งเบราว์เซอร์ ไม่ขึ้น server — เปิดได้เฉพาะเครื่องนี้</div>
               </div>
             </div>
             <div className="glass-card rounded-3xl p-1">
@@ -462,21 +462,21 @@ export default function DashboardPage() {
                     </thead>
                     <tbody>
                       {manuscripts.map((m) => (
-                        <tr key={m.id} className="hover:bg-white/5">
+                        <tr key={m.id} className="hover:bg-black/[0.04]">
                           <td className="px-5 py-3.5 font-medium truncate max-w-[200px]" title={m.title}>{m.title}</td>
                           <td className="px-4 text-center">
-                            <span className={`inline-block text-[10px] px-2 py-px rounded ${m.lang === "th" ? "bg-sky-900/60 text-sky-300" : "bg-violet-900/60 text-violet-300"}`}>{m.lang === "th" ? "ไทย" : "EN"}</span>
+                            <span className={`inline-block text-[10px] px-2 py-px rounded ${m.lang === "th" ? "bg-sky-900/60 text-sky-700" : "bg-violet-900/60 text-violet-700"}`}>{m.lang === "th" ? "ไทย" : "EN"}</span>
                           </td>
-                          <td className="px-4 text-right font-mono text-xs text-slate-300">{m.text.length.toLocaleString("th-TH")}</td>
-                          <td className="px-5 text-right text-xs text-slate-400">{fmtDate(m.updatedAt)}</td>
+                          <td className="px-4 text-right font-mono text-xs text-slate-700">{m.text.length.toLocaleString("th-TH")}</td>
+                          <td className="px-5 text-right text-xs text-slate-600">{fmtDate(m.updatedAt)}</td>
                           <td className="px-3 text-right whitespace-nowrap">
-                            <button onClick={() => router.push(`/bookisdom?analyze=${m.id}`)} className="text-emerald-400 hover:text-emerald-300 p-1.5" aria-label="Analyze"><Search className="w-4 h-4" /></button>
-                            <button onClick={() => exportEpub(m)} className="text-[#ab5bf7] hover:text-[#c084fc] p-1.5" aria-label="Export EPUB" title="ดาวน์โหลด .epub"><BookDown className="w-4 h-4" /></button>
+                            <button onClick={() => router.push(`/bookisdom?analyze=${m.id}`)} className="text-emerald-700 hover:text-emerald-700 p-1.5" aria-label="Analyze"><Search className="w-4 h-4" /></button>
+                            <button onClick={() => exportEpub(m)} className="text-[#7a5c12] hover:text-[#6b5010] p-1.5" aria-label="Export EPUB" title="ดาวน์โหลด .epub"><BookDown className="w-4 h-4" /></button>
                             <DeleteButton
                               onDelete={() => delManuscript(m.id)}
                               what="ต้นฉบับ"
-                              idleClass="text-faint hover:text-red-400 p-1.5"
-                              armedClass="text-[10px] font-semibold px-2 py-1 rounded-lg bg-red-950/60 border border-red-500/60 text-red-300 whitespace-nowrap"
+                              idleClass="text-faint hover:text-red-700 p-1.5"
+                              armedClass="text-[10px] font-semibold px-2 py-1 rounded-lg bg-red-50 border border-red-500/60 text-red-700 whitespace-nowrap"
                             />
                           </td>
                         </tr>
@@ -497,14 +497,14 @@ export default function DashboardPage() {
                 <Mini value={String(manuscripts.length)} label="ต้นฉบับ" />
                 <Mini value={fmt(localChars)} label="ตัวอักษร" />
               </div>
-              <p className="text-xs text-faint mt-4 leading-relaxed border-t border-white/10 pt-4">
+              <p className="text-xs text-faint mt-4 leading-relaxed border-t border-black/10 pt-4">
                 ตัวเลขทั้งหมดมาจากข้อมูลจริง (โปรเจกต์ที่บันทึก + ต้นฉบับในเบราว์เซอร์) — ไม่มีสถิติประดิษฐ์
               </p>
               <div className="mt-auto pt-4 space-y-2">
-                <Link href="/bookisdom/studio" className="w-full py-2.5 text-xs rounded-2xl border border-white/10 hover:bg-white/5 flex items-center justify-center gap-x-2 text-[#ab5bf7] font-medium">
+                <Link href="/bookisdom/studio" className="w-full py-2.5 text-xs rounded-2xl border border-black/10 hover:bg-black/[0.04] flex items-center justify-center gap-x-2 text-[#7a5c12] font-medium">
                   เปิด Bookisdom Studio <ArrowRight className="w-3.5 h-3.5" />
                 </Link>
-                <Link href="/bookisdom?tool=thai" className="w-full py-2.5 text-xs rounded-2xl border border-white/10 hover:bg-white/5 flex items-center justify-center gap-x-2 text-emerald-400 font-medium">
+                <Link href="/bookisdom?tool=thai" className="w-full py-2.5 text-xs rounded-2xl border border-black/10 hover:bg-black/[0.04] flex items-center justify-center gap-x-2 text-emerald-700 font-medium">
                   วิเคราะห์ร้อยแก้ว <ArrowRight className="w-3.5 h-3.5" />
                 </Link>
               </div>
@@ -522,7 +522,7 @@ export default function DashboardPage() {
 
 function NavTab({ href, icon, label, active }: { href: string; icon: React.ReactNode; label: string; active?: boolean }) {
   return (
-    <Link href={href} className={`px-4 py-2 rounded-xl font-medium flex items-center gap-x-2 transition-colors ${active ? "text-[#ab5bf7]" : "text-slate-300 hover:bg-white/5 hover:text-[#ab5bf7]"}`}>
+    <Link href={href} className={`px-4 py-2 rounded-xl font-medium flex items-center gap-x-2 transition-colors ${active ? "text-[#7a5c12]" : "text-slate-700 hover:bg-black/[0.04] hover:text-[#6b5010]"}`}>
       {icon}<span>{label}</span>
     </Link>
   );
@@ -534,7 +534,7 @@ function Kpi({ label, value, icon, tint }: { label: string; value: string; icon:
       <div className="flex justify-between items-start">
         <div>
           <div className="text-xs text-faint font-medium tracking-wider">{label}</div>
-          <div className="text-3xl sm:text-4xl font-semibold text-white mt-1 tabular-nums">{value}</div>
+          <div className="text-3xl sm:text-4xl font-semibold text-[#14161c] mt-1 tabular-nums">{value}</div>
         </div>
         <span className={tint}>{icon}</span>
       </div>
@@ -544,12 +544,12 @@ function Kpi({ label, value, icon, tint }: { label: string; value: string; icon:
 
 function QuickAction({ href, icon, title, sub, cta, tone }: { href: string; icon: React.ReactNode; title: string; sub: string; cta: string; tone: string }) {
   return (
-    <Link href={href} className="group glass-card rounded-3xl p-5 hover:border-[#ab5bf7]/40 transition-colors flex gap-x-4">
+    <Link href={href} className="group glass-card rounded-3xl p-5 hover:border-[#7a5c12]/40 transition-colors flex gap-x-4">
       <div className={`w-11 h-11 flex-shrink-0 rounded-2xl bg-gradient-to-br ${tone} flex items-center justify-center group-hover:scale-110 transition-transform`}>{icon}</div>
       <div className="flex-1 min-w-0">
         <div className="font-semibold text-lg tracking-tight">{title}</div>
-        <div className="text-sm text-slate-400 mt-0.5">{sub}</div>
-        <div className="mt-3 flex items-center text-xs text-[#ab5bf7] font-medium">
+        <div className="text-sm text-slate-600 mt-0.5">{sub}</div>
+        <div className="mt-3 flex items-center text-xs text-[#7a5c12] font-medium">
           <span>{cta}</span><ArrowRight className="w-3.5 h-3.5 ml-1.5 group-hover:translate-x-0.5 transition-transform" />
         </div>
       </div>
@@ -566,34 +566,34 @@ function ProjectCard({ p, onOpen, onDelete, onOpenLog }: { p: Project; onOpen: (
         <span className="text-5xl drop-shadow">{bt?.icon ?? "📘"}</span>
         <span className="absolute top-3 right-3">
           {p.visibility === "public" ? (
-            <span className="text-[10px] px-2.5 py-px bg-emerald-900/70 border border-emerald-700 text-emerald-300 rounded-full flex items-center gap-x-1"><Globe className="w-3 h-3" /> แชร์</span>
+            <span className="text-[10px] px-2.5 py-px bg-emerald-900/70 border border-emerald-700 text-emerald-700 rounded-full flex items-center gap-x-1"><Globe className="w-3 h-3" /> แชร์</span>
           ) : (
-            <span className="text-[10px] px-2.5 py-px bg-black/60 border border-white/20 text-white rounded-full flex items-center gap-x-1"><Lock className="w-3 h-3" /> ส่วนตัว</span>
+            <span className="text-[10px] px-2.5 py-px bg-black/60 border border-black/20 text-[#14161c] rounded-full flex items-center gap-x-1"><Lock className="w-3 h-3" /> ส่วนตัว</span>
           )}
         </span>
       </div>
       <div className="p-5 flex-1 flex flex-col">
         <div className="font-semibold text-[15px] leading-tight">{p.title}</div>
-        <div className="text-xs text-slate-400 mt-0.5">{bt?.label ?? p.type} • {titleCase(p.subGenre)}</div>
+        <div className="text-xs text-slate-600 mt-0.5">{bt?.label ?? p.type} • {titleCase(p.subGenre)}</div>
         <div className="mt-auto pt-4 flex justify-between text-[11px] text-faint">
           <span>{p.config?.chapters ? `${p.config.chapters} บท` : "—"}{w ? ` · ~${fmt(w)} คำ` : ""}</span>
           <span>{fmtDate(p.updatedAt)}</span>
         </div>
-        <div className="flex items-center gap-x-2 mt-3 pt-4 border-t border-white/10">
-          <button onClick={onOpen} className="flex-1 text-xs py-2 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 font-medium text-[#ab5bf7] transition-colors">เปิดใน Bookisdom →</button>
+        <div className="flex items-center gap-x-2 mt-3 pt-4 border-t border-black/10">
+          <button onClick={onOpen} className="flex-1 text-xs py-2 rounded-2xl bg-black/[0.03] hover:bg-black/[0.07] border border-black/10 font-medium text-[#7a5c12] transition-colors">เปิดใน Bookisdom →</button>
           <button
             onClick={onOpenLog}
             aria-label="บันทึกการผลิต"
             title="บันทึกการผลิต — ต้นทุนและตัวชี้วัดที่คุณกรอกเอง"
-            className="w-9 h-9 flex items-center justify-center rounded-2xl border border-white/10 hover:bg-white/10 hover:text-[#ab5bf7] text-slate-400 transition-colors"
+            className="w-9 h-9 flex items-center justify-center rounded-2xl border border-black/10 hover:bg-black/[0.07] hover:text-[#6b5010] text-slate-600 transition-colors"
           >
             <ClipboardList className="w-4 h-4" />
           </button>
           <DeleteButton
             onDelete={onDelete}
             what="หนังสือ"
-            idleClass="w-9 h-9 flex items-center justify-center rounded-2xl border border-white/10 hover:bg-red-950/40 hover:text-red-400 text-slate-400"
-            armedClass="h-9 px-3 text-xs font-semibold rounded-2xl bg-red-950/60 border border-red-500/60 text-red-300 whitespace-nowrap"
+            idleClass="w-9 h-9 flex items-center justify-center rounded-2xl border border-black/10 hover:bg-red-950/40 hover:text-red-700 text-slate-600"
+            armedClass="h-9 px-3 text-xs font-semibold rounded-2xl bg-red-50 border border-red-500/60 text-red-700 whitespace-nowrap"
           />
         </div>
       </div>
@@ -604,7 +604,7 @@ function ProjectCard({ p, onOpen, onDelete, onOpenLog }: { p: Project; onOpen: (
 function Mini({ value, label }: { value: string; label: string }) {
   return (
     <div>
-      <div className="text-2xl font-semibold text-white tabular-nums">{value}</div>
+      <div className="text-2xl font-semibold text-[#14161c] tabular-nums">{value}</div>
       <div className="text-[10px] text-faint -mt-0.5">{label}</div>
     </div>
   );

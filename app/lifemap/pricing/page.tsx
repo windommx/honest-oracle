@@ -97,15 +97,15 @@ export default function LifemapPricingPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-[#08080e]">
+    <div className="min-h-screen bg-[#f3f5f9]">
       <nav className="fixed top-0 left-0 right-0 z-50 glass-card">
         <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
           <Link href="/" className="flex items-center gap-2">
-            <Crown className="w-8 h-8 text-[#c9a84c]" />
+            <Crown className="w-8 h-8 text-[#7a5c12]" />
             <span className="text-xl font-semibold gold-gradient">NaraClear</span>
           </Link>
           <div className="flex gap-6 items-center">
-            <Link href="/lifemap/app" className="text-gray-300 hover:text-[#c9a84c] transition-colors">
+            <Link href="/lifemap/app" className="text-gray-700 hover:text-[#6b5010] transition-colors">
               กลับไปหน้า App
             </Link>
           </div>
@@ -116,26 +116,26 @@ export default function LifemapPricingPage() {
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-10">
             <h1 className="text-3xl font-bold gold-gradient mb-2">แผนราคา</h1>
-            <p className="text-gray-400">เริ่มต้นฟรี แล้วอัปเกรดเมื่อพร้อม</p>
+            <p className="text-gray-600">เริ่มต้นฟรี แล้วอัปเกรดเมื่อพร้อม</p>
           </div>
 
           <div className="glass-card rounded-2xl p-6 mb-8">
             {loading ? (
-              <div className="flex items-center justify-center gap-2 text-gray-400 py-6">
+              <div className="flex items-center justify-center gap-2 text-gray-600 py-6">
                 <Loader2 className="w-5 h-5 animate-spin" />
                 กำลังโหลด...
               </div>
             ) : usage ? (
-              <p className="text-gray-300 text-sm text-center">
+              <p className="text-gray-700 text-sm text-center">
                 แผนปัจจุบัน:{" "}
-                <span className="text-white/90 font-semibold">{usage.plan}</span>
+                <span className="text-[#14161c]/90 font-semibold">{usage.plan}</span>
               </p>
             ) : (
-              <p className="text-gray-400 text-sm text-center">
+              <p className="text-gray-600 text-sm text-center">
                 เข้าสู่ระบบเพื่อดูแผนปัจจุบัน
               </p>
             )}
-            {msg && <p className="text-red-400 text-sm text-center mt-3">{msg}</p>}
+            {msg && <p className="text-red-700 text-sm text-center mt-3">{msg}</p>}
           </div>
 
           <div className="grid md:grid-cols-3 gap-6">
@@ -143,20 +143,20 @@ export default function LifemapPricingPage() {
               <div
                 key={p.key}
                 className={`glass-card rounded-2xl p-7 border ${
-                  p.key === "pro" ? "border-gold/40" : "border-gold/10"
+                  p.key === "pro" ? "border-[#7a5c12]/50" : "border-[#7a5c12]/15"
                 }`}
               >
                 <div className="flex items-center justify-between mb-2">
-                  <p className="text-white/90 font-semibold text-lg">{p.name}</p>
-                  <span className="px-2 py-1 bg-gold/15 text-gold text-xs rounded">
+                  <p className="text-[#14161c]/90 font-semibold text-lg">{p.name}</p>
+                  <span className="px-2 py-1 bg-[#d9a63a]/15 text-[#7a5c12] text-xs rounded">
                     {p.badge}
                   </span>
                 </div>
-                <p className="text-3xl font-bold text-[#c9a84c] mb-4">{p.price}</p>
-                <ul className="space-y-2 text-sm text-gray-400 mb-6">
+                <p className="text-3xl font-bold text-[#7a5c12] mb-4">{p.price}</p>
+                <ul className="space-y-2 text-sm text-gray-600 mb-6">
                   {p.features.map((f) => (
                     <li key={f} className="flex gap-2">
-                      <span className="text-green-400">✓</span>
+                      <span className="text-green-800">✓</span>
                       <span>{f}</span>
                     </li>
                   ))}
@@ -166,8 +166,8 @@ export default function LifemapPricingPage() {
                     href={p.cta.href}
                     className={`w-full inline-block text-center px-4 py-3 rounded-xl font-semibold transition-colors ${
                       p.key === "pro"
-                        ? "bg-gold text-black hover:bg-gold-light"
-                        : "bg-white/5 border border-gold/20 text-white hover:border-gold/40"
+                        ? "bg-[#d9a63a] text-black hover:bg-[#c8901f]"
+                        : "bg-black/[0.03] border border-[#7a5c12]/25 text-[#14161c] hover:border-[#7a5c12]/50"
                     }`}
                   >
                     {p.cta.label}
@@ -176,7 +176,7 @@ export default function LifemapPricingPage() {
                   <button
                     onClick={p.cta.action}
                     disabled={billingLoading}
-                    className="w-full px-4 py-3 rounded-xl font-semibold bg-gold text-black hover:bg-gold-light transition-colors disabled:opacity-50"
+                    className="w-full px-4 py-3 rounded-xl font-semibold bg-[#d9a63a] text-black hover:bg-[#c8901f] transition-colors disabled:opacity-50"
                   >
                     {billingLoading ? "กำลังไป Stripe..." : p.cta.label}
                   </button>
@@ -185,9 +185,9 @@ export default function LifemapPricingPage() {
             ))}
           </div>
 
-          <div className="mt-10 p-4 bg-gold/10 rounded-xl border border-gold/20">
-            <p className="text-gray-300 text-sm text-center">
-              <span className="text-gold font-semibold">Transparency note:</span>{" "}
+          <div className="mt-10 p-4 bg-[#d9a63a]/10 rounded-xl border border-[#7a5c12]/25">
+            <p className="text-gray-700 text-sm text-center">
+              <span className="text-[#7a5c12] font-semibold">Transparency note:</span>{" "}
               ระบบนี้เป็นเครื่องมือเพื่อการสะท้อนตนเอง ไม่ใช่คำทำนายหรือการรับรองผลในชีวิตจริง
             </p>
           </div>

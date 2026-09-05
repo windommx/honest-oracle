@@ -39,30 +39,30 @@ export function ProductionLogPanel({ projectId, projectTitle, onClose }: {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div className="w-full max-w-2xl max-h-[85vh] flex flex-col bg-[#151a27] border border-white/10 rounded-3xl overflow-hidden">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
+      <div className="w-full max-w-2xl max-h-[85vh] flex flex-col bg-[#ffffff] border border-black/10 rounded-3xl overflow-hidden">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-black/10">
           <div>
             <div className="text-xs uppercase tracking-wider text-faint">บันทึกการผลิต</div>
             <div className="font-semibold text-[15px] truncate max-w-[420px]" title={projectTitle}>{projectTitle}</div>
           </div>
-          <button onClick={onClose} aria-label="ปิด" className="w-8 h-8 flex items-center justify-center rounded-xl border border-white/10 hover:bg-white/5 text-slate-400">
+          <button onClick={onClose} aria-label="ปิด" className="w-8 h-8 flex items-center justify-center rounded-xl border border-black/10 hover:bg-black/[0.04] text-slate-600">
             <X className="w-4 h-4" />
           </button>
         </div>
 
-        <div className="flex border-b border-white/10 px-2">
+        <div className="flex border-b border-black/10 px-2">
           <button
             onClick={() => setTab("cost")}
-            className={`flex items-center gap-1.5 px-4 py-2.5 text-xs font-medium border-b-2 transition-colors ${tab === "cost" ? "border-[#ab5bf7] text-[#ab5bf7]" : "border-transparent text-slate-400 hover:text-slate-200"}`}
+            className={`flex items-center gap-1.5 px-4 py-2.5 text-xs font-medium border-b-2 transition-colors ${tab === "cost" ? "border-[#7a5c12] text-[#7a5c12]" : "border-transparent text-slate-600 hover:text-slate-800"}`}
           >
             <Wallet className="w-3.5 h-3.5" /> ต้นทุน
           </button>
           <button
             onClick={() => setTab("metric")}
-            className={`flex items-center gap-1.5 px-4 py-2.5 text-xs font-medium border-b-2 transition-colors ${tab === "metric" ? "border-[#ab5bf7] text-[#ab5bf7]" : "border-transparent text-slate-400 hover:text-slate-200"}`}
+            className={`flex items-center gap-1.5 px-4 py-2.5 text-xs font-medium border-b-2 transition-colors ${tab === "metric" ? "border-[#7a5c12] text-[#7a5c12]" : "border-transparent text-slate-600 hover:text-slate-800"}`}
           >
             <TrendingUp className="w-3.5 h-3.5" /> ตัวชี้วัดเปิดตัว
           </button>
@@ -100,7 +100,7 @@ function CostTab({ projectId, entries, onChange }: { projectId: string; entries:
       <div className="flex gap-2 mb-4">
         <input value={amount} onChange={(e) => setAmount(e.target.value)} type="number" min="0" step="0.01" placeholder="จำนวนเงิน (บาท)" className="input w-36" />
         <input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="ค่าอะไร เช่น API เขียนบท 1-6" className="input flex-1" onKeyDown={(e) => e.key === "Enter" && submit()} />
-        <button onClick={submit} className="px-4 py-2.5 rounded-xl bg-[#ab5bf7] text-[#0b0e17] text-sm font-semibold hover:bg-[#c084fc] transition-colors whitespace-nowrap">บันทึก</button>
+        <button onClick={submit} className="px-4 py-2.5 rounded-xl bg-[#d9a63a] text-[#14161c] text-sm font-semibold hover:bg-[#c8901f] transition-colors whitespace-nowrap">บันทึก</button>
       </div>
 
       {summary && summary.count > 0 && (
@@ -119,18 +119,18 @@ function CostTab({ projectId, entries, onChange }: { projectId: string; entries:
       )}
       <div className="space-y-2">
         {entries?.map((e) => (
-          <div key={e.id} className="flex items-center justify-between gap-3 px-3 py-2.5 bg-white/[0.03] border border-white/10 rounded-xl">
+          <div key={e.id} className="flex items-center justify-between gap-3 px-3 py-2.5 bg-black/[0.02] border border-black/10 rounded-xl">
             <div className="min-w-0">
               <div className="text-sm truncate">{e.label}</div>
               <div className="text-[11px] text-faint">{new Date(e.createdAt).toLocaleDateString("th-TH", { dateStyle: "medium" })}</div>
             </div>
             <div className="flex items-center gap-2 shrink-0">
-              <span className="font-mono text-sm text-[#ab5bf7]">฿{e.amountThb.toLocaleString("th-TH")}</span>
+              <span className="font-mono text-sm text-[#7a5c12]">฿{e.amountThb.toLocaleString("th-TH")}</span>
               <DeleteButton
                 onDelete={() => deleteCostEntry(e.id).then(onChange)}
                 what="รายการต้นทุน"
-                idleClass="w-7 h-7 flex items-center justify-center rounded-lg text-faint hover:text-red-400 hover:bg-red-950/30"
-                armedClass="text-[10px] font-semibold px-2 py-1 rounded-lg bg-red-950/60 border border-red-500/60 text-red-300 whitespace-nowrap"
+                idleClass="w-7 h-7 flex items-center justify-center rounded-lg text-faint hover:text-red-700 hover:bg-red-50"
+                armedClass="text-[10px] font-semibold px-2 py-1 rounded-lg bg-red-50 border border-red-500/60 text-red-700 whitespace-nowrap"
               />
             </div>
           </div>
@@ -176,7 +176,7 @@ function MetricTab({ projectId, entries, onChange }: { projectId: string; entrie
       </div>
       <div className="flex gap-2 mb-4">
         <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="โน้ต เช่น ช่วงหลังลดราคา" className="input flex-1" onKeyDown={(e) => e.key === "Enter" && submit()} />
-        <button onClick={submit} className="px-4 py-2.5 rounded-xl bg-[#ab5bf7] text-[#0b0e17] text-sm font-semibold hover:bg-[#c084fc] transition-colors whitespace-nowrap">บันทึก</button>
+        <button onClick={submit} className="px-4 py-2.5 rounded-xl bg-[#d9a63a] text-[#14161c] text-sm font-semibold hover:bg-[#c8901f] transition-colors whitespace-nowrap">บันทึก</button>
       </div>
 
       <p className="text-[11px] text-faint mb-3">
@@ -191,23 +191,23 @@ function MetricTab({ projectId, entries, onChange }: { projectId: string; entrie
         {entries?.map((e) => {
           const rates = computeMetricRates(e);
           return (
-            <div key={e.id} className="px-3 py-2.5 bg-white/[0.03] border border-white/10 rounded-xl">
+            <div key={e.id} className="px-3 py-2.5 bg-black/[0.02] border border-black/10 rounded-xl">
               <div className="flex items-center justify-between gap-3">
                 <div className="text-[11px] text-faint">{new Date(e.createdAt).toLocaleDateString("th-TH", { dateStyle: "medium" })}{e.note ? ` · ${e.note}` : ""}</div>
                 <DeleteButton
                   onDelete={() => deleteMetricEntry(e.id).then(onChange)}
                   what="รายการตัวชี้วัด"
-                  idleClass="w-7 h-7 flex items-center justify-center rounded-lg text-faint hover:text-red-400 hover:bg-red-950/30"
-                  armedClass="text-[10px] font-semibold px-2 py-1 rounded-lg bg-red-950/60 border border-red-500/60 text-red-300 whitespace-nowrap"
+                  idleClass="w-7 h-7 flex items-center justify-center rounded-lg text-faint hover:text-red-700 hover:bg-red-50"
+                  armedClass="text-[10px] font-semibold px-2 py-1 rounded-lg bg-red-50 border border-red-500/60 text-red-700 whitespace-nowrap"
                 />
               </div>
               <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1.5 text-xs font-mono">
-                <span className="text-slate-300">{e.impressions.toLocaleString("th-TH")} imp</span>
-                <span className="text-slate-300">{e.clicks.toLocaleString("th-TH")} clicks</span>
-                <span className="text-slate-300">{e.sales.toLocaleString("th-TH")} sales</span>
-                {e.avgStars !== undefined && <span className="text-slate-300">★{e.avgStars}</span>}
-                <span className="text-[#ab5bf7]">CTR {rates.ctrPercent === null ? "—" : `${rates.ctrPercent}%`}</span>
-                <span className="text-[#ab5bf7]">conv {rates.conversionPercent === null ? "—" : `${rates.conversionPercent}%`}</span>
+                <span className="text-slate-700">{e.impressions.toLocaleString("th-TH")} imp</span>
+                <span className="text-slate-700">{e.clicks.toLocaleString("th-TH")} clicks</span>
+                <span className="text-slate-700">{e.sales.toLocaleString("th-TH")} sales</span>
+                {e.avgStars !== undefined && <span className="text-slate-700">★{e.avgStars}</span>}
+                <span className="text-[#7a5c12]">CTR {rates.ctrPercent === null ? "—" : `${rates.ctrPercent}%`}</span>
+                <span className="text-[#7a5c12]">conv {rates.conversionPercent === null ? "—" : `${rates.conversionPercent}%`}</span>
               </div>
             </div>
           );
@@ -219,7 +219,7 @@ function MetricTab({ projectId, entries, onChange }: { projectId: string; entrie
 
 function SummaryStat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="px-3 py-2.5 bg-white/[0.03] border border-white/10 rounded-xl text-center">
+    <div className="px-3 py-2.5 bg-black/[0.02] border border-black/10 rounded-xl text-center">
       <div className="text-sm font-semibold tabular-nums">{value}</div>
       <div className="text-[10px] text-faint mt-0.5">{label}</div>
     </div>

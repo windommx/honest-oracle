@@ -18,23 +18,23 @@ import type { PromptGroup } from "@/lib/bookisdom-engine/types";
 // ╚══════════════════════════════════════════════════════════════════╝
 
 export const GROUP_COLORS: Record<PromptGroup, string> = {
-  core: "border-[#ab5bf7] text-[#ab5bf7]",
-  craft: "border-green-400 text-green-400",
-  nonfiction: "border-blue-400 text-blue-400",
-  prose: "border-purple-400 text-purple-400",
-  thai: "border-pink-400 text-pink-400",
-  dialect: "border-rose-400 text-rose-400",
-  marketing: "border-orange-400 text-orange-400",
-  advanced: "border-cyan-400 text-cyan-400",
-  agents: "border-emerald-400 text-emerald-400",
-  nis: "border-red-400 text-red-400",
-  saga: "border-violet-400 text-violet-400",
+  core: "border-[#7a5c12] text-[#7a5c12]",
+  craft: "border-green-700 text-green-800",
+  nonfiction: "border-blue-700 text-blue-700",
+  prose: "border-purple-700 text-purple-700",
+  thai: "border-pink-700 text-pink-700",
+  dialect: "border-rose-700 text-rose-700",
+  marketing: "border-orange-700 text-orange-800",
+  advanced: "border-cyan-700 text-cyan-700",
+  agents: "border-emerald-700 text-emerald-700",
+  nis: "border-red-700 text-red-700",
+  saga: "border-violet-700 text-violet-700",
 };
 
 export function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="mb-3">
-      <label className="block text-[0.7rem] text-slate-400 mb-1 tracking-wide">{label}</label>
+      <label className="block text-[0.7rem] text-slate-600 mb-1 tracking-wide">{label}</label>
       {children}
     </div>
   );
@@ -42,8 +42,8 @@ export function Field({ label, children }: { label: string; children: React.Reac
 
 export function Stat({ value, label }: { value: string; label: string }) {
   return (
-    <div className="p-2 bg-white/5 rounded-lg text-center">
-      <div className="text-lg font-bold text-[#ab5bf7]">{value}</div>
+    <div className="p-2 bg-black/[0.03] rounded-lg text-center">
+      <div className="text-lg font-bold text-[#7a5c12]">{value}</div>
       <div className="text-[0.6rem] text-faint mt-0.5">{label}</div>
     </div>
   );
@@ -54,7 +54,7 @@ export function FilterChip({ active, onClick, label }: { active: boolean; onClic
     <button
       onClick={onClick}
       className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${
-        active ? "border-[#ab5bf7] text-[#ab5bf7] bg-[#ab5bf7]/10" : "border-white/10 text-slate-400 hover:border-[#ab5bf7]/40"
+        active ? "border-[#7a5c12] text-[#7a5c12] bg-[#d9a63a]/10" : "border-black/10 text-slate-600 hover:border-[#7a5c12]/40"
       }`}
     >
       {label}

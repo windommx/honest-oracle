@@ -53,68 +53,68 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#08080e] flex items-center justify-center px-4">
+    <div className="min-h-screen bg-[#f3f5f9] flex items-center justify-center px-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center gap-2 mb-6">
-            <Crown className="w-10 h-10 text-[#c9a84c]" />
+            <Crown className="w-10 h-10 text-[#7a5c12]" />
             <span className="text-2xl font-semibold gold-gradient">NaraClear</span>
           </Link>
           <h1 className="text-2xl font-bold mb-2">สมัครสมาชิก</h1>
-          <p className="text-gray-400">สร้างบัญชีเพื่อใช้งาน NaraClear</p>
+          <p className="text-gray-600">สร้างบัญชีเพื่อใช้งาน NaraClear</p>
         </div>
 
         <div className="glass-card rounded-2xl p-8">
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">ชื่อ (ไม่บังคับ)</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">ชื่อ (ไม่บังคับ)</label>
               <input
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="w-full px-4 py-3 bg-white/5 border border-gold/20 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-gold/50 transition-colors"
+                className="w-full px-4 py-3 bg-black/[0.03] border border-[#7a5c12]/25 rounded-xl text-[#14161c] placeholder-gray-500 focus:outline-none focus:border-[#7a5c12]/60 transition-colors"
                 placeholder="กรอกชื่อของคุณ"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">อีเมล</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">อีเมล</label>
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-4 py-3 bg-white/5 border border-gold/20 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-gold/50 transition-colors"
+                className="w-full px-4 py-3 bg-black/[0.03] border border-[#7a5c12]/25 rounded-xl text-[#14161c] placeholder-gray-500 focus:outline-none focus:border-[#7a5c12]/60 transition-colors"
                 placeholder="กรอกอีเมล"
                 required
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">รหัสผ่าน</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">รหัสผ่าน</label>
               <input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-4 py-3 bg-white/5 border border-gold/20 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-gold/50 transition-colors"
+                className="w-full px-4 py-3 bg-black/[0.03] border border-[#7a5c12]/25 rounded-xl text-[#14161c] placeholder-gray-500 focus:outline-none focus:border-[#7a5c12]/60 transition-colors"
                 placeholder="กรอกรหัสผ่าน (อย่างน้อย 6 ตัว)"
                 required
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">ยืนยันรหัสผ่าน</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">ยืนยันรหัสผ่าน</label>
               <input
                 type="password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                className="w-full px-4 py-3 bg-white/5 border border-gold/20 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-gold/50 transition-colors"
+                className="w-full px-4 py-3 bg-black/[0.03] border border-[#7a5c12]/25 rounded-xl text-[#14161c] placeholder-gray-500 focus:outline-none focus:border-[#7a5c12]/60 transition-colors"
                 placeholder="กรอกรหัสผ่านอีกครั้ง"
                 required
               />
             </div>
 
             {error && (
-              <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-xl flex items-center gap-3 text-red-400">
+              <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-xl flex items-center gap-3 text-red-700">
                 <AlertCircle className="w-5 h-5 flex-shrink-0" />
                 {error}
               </div>
@@ -123,7 +123,7 @@ export default function RegisterPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-4 bg-gold text-black font-semibold rounded-xl hover:bg-gold-light transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+              className="w-full py-4 bg-[#d9a63a] text-black font-semibold rounded-xl hover:bg-[#c8901f] transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
             >
               {loading && <Loader2 className="w-5 h-5 animate-spin" />}
               {loading ? "กำลังสมัครสมาชิก..." : "สมัครสมาชิก"}
@@ -131,9 +131,9 @@ export default function RegisterPage() {
           </form>
 
           <div className="mt-6 text-center">
-            <p className="text-gray-400">
+            <p className="text-gray-600">
               มีบัญชีอยู่แล้ว?{" "}
-              <Link href="/login" className="text-gold hover:underline">
+              <Link href="/login" className="text-[#7a5c12] hover:underline">
                 เข้าสู่ระบบ
               </Link>
             </p>

@@ -10,21 +10,22 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        background: "#0b0e17",
-        foreground: "#f8fafc",
+        // One light palette for the whole platform — see app/bookisdom/_tokens.ts.
+        background: "#f3f5f9",
+        foreground: "#14161c",
         gold: {
-          DEFAULT: "#c9a84c",
-          light: "#e6c86a",
-          dark: "#a8893d",
+          DEFAULT: "#7a5c12", // accent TEXT / borders
+          light: "#d9a63a", // accent FILL (dark text on it)
+          dark: "#6b5010", // accent text hover
         },
-        border: "rgba(201, 168, 76, 0.2)",
-        // WCAG-checked faintest text tier (>=4.5:1 on EVERY surface in use) — see app/rush/_tokens.ts
-        faint: "#8290a6",
+        border: "rgba(122, 92, 18, 0.2)",
+        // WCAG-checked faintest text tier (>=4.5:1 on EVERY surface in use) — see app/bookisdom/_tokens.ts
+        faint: "#566174",
         accent: {
-          DEFAULT: "#ab5bf7",
-          bright: "#c084fc",
-          deep: "#7c3aed",
-          dark: "#6d28d9",
+          DEFAULT: "#7a5c12",
+          bright: "#d9a63a",
+          deep: "#c8901f",
+          dark: "#6b5010",
         },
       },
       fontFamily: {

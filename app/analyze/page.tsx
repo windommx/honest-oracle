@@ -77,22 +77,22 @@ export default function AnalyzePage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#08080e]">
+    <div className="min-h-screen bg-[#f3f5f9]">
       <nav className="fixed top-0 left-0 right-0 z-50 glass-card">
         <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
           <Link href="/" className="flex items-center gap-2">
-            <Crown className="w-8 h-8 text-[#c9a84c]" />
+            <Crown className="w-8 h-8 text-[#7a5c12]" />
             <span className="text-xl font-semibold gold-gradient">NaraClear</span>
           </Link>
           <div className="flex gap-6 items-center">
-            <Link href="/analyze" className="text-[#c9a84c]">วิเคราะห์ชื่อ</Link>
-            <Link href="/corporate" className="text-gray-300 hover:text-[#c9a84c] transition-colors">องค์กร</Link>
-            <Link href="/child" className="text-gray-300 hover:text-[#c9a84c] transition-colors">ตั้งชื่อเด็ก</Link>
-            <Link href="/rename" className="text-gray-300 hover:text-[#c9a84c] transition-colors">เปลี่ยนชื่อ</Link>
+            <Link href="/analyze" className="text-[#7a5c12]">วิเคราะห์ชื่อ</Link>
+            <Link href="/corporate" className="text-gray-700 hover:text-[#6b5010] transition-colors">องค์กร</Link>
+            <Link href="/child" className="text-gray-700 hover:text-[#6b5010] transition-colors">ตั้งชื่อเด็ก</Link>
+            <Link href="/rename" className="text-gray-700 hover:text-[#6b5010] transition-colors">เปลี่ยนชื่อ</Link>
             {session ? (
-              <Link href="/history" className="text-gray-300 hover:text-[#c9a84c] transition-colors">ประวัติ</Link>
+              <Link href="/history" className="text-gray-700 hover:text-[#6b5010] transition-colors">ประวัติ</Link>
             ) : (
-              <Link href="/login" className="text-gray-300 hover:text-[#c9a84c] transition-colors">เข้าสู่ระบบ</Link>
+              <Link href="/login" className="text-gray-700 hover:text-[#6b5010] transition-colors">เข้าสู่ระบบ</Link>
             )}
           </div>
         </div>
@@ -101,29 +101,29 @@ export default function AnalyzePage() {
       <div className="pt-28 pb-16 px-4">
         <div className="max-w-4xl mx-auto">
           <h1 className="text-3xl font-bold text-center mb-2 gold-gradient">วิเคราะห์ชื่อมงคลไทย</h1>
-          <p className="text-gray-400 text-center mb-8">กรอกข้อมูลเพื่อวิเคราะห์ชื่อของคุณ</p>
+          <p className="text-gray-600 text-center mb-8">กรอกข้อมูลเพื่อวิเคราะห์ชื่อของคุณ</p>
 
           <div className="glass-card rounded-2xl p-8 mb-8">
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="grid md:grid-cols-2 gap-6">
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">ชื่อ</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">ชื่อ</label>
                   <input
                     type="text"
                     value={firstName}
                     onChange={(e) => setFirstName(e.target.value)}
-                    className="w-full px-4 py-3 bg-white/5 border border-gold/20 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-gold/50 transition-colors"
+                    className="w-full px-4 py-3 bg-black/[0.03] border border-[#7a5c12]/25 rounded-xl text-[#14161c] placeholder-gray-500 focus:outline-none focus:border-[#7a5c12]/60 transition-colors"
                     placeholder="กรอกชื่อ"
                     required
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">นามสกุล</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">นามสกุล</label>
                   <input
                     type="text"
                     value={lastName}
                     onChange={(e) => setLastName(e.target.value)}
-                    className="w-full px-4 py-3 bg-white/5 border border-gold/20 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-gold/50 transition-colors"
+                    className="w-full px-4 py-3 bg-black/[0.03] border border-[#7a5c12]/25 rounded-xl text-[#14161c] placeholder-gray-500 focus:outline-none focus:border-[#7a5c12]/60 transition-colors"
                     placeholder="กรอกนามสกุล"
                     required
                   />
@@ -131,16 +131,16 @@ export default function AnalyzePage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">วันเกิด</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">วันเกิด</label>
                 <select
                   value={birthday}
                   onChange={(e) => setBirthday(e.target.value)}
-                  className="w-full px-4 py-3 bg-white/5 border border-gold/20 rounded-xl text-white focus:outline-none focus:border-gold/50 transition-colors"
+                  className="w-full px-4 py-3 bg-black/[0.03] border border-[#7a5c12]/25 rounded-xl text-[#14161c] focus:outline-none focus:border-[#7a5c12]/60 transition-colors"
                   required
                 >
-                  <option value="" className="bg-[#08080e]">เลือกวันเกิด</option>
+                  <option value="" className="bg-[#f3f5f9]">เลือกวันเกิด</option>
                   {DAYS.map((day) => (
-                    <option key={day.value} value={day.value} className="bg-[#08080e]">
+                    <option key={day.value} value={day.value} className="bg-[#f3f5f9]">
                       {day.label}
                     </option>
                   ))}
@@ -150,7 +150,7 @@ export default function AnalyzePage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-4 bg-gold text-black font-semibold rounded-xl hover:bg-gold-light transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                className="w-full py-4 bg-[#d9a63a] text-black font-semibold rounded-xl hover:bg-[#c8901f] transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 {loading && <Loader2 className="w-5 h-5 animate-spin" />}
                 {loading ? "กำลังวิเคราะห์..." : "วิเคราะห์ชื่อ"}
@@ -158,7 +158,7 @@ export default function AnalyzePage() {
             </form>
 
             {error && (
-              <div className="mt-6 p-4 bg-red-500/10 border border-red-500/30 rounded-xl flex items-center gap-3 text-red-400">
+              <div className="mt-6 p-4 bg-red-500/10 border border-red-500/30 rounded-xl flex items-center gap-3 text-red-700">
                 <AlertCircle className="w-5 h-5 flex-shrink-0" />
                 {error}
               </div>
@@ -168,11 +168,11 @@ export default function AnalyzePage() {
           {result && (
             <div className="glass-card rounded-2xl p-8 animate-fadeIn">
               <div className="text-center mb-8">
-                <p className="text-gray-400 mb-2">คะแนนรวม</p>
+                <p className="text-gray-600 mb-2">คะแนนรวม</p>
                 <p className={`text-6xl font-bold ${getScoreClass(result.totalScore)}`}>
                   {result.totalScore}
                 </p>
-                <p className="text-gray-500 text-sm mt-1">จาก 100</p>
+                <p className="text-gray-600 text-sm mt-1">จาก 100</p>
               </div>
 
               <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
@@ -183,86 +183,86 @@ export default function AnalyzePage() {
                   { label: "สัทศาสตร์", score: result.phoneticScore, badge: "Framework" },
                   { label: "ธาตุ", score: result.elementScore, badge: "Traditional" },
                 ].map(({ label, score, badge }) => (
-                  <div key={label} className="text-center p-4 bg-white/5 rounded-xl">
-                    <p className="text-xs text-gray-500 mb-1">{badge}</p>
+                  <div key={label} className="text-center p-4 bg-black/[0.03] rounded-xl">
+                    <p className="text-xs text-gray-600 mb-1">{badge}</p>
                     <p className={`text-2xl font-bold ${getScoreClass(score)}`}>{score}</p>
-                    <p className="text-sm text-gray-400 mt-1">{label}</p>
+                    <p className="text-sm text-gray-600 mt-1">{label}</p>
                   </div>
                 ))}
               </div>
 
               <div className="space-y-6">
-                <div className="p-4 bg-white/5 rounded-xl">
+                <div className="p-4 bg-black/[0.03] rounded-xl">
                   <div className="flex items-center gap-2 mb-3">
-                    <span className="px-2 py-1 bg-gold/20 text-gold text-xs rounded">Traditional</span>
+                    <span className="px-2 py-1 bg-[#d9a63a]/20 text-[#7a5c12] text-xs rounded">Traditional</span>
                     <h3 className="font-semibold">กาลกิณี</h3>
                   </div>
-                  <p className="text-gray-400 text-sm">
+                  <p className="text-gray-600 text-sm">
                     {result.details.kalaigani.violations.length === 0 ? (
-                      <span className="text-green-400">✓ ไม่มีตัวอักษรต้องห้าม</span>
+                      <span className="text-green-800">✓ ไม่มีตัวอักษรต้องห้าม</span>
                     ) : (
-                      <span className="text-red-400">
+                      <span className="text-red-700">
                         พบตัวอักษรต้องห้าม: {result.details.kalaigani.violations.join(", ")}
                       </span>
                     )}
                   </p>
                 </div>
 
-                <div className="p-4 bg-white/5 rounded-xl">
+                <div className="p-4 bg-black/[0.03] rounded-xl">
                   <div className="flex items-center gap-2 mb-3">
-                    <span className="px-2 py-1 bg-gold/20 text-gold text-xs rounded">Traditional</span>
+                    <span className="px-2 py-1 bg-[#d9a63a]/20 text-[#7a5c12] text-xs rounded">Traditional</span>
                     <h3 className="font-semibold">เลขศาสตร์</h3>
                   </div>
-                  <p className="text-gray-400 text-sm">
-                    เลขที่ได้: <span className="text-gold font-semibold">{result.details.numerology.totalStrokes}</span>
+                  <p className="text-gray-600 text-sm">
+                    เลขที่ได้: <span className="text-[#7a5c12] font-semibold">{result.details.numerology.totalStrokes}</span>
                     {result.details.numerology.isLucky && (
-                      <span className="text-green-400 ml-2">✓ เป็นเลขมงคล</span>
+                      <span className="text-green-800 ml-2">✓ เป็นเลขมงคล</span>
                     )}
                   </p>
                 </div>
 
-                <div className="p-4 bg-white/5 rounded-xl">
+                <div className="p-4 bg-black/[0.03] rounded-xl">
                   <div className="flex items-center gap-2 mb-3">
-                    <span className="px-2 py-1 bg-gold/20 text-gold text-xs rounded">Traditional</span>
+                    <span className="px-2 py-1 bg-[#d9a63a]/20 text-[#7a5c12] text-xs rounded">Traditional</span>
                     <h3 className="font-semibold">วรรคทักษา</h3>
                   </div>
-                  <p className="text-gray-400 text-sm">
+                  <p className="text-gray-600 text-sm">
                     ครอบคลุม: {result.details.taksa.covered.join(", ") || "ไม่มี"}
                   </p>
                   {result.details.taksa.missing.length > 0 && (
-                    <p className="text-gray-500 text-sm mt-1">
+                    <p className="text-gray-600 text-sm mt-1">
                       ขาด: {result.details.taksa.missing.join(", ")}
                     </p>
                   )}
                 </div>
 
-                <div className="p-4 bg-white/5 rounded-xl">
+                <div className="p-4 bg-black/[0.03] rounded-xl">
                   <div className="flex items-center gap-2 mb-3">
-                    <span className="px-2 py-1 bg-blue-500/20 text-blue-400 text-xs rounded">Framework</span>
+                    <span className="px-2 py-1 bg-blue-500/20 text-blue-700 text-xs rounded">Framework</span>
                     <h3 className="font-semibold">สัทศาสตร์</h3>
                   </div>
-                  <p className="text-gray-400 text-sm">
+                  <p className="text-gray-600 text-sm">
                     พยางค์: {result.details.phonetic.syllables}, ความยาว: {result.details.phonetic.length}
                   </p>
                 </div>
 
-                <div className="p-4 bg-white/5 rounded-xl">
+                <div className="p-4 bg-black/[0.03] rounded-xl">
                   <div className="flex items-center gap-2 mb-3">
-                    <span className="px-2 py-1 bg-gold/20 text-gold text-xs rounded">Traditional</span>
+                    <span className="px-2 py-1 bg-[#d9a63a]/20 text-[#7a5c12] text-xs rounded">Traditional</span>
                     <h3 className="font-semibold">ธาตุ</h3>
                   </div>
-                  <p className="text-gray-400 text-sm">
+                  <p className="text-gray-600 text-sm">
                     ธาตุ: {result.details.element.elements.join(", ") || "ไม่มี"}
                     {result.details.element.hasConflict && (
-                      <span className="text-red-400 ml-2">⚠ ธาตุไฟและน้ำขัดกัน</span>
+                      <span className="text-red-700 ml-2">⚠ ธาตุไฟและน้ำขัดกัน</span>
                     )}
                   </p>
                 </div>
               </div>
 
-              <div className="mt-8 p-4 bg-gold/10 rounded-xl border border-gold/20">
-                <p className="text-gray-400 text-sm text-center">
-                  <span className="text-gold font-semibold">หมายเหตุ:</span> ระบบวิเคราะห์ชื่อนี้ใช้หลักโหราศาสตร์ไทยแบบดั้งเดิม
+              <div className="mt-8 p-4 bg-[#d9a63a]/10 rounded-xl border border-[#7a5c12]/25">
+                <p className="text-gray-600 text-sm text-center">
+                  <span className="text-[#7a5c12] font-semibold">หมายเหตุ:</span> ระบบวิเคราะห์ชื่อนี้ใช้หลักโหราศาสตร์ไทยแบบดั้งเดิม
                   เป็นเครื่องมือช่วยประกอบการตัดสินใจเท่านั้น ไม่สามารถทำนายชะตาชีวิตได้อย่างแท้จริง
                 </p>
               </div>

@@ -82,16 +82,16 @@ export function FirstRunOrientation({ show }: { show: boolean }) {
   return (
     <section
       aria-label="เริ่มต้นใช้งาน"
-      className="relative rounded-2xl border border-[#ab5bf7]/30 bg-[#ab5bf7]/[0.04] p-5 mb-6"
+      className="relative rounded-2xl border border-[#7a5c12]/30 bg-[#d9a63a]/[0.04] p-5 mb-6"
     >
       <button
         onClick={() => { dismissOrientation(); setDismissed(true); }}
         aria-label="ปิดคำแนะนำเริ่มต้น"
-        className="absolute right-3 top-3 text-faint hover:text-slate-200 transition"
+        className="absolute right-3 top-3 text-faint hover:text-slate-800 transition"
       >
         <X className="w-4 h-4" />
       </button>
-      <h2 className="text-sm font-semibold text-slate-100 mb-1">เริ่มตรงไหนดี?</h2>
+      <h2 className="text-sm font-semibold text-slate-900 mb-1">เริ่มตรงไหนดี?</h2>
       <p className="text-[0.72rem] text-faint mb-4">
         หน้านี้คือแผงตั้งค่าแบบเต็ม — ถ้ายังไม่ชิน เริ่มจากทางลัดข้างล่างได้
       </p>
@@ -100,11 +100,11 @@ export function FirstRunOrientation({ show }: { show: boolean }) {
           <Link
             key={p.href}
             href={p.href}
-            className="rounded-xl border border-white/10 bg-white/[0.02] p-3.5 hover:border-[#ab5bf7]/50 transition group"
+            className="rounded-xl border border-black/10 bg-black/[0.015] p-3.5 hover:border-[#7a5c12]/50 transition group"
           >
             <span className="flex items-center gap-2 mb-1.5">
-              <p.icon className="w-4 h-4 text-[#ab5bf7]" />
-              <span className="text-[0.78rem] font-medium text-slate-100 group-hover:text-[#c084fc]">{p.title}</span>
+              <p.icon className="w-4 h-4 text-[#7a5c12]" />
+              <span className="text-[0.78rem] font-medium text-slate-900 group-hover:text-[#6b5010]">{p.title}</span>
             </span>
             <span className="block text-[0.68rem] leading-snug text-faint">{p.body}</span>
           </Link>
@@ -120,11 +120,11 @@ export function OnRamps() {
   return (
     <nav aria-label="ทางลัด" className="flex flex-wrap gap-x-4 gap-y-1.5 text-[0.68rem] text-faint">
       {PATHS.map((p) => (
-        <Link key={p.href} href={p.href} className="hover:text-[#ab5bf7] transition">
+        <Link key={p.href} href={p.href} className="hover:text-[#6b5010] transition">
           {p.title}
         </Link>
       ))}
-      <Link href="/bookisdom/explore" className="hover:text-[#ab5bf7] transition">
+      <Link href="/bookisdom/explore" className="hover:text-[#6b5010] transition">
         ดูภาพรวม 8 ประเภท
       </Link>
     </nav>

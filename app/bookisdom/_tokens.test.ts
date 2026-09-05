@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
-import { ALLOWED_HEX, LEGACY_LIFEMAP_HEX, PALETTE, BG, ACCENT, ACCENT_BRIGHT, ACCENT_DEEP, SURFACE } from "./_tokens";
+import { ALLOWED_HEX, PALETTE, BG, ACCENT, ACCENT_BRIGHT, ACCENT_DEEP, SURFACE, ELEVATED, FOREGROUND } from "./_tokens";
 
 const BOOKISDOM_DIR = join(process.cwd(), "app", "bookisdom");
 const GLOBALS = join(process.cwd(), "app", "globals.css");
@@ -40,61 +40,60 @@ describe("design tokens — consistency is enforced, not merely intended", () =>
 
   it("tailwind.config.ts carries no stale palette value", () => {
     // Blind spot in this guard's first version: it scanned app/bookisdom/*.tsx and globals.css
-    // only, so tailwind.config kept the PRE-consolidation background (#08080e) and the
-    // third gold (#d4b96a) after both were removed everywhere else. A theme config that
-    // disagrees with the palette is drift with extra steps.
+    // only, so tailwind.config kept the PRE-consolidation background and a third gold after
+    // both were removed everywhere else. A theme config that disagrees with the palette is
+    // drift with extra steps. Since 2026-09 the whole platform shares ONE palette, so the
+    // config may use nothing outside it — the old lifemap-only gold exemption is gone.
     const cfg = readFileSync(join(process.cwd(), "tailwind.config.ts"), "utf8");
     for (const hex of hexesIn(cfg)) {
-      // The `gold` scale is the LIFEMAP app's brand (register/login/lifemap pages) and is
-      // declared as such in LEGACY_LIFEMAP_HEX — allowed in the shared theme config, still
-      // barred from app/bookisdom components by the scan above.
-      const ok = ALLOWED_HEX.has(hex) || LEGACY_LIFEMAP_HEX.has(hex);
-      expect(ok, `tailwind.config.ts has non-canonical ${hex}`).toBe(true);
+      expect(ALLOWED_HEX.has(hex), `tailwind.config.ts has non-canonical ${hex}`).toBe(true);
     }
   });
 
-  it("the [data-app=\"bookisdom\"] CSS block mirrors the TS tokens — the two cannot drift apart", () => {
-    // NOT :root. This repo ships two products from one stylesheet: :root carries the
-    // LIFEMAP palette (gold), and the bookisdom theme is scoped to its own segment. Asserting
-    // :root here is what let the bookisdom theme leak product-wide in the first place —
-    // a navy body behind lifemap's near-black pages, and purple focus rings on a
-    // gold-branded product.
+  it(":root mirrors the TS tokens — the stylesheet and the palette cannot drift apart", () => {
+    // 2026-09: one palette platform-wide. Before this, :root carried a dark gold palette for
+    // the lifemap product and a scoped [data-app="bookisdom"] block carried a dark purple
+    // one; both are replaced by this single light block, so :root IS the palette now.
     const css = readFileSync(GLOBALS, "utf8");
-    const start = css.indexOf('[data-app="bookisdom"]');
-    expect(start, "globals.css has no [data-app=\"bookisdom\"] block").toBeGreaterThan(-1);
+    const start = css.indexOf(":root");
     const block = css.slice(start, css.indexOf("}", start));
     expect(block).toContain(`--background: ${BG}`);
     expect(block).toContain(`--surface: ${SURFACE}`);
+    expect(block).toContain(`--elevated: ${ELEVATED}`);
+    expect(block).toContain(`--foreground: ${FOREGROUND}`);
     expect(block).toContain(`--accent: ${ACCENT}`);
     expect(block).toContain(`--accent-bright: ${ACCENT_BRIGHT}`);
     expect(block).toContain(`--accent-deep: ${ACCENT_DEEP}`);
+    // No second, product-scoped palette may reappear.
+    expect(css).not.toContain('[data-app=');
   });
 
-  it("the bookisdom palette does not leak into :root, where the lifemap product lives", () => {
-    // Each bookisdom colour must be absent from :root. A regression here is invisible in
-    // the bookisdom app (it looks right) and only shows up as the WRONG product changing.
+  it("no stylesheet or component still paints the retired dark grounds", () => {
+    // The regression this catches: a page root left on the old navy/near-black ground
+    // after the platform went light — a black page in a white app.
     const css = readFileSync(GLOBALS, "utf8");
-    const root = css.slice(css.indexOf(":root"), css.indexOf("}", css.indexOf(":root")));
-    for (const hex of Array.from(ALLOWED_HEX)) {
-      // PAPER previews print stock and TIER colours are semantic, not theme chrome —
-      // only the surfaces/accent can leak, and those are what :root defines.
-      if (!/^#(0b0e17|151a27|1c2233|ab5bf7|c084fc|7c3aed)$/.test(hex)) continue;
-      expect(root.includes(hex), `:root leaks the bookisdom colour ${hex} into the lifemap app`).toBe(false);
+    const retired = ["#0b0e17", "#08080e", "#151a27", "#12121a", "#1c2233", "#ab5bf7", "#c084fc", "#c9a84c"];
+    for (const hex of retired) expect(css.toLowerCase().includes(hex), `globals.css still uses retired ${hex}`).toBe(false);
+    const offenders: string[] = [];
+    for (const file of tsxFiles(join(process.cwd(), "app"))) {
+      const src = readFileSync(file, "utf8").toLowerCase();
+      for (const hex of retired) if (src.includes(hex)) offenders.push(`${file.replace(process.cwd() + "/", "")}: ${hex}`);
     }
+    expect(offenders, `retired dark-theme hex still in use:\n${offenders.join("\n")}`).toEqual([]);
   });
 
-  it("the bookisdom segment is actually marked, or the scoped block never applies", () => {
-    // The CSS above is inert unless something sets data-app="bookisdom". This asserts the
-    // wiring exists, so the two halves cannot drift apart silently.
-    const layout = readFileSync(join(BOOKISDOM_DIR, "layout.tsx"), "utf8");
-    expect(layout).toContain('data-app="bookisdom"');
-  });
-
-  it("exactly one page background exists", () => {
-    // The specific regression that motivated the pass: two near-identical page
-    // backgrounds. Any second dark surface must be a named token with a stated role.
-    const dark = Array.from(ALLOWED_HEX).filter((h) => /^#0[0-9a-f]/.test(h));
-    expect(dark).toEqual([BG.toLowerCase()]);
+  it("every full-height page root in app/bookisdom paints the ONE ground, not a look-alike", () => {
+    // The specific regression that motivated the original pass: two near-identical page
+    // backgrounds, so the ground visibly shifted between routes. Enforced structurally:
+    // a `min-h-screen bg-[#…]` root must use BG and nothing else.
+    const offenders: string[] = [];
+    for (const file of tsxFiles(BOOKISDOM_DIR)) {
+      const src = readFileSync(file, "utf8");
+      for (const m of Array.from(src.matchAll(/min-h-screen bg-\[(#[0-9a-fA-F]{6})\]/g))) {
+        if (m[1].toLowerCase() !== BG.toLowerCase()) offenders.push(`${file.replace(process.cwd() + "/", "")}: ${m[1]}`);
+      }
+    }
+    expect(offenders).toEqual([]);
   });
 
   it("palette entries are unique — no two names for the same colour", () => {

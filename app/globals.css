@@ -5,37 +5,19 @@
 @import url('https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
 
 :root {
-  /* ROOT = the LIFEMAP product (astrology; gold brand). Seventeen lifemap pages paint
-     #08080e themselves, so the shared body must agree with THEM — otherwise their
-     overscroll area shows a different ground than the page sitting on it. */
-  --background: #08080e;
-  --surface: #12121a;
-  --foreground: #ffffff;
-  --accent: #c9a84c;
-  --accent-bright: #e6c86a;
-  --accent-deep: #a08030;
-}
-
-/* BOOKISDOM = the book-writing product (dark fintech; purple accent). Mirrors
-   app/bookisdom/_tokens.ts — a test asserts THIS block, not :root, matches the tokens.
-   Applied by app/bookisdom/layout.tsx, so shared rules below (focus ring, .input:focus,
-   .accent-gradient) resolve to gold on lifemap pages and purple inside /bookisdom without
-   either product needing its own copy of the rule. */
-[data-app="bookisdom"] {
-  --background: #0b0e17;
-  --surface: #151a27;
-  --elevated: #1c2233;
-  --foreground: #f8fafc;
-  --accent: #ab5bf7;
-  --accent-bright: #c084fc;
-  --accent-deep: #7c3aed;
-}
-
-/* The body paints the overscroll/rubber-band area, which sits OUTSIDE the segment
-   wrapper — so it has to be told which product is on screen. */
-body:has([data-app="bookisdom"]) {
-  background-color: #0b0e17;
-  color: #f8fafc;
+  /* ONE palette for the whole platform (2026-09): light, warm, gold-accented. Mirrors
+     app/bookisdom/_tokens.ts — a test asserts THIS block matches the tokens, so the two
+     cannot drift apart. Both products (Bookisdom and the lifemap/naming apps) share it;
+     the earlier split (a dark gold root palette vs a dark purple palette scoped to the Bookisdom segment) is gone. */
+  --background: #f3f5f9;
+  --surface: #ffffff;
+  --elevated: #eaedf3;
+  --border: #e2e6ee;
+  --foreground: #14161c;
+  --accent: #7a5c12;
+  --accent-bright: #d9a63a;
+  --accent-deep: #c8901f;
+  --accent-dark: #6b5010;
 }
 
 * {
@@ -55,6 +37,14 @@ body {
 
 body {
   min-height: 100vh;
+  /* The reference screen's ground: pale blue-grey with a warm glow top-right and a cool
+     one left. Gold at ≤16 % over the ground is LIGHTER than the 15 % tint the contrast
+     guard measures against, so no text tier loses AA over the glow. Fixed so it does not
+     scroll with content. */
+  background-image:
+    radial-gradient(ellipse 60% 45% at 88% 0%, rgba(217, 166, 58, 0.16), transparent 70%),
+    radial-gradient(ellipse 50% 40% at 0% 25%, rgba(29, 78, 216, 0.06), transparent 70%);
+  background-attachment: fixed;
 }
 
 a {
@@ -62,37 +52,34 @@ a {
   text-decoration: none;
 }
 
-.gold-gradient {
-  /* Uses the canonical vars so the gradient can never drift from the palette. */
-  background: linear-gradient(135deg, #c9a84c 0%, #e6c86a 50%, #c9a84c 100%); /* lifemap brand — frozen, no longer token-driven */
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
+.gold-gradient,
 .accent-gradient {
-  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-bright) 50%, var(--accent) 100%);
+  /* Text gradient between the accent and a mid gold. The mid stop (#a37a1c) measures
+     3.59:1 on the ground — enough for the ≥24px bold headings this is used on (WCAG
+     large-text 3:1), NOT for body text. Never use these classes on small text. */
+  background: linear-gradient(135deg, var(--accent) 0%, #a37a1c 50%, var(--accent) 100%);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 
 .gold-border {
-  /* --gold at 30%; kept literal because relative-color syntax is modern-browser-only */
-  border: 1px solid rgba(201, 168, 76, 0.3);
+  border: 1px solid rgba(122, 92, 18, 0.3);
 }
 
+/* The white rounded card of the reference screen. */
 .glass-card {
-  background: rgba(255, 255, 255, 0.03);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(201, 168, 76, 0.15);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: 0 1px 2px rgba(20, 22, 28, 0.04), 0 8px 24px rgba(20, 22, 28, 0.06);
 }
 
-.score-excellent { color: #22c55e; }
-.score-good { color: #84cc16; }
-.score-moderate { color: #eab308; }
-.score-caution { color: #f97316; }
-.score-poor { color: #ef4444; }
+/* Score tiers on a light ground — each ≥4.5:1 on the ground. */
+.score-excellent { color: #166534; }
+.score-good { color: #3f6212; }
+.score-moderate { color: #854d0e; }
+.score-caution { color: #9a3412; }
+.score-poor { color: #b91c1c; }
 
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(10px); }
@@ -108,26 +95,26 @@ a {
    elements in app/bookisdom, while `focus:outline-none` appeared 7 times — actively removing
    the browser's ring with no replacement. A keyboard user could not see where they were.
    WCAG 2.4.7 (Focus Visible). :focus-visible only paints for keyboard/AT focus, so mouse
-   users never see a stray ring. */
+   users never see a stray ring. On a light ground the DARK accent is the visible one. */
 :where(a, button, input, select, textarea, [tabindex]):focus-visible {
-  outline: 2px solid var(--accent-bright);
+  outline: 2px solid var(--accent);
   outline-offset: 2px;
   border-radius: 4px;
 }
 
-/* ── .input — the form-field class used 11 times across /bookisdom and /bookisdom/studio.
-   It was NEVER DEFINED: not here, not in tailwind.config, nowhere. Those fields rendered
-   with no border, background or padding at all. Defined now, with the focus ring above. */
+/* ── .input — the form-field class used across /bookisdom and /bookisdom/studio.
+   It was once NEVER DEFINED (fields rendered with no border, background or padding).
+   Defined here, with the focus ring above. */
 .input {
   width: 100%;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.10);
+  background: var(--surface);
+  border: 1px solid #dfe3ea;
   border-radius: 0.5rem;
   padding: 0.5rem 0.75rem;
   font-size: 0.875rem;
-  color: #e5e7eb;
+  color: var(--foreground);
   transition: border-color 0.15s;
 }
-.input::placeholder { color: #8290a6; } /* faint tier — #6b7280 measured 3.5:1, below AA */
-.input:hover { border-color: rgba(255, 255, 255, 0.20); }
+.input::placeholder { color: #566174; } /* faint tier — measured ≥4.5:1 on every surface */
+.input:hover { border-color: #c9cfda; }
 .input:focus { border-color: var(--accent); }
