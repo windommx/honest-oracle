@@ -82,7 +82,9 @@ export const DEFAULT_WALK: WalkForwardOptions = { embargo: 1, minTrainYears: 3 }
 
 export interface WalkForwardResult {
   metrics: Metrics;
-  folds: { year: number; trainYears: number[]; n: number }[];
+  /** one fold per test year, each with its own confusion — a model that only
+   *  works in one regime shows up here, not in the pooled number */
+  folds: { year: number; trainYears: number[]; n: number; metrics: Metrics }[];
   predictions: { year: number; ticker: string; pred: boolean; truth: boolean }[];
 }
 
@@ -96,10 +98,12 @@ export function walkForward(cases: LabeledCase[], p: Predictor, opt: WalkForward
     const train = cases.filter((c) => trainYears.includes(c.year));
     const test = cases.filter((c) => c.year === y);
     p.fit?.(train);
+    const fold: WalkForwardResult["predictions"] = [];
     for (const c of test) {
-      predictions.push({ year: y, ticker: c.history[c.history.length - 1].ticker, pred: p.predict(c), truth: c.cutNextYear });
+      fold.push({ year: y, ticker: c.history[c.history.length - 1].ticker, pred: p.predict(c), truth: c.cutNextYear });
     }
-    folds.push({ year: y, trainYears, n: test.length });
+    predictions.push(...fold);
+    folds.push({ year: y, trainYears, n: test.length, metrics: confusion(fold.map((x) => x.pred), fold.map((x) => x.truth)) });
   }
   return { metrics: confusion(predictions.map((x) => x.pred), predictions.map((x) => x.truth)), folds, predictions };
 }
@@ -156,6 +160,11 @@ export function permutationTest(cases: LabeledCase[], p: Predictor, draws = 200,
 
 export interface Benchmark {
   model: { name: string; metrics: Metrics };
+  /** balanced accuracy per test year (null when a year has only one class) */
+  byYear: { year: number; n: number; cuts: number; balancedAccuracy: number | null }[];
+  /** the weakest year with a defined BA — the regime-instability check
+   *  (one model rarely fits all periods; MDPI Economies 2025) */
+  worstYear: { year: number; balancedAccuracy: number } | null;
   baselines: { name: string; metrics: Metrics; skill: number | null }[];
   permutation: PermutationResult;
   alpha: number;
@@ -171,7 +180,11 @@ export function benchmark(
 ): Benchmark {
   const alpha = o.alpha ?? 0.05;
   const walk = o.walk ?? DEFAULT_WALK;
-  const model = walkForward(cases, p, walk).metrics;
+  const wf = walkForward(cases, p, walk);
+  const model = wf.metrics;
+  const byYear = wf.folds.map((f) => ({ year: f.year, n: f.n, cuts: f.metrics.tp + f.metrics.fn, balancedAccuracy: f.metrics.balancedAccuracy }));
+  const defined = byYear.filter((y): y is typeof y & { balancedAccuracy: number } => y.balancedAccuracy !== null);
+  const worstYear = defined.length ? defined.reduce((a, b) => (b.balancedAccuracy < a.balancedAccuracy ? b : a)) : null;
   const baselines = (o.baselines ?? BASELINES).map((b) => {
     const m = walkForward(cases, b, walk).metrics;
     return { name: b.name, metrics: m, skill: skill(model, m) };
@@ -185,5 +198,14 @@ export function benchmark(
     : !beatsAll
       ? `${p.name} does not beat ${baselines.filter((b) => b.skill === null || b.skill <= 0).map((b) => b.name).join(", ")} — no signal claimed`
       : `${p.name} beats baselines but p=${permutation.pValue.toFixed(3)} ≥ ${alpha} — not distinguishable from chance`;
-  return { model: { name: p.name, metrics: model }, baselines, permutation, alpha, adequateModelFound, verdict };
+  return {
+    model: { name: p.name, metrics: model },
+    byYear,
+    worstYear: worstYear ? { year: worstYear.year, balancedAccuracy: worstYear.balancedAccuracy } : null,
+    baselines,
+    permutation,
+    alpha,
+    adequateModelFound,
+    verdict,
+  };
 }

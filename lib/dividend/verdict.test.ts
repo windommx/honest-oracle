@@ -66,6 +66,19 @@ describe("verdict rule set", () => {
     expect(trap.verdict).toBe("watch"); // from payout_eps_1y, not from the flag
   });
 
+  it("an extreme dividend yield is a watch gate with a disclosed threshold (Welch & Goyal 2025)", () => {
+    // dps 0.5 on price 3 → 16.7% yield; payout stays 0.5 so nothing else fires
+    const a = assess(threeYears({ price: 3 }));
+    expect(a.verdict).toBe("watch");
+    const r = a.reasons.find((x) => x.rule === "yield_extreme");
+    expect(r?.tier).toBe("anumana");
+    expect(r?.detail).toMatch(/16\.7% > 12%/);
+    expect(r?.source).toMatch(/Welch & Goyal 2025/);
+    // policy is echoed, so the threshold is never hidden
+    expect(a.policy.yieldExtreme).toBe(0.12);
+    expect(assess(threeYears({ price: 5 })).reasons.map((x) => x.rule)).not.toContain("yield_extreme"); // 10%
+  });
+
   it("a missing Beneish input is reported as avisaya, not silently skipped", () => {
     const a = assess(threeYears({ receivables: undefined }));
     expect(a.flags.find((f) => f.rule === "beneish_not_computable")?.tier).toBe("avisaya");

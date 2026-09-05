@@ -38,6 +38,7 @@ const SRC = {
   ben: "Beneish 1999, Financial Analysts Journal",
   spdji: "S&P DJI 2019 — quality overlay on yield avoids yield traps; yield alone underperforms",
   streak: "SETHD / S&P Dividend Aristocrats eligibility: uninterrupted payment history",
+  wg: "Welch & Goyal 2025 (SSRN 5442914) — very high dividend-price ratios predicted dividend reductions, not higher returns",
 } as const;
 
 const fmt = (x: number | null | undefined, d = 2) =>
@@ -114,6 +115,9 @@ export function assess(history: AnnualRecord[], policy: VerdictPolicy = DEFAULT_
   }
   if (altman.zone === "grey") {
     watch("altman_grey", `Z'' ${fmt(altman.z)} in grey zone [${policy.altmanDistress}, 2.6]`, SRC.alt);
+  }
+  if (cells.dividendYield !== null && cells.dividendYield > policy.yieldExtreme) {
+    watch("yield_extreme", `dividend yield ${fmt(cells.dividendYield * 100, 1)}% > ${policy.yieldExtreme * 100}%: the market is pricing a cut`, SRC.wg);
   }
 
   // ── Flags (saññā) ───────────────────────────────────────────────────

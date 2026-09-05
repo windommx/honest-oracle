@@ -104,6 +104,9 @@ export interface VerdictPolicy {
   beneishFlag: number;
   /** yield-trap: price fell more than this while payout > 1 */
   trapDrawdown: number;
+  /** dividend yield above this → watch: in the cross-section, extreme D/P predicts
+   *  a dividend reduction, not a higher return (Welch & Goyal 2025) */
+  yieldExtreme: number;
 }
 
 export const DEFAULT_POLICY: VerdictPolicy = {
@@ -117,4 +120,5 @@ export const DEFAULT_POLICY: VerdictPolicy = {
   streakMin: 3,
   beneishFlag: -1.78,
   trapDrawdown: -0.3,
+  yieldExtreme: 0.12,
 };

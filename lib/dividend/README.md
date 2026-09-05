@@ -7,6 +7,7 @@ same answer, every run. Sibling of `lib/rush-engine` under the same
 ratio (อนุมาน), a flag (สัญญา) — or refused (อวิสัย).
 
 Design and sources: [`docs/research/dividend-algorithm.md`](../../docs/research/dividend-algorithm.md).
+Newer research (2024–2026) read tier by tier: [`docs/research/dividend-research-2024-2026.md`](../../docs/research/dividend-research-2024-2026.md).
 
 ## Pipeline
 

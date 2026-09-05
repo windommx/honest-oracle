@@ -47,6 +47,20 @@ describe("walk-forward with embargo", () => {
     expect(seen.length).toBe(r.folds.length);
     expect(r.metrics.n).toBe(r.predictions.length);
   });
+
+  it("keeps a confusion per test year so a one-regime model cannot hide in the pooled number", () => {
+    const cs = cases(0.1);
+    const r = walkForward(cs, lossOnly);
+    expect(r.folds.reduce((a, f) => a + f.metrics.n, 0)).toBe(r.metrics.n);
+    expect(r.folds.reduce((a, f) => a + f.metrics.tp, 0)).toBe(r.metrics.tp);
+    const b = benchmark(cs, lossOnly, { baselines: [neverCut], draws: 10 });
+    expect(b.byYear.map((y) => y.year)).toEqual(r.folds.map((f) => f.year));
+    expect(b.byYear.every((y) => y.cuts <= y.n)).toBe(true);
+    if (b.worstYear) {
+      const defined = b.byYear.filter((y) => y.balancedAccuracy !== null).map((y) => y.balancedAccuracy as number);
+      expect(b.worstYear.balancedAccuracy).toBe(Math.min(...defined));
+    }
+  });
 });
 
 describe("harness integrity (synthetic universe with a planted loss→cut mechanism)", () => {

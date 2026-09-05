@@ -229,7 +229,7 @@ export default function DividendPage() {
               </label>
             </div>
             <p className="text-[0.65rem] text-faint mt-2">
-              ประตูแข็ง: ขาดทุน · DPS/EPS &gt; 1 สองปี · FCF ไม่คลุมและ runway &lt; 1 · Altman Z&apos;&apos; &lt; 1.1 · หนี้/EBITDA &gt; 4 และ EBIT/ดอกเบี้ย &lt; 2 — แก้ได้ในโค้ด (DEFAULT_POLICY) ไม่ซ่อน
+              ประตูแข็ง: ขาดทุน · DPS/EPS &gt; 1 สองปี · FCF ไม่คลุมและ runway &lt; 1 · Altman Z&apos;&apos; &lt; 1.1 · หนี้/EBITDA &gt; 4 และ EBIT/ดอกเบี้ย &lt; 2 · watch: F &lt; 5 · streak &lt; 3 · yield &gt; 12% — แก้ได้ในโค้ด (DEFAULT_POLICY) ไม่ซ่อน
             </p>
           </section>
 

@@ -85,5 +85,6 @@ describe("platform run", () => {
     expect(md).toMatch(/verdict\(at-risk\)/);
     expect(md).toMatch(/verdict\(at-risk\|watch\)/);
     expect(md).toMatch(/ADEQUATE/);
+    expect(md).toMatch(/Per year \(regime check/);
   });
 });

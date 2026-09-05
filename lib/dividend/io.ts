@@ -256,6 +256,9 @@ export function formatBenchmarkMarkdown(v: ValidationRun): string {
       "|---|---|---|",
       ...b.baselines.map((x) => `| ${x.name} | ${num(x.metrics.balancedAccuracy, 3)} | ${x.skill === null ? "n/a" : (x.skill >= 0 ? "+" : "") + x.skill.toFixed(3)} |`),
       "",
+      `Per year (regime check${b.worstYear ? ` — worst ${b.worstYear.year}: BA ${b.worstYear.balancedAccuracy.toFixed(3)}` : ""}): ` +
+        b.byYear.map((y) => `${y.year} n=${y.n} cuts=${y.cuts} BA=${num(y.balancedAccuracy, 3)}`).join(" · "),
+      "",
     ];
     return L.join("\n");
   };
