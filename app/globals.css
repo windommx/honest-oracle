@@ -42,8 +42,7 @@ body {
      guard measures against, so no text tier loses AA over the glow. Fixed so it does not
      scroll with content. */
   background-image:
-    radial-gradient(ellipse 60% 45% at 88% 0%, rgba(217, 166, 58, 0.16), transparent 70%),
-    radial-gradient(ellipse 50% 40% at 0% 25%, rgba(29, 78, 216, 0.06), transparent 70%);
+    radial-gradient(ellipse 60% 45% at 88% 0%, rgba(217, 166, 58, 0.11), transparent 70%);
   background-attachment: fixed;
 }
 
@@ -120,70 +119,74 @@ a {
 .input:focus { border-color: var(--accent); }
 
 /* ── Premium lighting (dashboard) ──────────────────────────────────────────────
-   "Premium" on a light theme is depth and warmth, not more colour: a warm wash that
-   reads as light falling on paper, shadows in two layers (contact + ambient, both
-   tinted toward the gold so they sit in the same light), a 1px top highlight that
-   makes a card read as a raised surface, and ONE accent hue for every chip instead of
-   a rainbow. Every colour here is a palette hex or an rgba of one. Text contrast is
-   unaffected: the warm wash never exceeds the 15 % gold tint the contrast guard
-   measures the faint tier against. */
+   Tuned on feedback (2026-09): the preferred look is the QUIET one — flat pale ground,
+   crisp white cards — made slightly clearer and more precious, not louder. So: cards are
+   pure white with a defined neutral hairline and a tight contact shadow (clarity comes
+   from the edge, not from glow); ONE warm breath of light on the hero only; a single
+   gold hairline along the hero's top edge; gold everywhere else is a line or a chip,
+   never a wash. Every colour is a palette hex or an rgba of one; the faint tier is
+   never drawn over anything darker than the guard's measured surfaces. */
 .card-premium {
   position: relative;
-  background:
-    linear-gradient(160deg, #ffffff 0%, #ffffff 58%, rgba(217, 166, 58, 0.10) 100%);
-  border: 1px solid rgba(122, 92, 18, 0.14);
+  background: #ffffff;
+  border: 1px solid rgba(20, 22, 28, 0.09);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.9),
-    0 1px 2px rgba(20, 22, 28, 0.05),
-    0 12px 32px rgba(122, 92, 18, 0.08),
-    0 28px 64px rgba(20, 22, 28, 0.05);
+    0 1px 2px rgba(20, 22, 28, 0.06),
+    0 10px 28px rgba(20, 22, 28, 0.05);
 }
-/* The hero's light source: a warm glow top-right, a cool one bottom-left, clipped. */
+/* The hero's one light source: a warm breath top-right, and a gold hairline at the top. */
 .hero-wash { overflow: hidden; }
 .hero-wash::before {
   content: "";
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background:
-    radial-gradient(ellipse 55% 70% at 100% 0%, rgba(217, 166, 58, 0.22), transparent 65%),
-    radial-gradient(ellipse 45% 55% at 0% 100%, rgba(29, 78, 216, 0.06), transparent 65%);
+  background: radial-gradient(ellipse 52% 62% at 100% 0%, rgba(217, 166, 58, 0.13), transparent 66%);
+}
+.hero-wash::after {
+  content: "";
+  position: absolute;
+  left: 8%; right: 8%; top: 0;
+  height: 1px;
+  pointer-events: none;
+  background: linear-gradient(90deg, transparent, rgba(122, 92, 18, 0.45), rgba(217, 166, 58, 0.6), rgba(122, 92, 18, 0.45), transparent);
 }
 .hero-wash > * { position: relative; }
 
-/* Inner tile on a premium card: frosted white so the wash shows through faintly. */
+/* Inner tile on the hero: white, crisp edge, quiet lift on hover. */
 .tile-frost {
-  background: rgba(255, 255, 255, 0.72);
-  border: 1px solid rgba(122, 92, 18, 0.10);
+  background: rgba(255, 255, 255, 0.86);
+  border: 1px solid rgba(20, 22, 28, 0.08);
   backdrop-filter: blur(8px);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 1px 2px rgba(20, 22, 28, 0.04);
   transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
 }
 .tile-frost:hover {
   transform: translateY(-2px);
-  border-color: rgba(122, 92, 18, 0.28);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 10px 24px rgba(122, 92, 18, 0.12);
+  border-color: rgba(122, 92, 18, 0.30);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 8px 20px rgba(20, 22, 28, 0.08);
 }
 
-/* Gold icon chip — one hue for every KPI and action, so the eye reads a system. */
+/* Gold icon chip — one hue for every KPI and action, kept pale so the number leads. */
 .chip-gold {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   color: #7a5c12;
-  background: linear-gradient(145deg, rgba(217, 166, 58, 0.26), rgba(217, 166, 58, 0.06));
-  border: 1px solid rgba(122, 92, 18, 0.16);
+  background: linear-gradient(145deg, rgba(217, 166, 58, 0.18), rgba(217, 166, 58, 0.05));
+  border: 1px solid rgba(122, 92, 18, 0.14);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
 }
 
-/* Primary gold button with a light source: top highlight, gradient body, gold ambient shadow. */
+/* Primary gold button: top highlight, gradient body, a restrained gold ambient shadow. */
 .btn-gold {
   color: #14161c;
   background: linear-gradient(180deg, #d9a63a 0%, #c8901f 100%);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.38), 0 1px 2px rgba(20, 22, 28, 0.08), 0 8px 20px rgba(217, 166, 58, 0.38);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.38), 0 1px 2px rgba(20, 22, 28, 0.08), 0 6px 16px rgba(217, 166, 58, 0.28);
   transition: transform 0.15s, box-shadow 0.15s, filter 0.15s;
 }
-.btn-gold:hover { filter: brightness(1.04); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.38), 0 2px 4px rgba(20, 22, 28, 0.08), 0 12px 28px rgba(217, 166, 58, 0.45); }
+.btn-gold:hover { filter: brightness(1.04); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.38), 0 2px 4px rgba(20, 22, 28, 0.08), 0 10px 22px rgba(217, 166, 58, 0.34); }
 .btn-gold:active { transform: scale(0.985); }
 .btn-gold:disabled { filter: none; box-shadow: none; opacity: 0.5; }
 
@@ -200,13 +203,13 @@ a {
 }
 .eyebrow-gold::before { content: ""; width: 1.25rem; height: 2px; border-radius: 2px; background: linear-gradient(90deg, #d9a63a, #7a5c12); }
 
-/* Hairline that fades at both ends — a divider that belongs to the light, not a ruler. */
-.rule-gold { height: 1px; background: linear-gradient(90deg, transparent, rgba(122, 92, 18, 0.28), transparent); }
+/* Hairline that fades at both ends. */
+.rule-gold { height: 1px; background: linear-gradient(90deg, transparent, rgba(122, 92, 18, 0.25), transparent); }
 
-/* Sticky nav as a lit glass shelf. */
+/* Sticky nav as a clean white shelf with a defined bottom edge. */
 .nav-premium {
-  background: rgba(255, 255, 255, 0.78);
+  background: rgba(255, 255, 255, 0.86);
   backdrop-filter: blur(14px);
-  border-bottom: 1px solid rgba(122, 92, 18, 0.10);
-  box-shadow: 0 8px 24px rgba(20, 22, 28, 0.04);
+  border-bottom: 1px solid rgba(20, 22, 28, 0.08);
+  box-shadow: 0 6px 20px rgba(20, 22, 28, 0.04);
 }

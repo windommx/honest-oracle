@@ -255,7 +255,7 @@ export default function DashboardPage() {
       <main className="max-w-screen-2xl mx-auto px-4 sm:px-8 pt-8 pb-16">
         {/* Hero — header + KPIs on one lit surface. The light source is the card's own
             warm wash (top-right), so the numbers read as printed on paper under a lamp. */}
-        <section className="card-premium hero-wash rounded-[2rem] p-6 sm:p-8 mb-8" aria-labelledby="dash-title">
+        <section className="card-premium hero-wash rounded-3xl p-6 sm:p-8 mb-8" aria-labelledby="dash-title">
         <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-y-4">
           <div>
             <div className="eyebrow-gold mb-2">Bookisdom · ภาพรวม</div>
@@ -275,7 +275,7 @@ export default function DashboardPage() {
         <div className="rule-gold my-6" />
 
         {/* KPI stats — all real */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 [&>*:last-child]:col-span-2 md:[&>*:last-child]:col-span-1">
           <Kpi label="หนังสือทั้งหมด" value={String(stats.count)} icon={<BookOpen className="w-5 h-5" />} />
           <Kpi label="คำทั้งหมด (ประเมิน)" value={fmt(stats.words)} icon={<FileText className="w-5 h-5" />} />
           <Kpi label="แชร์สาธารณะ" value={String(stats.shared)} icon={<Share2 className="w-5 h-5" />} />
