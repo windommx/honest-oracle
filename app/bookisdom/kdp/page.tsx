@@ -112,15 +112,15 @@ export default function KdpPage() {
   const minPages = binding === "hardcover" ? MIN_PAGES_HARDCOVER : MIN_PAGES_PAPERBACK;
 
   return (
-    <div className="min-h-screen bg-[#f3f5f9]">
+    <div className="min-h-screen">
       <nav className="fixed top-0 left-0 right-0 z-50 glass-card">
         <div className="max-w-5xl mx-auto px-4 py-4 flex justify-between items-center">
           <BookisdomLogo />
           <div className="flex items-center gap-3 text-xs">
-            <Link href="/bookisdom" className="text-slate-600 hover:text-[#6b5010] flex items-center gap-1"><Wand2 className="w-3.5 h-3.5" />เครื่องมือ prompt</Link>
-            <Link href="/bookisdom/dashboard" className="text-slate-600 hover:text-[#6b5010] flex items-center gap-1"><LayoutGrid className="w-3.5 h-3.5" />แดชบอร์ด</Link>
-            <Link href="/bookisdom/studio" className="text-slate-600 hover:text-[#6b5010] flex items-center gap-1"><Play className="w-3.5 h-3.5" />Studio</Link>
-            <span className="flex items-center gap-1.5 text-[#7a5c12] border border-[#7a5c12]/30 rounded-lg px-3 py-1.5">
+            <Link href="/bookisdom" className="text-slate-600 hover:text-[#1e40af] flex items-center gap-1"><Wand2 className="w-3.5 h-3.5" />เครื่องมือ prompt</Link>
+            <Link href="/bookisdom/dashboard" className="text-slate-600 hover:text-[#1e40af] flex items-center gap-1"><LayoutGrid className="w-3.5 h-3.5" />แดชบอร์ด</Link>
+            <Link href="/bookisdom/studio" className="text-slate-600 hover:text-[#1e40af] flex items-center gap-1"><Play className="w-3.5 h-3.5" />Studio</Link>
+            <span className="flex items-center gap-1.5 text-[#1d4ed8] border border-[#1d4ed8]/30 rounded-lg px-3 py-1.5">
               <BookMarked className="w-3.5 h-3.5" /> KDP
             </span>
           </div>
@@ -270,7 +270,7 @@ export default function KdpPage() {
               <button
                 onClick={copyPackage}
                 disabled={!hasWords}
-                className="w-full py-2.5 bg-[#d9a63a] text-black font-semibold rounded-xl hover:bg-[#c8901f] transition-colors flex items-center justify-center gap-2 text-sm disabled:opacity-50"
+                className="w-full py-2.5 bg-[#3c74d4] text-white font-semibold rounded-xl hover:bg-[#3366bf] transition-colors flex items-center justify-center gap-2 text-sm disabled:opacity-50"
               >
                 {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
                 {copied ? "คัดลอกแล้ว" : "คัดลอก KDP package (Markdown)"}
@@ -291,7 +291,7 @@ function Spec({ label, value, hint }: { label: string; value: string; hint: stri
   return (
     <div className="p-3 rounded-lg bg-black/[0.03]">
       <div className="text-[0.65rem] text-faint">{label}</div>
-      <div className="text-lg font-semibold text-[#7a5c12] tabular-nums">{value}</div>
+      <div className="text-lg font-semibold text-[#1d4ed8] tabular-nums">{value}</div>
       <div className="text-[0.65rem] text-faint mt-0.5">{hint}</div>
     </div>
   );

@@ -25,10 +25,10 @@ export default function BookisdomFix() {
   const samples = SAMPLE_RUNGS.map((id) => SYMPTOM_LADDER.find((r) => r.id === id)!).filter(Boolean);
 
   return (
-    <main className="min-h-screen bg-[#f3f5f9] text-slate-800">
+    <main className="min-h-screen text-slate-800">
       <div className="max-w-3xl mx-auto px-5 py-12">
         <div className="flex items-center justify-between mb-2">
-          <p className="text-xs tracking-[0.2em] uppercase text-[#7a5c12] font-semibold">Bookisdom · หาโมดูลจากอาการ</p>
+          <p className="text-xs tracking-[0.2em] uppercase text-[#1d4ed8] font-semibold">Bookisdom · หาโมดูลจากอาการ</p>
           <Link href="/bookisdom/start" className="text-xs text-faint hover:text-slate-700">เริ่มเล่มใหม่ →</Link>
         </div>
         <h1 className="text-2xl font-bold text-slate-900 mb-1">ติดตรงไหน?</h1>
@@ -46,7 +46,7 @@ export default function BookisdomFix() {
             onChange={(e) => setSymptom(e.target.value)}
             placeholder="เช่น จบบทแล้ววางได้ ไม่มีใครอ่านต่อ"
             aria-label="อาการที่เจอ"
-            className="w-full rounded-xl border border-black/10 bg-black/[0.02] pl-10 pr-4 py-3 text-sm text-slate-900 placeholder:text-faint focus:border-[#7a5c12] focus:outline-none"
+            className="w-full rounded-xl border border-black/10 bg-black/[0.02] pl-10 pr-4 py-3 text-sm text-slate-900 placeholder:text-faint focus:border-[#1d4ed8] focus:outline-none"
           />
         </label>
 
@@ -62,7 +62,7 @@ export default function BookisdomFix() {
                 <button
                   key={r.id}
                   onClick={() => setSymptom(r.th)}
-                  className="text-[0.68rem] px-2.5 py-1 rounded-full border border-black/10 text-slate-600 hover:border-[#7a5c12]/60 hover:text-[#6b5010] transition text-left"
+                  className="text-[0.68rem] px-2.5 py-1 rounded-full border border-black/10 text-slate-600 hover:border-[#1d4ed8]/60 hover:text-[#1e40af] transition text-left"
                 >
                   {r.th}
                 </button>
@@ -82,12 +82,12 @@ export default function BookisdomFix() {
 
         {result?.primary && (
           <div className="space-y-4">
-            <div className="rounded-xl border border-[#7a5c12]/40 bg-[#d9a63a]/[0.05] p-5">
-              <p className="text-[0.62rem] tracking-widest uppercase text-[#7a5c12] mb-1">
+            <div className="rounded-xl border border-[#1d4ed8]/40 bg-[#3c74d4]/[0.05] p-5">
+              <p className="text-[0.62rem] tracking-widest uppercase text-[#1d4ed8] mb-1">
                 {result.primary.rung.id} · เปิดตัวนี้ก่อน
               </p>
               <p className="text-lg font-bold text-slate-900">{meta(result.primary.rung.primary).name}</p>
-              <p className="text-[0.7rem] font-mono text-[#7a5c12] mb-2">{result.primary.rung.primary}</p>
+              <p className="text-[0.7rem] font-mono text-[#1d4ed8] mb-2">{result.primary.rung.primary}</p>
               <p className="text-[0.78rem] text-slate-700 mb-3">{meta(result.primary.rung.primary).desc}</p>
               <p className="text-[0.8rem] leading-relaxed text-slate-600 mb-3">{result.primary.rung.why}</p>
               <p className="text-[0.68rem] text-faint">
@@ -139,7 +139,7 @@ export default function BookisdomFix() {
                         <span className="font-mono text-faint mr-1.5">{s.rung.id}</span>
                         <span className="text-slate-600">{s.rung.th}</span>
                         <span className="block text-faint mt-0.5">
-                          → <span className="font-mono text-[#7a5c12]/70">{s.rung.primary}</span> (จาก: {s.matched.join(", ")})
+                          → <span className="font-mono text-[#1d4ed8]/70">{s.rung.primary}</span> (จาก: {s.matched.join(", ")})
                         </span>
                       </span>
                     </li>
@@ -150,7 +150,7 @@ export default function BookisdomFix() {
 
             <Link
               href="/bookisdom/start"
-              className="inline-flex items-center gap-2 rounded-xl bg-[#d9a63a] px-5 py-2.5 text-sm font-semibold text-[#14161c] hover:bg-[#c8901f] transition"
+              className="inline-flex items-center gap-2 rounded-xl bg-[#3c74d4] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#3366bf] transition"
             >
               สร้าง Prompt Pack ที่มีโมดูลเหล่านี้ <ArrowRight className="w-4 h-4" />
             </Link>

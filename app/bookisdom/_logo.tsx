@@ -24,15 +24,15 @@ export function BookisdomMark({ size = 28, className = "" }: { size?: number; cl
     >
       <title id="bookisdom-mark-title">Bookisdom — book + wisdom</title>
       {/* light of wisdom rising from the spine */}
-      <circle cx="16" cy="7" r="2.2" fill="#7a5c12" />
-      <path d="M16 1.5v2.3M10.6 3.8l1.6 1.6M21.4 3.8l-1.6 1.6" stroke="#7a5c12" strokeWidth="1.6" strokeLinecap="round" />
+      <circle cx="16" cy="7" r="2.2" fill="#1d4ed8" />
+      <path d="M16 1.5v2.3M10.6 3.8l1.6 1.6M21.4 3.8l-1.6 1.6" stroke="#1d4ed8" strokeWidth="1.6" strokeLinecap="round" />
       {/* left page (deeper) and right page */}
-      <path d="M4 12.5c3.6-1.6 7.6-1.6 11.2 0v15.4c-3.6-1.6-7.6-1.6-11.2 0V12.5Z" fill="#c8901f" />
-      <path d="M28 12.5c-3.6-1.6-7.6-1.6-11.2 0v15.4c3.6-1.6 7.6-1.6 11.2 0V12.5Z" fill="#d9a63a" />
+      <path d="M4 12.5c3.6-1.6 7.6-1.6 11.2 0v15.4c-3.6-1.6-7.6-1.6-11.2 0V12.5Z" fill="#3366bf" />
+      <path d="M28 12.5c-3.6-1.6-7.6-1.6-11.2 0v15.4c3.6-1.6 7.6-1.6 11.2 0V12.5Z" fill="#3c74d4" />
       {/* spine */}
-      <path d="M16 12.2v16" stroke="#7a5c12" strokeWidth="1.8" strokeLinecap="round" />
+      <path d="M16 12.2v16" stroke="#1d4ed8" strokeWidth="1.8" strokeLinecap="round" />
       {/* text lines — the wisdom being read */}
-      <path d="M7 16.5c2-.6 4-.6 6 0M7 20c2-.6 4-.6 6 0M19 16.5c2-.6 4-.6 6 0M19 20c2-.6 4-.6 6 0" stroke="#7a5c12" strokeWidth="1.1" strokeLinecap="round" opacity="0.7" />
+      <path d="M7 16.5c2-.6 4-.6 6 0M7 20c2-.6 4-.6 6 0M19 16.5c2-.6 4-.6 6 0M19 20c2-.6 4-.6 6 0" stroke="#1d4ed8" strokeWidth="1.1" strokeLinecap="round" opacity="0.7" />
     </svg>
   );
 }
@@ -40,8 +40,8 @@ export function BookisdomMark({ size = 28, className = "" }: { size?: number; cl
 export function BookisdomWordmark({ className = "" }: { className?: string }) {
   return (
     <span className={`font-semibold tracking-tight ${className}`} aria-label="Bookisdom">
-      <span aria-hidden="true" className="text-[#14161c]">Book</span>
-      <span aria-hidden="true" className="text-[#7a5c12]">isdom</span>
+      <span aria-hidden="true" className="text-[#111827]">Book</span>
+      <span aria-hidden="true" className="text-[#1d4ed8]">isdom</span>
     </span>
   );
 }

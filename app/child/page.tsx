@@ -82,15 +82,15 @@ export default function ChildPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f3f5f9] text-[#14161c]">
+    <div className="min-h-screen text-[#111827]">
       <div className="container mx-auto px-4 py-12 max-w-6xl">
         <div className="text-center mb-12">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#d9a63a]/10 text-[#7a5c12] text-sm mb-4">
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#3c74d4]/10 text-[#1d4ed8] text-sm mb-4">
             <Baby className="w-4 h-4" />
             <span>Child Naming Module</span>
           </div>
           <h1 className="text-4xl md:text-5xl font-bold mb-4">
-            <span className="text-[#7a5c12]">NaraChild</span>
+            <span className="text-[#1d4ed8]">NaraChild</span>
           </h1>
           <p className="text-gray-600 text-lg max-w-2xl mx-auto">
             ออกแบบชื่อมงคลสำหรับเด็กแรกเกิดด้วย Warakkasa Matrix ตามเพศและเป้าหมายพัฒนาการ
@@ -100,7 +100,7 @@ export default function ChildPage() {
         <div className="grid lg:grid-cols-2 gap-12">
           <div className="bg-[#ffffff] rounded-2xl p-8 border border-black/5">
             <h2 className="text-2xl font-bold mb-6 flex items-center gap-3">
-              <Sparkles className="w-6 h-6 text-[#7a5c12]" />
+              <Sparkles className="w-6 h-6 text-[#1d4ed8]" />
               วิเคราะห์เพื่อตั้งชื่อเด็ก
             </h2>
 
@@ -113,7 +113,7 @@ export default function ChildPage() {
                     onClick={() => setGender("male")}
                     className={`p-4 rounded-lg border-2 transition-all ${
                       gender === "male"
-                        ? "border-[#7a5c12] bg-[#d9a63a]/10"
+                        ? "border-[#1d4ed8] bg-[#3c74d4]/10"
                         : "border-black/10 hover:border-black/20"
                     }`}
                   >
@@ -125,7 +125,7 @@ export default function ChildPage() {
                     onClick={() => setGender("female")}
                     className={`p-4 rounded-lg border-2 transition-all ${
                       gender === "female"
-                        ? "border-[#7a5c12] bg-[#d9a63a]/10"
+                        ? "border-[#1d4ed8] bg-[#3c74d4]/10"
                         : "border-black/10 hover:border-black/20"
                     }`}
                   >
@@ -140,7 +140,7 @@ export default function ChildPage() {
                 <select
                   value={birthDay}
                   onChange={(e) => setBirthDay(e.target.value)}
-                  className="w-full px-4 py-3 rounded-lg bg-white border border-black/10 focus:border-[#7a5c12] focus:outline-none transition-colors"
+                  className="w-full px-4 py-3 rounded-lg bg-white border border-black/10 focus:border-[#1d4ed8] focus:outline-none transition-colors"
                   required
                 >
                   <option value="">เลือกวันเกิด</option>
@@ -162,7 +162,7 @@ export default function ChildPage() {
                       onClick={() => toggleGoal(goal.value)}
                       className={`p-3 rounded-lg border transition-all text-left ${
                         selectedGoals.includes(goal.value)
-                          ? "border-[#7a5c12] bg-[#d9a63a]/10 text-[#7a5c12]"
+                          ? "border-[#1d4ed8] bg-[#3c74d4]/10 text-[#1d4ed8]"
                           : "border-black/10 hover:border-black/20"
                       }`}
                     >
@@ -175,7 +175,7 @@ export default function ChildPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-4 rounded-lg bg-gradient-to-r from-[#d9a63a] to-[#c8901f] text-black font-bold hover:opacity-90 transition-opacity disabled:opacity-50"
+                className="w-full py-4 rounded-lg bg-gradient-to-r from-[#3c74d4] to-[#3366bf] text-white font-bold hover:opacity-90 transition-opacity disabled:opacity-50"
               >
                 {loading ? "กำลังวิเคราะห์..." : "วิเคราะห์และแนะนำชื่อ"}
               </button>
@@ -195,7 +195,7 @@ export default function ChildPage() {
                   <h3 className="text-xl font-bold mb-4">อักษรแนะนำ</h3>
                   <div className="flex flex-wrap gap-2 mb-6">
                     {result.recommendedLetters.map((letter: string) => (
-                      <span key={letter} className="px-4 py-2 rounded-full bg-[#d9a63a]/20 text-[#7a5c12] font-bold">
+                      <span key={letter} className="px-4 py-2 rounded-full bg-[#3c74d4]/20 text-[#1d4ed8] font-bold">
                         {letter}
                       </span>
                     ))}
@@ -221,11 +221,11 @@ export default function ChildPage() {
                   <div className="grid grid-cols-2 gap-4">
                     <div className="p-4 rounded-lg bg-black/[0.03]">
                       <div className="text-sm text-gray-600">เลขเป้าหมาย</div>
-                      <div className="text-2xl font-bold text-[#7a5c12]">{result.targetNumber}</div>
+                      <div className="text-2xl font-bold text-[#1d4ed8]">{result.targetNumber}</div>
                     </div>
                     <div className="p-4 rounded-lg bg-black/[0.03]">
                       <div className="text-sm text-gray-600">อายตนะเป้าหมาย</div>
-                      <div className="text-2xl font-bold text-[#7a5c12]">{result.ayatana}</div>
+                      <div className="text-2xl font-bold text-[#1d4ed8]">{result.ayatana}</div>
                     </div>
                   </div>
                 </div>
@@ -242,16 +242,16 @@ export default function ChildPage() {
                   </div>
                 </div>
 
-                <div className="bg-[#ffffff] rounded-2xl p-8 border border-[#7a5c12]/20">
+                <div className="bg-[#ffffff] rounded-2xl p-8 border border-[#1d4ed8]/20">
                   <h3 className="text-xl font-bold mb-6 flex items-center gap-2">
-                    <Sparkles className="w-5 h-5 text-[#7a5c12]" />
+                    <Sparkles className="w-5 h-5 text-[#1d4ed8]" />
                     ชื่อแนะนำ
                   </h3>
                   <div className="space-y-4">
                     {result.suggestedNames.map((name: any, i: number) => (
                       <div key={i} className="p-4 rounded-lg bg-black/[0.03] border border-black/10">
                         <div className="flex items-center justify-between mb-2">
-                          <span className="text-xl font-bold text-[#7a5c12]">{name.name}</span>
+                          <span className="text-xl font-bold text-[#1d4ed8]">{name.name}</span>
                           <span className={`px-3 py-1 rounded-full text-sm ${
                             name.score >= 90 ? "bg-green-500/20 text-green-800" :
                             name.score >= 70 ? "bg-yellow-500/20 text-yellow-800" :

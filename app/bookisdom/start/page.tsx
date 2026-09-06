@@ -56,10 +56,10 @@ export default function BookisdomStart() {
   const t = BOOK_TYPES[type];
 
   return (
-    <main className="min-h-screen bg-[#f3f5f9] text-slate-800">
+    <main className="min-h-screen text-slate-800">
       <div className="max-w-3xl mx-auto px-5 py-12">
         <div className="flex items-center justify-between mb-2">
-          <p className="text-xs tracking-[0.2em] uppercase text-[#7a5c12] font-semibold">Bookisdom Studio · สร้าง Prompt Pack</p>
+          <p className="text-xs tracking-[0.2em] uppercase text-[#1d4ed8] font-semibold">Bookisdom Studio · สร้าง Prompt Pack</p>
           <div className="flex items-center gap-3">
             <Link href="/bookisdom/fix" className="text-xs text-faint hover:text-slate-700">ติดอยู่? หาจากอาการ</Link>
             <Link href="/bookisdom/explore" className="text-xs text-faint hover:text-slate-700">← ดู 8 ประเภท</Link>
@@ -70,8 +70,8 @@ export default function BookisdomStart() {
         <div className="flex items-center gap-1.5 mb-8">
           {STEPS.map((s, i) => (
             <div key={s} className="flex-1">
-              <div className={`h-1 rounded-full ${i <= step ? "bg-[#d9a63a]" : "bg-black/[0.06]"}`} />
-              <p className={`text-[0.62rem] mt-1.5 ${i === step ? "text-[#7a5c12]" : "text-faint"}`}>{i + 1}. {s}</p>
+              <div className={`h-1 rounded-full ${i <= step ? "bg-[#3c74d4]" : "bg-black/[0.06]"}`} />
+              <p className={`text-[0.62rem] mt-1.5 ${i === step ? "text-[#1d4ed8]" : "text-faint"}`}>{i + 1}. {s}</p>
             </div>
           ))}
         </div>
@@ -85,14 +85,14 @@ export default function BookisdomStart() {
                 <button
                   key={key}
                   onClick={() => chooseType(key)}
-                  className={`flex items-center gap-3 rounded-xl border p-4 text-left transition ${type === key ? "border-[#7a5c12] bg-[#d9a63a]/[0.06]" : "border-black/10 hover:border-black/25"}`}
+                  className={`flex items-center gap-3 rounded-xl border p-4 text-left transition ${type === key ? "border-[#1d4ed8] bg-[#3c74d4]/[0.06]" : "border-black/10 hover:border-black/25"}`}
                 >
                   <span className="text-2xl">{bt.icon}</span>
                   <span>
                     <span className="block font-medium text-slate-900">{bt.label}</span>
                     <span className="block text-[0.68rem] text-faint">{bt.sub_genres.length} แนวย่อย · {bt.default_chapters} บท</span>
                   </span>
-                  {type === key && <Check className="w-4 h-4 text-[#7a5c12] ml-auto" />}
+                  {type === key && <Check className="w-4 h-4 text-[#1d4ed8] ml-auto" />}
                 </button>
               ))}
             </div>
@@ -104,7 +104,7 @@ export default function BookisdomStart() {
               <div className="flex flex-wrap gap-1.5 mb-3">
                 <button
                   onClick={() => setPresetFilter("all")}
-                  className={`text-[0.68rem] px-2.5 py-1 rounded-full border transition ${presetFilter === "all" ? "border-[#7a5c12] bg-[#d9a63a]/10 text-[#7a5c12]" : "border-black/10 text-slate-600 hover:border-black/25"}`}
+                  className={`text-[0.68rem] px-2.5 py-1 rounded-full border transition ${presetFilter === "all" ? "border-[#1d4ed8] bg-[#3c74d4]/10 text-[#1d4ed8]" : "border-black/10 text-slate-600 hover:border-black/25"}`}
                 >
                   ทั้งหมด ({BOOTSTRAPS.length})
                 </button>
@@ -112,7 +112,7 @@ export default function BookisdomStart() {
                   <button
                     key={k}
                     onClick={() => setPresetFilter(k)}
-                    className={`text-[0.68rem] px-2.5 py-1 rounded-full border transition ${presetFilter === k ? "border-[#7a5c12] bg-[#d9a63a]/10 text-[#7a5c12]" : "border-black/10 text-slate-600 hover:border-black/25"}`}
+                    className={`text-[0.68rem] px-2.5 py-1 rounded-full border transition ${presetFilter === k ? "border-[#1d4ed8] bg-[#3c74d4]/10 text-[#1d4ed8]" : "border-black/10 text-slate-600 hover:border-black/25"}`}
                   >
                     {BOOK_TYPES[k].icon} {BOOK_TYPES[k].label} ({BOOTSTRAPS.filter((b) => b.type === k).length})
                   </button>
@@ -123,11 +123,11 @@ export default function BookisdomStart() {
                   <Link
                     key={b.id}
                     href={`/bookisdom?${bootstrapQuery(b)}`}
-                    className="rounded-lg border border-black/10 p-3 hover:border-[#7a5c12]/50 transition group"
+                    className="rounded-lg border border-black/10 p-3 hover:border-[#1d4ed8]/50 transition group"
                   >
                     <span className="flex items-center gap-2">
                       <span className="text-base">{BOOK_TYPES[b.type].icon}</span>
-                      <span className="text-sm font-medium text-slate-900 group-hover:text-[#6b5010]">{b.nameTh}</span>
+                      <span className="text-sm font-medium text-slate-900 group-hover:text-[#1e40af]">{b.nameTh}</span>
                     </span>
                     <span className="block text-[0.65rem] text-faint mt-1">{b.taglineTh}</span>
                     <span className="block text-[0.6rem] text-faint mt-1">
@@ -150,7 +150,7 @@ export default function BookisdomStart() {
                 <button
                   key={g}
                   onClick={() => setGenre(g)}
-                  className={`text-sm px-3 py-1.5 rounded-full border transition ${genre === g ? "border-[#7a5c12] bg-[#d9a63a]/10 text-[#7a5c12]" : "border-black/10 text-slate-700 hover:border-black/25"}`}
+                  className={`text-sm px-3 py-1.5 rounded-full border transition ${genre === g ? "border-[#1d4ed8] bg-[#3c74d4]/10 text-[#1d4ed8]" : "border-black/10 text-slate-700 hover:border-black/25"}`}
                 >
                   {g.replace(/_/g, " ")}
                 </button>
@@ -162,7 +162,7 @@ export default function BookisdomStart() {
                 <button
                   key={l}
                   onClick={() => setLang(l)}
-                  className={`text-sm px-4 py-2 rounded-lg border transition ${lang === l ? "border-[#7a5c12] bg-[#d9a63a]/10 text-[#7a5c12]" : "border-black/10 text-slate-700 hover:border-black/25"}`}
+                  className={`text-sm px-4 py-2 rounded-lg border transition ${lang === l ? "border-[#1d4ed8] bg-[#3c74d4]/10 text-[#1d4ed8]" : "border-black/10 text-slate-700 hover:border-black/25"}`}
                 >
                   {l === "th" ? "ไทย (Thai-native)" : "อังกฤษ (English)"}
                 </button>
@@ -176,7 +176,7 @@ export default function BookisdomStart() {
                 <div className="grid gap-2 sm:grid-cols-2">
                   <button
                     onClick={() => setStructure("")}
-                    className={`rounded-xl border p-3 text-left transition ${structure === "" ? "border-[#7a5c12] bg-[#d9a63a]/[0.06]" : "border-black/10 hover:border-black/25"}`}
+                    className={`rounded-xl border p-3 text-left transition ${structure === "" ? "border-[#1d4ed8] bg-[#3c74d4]/[0.06]" : "border-black/10 hover:border-black/25"}`}
                   >
                     <span className="block text-sm font-medium text-slate-900">โครงมาตรฐาน (3 องก์)</span>
                     <span className="block text-[0.66rem] text-faint mt-0.5">conflict → climax → resolution</span>
@@ -185,7 +185,7 @@ export default function BookisdomStart() {
                     <button
                       key={s.id}
                       onClick={() => setStructure(s.id)}
-                      className={`rounded-xl border p-3 text-left transition ${structure === s.id ? "border-[#7a5c12] bg-[#d9a63a]/[0.06]" : "border-black/10 hover:border-black/25"}`}
+                      className={`rounded-xl border p-3 text-left transition ${structure === s.id ? "border-[#1d4ed8] bg-[#3c74d4]/[0.06]" : "border-black/10 hover:border-black/25"}`}
                     >
                       <span className="block text-sm font-medium text-slate-900">{s.thai}</span>
                       <span className="block text-[0.66rem] text-faint mt-0.5">{s.origin}</span>
@@ -204,11 +204,11 @@ export default function BookisdomStart() {
             <div className="grid gap-5 sm:grid-cols-2">
               <label className="block">
                 <span className="text-sm text-slate-600">จำนวนบท</span>
-                <input type="number" min={1} max={100} value={chapters} onChange={(e) => setChapters(Math.max(1, Math.min(100, parseInt(e.target.value) || 1)))} className="mt-1.5 w-full px-3 py-2 rounded-lg border border-black/10 bg-black/[0.03] text-slate-900 focus:border-[#7a5c12]/50 focus:outline-none" />
+                <input type="number" min={1} max={100} value={chapters} onChange={(e) => setChapters(Math.max(1, Math.min(100, parseInt(e.target.value) || 1)))} className="mt-1.5 w-full px-3 py-2 rounded-lg border border-black/10 bg-black/[0.03] text-slate-900 focus:border-[#1d4ed8]/50 focus:outline-none" />
               </label>
               <label className="block">
                 <span className="text-sm text-slate-600">คำต่อบท (โดยประมาณ)</span>
-                <input type="number" min={100} max={20000} step={100} value={words} onChange={(e) => setWords(Math.max(100, Math.min(20000, parseInt(e.target.value) || 100)))} className="mt-1.5 w-full px-3 py-2 rounded-lg border border-black/10 bg-black/[0.03] text-slate-900 focus:border-[#7a5c12]/50 focus:outline-none" />
+                <input type="number" min={100} max={20000} step={100} value={words} onChange={(e) => setWords(Math.max(100, Math.min(20000, parseInt(e.target.value) || 100)))} className="mt-1.5 w-full px-3 py-2 rounded-lg border border-black/10 bg-black/[0.03] text-slate-900 focus:border-[#1d4ed8]/50 focus:outline-none" />
               </label>
             </div>
             <p className="text-[0.72rem] text-faint mt-3">รวมประมาณ {(chapters * words).toLocaleString()} คำ · ค่าเริ่มต้นของ {t.label}: {t.default_chapters} บท × {t.default_words.toLocaleString()} คำ</p>
@@ -227,9 +227,9 @@ export default function BookisdomStart() {
                   <button
                     key={g.key}
                     onClick={() => toggleGroup(g.key)}
-                    className={`flex items-start gap-2.5 rounded-xl border p-3 text-left transition ${on ? "border-[#7a5c12] bg-[#d9a63a]/[0.06]" : "border-black/10 hover:border-black/25"}`}
+                    className={`flex items-start gap-2.5 rounded-xl border p-3 text-left transition ${on ? "border-[#1d4ed8] bg-[#3c74d4]/[0.06]" : "border-black/10 hover:border-black/25"}`}
                   >
-                    <span className={`mt-0.5 grid place-items-center w-4 h-4 rounded border ${on ? "bg-[#d9a63a] border-[#7a5c12]" : "border-black/25"}`}>
+                    <span className={`mt-0.5 grid place-items-center w-4 h-4 rounded border ${on ? "bg-[#3c74d4] border-[#1d4ed8]" : "border-black/25"}`}>
                       {on && <Check className="w-3 h-3 text-black" />}
                     </span>
                     <span>
@@ -262,7 +262,7 @@ export default function BookisdomStart() {
                 </div>
               ))}
             </dl>
-            <Link href={href} className="mt-6 inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-[#d9a63a] text-black font-semibold hover:bg-[#c8901f] transition">
+            <Link href={href} className="mt-6 inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-[#3c74d4] text-white font-semibold hover:bg-[#3366bf] transition">
               สร้าง Prompt Pack ใน Bookisdom Studio <ArrowRight className="w-4 h-4" />
             </Link>
             <p className="text-[0.68rem] text-faint mt-3">จะเปิด /bookisdom พร้อมตั้งค่าทุกอย่างให้ — กด Generate ได้เลย</p>
@@ -281,7 +281,7 @@ export default function BookisdomStart() {
           {canNext && (
             <button
               onClick={() => setStep((s) => Math.min(STEPS.length - 1, s + 1))}
-              className="inline-flex items-center gap-1.5 text-sm px-5 py-2 rounded-lg bg-[#d9a63a] text-black font-semibold hover:bg-[#c8901f]"
+              className="inline-flex items-center gap-1.5 text-sm px-5 py-2 rounded-lg bg-[#3c74d4] text-white font-semibold hover:bg-[#3366bf]"
             >
               ถัดไป <ArrowRight className="w-4 h-4" />
             </button>

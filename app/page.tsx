@@ -9,7 +9,7 @@ const SERVICES = [
     title: "NaraName",
     description: "วิเคราะห์ชื่อบุคคล",
     href: "/analyze",
-    color: "from-[#d9a63a] to-[#c8901f]",
+    color: "from-[#3c74d4] to-[#3366bf]",
     features: ["กาลกิณี", "เลขศาสตร์", "วรรคทักษา", "สัทศาสตร์"],
   },
   {
@@ -41,7 +41,7 @@ const SERVICES = [
     title: "โครงสร้างชีวิต",
     description: "แผนที่ชีวิต 100 ปี",
     href: "/lifemap",
-    color: "from-[#d9a63a] to-[#5a9e6a]",
+    color: "from-[#3c74d4] to-[#5a9e6a]",
     features: ["Life Graph", "Timeline", "Sharing", "Premium API"],
   },
 ];
@@ -71,32 +71,32 @@ const MCAS_FEATURES = [
 
 export default function HomePage() {
   return (
-    <div className="min-h-screen bg-[#f3f5f9]">
+    <div className="min-h-screen">
       <nav className="fixed top-0 left-0 right-0 z-50 glass-card">
         <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
           <div className="flex items-center gap-2">
-            <Crown className="w-8 h-8 text-[#7a5c12]" />
+            <Crown className="w-8 h-8 text-[#1d4ed8]" />
             <span className="text-xl font-semibold gold-gradient">NaraClear</span>
           </div>
           <div className="flex gap-6 items-center">
-            <Link href="/analyze" className="text-gray-700 hover:text-[#6b5010] transition-colors">
+            <Link href="/analyze" className="text-gray-700 hover:text-[#1e40af] transition-colors">
               วิเคราะห์ชื่อ
             </Link>
-            <Link href="/corporate" className="text-gray-700 hover:text-[#6b5010] transition-colors">
+            <Link href="/corporate" className="text-gray-700 hover:text-[#1e40af] transition-colors">
               องค์กร
             </Link>
-            <Link href="/child" className="text-gray-700 hover:text-[#6b5010] transition-colors">
+            <Link href="/child" className="text-gray-700 hover:text-[#1e40af] transition-colors">
               ตั้งชื่อเด็ก
             </Link>
-            <Link href="/rename" className="text-gray-700 hover:text-[#6b5010] transition-colors">
+            <Link href="/rename" className="text-gray-700 hover:text-[#1e40af] transition-colors">
               เปลี่ยนชื่อ
             </Link>
-            <Link href="/lifemap" className="text-gray-700 hover:text-[#6b5010] transition-colors">
+            <Link href="/lifemap" className="text-gray-700 hover:text-[#1e40af] transition-colors">
               โครงสร้างชีวิต
             </Link>
             <Link
               href="/login"
-              className="px-4 py-2 bg-[#d9a63a] text-black font-medium rounded-lg hover:bg-[#c8901f] transition-colors"
+              className="px-4 py-2 bg-[#3c74d4] text-white font-medium rounded-lg hover:bg-[#3366bf] transition-colors"
             >
               เข้าสู่ระบบ
             </Link>
@@ -106,7 +106,7 @@ export default function HomePage() {
 
       <section className="pt-32 pb-20 px-4">
         <div className="max-w-5xl mx-auto text-center">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#d9a63a]/10 text-[#7a5c12] text-sm mb-6">
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#3c74d4]/10 text-[#1d4ed8] text-sm mb-6">
             <Sparkles className="w-4 h-4" />
             <span>Full-Stack Thai Name SaaS</span>
           </div>
@@ -122,7 +122,7 @@ export default function HomePage() {
           <div className="flex gap-4 justify-center flex-wrap">
             <Link
               href="/analyze"
-              className="px-8 py-4 bg-[#d9a63a] text-black font-semibold rounded-xl hover:bg-[#c8901f] transition-all flex items-center gap-2"
+              className="px-8 py-4 bg-[#3c74d4] text-white font-semibold rounded-xl hover:bg-[#3366bf] transition-all flex items-center gap-2"
             >
               เริ่มวิเคราะห์ <ArrowRight className="w-5 h-5" />
             </Link>
@@ -145,12 +145,12 @@ export default function HomePage() {
               <Link
                 key={title}
                 href={href}
-                className="glass-card rounded-2xl p-6 hover:border-[#7a5c12]/40 transition-all group block"
+                className="glass-card rounded-2xl p-6 hover:border-[#1d4ed8]/40 transition-all group block"
               >
                 <div className={`w-14 h-14 bg-gradient-to-br ${color} rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>
-                  <Icon className="w-7 h-7 text-[#14161c]" />
+                  <Icon className="w-7 h-7 text-[#111827]" />
                 </div>
-                <h3 className="text-xl font-semibold mb-2 text-[#14161c]">{title}</h3>
+                <h3 className="text-xl font-semibold mb-2 text-[#111827]">{title}</h3>
                 <p className="text-gray-600 text-sm mb-4">{description}</p>
                 <div className="flex flex-wrap gap-2">
                   {features.map((f) => (
@@ -165,7 +165,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="py-20 px-4 bg-gradient-to-b from-transparent via-[#d9a63a]/5 to-transparent">
+      <section className="py-20 px-4 bg-gradient-to-b from-transparent via-[#3c74d4]/5 to-transparent">
         <div className="max-w-6xl mx-auto">
           <h2 className="text-3xl font-bold text-center mb-12 gold-gradient">เทคโนโลยีการคำนวณ</h2>
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -174,10 +174,10 @@ export default function HomePage() {
                 key={title}
                 className="glass-card rounded-2xl p-6"
               >
-                <div className="w-12 h-12 bg-[#d9a63a]/10 rounded-xl flex items-center justify-center mb-4">
-                  <Icon className="w-6 h-6 text-[#7a5c12]" />
+                <div className="w-12 h-12 bg-[#3c74d4]/10 rounded-xl flex items-center justify-center mb-4">
+                  <Icon className="w-6 h-6 text-[#1d4ed8]" />
                 </div>
-                <h3 className="text-lg font-semibold mb-2 text-[#14161c]">{title}</h3>
+                <h3 className="text-lg font-semibold mb-2 text-[#111827]">{title}</h3>
                 <p className="text-gray-600 text-sm">{description}</p>
               </div>
             ))}
@@ -189,7 +189,7 @@ export default function HomePage() {
         <div className="max-w-3xl mx-auto text-center">
           <div className="glass-card rounded-2xl p-8">
             <p className="text-gray-600 text-sm leading-relaxed">
-              <span className="text-[#7a5c12] font-semibold">หมายเหตุ:</span> ระบบวิเคราะห์ชื่อนี้ใช้หลักโหราศาสตร์ไทยแบบดั้งเดิม
+              <span className="text-[#1d4ed8] font-semibold">หมายเหตุ:</span> ระบบวิเคราะห์ชื่อนี้ใช้หลักโหราศาสตร์ไทยแบบดั้งเดิม
               เป็นเครื่องมือช่วยประกอบการตัดสินใจเท่านั้น ไม่สามารถทำนายชะตาชีวิตได้อย่างแท้จริง
               ผลลัพธ์ควรใช้เป็นแนวทางและพิจารณาร่วมกับปัจจัยอื่นๆ ประกอบด้วย
             </p>
@@ -197,10 +197,10 @@ export default function HomePage() {
         </div>
       </section>
 
-      <footer className="py-12 px-4 border-t border-[#7a5c12]/10">
+      <footer className="py-12 px-4 border-t border-[#1d4ed8]/10">
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
           <div className="flex items-center gap-2">
-            <Crown className="w-6 h-6 text-[#7a5c12]" />
+            <Crown className="w-6 h-6 text-[#1d4ed8]" />
             <span className="font-semibold gold-gradient">NaraClear</span>
           </div>
           <p className="text-gray-600 text-sm">

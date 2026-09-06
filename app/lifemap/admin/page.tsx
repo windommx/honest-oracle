@@ -69,15 +69,15 @@ export default function LifemapAdminPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f3f5f9]">
+    <div className="min-h-screen">
       <nav className="fixed top-0 left-0 right-0 z-50 glass-card">
         <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
           <Link href="/" className="flex items-center gap-2">
-            <Crown className="w-8 h-8 text-[#7a5c12]" />
+            <Crown className="w-8 h-8 text-[#1d4ed8]" />
             <span className="text-xl font-semibold gold-gradient">NaraClear</span>
           </Link>
           <div className="flex gap-6 items-center">
-            <Link href="/lifemap/app" className="text-gray-700 hover:text-[#6b5010] transition-colors">
+            <Link href="/lifemap/app" className="text-gray-700 hover:text-[#1e40af] transition-colors">
               โครงสร้างชีวิต
             </Link>
           </div>
@@ -109,7 +109,7 @@ export default function LifemapAdminPage() {
                   ].map((c) => (
                     <div key={c.label} className="p-4 bg-black/[0.03] rounded-xl border border-black/5">
                       <p className="text-gray-600 text-xs">{c.label}</p>
-                      <p className="text-3xl font-bold text-[#7a5c12] mt-1">{c.value}</p>
+                      <p className="text-3xl font-bold text-[#1d4ed8] mt-1">{c.value}</p>
                     </div>
                   ))}
                 </div>
@@ -120,7 +120,7 @@ export default function LifemapAdminPage() {
                     {stats.plans.map((p) => (
                       <div key={p.plan} className="p-3 bg-black/[0.04] rounded-lg">
                         <p className="text-gray-600 text-xs">{p.plan}</p>
-                        <p className="text-[#14161c]/90 font-semibold">{p.count}</p>
+                        <p className="text-[#111827]/90 font-semibold">{p.count}</p>
                       </div>
                     ))}
                   </div>
@@ -131,10 +131,10 @@ export default function LifemapAdminPage() {
 
           <div className="glass-card rounded-2xl p-6">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-[#14161c]/90">Users</h2>
+              <h2 className="text-lg font-semibold text-[#111827]/90">Users</h2>
               <button
                 onClick={() => load().catch((e) => setError(e instanceof Error ? e.message : "Failed"))}
-                className="px-4 py-2 bg-black/[0.03] border border-[#7a5c12]/25 text-[#14161c] rounded-xl hover:border-[#7a5c12]/50 transition-colors text-sm"
+                className="px-4 py-2 bg-black/[0.03] border border-[#1d4ed8]/25 text-[#111827] rounded-xl hover:border-[#1d4ed8]/50 transition-colors text-sm"
               >
                 รีเฟรช
               </button>
@@ -154,7 +154,7 @@ export default function LifemapAdminPage() {
                 <tbody>
                   {users.map((u) => (
                     <tr key={u.id} className="border-b border-black/5">
-                      <td className="py-3 px-3 text-[#14161c]/90">{u.email}</td>
+                      <td className="py-3 px-3 text-[#111827]/90">{u.email}</td>
                       <td className="py-3 px-3 text-gray-700">{u.name ?? "-"}</td>
                       <td className="py-3 px-3">
                         <select
@@ -164,15 +164,15 @@ export default function LifemapAdminPage() {
                               .then(() => load())
                               .catch((err) => setError(err.message))
                           }
-                          className="px-3 py-2 bg-black/[0.03] border border-[#7a5c12]/25 rounded-xl text-[#14161c] focus:outline-none focus:border-[#7a5c12]/50"
+                          className="px-3 py-2 bg-black/[0.03] border border-[#1d4ed8]/25 rounded-xl text-[#111827] focus:outline-none focus:border-[#1d4ed8]/50"
                         >
-                          <option value="free" className="bg-[#f3f5f9]">
+                          <option value="free" className="bg-[#f8f8f8]">
                             free
                           </option>
-                          <option value="pro" className="bg-[#f3f5f9]">
+                          <option value="pro" className="bg-[#f8f8f8]">
                             pro
                           </option>
-                          <option value="premium" className="bg-[#f3f5f9]">
+                          <option value="premium" className="bg-[#f8f8f8]">
                             premium
                           </option>
                         </select>
@@ -185,12 +185,12 @@ export default function LifemapAdminPage() {
                               .then(() => load())
                               .catch((err) => setError(err.message))
                           }
-                          className="px-3 py-2 bg-black/[0.03] border border-[#7a5c12]/25 rounded-xl text-[#14161c] focus:outline-none focus:border-[#7a5c12]/50"
+                          className="px-3 py-2 bg-black/[0.03] border border-[#1d4ed8]/25 rounded-xl text-[#111827] focus:outline-none focus:border-[#1d4ed8]/50"
                         >
-                          <option value="user" className="bg-[#f3f5f9]">
+                          <option value="user" className="bg-[#f8f8f8]">
                             user
                           </option>
-                          <option value="admin" className="bg-[#f3f5f9]">
+                          <option value="admin" className="bg-[#f8f8f8]">
                             admin
                           </option>
                         </select>

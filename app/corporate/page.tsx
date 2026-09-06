@@ -55,15 +55,15 @@ export default function CorporatePage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f3f5f9] text-[#14161c]">
+    <div className="min-h-screen text-[#111827]">
       <div className="container mx-auto px-4 py-12 max-w-6xl">
         <div className="text-center mb-12">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#d9a63a]/10 text-[#7a5c12] text-sm mb-4">
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#3c74d4]/10 text-[#1d4ed8] text-sm mb-4">
             <Building2 className="w-4 h-4" />
             <span>Corporate Naming Module</span>
           </div>
           <h1 className="text-4xl md:text-5xl font-bold mb-4">
-            <span className="text-[#7a5c12]">NaraCorp</span>
+            <span className="text-[#1d4ed8]">NaraCorp</span>
           </h1>
           <p className="text-gray-600 text-lg max-w-2xl mx-auto">
             วิเคราะห์ชื่อองค์กรขั้นสูงด้วย CAI, MCAI, Resonant Triangle และ Corporate Shadow Formula
@@ -73,7 +73,7 @@ export default function CorporatePage() {
         <div className="grid lg:grid-cols-2 gap-12">
           <div className="bg-[#ffffff] rounded-2xl p-8 border border-black/5">
             <h2 className="text-2xl font-bold mb-6 flex items-center gap-3">
-              <Sparkles className="w-6 h-6 text-[#7a5c12]" />
+              <Sparkles className="w-6 h-6 text-[#1d4ed8]" />
               วิเคราะห์ชื่อองค์กร
             </h2>
 
@@ -85,7 +85,7 @@ export default function CorporatePage() {
                   value={brandName}
                   onChange={(e) => setBrandName(e.target.value)}
                   placeholder="เช่น เวอริซิงก์, ธาราพฤกษา"
-                  className="w-full px-4 py-3 rounded-lg bg-white border border-black/10 focus:border-[#7a5c12] focus:outline-none transition-colors"
+                  className="w-full px-4 py-3 rounded-lg bg-white border border-black/10 focus:border-[#1d4ed8] focus:outline-none transition-colors"
                   required
                 />
               </div>
@@ -97,7 +97,7 @@ export default function CorporatePage() {
                   value={founderBirthday}
                   onChange={(e) => setFounderBirthday(e.target.value)}
                   placeholder="เช่น 15/08/1990"
-                  className="w-full px-4 py-3 rounded-lg bg-white border border-black/10 focus:border-[#7a5c12] focus:outline-none transition-colors"
+                  className="w-full px-4 py-3 rounded-lg bg-white border border-black/10 focus:border-[#1d4ed8] focus:outline-none transition-colors"
                   required
                 />
               </div>
@@ -107,7 +107,7 @@ export default function CorporatePage() {
                 <select
                   value={industryType}
                   onChange={(e) => setIndustryType(e.target.value)}
-                  className="w-full px-4 py-3 rounded-lg bg-white border border-black/10 focus:border-[#7a5c12] focus:outline-none transition-colors"
+                  className="w-full px-4 py-3 rounded-lg bg-white border border-black/10 focus:border-[#1d4ed8] focus:outline-none transition-colors"
                   required
                 >
                   <option value="">เลือกประเภทธุรกิจ</option>
@@ -126,14 +126,14 @@ export default function CorporatePage() {
                   value={targetAudience}
                   onChange={(e) => setTargetAudience(e.target.value)}
                   placeholder="เช่น Enterprise, SME, Consumer"
-                  className="w-full px-4 py-3 rounded-lg bg-white border border-black/10 focus:border-[#7a5c12] focus:outline-none transition-colors"
+                  className="w-full px-4 py-3 rounded-lg bg-white border border-black/10 focus:border-[#1d4ed8] focus:outline-none transition-colors"
                 />
               </div>
 
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-4 rounded-lg bg-gradient-to-r from-[#d9a63a] to-[#c8901f] text-black font-bold hover:opacity-90 transition-opacity disabled:opacity-50"
+                className="w-full py-4 rounded-lg bg-gradient-to-r from-[#3c74d4] to-[#3366bf] text-white font-bold hover:opacity-90 transition-opacity disabled:opacity-50"
               >
                 {loading ? "กำลังวิเคราะห์..." : "วิเคราะห์ชื่อองค์กร"}
               </button>
@@ -151,22 +151,22 @@ export default function CorporatePage() {
               <h2 className="text-2xl font-bold mb-6">Resonant Triangle</h2>
               <div className="grid grid-cols-3 gap-4">
                 <div className="text-center p-4 rounded-lg bg-black/[0.03]">
-                  <Users className="w-8 h-8 text-[#7a5c12] mx-auto mb-2" />
-                  <div className="text-2xl font-bold text-[#7a5c12]">
+                  <Users className="w-8 h-8 text-[#1d4ed8] mx-auto mb-2" />
+                  <div className="text-2xl font-bold text-[#1d4ed8]">
                     {result?.resonanceTriangle?.founder || "?"}
                   </div>
                   <div className="text-sm text-gray-600">Founder Energy</div>
                 </div>
                 <div className="text-center p-4 rounded-lg bg-black/[0.03]">
-                  <Building2 className="w-8 h-8 text-[#7a5c12] mx-auto mb-2" />
-                  <div className="text-2xl font-bold text-[#7a5c12]">
+                  <Building2 className="w-8 h-8 text-[#1d4ed8] mx-auto mb-2" />
+                  <div className="text-2xl font-bold text-[#1d4ed8]">
                     {result?.resonanceTriangle?.industry || "?"}
                   </div>
                   <div className="text-sm text-gray-600">Industry Element</div>
                 </div>
                 <div className="text-center p-4 rounded-lg bg-black/[0.03]">
-                  <TrendingUp className="w-8 h-8 text-[#7a5c12] mx-auto mb-2" />
-                  <div className="text-2xl font-bold text-[#7a5c12]">
+                  <TrendingUp className="w-8 h-8 text-[#1d4ed8] mx-auto mb-2" />
+                  <div className="text-2xl font-bold text-[#1d4ed8]">
                     {result?.resonanceTriangle?.audience || "?"}
                   </div>
                   <div className="text-sm text-gray-600">Audience Cognition</div>
@@ -218,15 +218,15 @@ export default function CorporatePage() {
 
                     <div className="grid grid-cols-3 gap-4 mt-4">
                       <div className="text-center p-3 rounded-lg bg-black/[0.03]">
-                        <div className="text-xl font-bold text-[#7a5c12]">S₁ {result.s1}</div>
+                        <div className="text-xl font-bold text-[#1d4ed8]">S₁ {result.s1}</div>
                         <div className="text-xs text-gray-600">ชื่อแบรนด์</div>
                       </div>
                       <div className="text-center p-3 rounded-lg bg-black/[0.03]">
-                        <div className="text-xl font-bold text-[#7a5c12]">S₂ {result.s2}</div>
+                        <div className="text-xl font-bold text-[#1d4ed8]">S₂ {result.s2}</div>
                         <div className="text-xs text-gray-600">ผู้ก่อตั้ง</div>
                       </div>
                       <div className="text-center p-3 rounded-lg bg-black/[0.03]">
-                        <div className="text-xl font-bold text-[#7a5c12]">S₃ {result.s3}</div>
+                        <div className="text-xl font-bold text-[#1d4ed8]">S₃ {result.s3}</div>
                         <div className="text-xs text-gray-600">ดวงองค์กร</div>
                       </div>
                     </div>
@@ -238,7 +238,7 @@ export default function CorporatePage() {
 
                     <div className="flex items-center justify-between p-4 rounded-lg bg-black/[0.03]">
                       <span className="text-gray-600">Phonetic Pricing</span>
-                      <span className="text-xl font-bold text-[#7a5c12]">{result.phoneticPricing}</span>
+                      <span className="text-xl font-bold text-[#1d4ed8]">{result.phoneticPricing}</span>
                     </div>
                   </div>
                 </div>

@@ -55,12 +55,12 @@ export default function SharePage({ params }: { params: Promise<{ token: string 
   }
 
   return (
-    <div className="min-h-screen bg-[#f3f5f9]">
+    <div className="min-h-screen">
       <nav className="fixed top-0 left-0 right-0 z-50 glass-card">
         <div className="max-w-5xl mx-auto px-4 py-4 flex justify-between items-center">
           <BookisdomLogo />
           <span className="flex items-center gap-2 text-sm text-slate-700">
-            <BookOpen className="w-4 h-4 text-[#7a5c12]" />
+            <BookOpen className="w-4 h-4 text-[#1d4ed8]" />
             Bookisdom · แชร์
           </span>
         </div>
@@ -92,13 +92,13 @@ export default function SharePage({ params }: { params: Promise<{ token: string 
                           <span className="text-sm font-semibold text-slate-900 whitespace-nowrap">{p.id}</span>
                           <span className="text-xs text-faint truncate">{p.name}</span>
                         </button>
-                        <button onClick={() => copyPrompt(p)} className="text-slate-600 hover:text-[#6b5010]" aria-label={`Copy ${p.id}`}>
+                        <button onClick={() => copyPrompt(p)} className="text-slate-600 hover:text-[#1e40af]" aria-label={`Copy ${p.id}`}>
                           {copiedId === p.id ? <Check className="w-4 h-4 text-green-800" /> : <Copy className="w-4 h-4" />}
                         </button>
                       </div>
                       {open && (
                         <div className="px-5 pb-5">
-                          <pre className="bg-[#f3f5f9] border border-black/5 rounded-lg p-4 text-xs leading-6 text-slate-700 whitespace-pre-wrap max-h-[480px] overflow-y-auto">
+                          <pre className="bg-[#f8f8f8] border border-black/5 rounded-lg p-4 text-xs leading-6 text-slate-700 whitespace-pre-wrap max-h-[480px] overflow-y-auto">
                             {p.prompt}
                           </pre>
                         </div>
@@ -108,7 +108,7 @@ export default function SharePage({ params }: { params: Promise<{ token: string 
                 })}
               </div>
               <div className="mt-8 text-center">
-                <Link href="/bookisdom" className="text-xs text-[#7a5c12] hover:underline">
+                <Link href="/bookisdom" className="text-xs text-[#1d4ed8] hover:underline">
                   สร้าง prompt pack ของคุณเองด้วย Bookisdom →
                 </Link>
               </div>

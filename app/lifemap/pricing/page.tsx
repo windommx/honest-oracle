@@ -97,15 +97,15 @@ export default function LifemapPricingPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-[#f3f5f9]">
+    <div className="min-h-screen">
       <nav className="fixed top-0 left-0 right-0 z-50 glass-card">
         <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
           <Link href="/" className="flex items-center gap-2">
-            <Crown className="w-8 h-8 text-[#7a5c12]" />
+            <Crown className="w-8 h-8 text-[#1d4ed8]" />
             <span className="text-xl font-semibold gold-gradient">NaraClear</span>
           </Link>
           <div className="flex gap-6 items-center">
-            <Link href="/lifemap/app" className="text-gray-700 hover:text-[#6b5010] transition-colors">
+            <Link href="/lifemap/app" className="text-gray-700 hover:text-[#1e40af] transition-colors">
               กลับไปหน้า App
             </Link>
           </div>
@@ -128,7 +128,7 @@ export default function LifemapPricingPage() {
             ) : usage ? (
               <p className="text-gray-700 text-sm text-center">
                 แผนปัจจุบัน:{" "}
-                <span className="text-[#14161c]/90 font-semibold">{usage.plan}</span>
+                <span className="text-[#111827]/90 font-semibold">{usage.plan}</span>
               </p>
             ) : (
               <p className="text-gray-600 text-sm text-center">
@@ -143,16 +143,16 @@ export default function LifemapPricingPage() {
               <div
                 key={p.key}
                 className={`glass-card rounded-2xl p-7 border ${
-                  p.key === "pro" ? "border-[#7a5c12]/50" : "border-[#7a5c12]/15"
+                  p.key === "pro" ? "border-[#1d4ed8]/50" : "border-[#1d4ed8]/15"
                 }`}
               >
                 <div className="flex items-center justify-between mb-2">
-                  <p className="text-[#14161c]/90 font-semibold text-lg">{p.name}</p>
-                  <span className="px-2 py-1 bg-[#d9a63a]/15 text-[#7a5c12] text-xs rounded">
+                  <p className="text-[#111827]/90 font-semibold text-lg">{p.name}</p>
+                  <span className="px-2 py-1 bg-[#3c74d4]/15 text-[#1d4ed8] text-xs rounded">
                     {p.badge}
                   </span>
                 </div>
-                <p className="text-3xl font-bold text-[#7a5c12] mb-4">{p.price}</p>
+                <p className="text-3xl font-bold text-[#1d4ed8] mb-4">{p.price}</p>
                 <ul className="space-y-2 text-sm text-gray-600 mb-6">
                   {p.features.map((f) => (
                     <li key={f} className="flex gap-2">
@@ -166,8 +166,8 @@ export default function LifemapPricingPage() {
                     href={p.cta.href}
                     className={`w-full inline-block text-center px-4 py-3 rounded-xl font-semibold transition-colors ${
                       p.key === "pro"
-                        ? "bg-[#d9a63a] text-black hover:bg-[#c8901f]"
-                        : "bg-black/[0.03] border border-[#7a5c12]/25 text-[#14161c] hover:border-[#7a5c12]/50"
+                        ? "bg-[#3c74d4] text-white hover:bg-[#3366bf]"
+                        : "bg-black/[0.03] border border-[#1d4ed8]/25 text-[#111827] hover:border-[#1d4ed8]/50"
                     }`}
                   >
                     {p.cta.label}
@@ -176,7 +176,7 @@ export default function LifemapPricingPage() {
                   <button
                     onClick={p.cta.action}
                     disabled={billingLoading}
-                    className="w-full px-4 py-3 rounded-xl font-semibold bg-[#d9a63a] text-black hover:bg-[#c8901f] transition-colors disabled:opacity-50"
+                    className="w-full px-4 py-3 rounded-xl font-semibold bg-[#3c74d4] text-white hover:bg-[#3366bf] transition-colors disabled:opacity-50"
                   >
                     {billingLoading ? "กำลังไป Stripe..." : p.cta.label}
                   </button>
@@ -185,9 +185,9 @@ export default function LifemapPricingPage() {
             ))}
           </div>
 
-          <div className="mt-10 p-4 bg-[#d9a63a]/10 rounded-xl border border-[#7a5c12]/25">
+          <div className="mt-10 p-4 bg-[#3c74d4]/10 rounded-xl border border-[#1d4ed8]/25">
             <p className="text-gray-700 text-sm text-center">
-              <span className="text-[#7a5c12] font-semibold">Transparency note:</span>{" "}
+              <span className="text-[#1d4ed8] font-semibold">Transparency note:</span>{" "}
               ระบบนี้เป็นเครื่องมือเพื่อการสะท้อนตนเอง ไม่ใช่คำทำนายหรือการรับรองผลในชีวิตจริง
             </p>
           </div>

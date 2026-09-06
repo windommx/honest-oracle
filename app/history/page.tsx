@@ -62,24 +62,24 @@ export default function HistoryPage() {
 
   if (status === "loading" || loading) {
     return (
-      <div className="min-h-screen bg-[#f3f5f9] flex items-center justify-center">
-        <Loader2 className="w-8 h-8 text-[#7a5c12] animate-spin" />
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="w-8 h-8 text-[#1d4ed8] animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#f3f5f9]">
+    <div className="min-h-screen">
       <nav className="fixed top-0 left-0 right-0 z-50 glass-card">
         <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
           <Link href="/" className="flex items-center gap-2">
-            <Crown className="w-8 h-8 text-[#7a5c12]" />
+            <Crown className="w-8 h-8 text-[#1d4ed8]" />
             <span className="text-xl font-semibold gold-gradient">NaraClear</span>
           </Link>
           <div className="flex gap-6 items-center">
-            <Link href="/analyze" className="text-gray-700 hover:text-[#6b5010] transition-colors">วิเคราะห์ชื่อ</Link>
-            <Link href="/corporate" className="text-gray-700 hover:text-[#6b5010] transition-colors">องค์กร</Link>
-            <Link href="/history" className="text-[#7a5c12]">ประวัติ</Link>
+            <Link href="/analyze" className="text-gray-700 hover:text-[#1e40af] transition-colors">วิเคราะห์ชื่อ</Link>
+            <Link href="/corporate" className="text-gray-700 hover:text-[#1e40af] transition-colors">องค์กร</Link>
+            <Link href="/history" className="text-[#1d4ed8]">ประวัติ</Link>
           </div>
         </div>
       </nav>
@@ -96,7 +96,7 @@ export default function HistoryPage() {
                 onClick={() => setActiveTab(id)}
                 className={`flex items-center gap-2 px-4 py-3 rounded-xl whitespace-nowrap transition-all ${
                   activeTab === id
-                    ? "bg-[#d9a63a] text-black font-medium"
+                    ? "bg-[#3c74d4] text-white font-medium"
                     : "bg-black/[0.03] text-gray-600 hover:bg-black/[0.07]"
                 }`}
               >
@@ -112,7 +112,7 @@ export default function HistoryPage() {
               <p className="text-gray-600 mb-6">ยังไม่มีประวัติการวิเคราะห์</p>
               <Link
                 href={getHref(activeTab)}
-                className="inline-flex items-center gap-2 px-6 py-3 bg-[#d9a63a] text-black font-medium rounded-xl hover:bg-[#c8901f] transition-colors"
+                className="inline-flex items-center gap-2 px-6 py-3 bg-[#3c74d4] text-white font-medium rounded-xl hover:bg-[#3366bf] transition-colors"
               >
                 ไปวิเคราะห์ <ExternalLink className="w-4 h-4" />
               </Link>
@@ -120,7 +120,7 @@ export default function HistoryPage() {
           ) : (
             <div className="space-y-4">
               {history.map((item, index) => (
-                <div key={item.id || index} className="glass-card rounded-2xl p-6 hover:border-[#7a5c12]/30 transition-colors">
+                <div key={item.id || index} className="glass-card rounded-2xl p-6 hover:border-[#1d4ed8]/30 transition-colors">
                   {activeTab === "personal" && (
                     <>
                       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -143,7 +143,7 @@ export default function HistoryPage() {
                           </p>
                         </div>
                       </div>
-                      <div className="mt-4 pt-4 border-t border-[#7a5c12]/10 flex gap-6 text-sm">
+                      <div className="mt-4 pt-4 border-t border-[#1d4ed8]/10 flex gap-6 text-sm">
                         <div>
                           <span className="text-gray-600">กาลกิณี: </span>
                           <span className={item.kalaiganiScore >= 80 ? "text-green-800" : item.kalaiganiScore >= 60 ? "text-yellow-800" : "text-red-700"}>{item.kalaiganiScore}</span>
@@ -188,7 +188,7 @@ export default function HistoryPage() {
                         </div>
                         <div className="text-right">
                           <p className="text-gray-600 text-xs">เลขเป้าหมาย</p>
-                          <p className="text-3xl font-bold text-[#7a5c12]">{item.targetNumber}</p>
+                          <p className="text-3xl font-bold text-[#1d4ed8]">{item.targetNumber}</p>
                         </div>
                       </div>
                     </>
@@ -207,7 +207,7 @@ export default function HistoryPage() {
                         </div>
                         <div className="text-right">
                           <p className="text-gray-600 text-xs">เลขเป้าหมาย</p>
-                          <p className="text-3xl font-bold text-[#7a5c12]">{item.targetNumber}</p>
+                          <p className="text-3xl font-bold text-[#1d4ed8]">{item.targetNumber}</p>
                         </div>
                       </div>
                     </>

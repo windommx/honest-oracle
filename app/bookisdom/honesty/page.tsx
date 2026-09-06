@@ -10,10 +10,10 @@ import { TIERS, REFUSED_CONSTRUCTS } from "@/lib/bookisdom-engine/epistemics";
 import { CITATIONS, disputed } from "@/lib/bookisdom-engine/citations";
 
 const TIER_TONE: Record<string, string> = {
-  paccakkha: "#166534", anumana: "#1d4ed8", sanna: "#92400e", avisaya: "#b91c1c",
+  paccakkha: "#166534", anumana: "#075985", sanna: "#92400e", avisaya: "#b91c1c",
 };
 const CITE_TONE: Record<string, string> = {
-  primary: "#166534", index: "#1d4ed8", memory: "#92400e", disputed: "#b91c1c",
+  primary: "#166534", index: "#075985", memory: "#92400e", disputed: "#b91c1c",
 };
 const CITE_LABEL: Record<string, string> = {
   primary: "เปิดต้นฉบับจริง",
@@ -53,10 +53,10 @@ export default function BookisdomHonesty() {
   }, []);
 
   return (
-    <main className="min-h-screen bg-[#f3f5f9] text-slate-800">
+    <main className="min-h-screen text-slate-800">
       <div className="max-w-3xl mx-auto px-5 py-12">
         <div className="flex items-center justify-between mb-2">
-          <p className="text-xs tracking-[0.2em] uppercase text-[#7a5c12] font-semibold">Bookisdom · ความซื่อสัตย์ทางญาณวิทยา</p>
+          <p className="text-xs tracking-[0.2em] uppercase text-[#1d4ed8] font-semibold">Bookisdom · ความซื่อสัตย์ทางญาณวิทยา</p>
           <Link href="/bookisdom/explore" className="text-xs text-faint hover:text-slate-700">← กลับ</Link>
         </div>
         <h1 className="text-2xl font-bold text-slate-900 mb-1">เราถือมาตรฐานเดียวกับที่เราใช้ตรวจงานคุณ</h1>
@@ -67,7 +67,7 @@ export default function BookisdomHonesty() {
         {/* Tiers */}
         <section className="mb-10">
           <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-800 mb-3">
-            <ShieldCheck className="w-4 h-4 text-[#7a5c12]" /> ทุกตัวเลขถูกจัดชั้นว่ามาจากการรู้แบบไหน
+            <ShieldCheck className="w-4 h-4 text-[#1d4ed8]" /> ทุกตัวเลขถูกจัดชั้นว่ามาจากการรู้แบบไหน
           </h2>
           <div className="space-y-2">
             {TIERS.map((t) => (
@@ -103,7 +103,7 @@ export default function BookisdomHonesty() {
         {/* Citations */}
         <section>
           <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-800 mb-1">
-            <BookMarked className="w-4 h-4 text-[#7a5c12]" /> เราจัดชั้นแหล่งอ้างอิงของเราเองด้วย
+            <BookMarked className="w-4 h-4 text-[#1d4ed8]" /> เราจัดชั้นแหล่งอ้างอิงของเราเองด้วย
           </h2>
           <p className="text-[0.72rem] text-faint mb-3">
             ชั้นบอกว่า <strong>ตรวจมาแรงแค่ไหน</strong> ไม่ได้บอกว่างานดีแค่ไหน

@@ -85,18 +85,18 @@ export default function LifemapApiKeysPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f3f5f9]">
+    <div className="min-h-screen">
       <nav className="fixed top-0 left-0 right-0 z-50 glass-card">
         <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
           <Link href="/" className="flex items-center gap-2">
-            <Crown className="w-8 h-8 text-[#7a5c12]" />
+            <Crown className="w-8 h-8 text-[#1d4ed8]" />
             <span className="text-xl font-semibold gold-gradient">NaraClear</span>
           </Link>
           <div className="flex gap-6 items-center">
-            <Link href="/lifemap/app" className="text-gray-700 hover:text-[#6b5010] transition-colors">
+            <Link href="/lifemap/app" className="text-gray-700 hover:text-[#1e40af] transition-colors">
               กลับไปหน้า App
             </Link>
-            <Link href="/lifemap/pricing" className="text-gray-700 hover:text-[#6b5010] transition-colors">
+            <Link href="/lifemap/pricing" className="text-gray-700 hover:text-[#1e40af] transition-colors">
               Pricing
             </Link>
           </div>
@@ -122,7 +122,7 @@ export default function LifemapApiKeysPage() {
                 <div className="p-4 bg-black/[0.03] rounded-xl border border-black/5 mb-5">
                   <p className="text-gray-600 text-sm">
                     แผนปัจจุบัน:{" "}
-                    <span className="text-[#14161c]/90 font-semibold">{plan ?? "-"}</span>{" "}
+                    <span className="text-[#111827]/90 font-semibold">{plan ?? "-"}</span>{" "}
                     (Public API ต้องใช้ Premium)
                   </p>
                 </div>
@@ -132,29 +132,29 @@ export default function LifemapApiKeysPage() {
                     value={label}
                     onChange={(e) => setLabel(e.target.value)}
                     placeholder="ชื่อสำหรับ key (เช่น production)"
-                    className="md:col-span-2 w-full px-4 py-3 bg-black/[0.03] border border-[#7a5c12]/25 rounded-xl text-[#14161c] placeholder-gray-500 focus:outline-none focus:border-[#7a5c12]/60 transition-colors"
+                    className="md:col-span-2 w-full px-4 py-3 bg-black/[0.03] border border-[#1d4ed8]/25 rounded-xl text-[#111827] placeholder-gray-500 focus:outline-none focus:border-[#1d4ed8]/60 transition-colors"
                   />
                   <button
                     onClick={createKey}
                     disabled={!label.trim()}
-                    className="px-4 py-3 bg-[#d9a63a] text-black font-semibold rounded-xl hover:bg-[#c8901f] transition-colors disabled:opacity-50"
+                    className="px-4 py-3 bg-[#3c74d4] text-white font-semibold rounded-xl hover:bg-[#3366bf] transition-colors disabled:opacity-50"
                   >
                     สร้าง Key
                   </button>
                 </div>
 
                 {plain && (
-                  <div className="p-4 bg-[#d9a63a]/10 rounded-xl border border-[#7a5c12]/25 mb-6">
+                  <div className="p-4 bg-[#3c74d4]/10 rounded-xl border border-[#1d4ed8]/25 mb-6">
                     <p className="text-gray-700 text-sm mb-2">
                       API key แสดงครั้งเดียว (คัดลอกไปเก็บทันที)
                     </p>
                     <div className="flex gap-2 items-center flex-wrap">
-                      <code className="px-3 py-2 bg-black/[0.05] rounded-lg text-sm text-[#14161c]/90">
+                      <code className="px-3 py-2 bg-black/[0.05] rounded-lg text-sm text-[#111827]/90">
                         {plain}
                       </code>
                       <button
                         onClick={copy}
-                        className="px-3 py-2 bg-black/[0.03] border border-[#7a5c12]/25 text-[#14161c] rounded-xl hover:border-[#7a5c12]/50 transition-colors flex items-center gap-2 text-sm"
+                        className="px-3 py-2 bg-black/[0.03] border border-[#1d4ed8]/25 text-[#111827] rounded-xl hover:border-[#1d4ed8]/50 transition-colors flex items-center gap-2 text-sm"
                       >
                         <Copy className="w-4 h-4" />
                         คัดลอก
@@ -175,7 +175,7 @@ export default function LifemapApiKeysPage() {
                         className="p-4 bg-black/[0.03] rounded-xl border border-black/5 flex flex-wrap gap-3 items-center justify-between"
                       >
                         <div>
-                          <p className="text-[#14161c]/90 font-semibold">{k.label}</p>
+                          <p className="text-[#111827]/90 font-semibold">{k.label}</p>
                           <p className="text-gray-600 text-xs">
                             prefix: {k.prefix} · created:{" "}
                             {new Date(k.createdAt).toLocaleString()}

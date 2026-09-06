@@ -48,11 +48,11 @@ function ReportActions({ report, filename }: { report: string; filename: string 
   };
   return (
     <div className="flex gap-2">
-      <button onClick={copy} className="inline-flex items-center gap-1.5 text-[0.65rem] px-2.5 py-1 rounded border border-[#7a5c12]/40 text-[#7a5c12] hover:bg-[#d9a63a]/15">
+      <button onClick={copy} className="inline-flex items-center gap-1.5 text-[0.65rem] px-2.5 py-1 rounded border border-[#1d4ed8]/40 text-[#1d4ed8] hover:bg-[#3c74d4]/15">
         {copied ? <Check className="w-3 h-3 text-green-800" /> : <Copy className="w-3 h-3" />}
         {copied ? "คัดลอกแล้ว / Copied" : "Copy report"}
       </button>
-      <button onClick={download} className="inline-flex items-center gap-1.5 text-[0.65rem] px-2.5 py-1 rounded border border-[#7a5c12]/40 text-[#7a5c12] hover:bg-[#d9a63a]/15">
+      <button onClick={download} className="inline-flex items-center gap-1.5 text-[0.65rem] px-2.5 py-1 rounded border border-[#1d4ed8]/40 text-[#1d4ed8] hover:bg-[#3c74d4]/15">
         <Download className="w-3 h-3" />
         Download .md
       </button>
@@ -81,7 +81,7 @@ function EpubButton({ text, lang }: { text: string; lang: "th" | "en" }) {
     URL.revokeObjectURL(url);
   };
   return (
-    <button onClick={download} className="inline-flex items-center gap-1.5 text-[0.65rem] px-2.5 py-1 rounded border border-[#7a5c12]/40 text-[#7a5c12] hover:bg-[#d9a63a]/15">
+    <button onClick={download} className="inline-flex items-center gap-1.5 text-[0.65rem] px-2.5 py-1 rounded border border-[#1d4ed8]/40 text-[#1d4ed8] hover:bg-[#3c74d4]/15">
       <Download className="w-3 h-3" /> .epub
     </button>
   );
@@ -100,7 +100,7 @@ function BibleButton({ text, lang, protect }: { text: string; lang: "th" | "en";
     URL.revokeObjectURL(url);
   };
   return (
-    <button onClick={download} className="inline-flex items-center gap-1.5 text-[0.65rem] px-2.5 py-1 rounded border border-[#7a5c12]/40 text-[#7a5c12] hover:bg-[#d9a63a]/15">
+    <button onClick={download} className="inline-flex items-center gap-1.5 text-[0.65rem] px-2.5 py-1 rounded border border-[#1d4ed8]/40 text-[#1d4ed8] hover:bg-[#3c74d4]/15">
       <Download className="w-3 h-3" /> {lang === "th" ? "คลังเนื้อเรื่อง" : "Story Bible"}
     </button>
   );
@@ -122,7 +122,7 @@ function SensoryView({ text, lang }: { text: string; lang: "th" | "en" }) {
           <div key={s.sense} className="flex items-center gap-2 text-xs">
             <span className="w-20 shrink-0 text-slate-600">{SENSE_LABEL[s.sense as Sense][th ? "th" : "en"]}</span>
             <div className="flex-1 h-3 rounded bg-black/[0.03] overflow-hidden">
-              <div className="h-full bg-[#d9a63a]/50" style={{ width: `${(s.per1k / max) * 100}%` }} />
+              <div className="h-full bg-[#3c74d4]/50" style={{ width: `${(s.per1k / max) * 100}%` }} />
             </div>
             <span className="w-24 shrink-0 text-right tabular-nums text-faint">
               {s.count}× · {s.per1k}/1k
@@ -164,7 +164,7 @@ function GlossaryInput({ value, onChange, suggestions = [] }: { value: string; o
         onChange={(e) => onChange(e.target.value)}
         placeholder="ชื่อตัวละคร/สถานที่ คั่นด้วยจุลภาค เช่น มะลี, ธนกร"
         aria-label="ชื่อเฉพาะสำหรับกันการตัดคำ"
-        className="w-full text-xs px-2.5 py-1.5 rounded border border-black/10 bg-black/[0.03] text-slate-800 placeholder:text-faint focus:border-[#7a5c12]/50 focus:outline-none"
+        className="w-full text-xs px-2.5 py-1.5 rounded border border-black/10 bg-black/[0.03] text-slate-800 placeholder:text-faint focus:border-[#1d4ed8]/50 focus:outline-none"
       />
       {suggestions.length > 0 && (
         <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
@@ -173,7 +173,7 @@ function GlossaryInput({ value, onChange, suggestions = [] }: { value: string; o
             <button
               key={s}
               onClick={() => add(s)}
-              className="text-[0.7rem] px-2 py-0.5 rounded-full border border-[#7a5c12]/40 text-[#7a5c12] hover:bg-[#d9a63a]/15"
+              className="text-[0.7rem] px-2 py-0.5 rounded-full border border-[#1d4ed8]/40 text-[#1d4ed8] hover:bg-[#3c74d4]/15"
             >
               + {s}
             </button>
@@ -412,7 +412,7 @@ function SagaView({ lang }: { lang: "th" | "en" }) {
       </div>
       <button
         onClick={() => setBooks((p) => [...p, { title: "", bible: "" }])}
-        className="mt-2 text-[0.65rem] text-[#7a5c12] hover:text-[#6b5010]"
+        className="mt-2 text-[0.65rem] text-[#1d4ed8] hover:text-[#1e40af]"
       >
         {th ? "+ เพิ่มเล่ม" : "+ add book"}
       </button>
@@ -420,7 +420,7 @@ function SagaView({ lang }: { lang: "th" | "en" }) {
       {report && (
         <div className="mt-3 space-y-3">
           {report.books.map((b) => (
-            <div key={b.index} className="border-l-2 border-[#7a5c12]/30 pl-2.5">
+            <div key={b.index} className="border-l-2 border-[#1d4ed8]/30 pl-2.5">
               <p className="text-[0.7rem] text-slate-700 mb-1">[{b.index}] {b.title}</p>
               <div className="flex flex-wrap gap-1.5">
                 {b.introduced.map((e) => chip(e.name, "border-emerald-700/40 text-emerald-700"))}
@@ -525,13 +525,13 @@ function CodexView({ text, lang }: { text: string; lang: "th" | "en" }) {
       )}
       {mermaid && (
         <details className="mt-2">
-          <summary className="text-[0.65rem] text-[#7a5c12] cursor-pointer hover:text-[#6b5010]">
+          <summary className="text-[0.65rem] text-[#1d4ed8] cursor-pointer hover:text-[#1e40af]">
             {th ? "กราฟความสัมพันธ์ (Mermaid — คัดลอกไปเรนเดอร์ที่ไหนก็ได้)" : "Relationship graph (Mermaid — copy & render anywhere)"}
           </summary>
           <div className="relative mt-1.5">
             <button
               onClick={() => { navigator.clipboard?.writeText(mermaid); setCopied(true); setTimeout(() => setCopied(false), 1200); }}
-              className="absolute top-1.5 right-1.5 flex items-center gap-1 text-[0.6rem] px-1.5 py-0.5 rounded border border-black/15 text-slate-700 hover:border-[#7a5c12]/50 bg-black/[0.05]"
+              className="absolute top-1.5 right-1.5 flex items-center gap-1 text-[0.6rem] px-1.5 py-0.5 rounded border border-black/15 text-slate-700 hover:border-[#1d4ed8]/50 bg-black/[0.05]"
             >
               {copied ? <Check className="w-3 h-3 text-green-800" /> : <Copy className="w-3 h-3" />}
               {copied ? (th ? "คัดลอกแล้ว" : "copied") : (th ? "คัดลอก" : "copy")}
@@ -575,7 +575,7 @@ function RelationshipView({ text, lang, names }: { text: string; lang: "th" | "e
             <div key={`${e.a}-${e.b}`} className="flex items-center gap-2 text-xs">
               <span className="w-40 shrink-0 text-slate-700 truncate" title={`${e.a} ↔ ${e.b}`}>{e.a} ↔ {e.b}</span>
               <div className="flex-1 h-3 rounded bg-black/[0.03] overflow-hidden">
-                <div className="h-full bg-[#d9a63a]/50" style={{ width: `${(e.weight / maxW) * 100}%` }} />
+                <div className="h-full bg-[#3c74d4]/50" style={{ width: `${(e.weight / maxW) * 100}%` }} />
               </div>
               <span className="w-28 shrink-0 text-right tabular-nums text-faint">{e.weight}× ({th ? "บท" : "ch"} {e.chapters.join(",")})</span>
             </div>
@@ -609,8 +609,8 @@ function SceneReadoutView({ text }: { text: string }) {
     { label: "คลิเช AI", value: String(r.aiTells), hint: "วลีคลิเชที่ตรวจพบ" },
   ];
   return (
-    <div className="rounded-xl border border-[#7a5c12]/25 bg-[#d9a63a]/[0.04] p-3">
-      <h3 className="text-xs font-semibold tracking-widest text-[#7a5c12] uppercase mb-2">
+    <div className="rounded-xl border border-[#1d4ed8]/25 bg-[#3c74d4]/[0.04] p-3">
+      <h3 className="text-xs font-semibold tracking-widest text-[#1d4ed8] uppercase mb-2">
         อ่านค่าฉากนี้ — สัญญาณที่วัดได้ (ไม่ใช่คะแนน 0–100)
       </h3>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -646,7 +646,7 @@ function RenameView({ text, lang }: { text: string; lang: "th" | "en" }) {
           onChange={(e) => setFrom(e.target.value)}
           placeholder={th ? "ชื่อเดิม" : "old name"}
           aria-label={th ? "ชื่อเดิม" : "old name"}
-          className="flex-1 text-xs px-2.5 py-1.5 rounded border border-black/10 bg-black/[0.03] text-slate-800 placeholder:text-faint focus:border-[#7a5c12]/50 focus:outline-none"
+          className="flex-1 text-xs px-2.5 py-1.5 rounded border border-black/10 bg-black/[0.03] text-slate-800 placeholder:text-faint focus:border-[#1d4ed8]/50 focus:outline-none"
         />
         <span className="text-faint text-xs">→</span>
         <input
@@ -654,7 +654,7 @@ function RenameView({ text, lang }: { text: string; lang: "th" | "en" }) {
           onChange={(e) => setTo(e.target.value)}
           placeholder={th ? "ชื่อใหม่" : "new name"}
           aria-label={th ? "ชื่อใหม่" : "new name"}
-          className="flex-1 text-xs px-2.5 py-1.5 rounded border border-black/10 bg-black/[0.03] text-slate-800 placeholder:text-faint focus:border-[#7a5c12]/50 focus:outline-none"
+          className="flex-1 text-xs px-2.5 py-1.5 rounded border border-black/10 bg-black/[0.03] text-slate-800 placeholder:text-faint focus:border-[#1d4ed8]/50 focus:outline-none"
         />
       </div>
       {res && (
@@ -675,7 +675,7 @@ function RenameView({ text, lang }: { text: string; lang: "th" | "en" }) {
           {res.total > 0 && (
             <button
               onClick={() => downloadBlob(`renamed-${to.trim() || "manuscript"}.md`, res.text, "text/markdown")}
-              className="inline-flex items-center gap-1.5 text-[0.7rem] px-2.5 py-1 rounded border border-[#7a5c12]/40 text-[#7a5c12] hover:bg-[#d9a63a]/15"
+              className="inline-flex items-center gap-1.5 text-[0.7rem] px-2.5 py-1 rounded border border-[#1d4ed8]/40 text-[#1d4ed8] hover:bg-[#3c74d4]/15"
             >
               <Download className="w-3 h-3" />
               {th ? "ดาวน์โหลดฉบับที่เปลี่ยนชื่อแล้ว" : "Download the rewritten manuscript"}
@@ -738,7 +738,7 @@ function TranslationView({ source }: { source: string }) {
   const terms = useMemo(() => (source.trim() && dtarget.trim() && rules.length ? checkTranslation(source, dtarget, rules) : []), [source, dtarget, rules]);
   return (
     <div>
-      <button onClick={() => setOpen((v) => !v)} className="text-[0.7rem] text-[#7a5c12] hover:underline">
+      <button onClick={() => setOpen((v) => !v)} className="text-[0.7rem] text-[#1d4ed8] hover:underline">
         {open ? "− ซ่อนการตรวจการแปล" : "+ ตรวจการแปล (ไทย → อังกฤษ)"}
       </button>
       {open && (
@@ -801,7 +801,7 @@ function PresenceStrip({ series }: { series: number[] }) {
         <span
           key={i}
           className="inline-block w-2.5 h-4 rounded-sm"
-          style={{ background: c === 0 ? "rgba(20,22,28,0.05)" : `rgba(217,166,58,${0.25 + 0.6 * (c / max)})` }}
+          style={{ background: c === 0 ? "rgba(20,22,28,0.05)" : `rgba(60,116,212,${0.25 + 0.6 * (c / max)})` }}
         />
       ))}
     </div>
@@ -882,7 +882,7 @@ function NarrativeView({ text, lang, names, chapterSignals }: { text: string; la
           value={motifRaw}
           onChange={(e) => setMotifRaw(e.target.value)}
           placeholder={th ? "เช่น ดาบ, คำสัญญา, สายฝน" : "e.g. sword, promise, rain"}
-          className="w-full text-xs px-2.5 py-1.5 rounded border border-black/10 bg-black/[0.03] text-slate-800 placeholder:text-faint focus:border-[#7a5c12]/50 focus:outline-none"
+          className="w-full text-xs px-2.5 py-1.5 rounded border border-black/10 bg-black/[0.03] text-slate-800 placeholder:text-faint focus:border-[#1d4ed8]/50 focus:outline-none"
         />
         {motifs && motifs.motifs.length > 0 && (
           <div className="space-y-1.5 mt-2">
@@ -910,7 +910,7 @@ function NarrativeView({ text, lang, names, chapterSignals }: { text: string; la
  *  it's the "why you can trust this number — and where its limit is" layer. */
 const TIER_TONE: Record<string, string> = {
   paccakkha: "var(--tier-1, #166534)",
-  anumana: "var(--tier-2, #1d4ed8)",
+  anumana: "var(--tier-2, #075985)",
   sanna: "var(--tier-3, #92400e)",
 };
 function EpistemicPanel({ ids }: { ids: string[] }) {
@@ -919,9 +919,9 @@ function EpistemicPanel({ ids }: { ids: string[] }) {
   const kalama = useMemo(() => llmKalamaViolations(), []);
   if (!groups.length) return null;
   return (
-    <div className="rounded-xl border border-[#7a5c12]/25 bg-[#d9a63a]/[0.04] p-3">
+    <div className="rounded-xl border border-[#1d4ed8]/25 bg-[#3c74d4]/[0.04] p-3">
       <button onClick={() => setOpen((v) => !v)} className="w-full text-left">
-        <h3 className="text-xs font-semibold tracking-widest text-[#7a5c12] uppercase">
+        <h3 className="text-xs font-semibold tracking-widest text-[#1d4ed8] uppercase">
           ญาณวิทยา · ทำไมเชื่อตัวเลขนี้ได้ (และเส้นที่เราไม่ข้าม) {open ? "−" : "+"}
         </h3>
       </button>
@@ -931,7 +931,7 @@ function EpistemicPanel({ ids }: { ids: string[] }) {
           {groups.map((g) => (
             <div key={g.tier.id}>
               <div className="flex items-center gap-2 mb-1">
-                <span className="inline-block w-2 h-2 rounded-full" style={{ background: TIER_TONE[g.tier.id] ?? "#4b5563" }} />
+                <span className="inline-block w-2 h-2 rounded-full" style={{ background: TIER_TONE[g.tier.id] ?? "#374151" }} />
                 <span className="text-xs font-semibold text-slate-800">{g.tier.thai}</span>
                 <span className="text-[0.6rem] text-faint italic">{g.tier.pali}</span>
               </div>
@@ -942,7 +942,7 @@ function EpistemicPanel({ ids }: { ids: string[] }) {
                     key={s.id}
                     title={warrant(s.id) ?? ""}
                     className="text-[0.68rem] px-2 py-0.5 rounded border cursor-help"
-                    style={{ borderColor: (TIER_TONE[g.tier.id] ?? "#4b5563") + "66", color: TIER_TONE[g.tier.id] ?? "#4b5563" }}
+                    style={{ borderColor: (TIER_TONE[g.tier.id] ?? "#374151") + "66", color: TIER_TONE[g.tier.id] ?? "#374151" }}
                   >
                     {s.thai} · {s.level}
                   </span>
@@ -1043,7 +1043,7 @@ function Heatmap({ title, headers, rows, note, onRowClick }: {
 function DiffView({ ops }: { ops: DiffOp[] | null }) {
   if (!ops) return <p className="text-[0.65rem] text-faint mt-2">ข้อความยาวเกินไปสำหรับ inline diff — ดูที่ตาราง metric ด้านบน / Too long for inline diff.</p>;
   return (
-    <div className="mt-2 text-xs leading-6 bg-[#f3f5f9] border border-black/5 rounded-lg p-3 max-h-[200px] overflow-y-auto whitespace-pre-wrap">
+    <div className="mt-2 text-xs leading-6 bg-[#f8f8f8] border border-black/5 rounded-lg p-3 max-h-[200px] overflow-y-auto whitespace-pre-wrap">
       {ops.map((op, i) =>
         op.type === "same" ? (
           <span key={i} className="text-faint">{op.text} </span>
@@ -1129,7 +1129,7 @@ function ManuscriptBar({ lang, text, onLoad }: { lang: "th" | "en"; text: string
         value={selected}
         onChange={(e) => load(e.target.value)}
         aria-label={lang === "th" ? "โหลดฉบับที่บันทึก" : "Load saved manuscript"}
-        className="text-xs bg-[#f3f5f9] border border-black/10 rounded px-2 py-1 text-slate-700 max-w-[180px]"
+        className="text-xs bg-[#f8f8f8] border border-black/10 rounded px-2 py-1 text-slate-700 max-w-[180px]"
       >
         <option value="">{lang === "th" ? `— โหลดฉบับ (${items.length}) —` : `— Load saved (${items.length}) —`}</option>
         {items.map((m) => (
@@ -1145,9 +1145,9 @@ function ManuscriptBar({ lang, text, onLoad }: { lang: "th" | "en"; text: string
         value={name}
         onChange={(e) => setName(e.target.value)}
         placeholder={lang === "th" ? "ชื่อฉบับ…" : "name…"}
-        className="text-xs bg-[#f3f5f9] border border-black/10 rounded px-2 py-1 text-slate-700 w-28"
+        className="text-xs bg-[#f8f8f8] border border-black/10 rounded px-2 py-1 text-slate-700 w-28"
       />
-      <button onClick={save} className="text-[0.65rem] px-2.5 py-1 rounded border border-[#7a5c12]/40 text-[#7a5c12] hover:bg-[#d9a63a]/15">
+      <button onClick={save} className="text-[0.65rem] px-2.5 py-1 rounded border border-[#1d4ed8]/40 text-[#1d4ed8] hover:bg-[#3c74d4]/15">
         {lang === "th" ? "บันทึกฉบับ" : "Save draft"}
       </button>
     </div>
@@ -1253,10 +1253,10 @@ export function ThaiAnalyzerModal({ onClose, initialText }: { onClose: () => voi
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50" onClick={onClose}>
-      <div role="dialog" aria-modal="true" aria-label="Thai Analyzer" className="glass-card rounded-2xl max-w-2xl w-full max-h-[85vh] overflow-y-auto p-6 border border-[#7a5c12]/30" onClick={(e) => e.stopPropagation()}>
+      <div role="dialog" aria-modal="true" aria-label="Thai Analyzer" className="glass-card rounded-2xl max-w-2xl w-full max-h-[85vh] overflow-y-auto p-6 border border-[#1d4ed8]/30" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-2">
           <h2 className="text-lg font-bold accent-gradient">วิเคราะห์ภาษาไทย</h2>
-          <button onClick={onClose} className="text-slate-600 hover:text-[#14161c]" aria-label="Close">
+          <button onClick={onClose} className="text-slate-600 hover:text-[#111827]" aria-label="Close">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -1270,7 +1270,7 @@ export function ThaiAnalyzerModal({ onClose, initialText }: { onClose: () => voi
           placeholder="วางข้อความภาษาไทยที่นี่…"
           className="input min-h-[140px] resize-y"
         />
-        <button onClick={() => setShowCompare((v) => !v)} className="mt-2 text-[0.7rem] text-[#7a5c12] hover:underline">
+        <button onClick={() => setShowCompare((v) => !v)} className="mt-2 text-[0.7rem] text-[#1d4ed8] hover:underline">
           {showCompare ? "− ซ่อนการเทียบฉบับแก้" : "+ เทียบฉบับแก้ (ก่อน → หลัง)"}
         </button>
         {showCompare && (
@@ -1288,7 +1288,7 @@ export function ThaiAnalyzerModal({ onClose, initialText }: { onClose: () => voi
           </>
         )}
         {scan.length > 1 && (
-          <button onClick={() => setShowScan((v) => !v)} className="mt-2 ml-3 text-[0.7rem] text-[#7a5c12] hover:underline">
+          <button onClick={() => setShowScan((v) => !v)} className="mt-2 ml-3 text-[0.7rem] text-[#1d4ed8] hover:underline">
             {showScan ? "− ซ่อนสแกนรายบท" : `+ สแกนรายบท (${scan.length} บท)`}
           </button>
         )}
@@ -1506,16 +1506,16 @@ export function GuideModal({ onClose }: { onClose: () => void }) {
   ];
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50" onClick={onClose}>
-      <div role="dialog" aria-modal="true" aria-label="Bookisdom วิธีใช้" className="glass-card rounded-2xl max-w-2xl w-full max-h-[85vh] overflow-y-auto p-6 border border-[#7a5c12]/30" onClick={(e) => e.stopPropagation()}>
+      <div role="dialog" aria-modal="true" aria-label="Bookisdom วิธีใช้" className="glass-card rounded-2xl max-w-2xl w-full max-h-[85vh] overflow-y-auto p-6 border border-[#1d4ed8]/30" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-bold accent-gradient">Bookisdom — วิธีใช้</h2>
-          <button onClick={onClose} className="text-slate-600 hover:text-[#14161c]" aria-label="Close">
+          <button onClick={onClose} className="text-slate-600 hover:text-[#111827]" aria-label="Close">
             <X className="w-5 h-5" />
           </button>
         </div>
 
         <p className="text-sm text-slate-700 mb-5">
-          แพลตฟอร์มสร้าง <span className="text-[#7a5c12]">ชุด prompt</span> สำหรับแต่งหนังสือทุกประเภท คัดลอกไปใช้กับ LLM ตัวไหนก็ได้ (ChatGPT / Claude / Gemini) —
+          แพลตฟอร์มสร้าง <span className="text-[#1d4ed8]">ชุด prompt</span> สำหรับแต่งหนังสือทุกประเภท คัดลอกไปใช้กับ LLM ตัวไหนก็ได้ (ChatGPT / Claude / Gemini) —
           ไม่ต้องมี API key ไม่มีค่า token
         </p>
 
@@ -1523,7 +1523,7 @@ export function GuideModal({ onClose }: { onClose: () => void }) {
         <ol className="space-y-2 mb-5">
           {steps.map((s, i) => (
             <li key={i} className="flex gap-3 text-sm text-slate-800">
-              <span className="flex-shrink-0 w-5 h-5 rounded-full bg-[#d9a63a]/15 text-[#7a5c12] text-xs flex items-center justify-center font-semibold">{i + 1}</span>
+              <span className="flex-shrink-0 w-5 h-5 rounded-full bg-[#3c74d4]/15 text-[#1d4ed8] text-xs flex items-center justify-center font-semibold">{i + 1}</span>
               <span className="leading-relaxed">{s}</span>
             </li>
           ))}
@@ -1533,7 +1533,7 @@ export function GuideModal({ onClose }: { onClose: () => void }) {
         <div className="space-y-1.5 mb-5">
           {MODULE_GROUPS.map((g) => (
             <div key={g.key} className="text-sm">
-              <span className="text-[#7a5c12]">{g.label}</span>
+              <span className="text-[#1d4ed8]">{g.label}</span>
               <span className="text-faint"> — {g.desc}</span>
             </div>
           ))}
@@ -1550,7 +1550,7 @@ export function GuideModal({ onClose }: { onClose: () => void }) {
             { goal: "หลายเอเจนต์ (ขั้นสูง)", items: "Agent Pack — ต้องมี multi-agent setup เอง (เช่น Claude Projects); ไม่ได้รันในแอปนี้" },
           ].map((r) => (
             <div key={r.goal}>
-              <span className="text-[#7a5c12]">{r.goal}:</span>
+              <span className="text-[#1d4ed8]">{r.goal}:</span>
               <span className="text-slate-600"> {r.items}</span>
             </div>
           ))}
@@ -1559,18 +1559,18 @@ export function GuideModal({ onClose }: { onClose: () => void }) {
         <h3 className="text-xs font-semibold tracking-widest text-slate-600 uppercase mb-2">เครื่องมือวิเคราะห์ (ฟรี ไม่เรียก AI)</h3>
         <div className="space-y-2 mb-5 text-sm">
           <p className="text-slate-600">
-            ปุ่ม <span className="text-[#7a5c12]">วิเคราะห์ไทย</span> และ <span className="text-[#7a5c12]">Prose (EN)</span> ที่หัวหน้าจอ —
+            ปุ่ม <span className="text-[#1d4ed8]">วิเคราะห์ไทย</span> และ <span className="text-[#1d4ed8]">Prose (EN)</span> ที่หัวหน้าจอ —
             ตรวจร้อยแก้วฝั่งเบราว์เซอร์แบบ deterministic (วัดได้ โชว์ทุกคำที่ match ไม่ใช่คะแนนลอย ๆ)
           </p>
-          <div><span className="text-[#7a5c12]">หาจุดน่าสงสัย:</span><span className="text-slate-600"> คำคลิเช AI · คำบอกอารมณ์ (telling) · จังหวะประโยคแบน · คำซ้ำ · (EN) AI-slop, filter words, -ly adverbs, passive, Flesch readability</span></div>
-          <div><span className="text-[#7a5c12]">เทียบฉบับแก้:</span><span className="text-slate-600"> วางก่อน→หลัง เห็น delta ว่าการแก้ดีขึ้นจริงไหมตามตัวเลข</span></div>
-          <div><span className="text-[#7a5c12]">สแกนรายบท:</span><span className="text-slate-600"> วางทั้งเล่ม → heatmap บอกบทที่อ่อนสุดต่อ signal</span></div>
-          <div><span className="text-[#7a5c12]">ปิด loop:</span><span className="text-slate-600"> เจอจุดอ่อนแล้วกดปุ่มเดียว คัดลอก NIS audit ที่เกี่ยวพร้อมแปะข้อความให้ → วางใน LLM เจาะเฉพาะจุด (ประหยัด token)</span></div>
-          <div><span className="text-[#7a5c12]">ส่งออก:</span><span className="text-slate-600"> Copy report / Download .md เก็บไว้เทียบ draft</span></div>
+          <div><span className="text-[#1d4ed8]">หาจุดน่าสงสัย:</span><span className="text-slate-600"> คำคลิเช AI · คำบอกอารมณ์ (telling) · จังหวะประโยคแบน · คำซ้ำ · (EN) AI-slop, filter words, -ly adverbs, passive, Flesch readability</span></div>
+          <div><span className="text-[#1d4ed8]">เทียบฉบับแก้:</span><span className="text-slate-600"> วางก่อน→หลัง เห็น delta ว่าการแก้ดีขึ้นจริงไหมตามตัวเลข</span></div>
+          <div><span className="text-[#1d4ed8]">สแกนรายบท:</span><span className="text-slate-600"> วางทั้งเล่ม → heatmap บอกบทที่อ่อนสุดต่อ signal</span></div>
+          <div><span className="text-[#1d4ed8]">ปิด loop:</span><span className="text-slate-600"> เจอจุดอ่อนแล้วกดปุ่มเดียว คัดลอก NIS audit ที่เกี่ยวพร้อมแปะข้อความให้ → วางใน LLM เจาะเฉพาะจุด (ประหยัด token)</span></div>
+          <div><span className="text-[#1d4ed8]">ส่งออก:</span><span className="text-slate-600"> Copy report / Download .md เก็บไว้เทียบ draft</span></div>
         </div>
 
         <h3 className="text-xs font-semibold tracking-widest text-slate-600 uppercase mb-2">เคล็ดลับ</h3>
-        <ul className="space-y-1.5 text-sm text-slate-700 list-disc list-inside marker:text-[#7a5c12]">
+        <ul className="space-y-1.5 text-sm text-slate-700 list-disc list-inside marker:text-[#1d4ed8]">
           <li><span className="text-slate-800">ภาษา prompt:</span> สลับ “ไทยทั้งชุด” ได้ที่ Prompt Language</li>
           <li><span className="text-slate-800">Continuity:</span> Story Bible / STATE ฉีดเข้าทุกบท — แก้ที่เดียวใช้ทั้งเล่ม</li>
           <li><span className="text-slate-800">เซฟงาน:</span> ปุ่ม Save เก็บ project ไว้ในบัญชี (ต้องล็อกอิน); การตั้งค่าล่าสุด (รวม Story Bible) ถูกเก็บอัตโนมัติในเบราว์เซอร์ ไม่หายตอน reload</li>
@@ -1652,10 +1652,10 @@ export function ProseAnalyzerModal({ onClose, initialText }: { onClose: () => vo
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50" onClick={onClose}>
-      <div role="dialog" aria-modal="true" aria-label="Prose Analyzer" className="glass-card rounded-2xl max-w-2xl w-full max-h-[85vh] overflow-y-auto p-6 border border-[#7a5c12]/30" onClick={(e) => e.stopPropagation()}>
+      <div role="dialog" aria-modal="true" aria-label="Prose Analyzer" className="glass-card rounded-2xl max-w-2xl w-full max-h-[85vh] overflow-y-auto p-6 border border-[#1d4ed8]/30" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-2">
           <h2 className="text-lg font-bold accent-gradient">Prose Analyzer (English)</h2>
-          <button onClick={onClose} className="text-slate-600 hover:text-[#14161c]" aria-label="Close">
+          <button onClick={onClose} className="text-slate-600 hover:text-[#111827]" aria-label="Close">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -1671,7 +1671,7 @@ export function ProseAnalyzerModal({ onClose, initialText }: { onClose: () => vo
         />
         <button
           onClick={() => setShowCompare((v) => !v)}
-          className="mt-2 text-[0.7rem] text-[#7a5c12] hover:underline"
+          className="mt-2 text-[0.7rem] text-[#1d4ed8] hover:underline"
         >
           {showCompare ? "− Hide revision compare" : "+ Compare a revision (before → after)"}
         </button>
@@ -1692,7 +1692,7 @@ export function ProseAnalyzerModal({ onClose, initialText }: { onClose: () => vo
         {scan.length > 1 && (
           <button
             onClick={() => setShowScan((v) => !v)}
-            className="mt-2 ml-3 text-[0.7rem] text-[#7a5c12] hover:underline"
+            className="mt-2 ml-3 text-[0.7rem] text-[#1d4ed8] hover:underline"
           >
             {showScan ? "− Hide per-chapter scan" : `+ Per-chapter scan (${scan.length} chapters)`}
           </button>

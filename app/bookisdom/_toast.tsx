@@ -75,7 +75,7 @@ function subscribe(l: Listener): () => void {
 }
 
 const TONE: Record<ToastVariant, { border: string; dot: string; label: string }> = {
-  info: { border: "border-[#7a5c12]/40", dot: "bg-[#d9a63a]", label: "แจ้งเตือน" },
+  info: { border: "border-[#1d4ed8]/40", dot: "bg-[#3c74d4]", label: "แจ้งเตือน" },
   success: { border: "border-emerald-500/40", dot: "bg-emerald-400", label: "สำเร็จ" },
   error: { border: "border-rose-500/45", dot: "bg-rose-400", label: "ผิดพลาด" },
 };

@@ -11,21 +11,21 @@ const config: Config = {
     extend: {
       colors: {
         // One light palette for the whole platform — see app/bookisdom/_tokens.ts.
-        background: "#f3f5f9",
-        foreground: "#14161c",
+        background: "#f8f8f8",
+        foreground: "#111827",
         gold: {
-          DEFAULT: "#7a5c12", // accent TEXT / borders
-          light: "#d9a63a", // accent FILL (dark text on it)
-          dark: "#6b5010", // accent text hover
+          DEFAULT: "#1d4ed8", // accent TEXT / borders
+          light: "#3c74d4", // accent FILL (dark text on it)
+          dark: "#1e40af", // accent text hover
         },
-        border: "rgba(122, 92, 18, 0.2)",
+        border: "rgba(29, 78, 216, 0.2)",
         // WCAG-checked faintest text tier (>=4.5:1 on EVERY surface in use) — see app/bookisdom/_tokens.ts
-        faint: "#566174",
+        faint: "#4b5563",
         accent: {
-          DEFAULT: "#7a5c12",
-          bright: "#d9a63a",
-          deep: "#c8901f",
-          dark: "#6b5010",
+          DEFAULT: "#1d4ed8",
+          bright: "#3c74d4",
+          deep: "#3366bf",
+          dark: "#1e40af",
         },
       },
       fontFamily: {

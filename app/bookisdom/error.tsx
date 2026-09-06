@@ -18,9 +18,9 @@ export default function BookisdomError({
   reset: () => void;
 }) {
   return (
-    <main className="min-h-screen flex items-center justify-center px-6" style={{ background: "#f3f5f9" }}>
+    <main className="min-h-screen flex items-center justify-center px-6">
       <div className="max-w-md w-full text-center border border-black/10 rounded-2xl p-8 bg-[#ffffff]">
-        <p className="text-xs tracking-[0.2em] uppercase text-[#7a5c12] font-semibold mb-3">Bookisdom · เกิดข้อผิดพลาด</p>
+        <p className="text-xs tracking-[0.2em] uppercase text-[#1d4ed8] font-semibold mb-3">Bookisdom · เกิดข้อผิดพลาด</p>
         <h1 className="text-lg font-semibold text-slate-900 mb-2">หน้านี้ทำงานผิดพลาด</h1>
         <p className="text-sm text-slate-600 leading-relaxed">
           ข้อผิดพลาดเกิดในหน้าจอ ไม่ใช่ในข้อมูลของคุณ — ต้นฉบับที่บันทึกไว้ในเครื่องยังอยู่ครบ
@@ -32,7 +32,7 @@ export default function BookisdomError({
         <div className="mt-6 flex items-center justify-center gap-3">
           <button
             onClick={reset}
-            className="px-5 py-2.5 rounded-xl bg-[#d9a63a] text-black text-sm font-semibold hover:bg-[#c8901f] transition-colors"
+            className="px-5 py-2.5 rounded-xl bg-[#3c74d4] text-white text-sm font-semibold hover:bg-[#3366bf] transition-colors"
           >
             ลองใหม่
           </button>

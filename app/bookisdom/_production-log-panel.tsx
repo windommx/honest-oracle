@@ -56,13 +56,13 @@ export function ProductionLogPanel({ projectId, projectTitle, onClose }: {
         <div className="flex border-b border-black/10 px-2">
           <button
             onClick={() => setTab("cost")}
-            className={`flex items-center gap-1.5 px-4 py-2.5 text-xs font-medium border-b-2 transition-colors ${tab === "cost" ? "border-[#7a5c12] text-[#7a5c12]" : "border-transparent text-slate-600 hover:text-slate-800"}`}
+            className={`flex items-center gap-1.5 px-4 py-2.5 text-xs font-medium border-b-2 transition-colors ${tab === "cost" ? "border-[#1d4ed8] text-[#1d4ed8]" : "border-transparent text-slate-600 hover:text-slate-800"}`}
           >
             <Wallet className="w-3.5 h-3.5" /> ต้นทุน
           </button>
           <button
             onClick={() => setTab("metric")}
-            className={`flex items-center gap-1.5 px-4 py-2.5 text-xs font-medium border-b-2 transition-colors ${tab === "metric" ? "border-[#7a5c12] text-[#7a5c12]" : "border-transparent text-slate-600 hover:text-slate-800"}`}
+            className={`flex items-center gap-1.5 px-4 py-2.5 text-xs font-medium border-b-2 transition-colors ${tab === "metric" ? "border-[#1d4ed8] text-[#1d4ed8]" : "border-transparent text-slate-600 hover:text-slate-800"}`}
           >
             <TrendingUp className="w-3.5 h-3.5" /> ตัวชี้วัดเปิดตัว
           </button>
@@ -100,7 +100,7 @@ function CostTab({ projectId, entries, onChange }: { projectId: string; entries:
       <div className="flex gap-2 mb-4">
         <input value={amount} onChange={(e) => setAmount(e.target.value)} type="number" min="0" step="0.01" placeholder="จำนวนเงิน (บาท)" className="input w-36" />
         <input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="ค่าอะไร เช่น API เขียนบท 1-6" className="input flex-1" onKeyDown={(e) => e.key === "Enter" && submit()} />
-        <button onClick={submit} className="px-4 py-2.5 rounded-xl bg-[#d9a63a] text-[#14161c] text-sm font-semibold hover:bg-[#c8901f] transition-colors whitespace-nowrap">บันทึก</button>
+        <button onClick={submit} className="px-4 py-2.5 rounded-xl bg-[#3c74d4] text-white text-sm font-semibold hover:bg-[#3366bf] transition-colors whitespace-nowrap">บันทึก</button>
       </div>
 
       {summary && summary.count > 0 && (
@@ -125,7 +125,7 @@ function CostTab({ projectId, entries, onChange }: { projectId: string; entries:
               <div className="text-[11px] text-faint">{new Date(e.createdAt).toLocaleDateString("th-TH", { dateStyle: "medium" })}</div>
             </div>
             <div className="flex items-center gap-2 shrink-0">
-              <span className="font-mono text-sm text-[#7a5c12]">฿{e.amountThb.toLocaleString("th-TH")}</span>
+              <span className="font-mono text-sm text-[#1d4ed8]">฿{e.amountThb.toLocaleString("th-TH")}</span>
               <DeleteButton
                 onDelete={() => deleteCostEntry(e.id).then(onChange)}
                 what="รายการต้นทุน"
@@ -176,7 +176,7 @@ function MetricTab({ projectId, entries, onChange }: { projectId: string; entrie
       </div>
       <div className="flex gap-2 mb-4">
         <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="โน้ต เช่น ช่วงหลังลดราคา" className="input flex-1" onKeyDown={(e) => e.key === "Enter" && submit()} />
-        <button onClick={submit} className="px-4 py-2.5 rounded-xl bg-[#d9a63a] text-[#14161c] text-sm font-semibold hover:bg-[#c8901f] transition-colors whitespace-nowrap">บันทึก</button>
+        <button onClick={submit} className="px-4 py-2.5 rounded-xl bg-[#3c74d4] text-white text-sm font-semibold hover:bg-[#3366bf] transition-colors whitespace-nowrap">บันทึก</button>
       </div>
 
       <p className="text-[11px] text-faint mb-3">
@@ -206,8 +206,8 @@ function MetricTab({ projectId, entries, onChange }: { projectId: string; entrie
                 <span className="text-slate-700">{e.clicks.toLocaleString("th-TH")} clicks</span>
                 <span className="text-slate-700">{e.sales.toLocaleString("th-TH")} sales</span>
                 {e.avgStars !== undefined && <span className="text-slate-700">★{e.avgStars}</span>}
-                <span className="text-[#7a5c12]">CTR {rates.ctrPercent === null ? "—" : `${rates.ctrPercent}%`}</span>
-                <span className="text-[#7a5c12]">conv {rates.conversionPercent === null ? "—" : `${rates.conversionPercent}%`}</span>
+                <span className="text-[#1d4ed8]">CTR {rates.ctrPercent === null ? "—" : `${rates.ctrPercent}%`}</span>
+                <span className="text-[#1d4ed8]">conv {rates.conversionPercent === null ? "—" : `${rates.conversionPercent}%`}</span>
               </div>
             </div>
           );

@@ -150,25 +150,25 @@ export default function WritePage() {
   const progress = book && bookWords !== null ? bookProgress(bookWords, book.targetWords) : null;
 
   return (
-    <div className="min-h-screen bg-[#f3f5f9]">
+    <div className="min-h-screen">
       <nav className="nav-premium sticky top-0 z-50">
         <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 py-3 flex justify-between items-center">
           <BookisdomLogo />
           <div className="flex items-center gap-3 text-xs">
-            <Link href="/bookisdom/dashboard" className="hidden sm:flex text-slate-600 hover:text-[#6b5010] items-center gap-1"><LayoutGrid className="w-3.5 h-3.5" />แดชบอร์ด</Link>
-            <Link href="/bookisdom" className="hidden sm:flex text-slate-600 hover:text-[#6b5010] items-center gap-1"><Wand2 className="w-3.5 h-3.5" />เครื่องมือ prompt</Link>
-            <Link href="/bookisdom/studio" className="hidden sm:flex text-slate-600 hover:text-[#6b5010] items-center gap-1"><Play className="w-3.5 h-3.5" />Studio</Link>
-            <Link href="/bookisdom/kdp" className="hidden sm:flex text-slate-600 hover:text-[#6b5010] items-center gap-1"><BookMarked className="w-3.5 h-3.5" />KDP</Link>
-            <span className="flex items-center gap-1.5 text-[#7a5c12] border border-[#7a5c12]/30 rounded-lg px-3 py-1.5"><PenLine className="w-3.5 h-3.5" /> ห้องเขียน</span>
+            <Link href="/bookisdom/dashboard" className="hidden sm:flex text-slate-600 hover:text-[#1e40af] items-center gap-1"><LayoutGrid className="w-3.5 h-3.5" />แดชบอร์ด</Link>
+            <Link href="/bookisdom" className="hidden sm:flex text-slate-600 hover:text-[#1e40af] items-center gap-1"><Wand2 className="w-3.5 h-3.5" />เครื่องมือ prompt</Link>
+            <Link href="/bookisdom/studio" className="hidden sm:flex text-slate-600 hover:text-[#1e40af] items-center gap-1"><Play className="w-3.5 h-3.5" />Studio</Link>
+            <Link href="/bookisdom/kdp" className="hidden sm:flex text-slate-600 hover:text-[#1e40af] items-center gap-1"><BookMarked className="w-3.5 h-3.5" />KDP</Link>
+            <span className="flex items-center gap-1.5 text-[#1d4ed8] border border-[#1d4ed8]/30 rounded-lg px-3 py-1.5"><PenLine className="w-3.5 h-3.5" /> ห้องเขียน</span>
           </div>
         </div>
       </nav>
 
       {/* Mobile pane switcher */}
-      <div className="lg:hidden sticky top-[57px] z-40 bg-[#f3f5f9]/95 backdrop-blur border-b border-black/10 px-4 py-2 flex gap-2" role="tablist" aria-label="ส่วนของห้องเขียน">
+      <div className="lg:hidden sticky top-[57px] z-40 bg-[#f8f8f8]/95 backdrop-blur border-b border-black/10 px-4 py-2 flex gap-2" role="tablist" aria-label="ส่วนของห้องเขียน">
         {([["books", "เล่ม", Library], ["write", "เขียน", PenLine], ["notes", "โน้ต", StickyNote]] as const).map(([k, label, Icon]) => (
           <button key={k} role="tab" aria-selected={pane === k} onClick={() => setPane(k)}
-            className={`flex-1 flex items-center justify-center gap-1.5 text-xs px-3 py-2 rounded-xl border ${pane === k ? "btn-gold border-transparent font-semibold" : "border-black/10 text-slate-600 bg-white"}`}>
+            className={`flex-1 flex items-center justify-center gap-1.5 text-xs px-3 py-2 rounded-xl border ${pane === k ? "btn-brand border-transparent font-semibold" : "border-black/10 text-slate-600 bg-white"}`}>
             <Icon className="w-3.5 h-3.5" /> {label}
           </button>
         ))}
@@ -178,7 +178,7 @@ export default function WritePage() {
         {/* ── left: books + TOC ── */}
         <aside className={`${pane === "books" ? "" : "hidden"} lg:block space-y-4`}>
           <section className="card-premium rounded-3xl p-4">
-            <div className="eyebrow-gold mb-3">เล่มใหม่</div>
+            <div className="eyebrow-brand mb-3">เล่มใหม่</div>
             <input value={newTitle} onChange={(e) => setNewTitle(e.target.value)} placeholder="ชื่อเล่ม" className="input mb-2" aria-label="ชื่อเล่ม" />
             <div className="grid grid-cols-2 gap-2 mb-2">
               <select value={newLang} onChange={(e) => setNewLang(e.target.value as "th" | "en")} className="input" aria-label="ภาษาของเล่ม">
@@ -186,16 +186,16 @@ export default function WritePage() {
               </select>
               <input value={newTarget} onChange={(e) => setNewTarget(e.target.value)} type="number" min={0} inputMode="numeric" placeholder="เป้าหมายคำ" className="input" aria-label="เป้าหมายคำ" />
             </div>
-            <button onClick={() => void onCreateBook()} className="btn-gold w-full py-2 rounded-xl text-sm font-semibold flex items-center justify-center gap-1.5"><Plus className="w-4 h-4" /> สร้างเล่ม</button>
+            <button onClick={() => void onCreateBook()} className="btn-brand w-full py-2 rounded-xl text-sm font-semibold flex items-center justify-center gap-1.5"><Plus className="w-4 h-4" /> สร้างเล่ม</button>
           </section>
 
           <section className="card-premium rounded-3xl p-2">
-            <div className="eyebrow-gold px-2 pt-2 mb-2">เล่มทั้งหมด ({books.length})</div>
+            <div className="eyebrow-brand px-2 pt-2 mb-2">เล่มทั้งหมด ({books.length})</div>
             {books.length === 0 && <p className="text-xs text-faint px-2 pb-3">ยังไม่มีเล่ม — สร้างด้านบน</p>}
             <ul className="space-y-1" aria-label="รายการเล่ม">
               {books.map((b) => (
                 <li key={b.id}>
-                  <div className={`flex items-center gap-2 rounded-xl px-3 py-2 ${b.id === bookId ? "bg-[#d9a63a]/15 border border-[#7a5c12]/25" : "hover:bg-black/[0.03]"}`}>
+                  <div className={`flex items-center gap-2 rounded-xl px-3 py-2 ${b.id === bookId ? "bg-[#3c74d4]/15 border border-[#1d4ed8]/25" : "hover:bg-black/[0.03]"}`}>
                     <button onClick={() => { setBookId(b.id); setPane("write"); }} className="flex-1 text-left min-w-0" aria-current={b.id === bookId ? "true" : undefined}>
                       <div className="text-sm font-medium truncate">{b.title}</div>
                       <div className="text-[0.65rem] text-faint">{STATUS_LABEL[b.status]} · {b.lang.toUpperCase()}</div>
@@ -210,17 +210,17 @@ export default function WritePage() {
           {book && (
             <section className="card-premium rounded-3xl p-2">
               <div className="flex items-center justify-between px-2 pt-2 mb-2">
-                <div className="eyebrow-gold">สารบัญ · {book.title}</div>
-                <button onClick={() => void onAddChapter()} className="text-xs text-[#7a5c12] hover:text-[#6b5010] flex items-center gap-1" aria-label="เพิ่มบท"><Plus className="w-3.5 h-3.5" /> เพิ่มบท</button>
+                <div className="eyebrow-brand">สารบัญ · {book.title}</div>
+                <button onClick={() => void onAddChapter()} className="text-xs text-[#1d4ed8] hover:text-[#1e40af] flex items-center gap-1" aria-label="เพิ่มบท"><Plus className="w-3.5 h-3.5" /> เพิ่มบท</button>
               </div>
               <ol className="space-y-1" aria-label="สารบัญ">
                 {chapters.map((c, i) => (
-                  <li key={c.id} className={`flex items-center gap-1 rounded-xl px-2 py-1.5 ${c.id === chapterId ? "bg-[#d9a63a]/15 border border-[#7a5c12]/25" : "hover:bg-black/[0.03]"}`}>
+                  <li key={c.id} className={`flex items-center gap-1 rounded-xl px-2 py-1.5 ${c.id === chapterId ? "bg-[#3c74d4]/15 border border-[#1d4ed8]/25" : "hover:bg-black/[0.03]"}`}>
                     <button onClick={() => { setChapterId(c.id); setPane("write"); }} className="flex-1 text-left text-sm min-w-0 truncate" aria-current={c.id === chapterId ? "true" : undefined}>
                       <span className="text-faint font-mono text-[0.65rem] mr-1.5">{i + 1}</span>{c.title || "(ไม่มีชื่อ)"}
                     </button>
-                    <button onClick={() => void onMove(c.id, "up")} className="text-faint hover:text-[#14161c] p-0.5" aria-label={`เลื่อน ${c.title} ขึ้น`}><ChevronUp className="w-3.5 h-3.5" /></button>
-                    <button onClick={() => void onMove(c.id, "down")} className="text-faint hover:text-[#14161c] p-0.5" aria-label={`เลื่อน ${c.title} ลง`}><ChevronDown className="w-3.5 h-3.5" /></button>
+                    <button onClick={() => void onMove(c.id, "up")} className="text-faint hover:text-[#111827] p-0.5" aria-label={`เลื่อน ${c.title} ขึ้น`}><ChevronUp className="w-3.5 h-3.5" /></button>
+                    <button onClick={() => void onMove(c.id, "down")} className="text-faint hover:text-[#111827] p-0.5" aria-label={`เลื่อน ${c.title} ลง`}><ChevronDown className="w-3.5 h-3.5" /></button>
                     <DeleteButton onDelete={() => void onDeleteChapter(c.id)} what={`บท ${c.title}`} idleClass="text-faint hover:text-red-700 p-0.5" armedClass="text-[10px] font-semibold px-1.5 py-0.5 rounded-lg bg-red-50 border border-red-500/60 text-red-700 whitespace-nowrap" />
                   </li>
                 ))}
@@ -240,7 +240,7 @@ export default function WritePage() {
             />
           ) : (
             <div className="card-premium rounded-3xl p-10 text-center">
-              <BookOpen className="w-10 h-10 mx-auto mb-3 text-[#7a5c12]/40" />
+              <BookOpen className="w-10 h-10 mx-auto mb-3 text-[#1d4ed8]/40" />
               <p className="text-slate-700">{books.length ? "เลือกเล่มและบททางซ้ายเพื่อเริ่มเขียน" : "สร้างเล่มแรกเพื่อเริ่มเขียน"}</p>
               <p className="text-xs text-faint mt-2">บันทึกอัตโนมัติในเบราว์เซอร์ของคุณ — ไม่ขึ้นเซิร์ฟเวอร์</p>
             </div>
@@ -251,7 +251,7 @@ export default function WritePage() {
         <aside className={`${pane === "notes" ? "" : "hidden"} lg:block space-y-4`}>
           {book && (
             <section className="card-premium rounded-3xl p-4">
-              <div className="eyebrow-gold mb-3">เล่มนี้</div>
+              <div className="eyebrow-brand mb-3">เล่มนี้</div>
               <input value={book.title} onChange={(e) => { const v = e.target.value; setBooks((bs) => bs.map((b) => (b.id === book.id ? { ...b, title: v } : b))); void updateBook(book.id, { title: v }); }} className="input mb-2 font-semibold" aria-label="ชื่อเล่ม (แก้ไข)" />
               <input value={book.author} onChange={(e) => { const v = e.target.value; setBooks((bs) => bs.map((b) => (b.id === book.id ? { ...b, author: v } : b))); void updateBook(book.id, { author: v }); }} placeholder="ผู้เขียน" className="input mb-2" aria-label="ผู้เขียน" />
               <div className="grid grid-cols-2 gap-2 mb-3">
@@ -266,21 +266,21 @@ export default function WritePage() {
                   <span>{progress === null ? (book.targetWords ? "" : "ยังไม่ตั้งเป้า") : `${progress}%`}</span>
                 </div>
                 <div className="h-2 rounded-full bg-black/10 overflow-hidden" aria-hidden="true">
-                  <div className="h-full bg-[#d9a63a] transition-all" style={{ width: `${Math.min(100, progress ?? 0)}%` }} />
+                  <div className="h-full bg-[#3c74d4] transition-all" style={{ width: `${Math.min(100, progress ?? 0)}%` }} />
                 </div>
                 <p className="text-[0.65rem] text-faint mt-1">คำ ÷ เป้าหมาย × 100 — นับด้วยตัวตัดคำเดียวกับตัววิเคราะห์ ไม่มีคะแนน &quot;ความเร็ว&quot;</p>
               </div>
 
-              <div className="rule-gold my-4" />
-              <div className="eyebrow-gold mb-2">ส่งต่อ</div>
+              <div className="rule-brand my-4" />
+              <div className="eyebrow-brand mb-2">ส่งต่อ</div>
               <div className="space-y-2">
-                <button onClick={() => void compileAndAnalyze()} className="w-full text-xs py-2 rounded-xl border border-[#7a5c12]/30 text-[#7a5c12] hover:bg-[#d9a63a]/10 flex items-center justify-center gap-1.5"><Search className="w-3.5 h-3.5" /> รวมเล่มเป็นต้นฉบับ → วิเคราะห์</button>
+                <button onClick={() => void compileAndAnalyze()} className="w-full text-xs py-2 rounded-xl border border-[#1d4ed8]/30 text-[#1d4ed8] hover:bg-[#3c74d4]/10 flex items-center justify-center gap-1.5"><Search className="w-3.5 h-3.5" /> รวมเล่มเป็นต้นฉบับ → วิเคราะห์</button>
                 <button onClick={exportEpub} className="w-full text-xs py-2 rounded-xl border border-black/10 text-slate-700 hover:bg-black/[0.04] flex items-center justify-center gap-1.5"><BookDown className="w-3.5 h-3.5" /> ดาวน์โหลด EPUB</button>
                 <div className="grid grid-cols-2 gap-2">
                   <button onClick={() => downloadBlob(`${book.title}.md`, exportMarkdown(book, chapters), "text/markdown")} className="text-xs py-2 rounded-xl border border-black/10 text-slate-700 hover:bg-black/[0.04] flex items-center justify-center gap-1.5"><FileDown className="w-3.5 h-3.5" /> .md</button>
                   <button onClick={() => downloadBlob(`${book.title}.txt`, exportText(book, chapters), "text/plain")} className="text-xs py-2 rounded-xl border border-black/10 text-slate-700 hover:bg-black/[0.04] flex items-center justify-center gap-1.5"><FileDown className="w-3.5 h-3.5" /> .txt</button>
                 </div>
-                <button onClick={sendCodex} className="w-full text-xs py-2 rounded-xl border border-[#7a5c12]/30 text-[#7a5c12] hover:bg-[#d9a63a]/10 flex items-center justify-center gap-1.5"><Wand2 className="w-3.5 h-3.5" /> ส่งโน้ตเข้า Story Codex</button>
+                <button onClick={sendCodex} className="w-full text-xs py-2 rounded-xl border border-[#1d4ed8]/30 text-[#1d4ed8] hover:bg-[#3c74d4]/10 flex items-center justify-center gap-1.5"><Wand2 className="w-3.5 h-3.5" /> ส่งโน้ตเข้า Story Codex</button>
                 <p className="text-[0.65rem] text-faint">Codex รับเฉพาะโน้ตประเภท ตัวละคร · สถานที่ · สิ่งของ · ปมค้าง — บรรทัด &quot;อยาก: …&quot; / &quot;เสียง: …&quot; ในโน้ตตัวละครกลายเป็น trait</p>
               </div>
             </section>
@@ -335,7 +335,7 @@ function ChapterEditor({ chapter, lang, onSaved }: { chapter: WritingChapter; la
           <Save className="w-3.5 h-3.5" /> บันทึกเดี๋ยวนี้
         </button>
       </div>
-      <input value={title} onChange={(e) => { setTitle(e.target.value); schedule(); }} placeholder="ชื่อบท" className="w-full text-lg font-semibold bg-transparent outline-none border-b border-transparent focus:border-[#7a5c12]/40 py-1 mb-2" aria-label="ชื่อบท" />
+      <input value={title} onChange={(e) => { setTitle(e.target.value); schedule(); }} placeholder="ชื่อบท" className="w-full text-lg font-semibold bg-transparent outline-none border-b border-transparent focus:border-[#1d4ed8]/40 py-1 mb-2" aria-label="ชื่อบท" />
       <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-faint border-y border-black/10 py-2 mb-3" data-testid="chapter-counts">
         <span>{words === null ? "…" : fmt(words)} คำ</span>
         <span>{fmt(content.length)} ตัวอักษร</span>
@@ -362,7 +362,7 @@ function NotesPanel({ bookId, notes, onChange }: { bookId: string; notes: Writin
   }
   return (
     <section className="card-premium rounded-3xl p-4">
-      <div className="eyebrow-gold mb-3">โน้ต ({notes.length})</div>
+      <div className="eyebrow-brand mb-3">โน้ต ({notes.length})</div>
       <div className="grid grid-cols-[1fr_auto] gap-2 mb-2">
         <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder={type === "CHARACTER" ? "ชื่อตัวละคร" : "หัวข้อโน้ต"} className="input" aria-label="ชื่อโน้ต" />
         <select value={type} onChange={(e) => setType(e.target.value as NoteType)} className="input w-auto" aria-label="ประเภทโน้ต">
@@ -370,11 +370,11 @@ function NotesPanel({ bookId, notes, onChange }: { bookId: string; notes: Writin
         </select>
       </div>
       <textarea value={content} onChange={(e) => setContent(e.target.value)} placeholder={type === "CHARACTER" ? "บรรทัดแรก = คำอธิบาย\nอยาก: …\nเสียง: …" : "รายละเอียด"} className="input min-h-[72px] resize-y mb-2" aria-label="รายละเอียดโน้ต" />
-      <button onClick={() => void add()} className="btn-gold w-full py-2 rounded-xl text-sm font-semibold flex items-center justify-center gap-1.5 mb-3"><Plus className="w-4 h-4" /> เพิ่มโน้ต</button>
+      <button onClick={() => void add()} className="btn-brand w-full py-2 rounded-xl text-sm font-semibold flex items-center justify-center gap-1.5 mb-3"><Plus className="w-4 h-4" /> เพิ่มโน้ต</button>
 
       <div className="flex flex-wrap gap-1 mb-2">
         {(["ALL", ...NOTE_TYPES] as const).map((t) => (
-          <button key={t} onClick={() => setFilter(t)} aria-pressed={filter === t} className={`text-[0.65rem] px-2 py-0.5 rounded-full border ${filter === t ? "border-[#7a5c12] text-[#7a5c12] bg-[#d9a63a]/10" : "border-black/10 text-slate-600"}`}>
+          <button key={t} onClick={() => setFilter(t)} aria-pressed={filter === t} className={`text-[0.65rem] px-2 py-0.5 rounded-full border ${filter === t ? "border-[#1d4ed8] text-[#1d4ed8] bg-[#3c74d4]/10" : "border-black/10 text-slate-600"}`}>
             {t === "ALL" ? "ทั้งหมด" : NOTE_META[t].label}
           </button>
         ))}
@@ -384,12 +384,12 @@ function NotesPanel({ bookId, notes, onChange }: { bookId: string; notes: Writin
         {shown.map((n) => (
           <li key={n.id} className="rounded-xl border border-black/10 bg-white p-2.5">
             <div className="flex items-start gap-2">
-              <span className={`text-[0.6rem] px-1.5 py-px rounded border ${NOTE_META[n.type].codexSection ? "border-[#7a5c12]/40 text-[#7a5c12]" : "border-black/10 text-slate-600"}`}>{NOTE_META[n.type].label}</span>
+              <span className={`text-[0.6rem] px-1.5 py-px rounded border ${NOTE_META[n.type].codexSection ? "border-[#1d4ed8]/40 text-[#1d4ed8]" : "border-black/10 text-slate-600"}`}>{NOTE_META[n.type].label}</span>
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-medium truncate">{n.title}</div>
                 {n.content && <div className="text-xs text-slate-600 whitespace-pre-line line-clamp-4">{n.content}</div>}
               </div>
-              <button onClick={async () => { await updateNote(n.id, { pinned: !n.pinned }); onChange(); }} className={`p-1 ${n.pinned ? "text-[#7a5c12]" : "text-faint hover:text-[#14161c]"}`} aria-label={n.pinned ? "เลิกปักหมุด" : "ปักหมุด"} aria-pressed={n.pinned}>
+              <button onClick={async () => { await updateNote(n.id, { pinned: !n.pinned }); onChange(); }} className={`p-1 ${n.pinned ? "text-[#1d4ed8]" : "text-faint hover:text-[#111827]"}`} aria-label={n.pinned ? "เลิกปักหมุด" : "ปักหมุด"} aria-pressed={n.pinned}>
                 {n.pinned ? <Pin className="w-3.5 h-3.5" /> : <PinOff className="w-3.5 h-3.5" />}
               </button>
               <DeleteButton onDelete={async () => { await deleteNote(n.id); onChange(); }} what={`โน้ต ${n.title}`} idleClass="text-faint hover:text-red-700 p-1" armedClass="text-[10px] font-semibold px-1.5 py-0.5 rounded-lg bg-red-50 border border-red-500/60 text-red-700 whitespace-nowrap" />

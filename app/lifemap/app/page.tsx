@@ -38,7 +38,7 @@ function Graph({ points }: { points: number[] }) {
   }, [points]);
 
   return (
-    <div className="mt-4 overflow-x-auto border border-[#7a5c12]/25 rounded-xl bg-black/[0.04]">
+    <div className="mt-4 overflow-x-auto border border-[#1d4ed8]/25 rounded-xl bg-black/[0.04]">
       <svg viewBox="0 0 1000 200" className="min-w-[900px] h-[220px] block">
         <polyline
           fill="none"
@@ -113,27 +113,27 @@ export default function LifemapAppPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f3f5f9]">
+    <div className="min-h-screen">
       <nav className="fixed top-0 left-0 right-0 z-50 glass-card">
         <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
           <Link href="/" className="flex items-center gap-2">
-            <Crown className="w-8 h-8 text-[#7a5c12]" />
+            <Crown className="w-8 h-8 text-[#1d4ed8]" />
             <span className="text-xl font-semibold gold-gradient">NaraClear</span>
           </Link>
           <div className="flex gap-6 items-center">
-            <Link href="/lifemap" className="text-gray-700 hover:text-[#6b5010] transition-colors">
+            <Link href="/lifemap" className="text-gray-700 hover:text-[#1e40af] transition-colors">
               โครงสร้างชีวิต
             </Link>
             <Link
               href="/lifemap/history"
-              className="text-gray-700 hover:text-[#6b5010] transition-colors flex items-center gap-2"
+              className="text-gray-700 hover:text-[#1e40af] transition-colors flex items-center gap-2"
             >
               <History className="w-4 h-4" />
               ประวัติ
             </Link>
             <Link
               href="/lifemap/api-keys"
-              className="text-gray-700 hover:text-[#6b5010] transition-colors flex items-center gap-2"
+              className="text-gray-700 hover:text-[#1e40af] transition-colors flex items-center gap-2"
             >
               <KeyRound className="w-4 h-4" />
               API Keys
@@ -152,9 +152,9 @@ export default function LifemapAppPage() {
           </div>
 
           {!session && (
-            <div className="mb-6 p-4 bg-[#d9a63a]/10 rounded-xl border border-[#7a5c12]/25 text-center text-sm text-gray-700">
+            <div className="mb-6 p-4 bg-[#3c74d4]/10 rounded-xl border border-[#1d4ed8]/25 text-center text-sm text-gray-700">
               ต้องเข้าสู่ระบบก่อนใช้งาน{" "}
-              <Link href="/login?callbackUrl=/lifemap/app" className="text-[#7a5c12] font-semibold">
+              <Link href="/login?callbackUrl=/lifemap/app" className="text-[#1d4ed8] font-semibold">
                 ไปหน้าเข้าสู่ระบบ
               </Link>
             </div>
@@ -171,7 +171,7 @@ export default function LifemapAppPage() {
                     type="text"
                     value={inputName}
                     onChange={(e) => setInputName(e.target.value)}
-                    className="w-full px-4 py-3 bg-black/[0.03] border border-[#7a5c12]/25 rounded-xl text-[#14161c] placeholder-gray-500 focus:outline-none focus:border-[#7a5c12]/60 transition-colors"
+                    className="w-full px-4 py-3 bg-black/[0.03] border border-[#1d4ed8]/25 rounded-xl text-[#111827] placeholder-gray-500 focus:outline-none focus:border-[#1d4ed8]/60 transition-colors"
                     placeholder="เช่น Nara"
                     required
                   />
@@ -184,7 +184,7 @@ export default function LifemapAppPage() {
                     type="date"
                     value={birthDate}
                     onChange={(e) => setBirthDate(e.target.value)}
-                    className="w-full px-4 py-3 bg-black/[0.03] border border-[#7a5c12]/25 rounded-xl text-[#14161c] focus:outline-none focus:border-[#7a5c12]/60 transition-colors"
+                    className="w-full px-4 py-3 bg-black/[0.03] border border-[#1d4ed8]/25 rounded-xl text-[#111827] focus:outline-none focus:border-[#1d4ed8]/60 transition-colors"
                     required
                   />
                 </div>
@@ -199,7 +199,7 @@ export default function LifemapAppPage() {
                     type="time"
                     value={birthTime}
                     onChange={(e) => setBirthTime(e.target.value)}
-                    className="w-full px-4 py-3 bg-black/[0.03] border border-[#7a5c12]/25 rounded-xl text-[#14161c] focus:outline-none focus:border-[#7a5c12]/60 transition-colors"
+                    className="w-full px-4 py-3 bg-black/[0.03] border border-[#1d4ed8]/25 rounded-xl text-[#111827] focus:outline-none focus:border-[#1d4ed8]/60 transition-colors"
                   />
                 </div>
                 <div>
@@ -210,7 +210,7 @@ export default function LifemapAppPage() {
                     type="text"
                     value={birthPlace}
                     onChange={(e) => setBirthPlace(e.target.value)}
-                    className="w-full px-4 py-3 bg-black/[0.03] border border-[#7a5c12]/25 rounded-xl text-[#14161c] placeholder-gray-500 focus:outline-none focus:border-[#7a5c12]/60 transition-colors"
+                    className="w-full px-4 py-3 bg-black/[0.03] border border-[#1d4ed8]/25 rounded-xl text-[#111827] placeholder-gray-500 focus:outline-none focus:border-[#1d4ed8]/60 transition-colors"
                     placeholder="เช่น Bangkok"
                   />
                 </div>
@@ -219,7 +219,7 @@ export default function LifemapAppPage() {
               <button
                 type="submit"
                 disabled={loading || !session}
-                className="w-full py-4 bg-[#d9a63a] text-black font-semibold rounded-xl hover:bg-[#c8901f] transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                className="w-full py-4 bg-[#3c74d4] text-white font-semibold rounded-xl hover:bg-[#3366bf] transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 {loading && <Loader2 className="w-5 h-5 animate-spin" />}
                 {loading ? "กำลังสร้างแผนที่..." : "สร้างแผนที่ชีวิต"}
@@ -247,7 +247,7 @@ export default function LifemapAppPage() {
                 <div className="flex gap-2 flex-wrap">
                   <button
                     onClick={toggleShare}
-                    className="px-4 py-2 bg-black/[0.03] border border-[#7a5c12]/25 text-[#14161c] rounded-xl hover:border-[#7a5c12]/50 transition-colors flex items-center gap-2"
+                    className="px-4 py-2 bg-black/[0.03] border border-[#1d4ed8]/25 text-[#111827] rounded-xl hover:border-[#1d4ed8]/50 transition-colors flex items-center gap-2"
                     disabled={!readingId}
                   >
                     <Share2 className="w-4 h-4" />
@@ -258,7 +258,7 @@ export default function LifemapAppPage() {
                       href={shareUrl}
                       target="_blank"
                       rel="noreferrer"
-                      className="px-4 py-2 bg-[#d9a63a] text-black font-semibold rounded-xl hover:bg-[#c8901f] transition-colors"
+                      className="px-4 py-2 bg-[#3c74d4] text-white font-semibold rounded-xl hover:bg-[#3366bf] transition-colors"
                     >
                       เปิดลิงก์แชร์
                     </a>
@@ -282,7 +282,7 @@ export default function LifemapAppPage() {
                       </div>
                       <div className="h-2 bg-black/10 rounded">
                         <div
-                          className="h-2 rounded bg-[#d9a63a]/70"
+                          className="h-2 rounded bg-[#3c74d4]/70"
                           style={{ width: `${result.elements[k]}%` }}
                         />
                       </div>
@@ -351,7 +351,7 @@ export default function LifemapAppPage() {
               {result.personalizedReport && (
                 <div className="mt-8 p-5 bg-black/[0.03] rounded-xl">
                   <div className="flex items-center gap-2 mb-3">
-                    <span className="px-2 py-1 bg-[#d9a63a]/20 text-[#7a5c12] text-xs rounded">
+                    <span className="px-2 py-1 bg-[#3c74d4]/20 text-[#1d4ed8] text-xs rounded">
                       Personalized
                     </span>
                     <h3 className="font-semibold">รายงานเฉพาะบุคคล</h3>
@@ -363,7 +363,7 @@ export default function LifemapAppPage() {
                   <div className="space-y-4">
                     {result.personalizedReport.topics.map((topic) => (
                       <div key={topic.key} className="p-4 bg-black/[0.04] rounded-lg border border-black/5">
-                        <p className="text-[#14161c]/90 font-semibold mb-2">{topic.title}</p>
+                        <p className="text-[#111827]/90 font-semibold mb-2">{topic.title}</p>
                         <div className="max-h-[420px] overflow-auto pr-2">
                           <div className="space-y-2">
                             {topic.lines.map((line, idx) => (
@@ -376,8 +376,8 @@ export default function LifemapAppPage() {
                       </div>
                     ))}
 
-                    <div className="p-4 bg-black/[0.04] rounded-lg border border-[#7a5c12]/35">
-                      <p className="text-[#7a5c12] font-semibold mb-2">
+                    <div className="p-4 bg-black/[0.04] rounded-lg border border-[#1d4ed8]/35">
+                      <p className="text-[#1d4ed8] font-semibold mb-2">
                         {result.personalizedReport.actionPlan.title}
                       </p>
                       <div className="max-h-[460px] overflow-auto pr-2">
@@ -394,9 +394,9 @@ export default function LifemapAppPage() {
                 </div>
               )}
 
-              <div className="mt-8 p-4 bg-[#d9a63a]/10 rounded-xl border border-[#7a5c12]/25">
+              <div className="mt-8 p-4 bg-[#3c74d4]/10 rounded-xl border border-[#1d4ed8]/25">
                 <p className="text-gray-700 text-sm text-center">
-                  <span className="text-[#7a5c12] font-semibold">Transparency note:</span>{" "}
+                  <span className="text-[#1d4ed8] font-semibold">Transparency note:</span>{" "}
                   {result.summary.note}
                 </p>
               </div>

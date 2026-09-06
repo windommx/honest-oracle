@@ -18,7 +18,7 @@ import type { PromptGroup } from "@/lib/bookisdom-engine/types";
 // ╚══════════════════════════════════════════════════════════════════╝
 
 export const GROUP_COLORS: Record<PromptGroup, string> = {
-  core: "border-[#7a5c12] text-[#7a5c12]",
+  core: "border-[#1d4ed8] text-[#1d4ed8]",
   craft: "border-green-700 text-green-800",
   nonfiction: "border-blue-700 text-blue-700",
   prose: "border-purple-700 text-purple-700",
@@ -43,7 +43,7 @@ export function Field({ label, children }: { label: string; children: React.Reac
 export function Stat({ value, label }: { value: string; label: string }) {
   return (
     <div className="p-2 bg-black/[0.03] rounded-lg text-center">
-      <div className="text-lg font-bold text-[#7a5c12]">{value}</div>
+      <div className="text-lg font-bold text-[#1d4ed8]">{value}</div>
       <div className="text-[0.6rem] text-faint mt-0.5">{label}</div>
     </div>
   );
@@ -54,7 +54,7 @@ export function FilterChip({ active, onClick, label }: { active: boolean; onClic
     <button
       onClick={onClick}
       className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${
-        active ? "border-[#7a5c12] text-[#7a5c12] bg-[#d9a63a]/10" : "border-black/10 text-slate-600 hover:border-[#7a5c12]/40"
+        active ? "border-[#1d4ed8] text-[#1d4ed8] bg-[#3c74d4]/10" : "border-black/10 text-slate-600 hover:border-[#1d4ed8]/40"
       }`}
     >
       {label}

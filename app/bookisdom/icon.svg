@@ -1,9 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
   <title>Bookisdom — book + wisdom</title>
-  <rect width="32" height="32" rx="7" fill="#f3f5f9"/>
-  <circle cx="16" cy="7.5" r="2.1" fill="#7a5c12"/>
-  <path d="M16 2.3v2.1M10.9 4.5l1.5 1.5M21.1 4.5l-1.5 1.5" stroke="#7a5c12" stroke-width="1.6" stroke-linecap="round" fill="none"/>
-  <path d="M4.5 13c3.5-1.5 7.2-1.5 10.7 0v14.6c-3.5-1.5-7.2-1.5-10.7 0V13Z" fill="#c8901f"/>
-  <path d="M27.5 13c-3.5-1.5-7.2-1.5-10.7 0v14.6c3.5-1.5 7.2-1.5 10.7 0V13Z" fill="#d9a63a"/>
-  <path d="M16 12.8v15" stroke="#7a5c12" stroke-width="1.8" stroke-linecap="round" fill="none"/>
+  <rect width="32" height="32" rx="7" fill="#f8f8f8"/>
+  <circle cx="16" cy="7.5" r="2.1" fill="#1d4ed8"/>
+  <path d="M16 2.3v2.1M10.9 4.5l1.5 1.5M21.1 4.5l-1.5 1.5" stroke="#1d4ed8" stroke-width="1.6" stroke-linecap="round" fill="none"/>
+  <path d="M4.5 13c3.5-1.5 7.2-1.5 10.7 0v14.6c-3.5-1.5-7.2-1.5-10.7 0V13Z" fill="#3366bf"/>
+  <path d="M27.5 13c-3.5-1.5-7.2-1.5-10.7 0v14.6c3.5-1.5 7.2-1.5 10.7 0V13Z" fill="#3c74d4"/>
+  <path d="M16 12.8v15" stroke="#1d4ed8" stroke-width="1.8" stroke-linecap="round" fill="none"/>
 </svg>

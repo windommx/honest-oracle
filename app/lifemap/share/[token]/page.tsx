@@ -19,15 +19,15 @@ export default async function LifemapSharePage({
 
   if (!reading) {
     return (
-      <div className="min-h-screen bg-[#f3f5f9] flex items-center justify-center px-4">
+      <div className="min-h-screen flex items-center justify-center px-4">
         <div className="glass-card rounded-2xl p-8 max-w-lg w-full text-center">
-          <p className="text-[#14161c]/90 font-semibold mb-2">ไม่พบลิงก์แชร์</p>
+          <p className="text-[#111827]/90 font-semibold mb-2">ไม่พบลิงก์แชร์</p>
           <p className="text-gray-600 text-sm mb-6">
             ลิงก์อาจถูกตั้งเป็นส่วนตัวหรือหมดอายุ
           </p>
           <Link
             href="/lifemap"
-            className="px-6 py-3 bg-[#d9a63a] text-black font-semibold rounded-xl hover:bg-[#c8901f] transition-colors inline-block"
+            className="px-6 py-3 bg-[#3c74d4] text-white font-semibold rounded-xl hover:bg-[#3366bf] transition-colors inline-block"
           >
             กลับไปหน้าโครงสร้างชีวิต
           </Link>
@@ -39,15 +39,15 @@ export default async function LifemapSharePage({
   const result = reading.result as any;
 
   return (
-    <div className="min-h-screen bg-[#f3f5f9]">
+    <div className="min-h-screen">
       <nav className="fixed top-0 left-0 right-0 z-50 glass-card">
         <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
           <Link href="/" className="flex items-center gap-2">
-            <Crown className="w-8 h-8 text-[#7a5c12]" />
+            <Crown className="w-8 h-8 text-[#1d4ed8]" />
             <span className="text-xl font-semibold gold-gradient">NaraClear</span>
           </Link>
           <div className="flex gap-6 items-center">
-            <Link href="/lifemap" className="text-gray-700 hover:text-[#6b5010] transition-colors">
+            <Link href="/lifemap" className="text-gray-700 hover:text-[#1e40af] transition-colors">
               โครงสร้างชีวิต
             </Link>
           </div>
@@ -66,7 +66,7 @@ export default async function LifemapSharePage({
 
             <div className="mt-6 p-5 bg-black/[0.03] rounded-xl">
               <p className="text-gray-600 text-sm">คะแนนภาพรวม</p>
-              <p className="text-5xl font-bold text-[#7a5c12]">
+              <p className="text-5xl font-bold text-[#1d4ed8]">
                 {result?.summary?.overallScore ?? "-"}
               </p>
               <p className="text-gray-600 text-sm mt-1">
@@ -74,9 +74,9 @@ export default async function LifemapSharePage({
               </p>
             </div>
 
-            <div className="mt-6 p-4 bg-[#d9a63a]/10 rounded-xl border border-[#7a5c12]/25">
+            <div className="mt-6 p-4 bg-[#3c74d4]/10 rounded-xl border border-[#1d4ed8]/25">
               <p className="text-gray-700 text-sm text-center">
-                <span className="text-[#7a5c12] font-semibold">Transparency note:</span>{" "}
+                <span className="text-[#1d4ed8] font-semibold">Transparency note:</span>{" "}
                 {result?.summary?.note ??
                   "ผลลัพธ์นี้เป็นแบบจำลองเชิงโครงสร้างเพื่อช่วยสะท้อนแนวโน้ม"}
               </p>
@@ -85,7 +85,7 @@ export default async function LifemapSharePage({
             <div className="mt-6 text-center">
               <Link
                 href="/lifemap/app"
-                className="px-6 py-3 bg-black/[0.03] border border-[#7a5c12]/25 text-[#14161c] rounded-xl hover:border-[#7a5c12]/50 transition-colors inline-block"
+                className="px-6 py-3 bg-black/[0.03] border border-[#1d4ed8]/25 text-[#111827] rounded-xl hover:border-[#1d4ed8]/50 transition-colors inline-block"
               >
                 สร้างแผนที่ของฉัน
               </Link>

@@ -35,12 +35,12 @@ export default function BookisdomExplore() {
   const types = Object.entries(BOOK_TYPES) as [BookTypeKey, (typeof BOOK_TYPES)[BookTypeKey]][];
 
   return (
-    <main className="min-h-screen bg-[#f3f5f9] text-slate-800">
+    <main className="min-h-screen text-slate-800">
       {/* hero */}
       <section className="max-w-5xl mx-auto px-5 pt-16 pb-10 text-center">
-        <p className="text-xs tracking-[0.2em] uppercase text-[#7a5c12] font-semibold mb-3">Bookisdom · แต่งหนังสือด้วย prompt ที่นับได้จริง</p>
+        <p className="text-xs tracking-[0.2em] uppercase text-[#1d4ed8] font-semibold mb-3">Bookisdom · แต่งหนังสือด้วย prompt ที่นับได้จริง</p>
         <h1 className="text-3xl sm:text-5xl font-bold leading-tight">
-          แต่งหนังสือได้ <span className="bg-gradient-to-r from-[#7a5c12] to-[#c8901f] bg-clip-text text-transparent">8 ประเภท</span>
+          แต่งหนังสือได้ <span className="bg-gradient-to-r from-[#1d4ed8] to-[#3366bf] bg-clip-text text-transparent">8 ประเภท</span>
           <br className="hidden sm:block" /> ครบทั้งแนวย่อย โครงเรื่อง และโมดูลเสริม
         </h1>
         <p className="mt-4 text-slate-600 max-w-2xl mx-auto">
@@ -54,7 +54,7 @@ export default function BookisdomExplore() {
           <span className="px-2.5 py-1 rounded-full border border-black/10">{BOOTSTRAPS.length} แม่แบบตั้งต้น</span>
         </div>
         <div className="mt-7 flex flex-wrap gap-3 justify-center">
-          <Link href="/bookisdom/start" className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-[#d9a63a] text-black font-semibold hover:bg-[#c8901f] transition">
+          <Link href="/bookisdom/start" className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-[#3c74d4] text-white font-semibold hover:bg-[#3366bf] transition">
             เริ่มสร้าง Prompt Pack <ArrowRight className="w-4 h-4" />
           </Link>
           <Link href="/bookisdom/fix" className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg border border-black/15 text-slate-800 hover:bg-black/[0.04] transition">
@@ -77,7 +77,7 @@ export default function BookisdomExplore() {
           {types.map(([key, t]) => {
             const isOpen = open === key;
             return (
-              <div key={key} className={`rounded-2xl border p-5 transition ${isOpen ? "border-[#7a5c12] bg-[#d9a63a]/[0.05]" : "border-black/10 bg-black/[0.015] hover:border-black/20"}`}>
+              <div key={key} className={`rounded-2xl border p-5 transition ${isOpen ? "border-[#1d4ed8] bg-[#3c74d4]/[0.05]" : "border-black/10 bg-black/[0.015] hover:border-black/20"}`}>
                 <button onClick={() => setOpen(isOpen ? null : key)} className="w-full text-left">
                   <div className="flex items-start gap-3">
                     <span className="text-3xl leading-none">{t.icon}</span>
@@ -98,7 +98,7 @@ export default function BookisdomExplore() {
                       <p className="text-[0.65rem] uppercase tracking-wide text-faint mb-1.5">แนวย่อย</p>
                       <div className="flex flex-wrap gap-1.5">
                         {t.sub_genres.map((g) => (
-                          <span key={g} className="text-[0.68rem] px-2 py-0.5 rounded-full border border-[#7a5c12]/30 text-[#7a5c12]">{g.replace(/_/g, " ")}</span>
+                          <span key={g} className="text-[0.68rem] px-2 py-0.5 rounded-full border border-[#1d4ed8]/30 text-[#1d4ed8]">{g.replace(/_/g, " ")}</span>
                         ))}
                       </div>
                     </div>
@@ -112,7 +112,7 @@ export default function BookisdomExplore() {
                     </div>
                     <Link
                       href={`/bookisdom?type=${key}`}
-                      className="inline-flex items-center gap-1.5 mt-1 text-sm px-4 py-2 rounded-lg bg-[#d9a63a] text-black font-semibold hover:bg-[#c8901f] transition"
+                      className="inline-flex items-center gap-1.5 mt-1 text-sm px-4 py-2 rounded-lg bg-[#3c74d4] text-white font-semibold hover:bg-[#3366bf] transition"
                     >
                       เลือกประเภทนี้เพื่อสร้าง Prompt Pack <ArrowRight className="w-4 h-4" />
                     </Link>
@@ -131,7 +131,7 @@ export default function BookisdomExplore() {
           {HOW.map((h) => (
             <div key={h.title} className="rounded-2xl border border-black/10 bg-black/[0.015] p-5">
               <div className="flex items-center gap-2.5 mb-2">
-                <span className="grid place-items-center w-9 h-9 rounded-lg bg-[#d9a63a]/15 text-[#7a5c12]"><h.icon className="w-5 h-5" /></span>
+                <span className="grid place-items-center w-9 h-9 rounded-lg bg-[#3c74d4]/15 text-[#1d4ed8]"><h.icon className="w-5 h-5" /></span>
                 <h3 className="font-semibold text-slate-900">{h.title}</h3>
               </div>
               <p className="text-sm text-slate-600 leading-relaxed">{h.body}</p>
@@ -148,7 +148,7 @@ export default function BookisdomExplore() {
           {MODULE_GROUPS.map((g) => (
             <div key={g.key} className="rounded-xl border border-black/10 bg-black/[0.015] p-4">
               <div className="flex items-center gap-2">
-                <Check className="w-4 h-4 text-[#7a5c12] shrink-0" />
+                <Check className="w-4 h-4 text-[#1d4ed8] shrink-0" />
                 <h3 className="font-medium text-sm text-slate-900">{g.label}</h3>
               </div>
               <p className="text-[0.72rem] text-faint mt-1.5 leading-relaxed">{g.desc}</p>
@@ -161,7 +161,7 @@ export default function BookisdomExplore() {
       <section className="max-w-5xl mx-auto px-5 py-14 text-center">
         <h2 className="text-2xl font-bold">พร้อมแต่งหนังสือแล้ว?</h2>
         <p className="mt-2 text-slate-600">เลือกประเภท ปรับแต่ง แล้ว generate prompt pack ได้เลย — ฟรี ไม่ต้องล็อกอิน</p>
-        <Link href="/bookisdom" className="mt-6 inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-[#d9a63a] text-black font-semibold hover:bg-[#c8901f] transition">
+        <Link href="/bookisdom" className="mt-6 inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-[#3c74d4] text-white font-semibold hover:bg-[#3366bf] transition">
           เปิด Bookisdom Studio <ArrowRight className="w-4 h-4" />
         </Link>
       </section>

@@ -178,15 +178,15 @@ export default function StudioPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#f3f5f9]">
+    <div className="min-h-screen">
       <nav className="fixed top-0 left-0 right-0 z-50 glass-card">
         <div className="max-w-5xl mx-auto px-4 py-4 flex justify-between items-center">
           <BookisdomLogo />
           <div className="flex items-center gap-3 text-xs">
-            <Link href="/bookisdom" className="text-slate-600 hover:text-[#6b5010]">เครื่องมือ prompt</Link>
-            <Link href="/bookisdom/dashboard" className="text-slate-600 hover:text-[#6b5010]">แดชบอร์ด</Link>
-            <Link href="/bookisdom/kdp" className="text-slate-600 hover:text-[#6b5010] flex items-center gap-1"><BookMarked className="w-3.5 h-3.5" />KDP</Link>
-            <span className="flex items-center gap-1.5 text-[#7a5c12] border border-[#7a5c12]/30 rounded-lg px-3 py-1.5">
+            <Link href="/bookisdom" className="text-slate-600 hover:text-[#1e40af]">เครื่องมือ prompt</Link>
+            <Link href="/bookisdom/dashboard" className="text-slate-600 hover:text-[#1e40af]">แดชบอร์ด</Link>
+            <Link href="/bookisdom/kdp" className="text-slate-600 hover:text-[#1e40af] flex items-center gap-1"><BookMarked className="w-3.5 h-3.5" />KDP</Link>
+            <span className="flex items-center gap-1.5 text-[#1d4ed8] border border-[#1d4ed8]/30 rounded-lg px-3 py-1.5">
               <BookOpen className="w-3.5 h-3.5" /> Bookisdom Studio
             </span>
           </div>
@@ -197,7 +197,7 @@ export default function StudioPage() {
         <div className="max-w-5xl mx-auto">
           <h1 className="text-3xl font-bold accent-gradient">Bookisdom Studio</h1>
           <p className="text-slate-600 mt-1 text-sm mb-2">
-            รัน prompt ด้วย <span className="text-[#7a5c12]">API key ของคุณเอง</span> — เซิร์ฟเวอร์ไม่เก็บ key และไม่จ่าย token ให้
+            รัน prompt ด้วย <span className="text-[#1d4ed8]">API key ของคุณเอง</span> — เซิร์ฟเวอร์ไม่เก็บ key และไม่จ่าย token ให้
           </p>
           <p className="text-[0.7rem] text-amber-800 mb-4 flex items-center gap-1.5">
             <KeyRound className="w-3.5 h-3.5" /> key อยู่ในหน่วยความจำหน้านี้เท่านั้น (หายเมื่อรีเฟรช) — ไม่ลงเซิร์ฟเวอร์/ดิสก์ เว้นแต่คุณติ๊ก &quot;จำ key ไว้ในแท็บนี้&quot;
@@ -210,7 +210,7 @@ export default function StudioPage() {
                 type="button"
                 onClick={() => { setDirect(true); setOfferRelay(false); }}
                 aria-pressed={direct}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border transition-colors ${direct ? "border-[#7a5c12] text-[#7a5c12] bg-[#d9a63a]/10" : "border-black/10 text-slate-600 hover:border-[#7a5c12]/40"}`}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border transition-colors ${direct ? "border-[#1d4ed8] text-[#1d4ed8] bg-[#3c74d4]/10" : "border-black/10 text-slate-600 hover:border-[#1d4ed8]/40"}`}
               >
                 <ShieldCheck className="w-3.5 h-3.5" /> ส่งตรงจากเบราว์เซอร์
               </button>
@@ -218,7 +218,7 @@ export default function StudioPage() {
                 type="button"
                 onClick={() => { setDirect(false); setOfferRelay(false); }}
                 aria-pressed={!direct}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border transition-colors ${!direct ? "border-[#7a5c12] text-[#7a5c12] bg-[#d9a63a]/10" : "border-black/10 text-slate-600 hover:border-[#7a5c12]/40"}`}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border transition-colors ${!direct ? "border-[#1d4ed8] text-[#1d4ed8] bg-[#3c74d4]/10" : "border-black/10 text-slate-600 hover:border-[#1d4ed8]/40"}`}
               >
                 <Server className="w-3.5 h-3.5" /> ผ่านเซิร์ฟเวอร์ Bookisdom
               </button>
@@ -255,11 +255,11 @@ export default function StudioPage() {
               <label className="block">
                 <span className="flex items-center justify-between text-[0.7rem] text-slate-600 mb-1">
                   <span>API key ({meta.keyHint})</span>
-                  {apiKey && <button type="button" onClick={clearKey} className="text-[#7a5c12] hover:underline">ล้าง key</button>}
+                  {apiKey && <button type="button" onClick={clearKey} className="text-[#1d4ed8] hover:underline">ล้าง key</button>}
                 </span>
                 <input type="password" value={apiKey} onChange={(e) => onKey(e.target.value)} placeholder={meta.keyHint} className="input" />
                 <label className="flex items-center gap-1.5 text-[0.65rem] text-faint mt-1.5 cursor-pointer">
-                  <input type="checkbox" checked={rememberKey} onChange={(e) => toggleRemember(e.target.checked)} className="accent-[#c8901f]" />
+                  <input type="checkbox" checked={rememberKey} onChange={(e) => toggleRemember(e.target.checked)} className="accent-[#3366bf]" />
                   จำ key ไว้ในแท็บนี้ (ล้างเมื่อปิดแท็บ)
                 </label>
               </label>
@@ -274,7 +274,7 @@ export default function StudioPage() {
               <button
                 onClick={() => run()}
                 disabled={loading}
-                className="w-full py-2.5 bg-[#d9a63a] text-black font-semibold rounded-xl hover:bg-[#c8901f] transition-colors flex items-center justify-center gap-2 text-sm disabled:opacity-50"
+                className="w-full py-2.5 bg-[#3c74d4] text-white font-semibold rounded-xl hover:bg-[#3366bf] transition-colors flex items-center justify-center gap-2 text-sm disabled:opacity-50"
               >
                 {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
                 {loading ? "กำลังรัน…" : "รัน"}
@@ -297,21 +297,21 @@ export default function StudioPage() {
                 <span className="text-[0.7rem] text-slate-600">ผลลัพธ์</span>
                 {output && (
                   <div className="flex items-center gap-2">
-                    <select value={saveLang} onChange={(e) => setSaveLang(e.target.value as "th" | "en")} className="text-[0.65rem] bg-[#f3f5f9] border border-black/10 rounded px-1.5 py-0.5 text-slate-700">
+                    <select value={saveLang} onChange={(e) => setSaveLang(e.target.value as "th" | "en")} className="text-[0.65rem] bg-[#f8f8f8] border border-black/10 rounded px-1.5 py-0.5 text-slate-700">
                       <option value="th">ไทย</option>
                       <option value="en">EN</option>
                     </select>
-                    <button onClick={saveOutput} className="text-[0.65rem] px-2 py-1 rounded border border-[#7a5c12]/40 text-[#7a5c12] hover:bg-[#d9a63a]/15 flex items-center gap-1">
+                    <button onClick={saveOutput} className="text-[0.65rem] px-2 py-1 rounded border border-[#1d4ed8]/40 text-[#1d4ed8] hover:bg-[#3c74d4]/15 flex items-center gap-1">
                       {saved ? <Check className="w-3 h-3 text-green-800" /> : <Save className="w-3 h-3" />}
                       {saved ? "บันทึกแล้ว → แดชบอร์ด" : "บันทึกเป็นต้นฉบับ"}
                     </button>
                     {books.length > 0 && (
                       <>
-                        <select value={targetBook} onChange={(e) => setTargetBook(e.target.value)} className="text-[0.65rem] bg-[#f3f5f9] border border-black/10 rounded px-1.5 py-0.5 text-slate-700" aria-label="เล่มปลายทาง">
+                        <select value={targetBook} onChange={(e) => setTargetBook(e.target.value)} className="text-[0.65rem] bg-[#f8f8f8] border border-black/10 rounded px-1.5 py-0.5 text-slate-700" aria-label="เล่มปลายทาง">
                           <option value="">เล่มในห้องเขียน…</option>
                           {books.map((b) => <option key={b.id} value={b.id}>{b.title}</option>)}
                         </select>
-                        <button onClick={() => void saveAsChapter()} disabled={!targetBook} className="text-[0.65rem] px-2 py-1 rounded border border-[#7a5c12]/40 text-[#7a5c12] hover:bg-[#d9a63a]/15 disabled:opacity-50 flex items-center gap-1">
+                        <button onClick={() => void saveAsChapter()} disabled={!targetBook} className="text-[0.65rem] px-2 py-1 rounded border border-[#1d4ed8]/40 text-[#1d4ed8] hover:bg-[#3c74d4]/15 disabled:opacity-50 flex items-center gap-1">
                           {savedChapter ? <Check className="w-3 h-3 text-green-800" /> : <BookMarked className="w-3 h-3" />}
                           {savedChapter ? "เพิ่มบทแล้ว" : "เป็นบทใหม่ในเล่ม"}
                         </button>

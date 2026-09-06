@@ -68,11 +68,11 @@ describe("design tokens — consistency is enforced, not merely intended", () =>
     expect(css).not.toContain('[data-app=');
   });
 
-  it("no stylesheet or component still paints the retired dark grounds", () => {
+  it("no stylesheet or component still paints a retired palette (dark grounds, purple, either gold)", () => {
     // The regression this catches: a page root left on the old navy/near-black ground
     // after the platform went light — a black page in a white app.
     const css = readFileSync(GLOBALS, "utf8");
-    const retired = ["#0b0e17", "#08080e", "#151a27", "#12121a", "#1c2233", "#ab5bf7", "#c084fc", "#c9a84c"];
+    const retired = ["#0b0e17", "#08080e", "#151a27", "#12121a", "#1c2233", "#ab5bf7", "#c084fc", "#c9a84c", "#7a5c12", "#d9a63a", "#c8901f", "#6b5010", "#f3f5f9", "#eaedf3", "#e2e6ee", "#14161c", "#566174", "#a37a1c"];
     for (const hex of retired) expect(css.toLowerCase().includes(hex), `globals.css still uses retired ${hex}`).toBe(false);
     const offenders: string[] = [];
     for (const file of tsxFiles(join(process.cwd(), "app"))) {
@@ -82,16 +82,14 @@ describe("design tokens — consistency is enforced, not merely intended", () =>
     expect(offenders, `retired dark-theme hex still in use:\n${offenders.join("\n")}`).toEqual([]);
   });
 
-  it("every full-height page root in app/bookisdom paints the ONE ground, not a look-alike", () => {
-    // The specific regression that motivated the original pass: two near-identical page
-    // backgrounds, so the ground visibly shifted between routes. Enforced structurally:
-    // a `min-h-screen bg-[#…]` root must use BG and nothing else.
+  it("no page root in app/bookisdom paints its own ground — the body's mesh must show through", () => {
+    // Inverted from the earlier rule ("every root paints BG"): the body now draws the mesh
+    // ground, and an opaque root hides it — which is exactly what the first blue build did
+    // (every page rendered flat grey). A root may size itself full-height but not paint.
     const offenders: string[] = [];
     for (const file of tsxFiles(BOOKISDOM_DIR)) {
       const src = readFileSync(file, "utf8");
-      for (const m of Array.from(src.matchAll(/min-h-screen bg-\[(#[0-9a-fA-F]{6})\]/g))) {
-        if (m[1].toLowerCase() !== BG.toLowerCase()) offenders.push(`${file.replace(process.cwd() + "/", "")}: ${m[1]}`);
-      }
+      if (/min-h-screen[^"`]*bg-\[#/.test(src) || /style=\{\{ background: "#f8f8f8" \}\}/.test(src)) offenders.push(file.replace(process.cwd() + "/", ""));
     }
     expect(offenders).toEqual([]);
   });

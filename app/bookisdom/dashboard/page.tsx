@@ -223,7 +223,7 @@ export default function DashboardPage() {
   }, [projects, query, filter, sort]);
 
   return (
-    <div className="min-h-screen text-slate-800" style={{ background: "#f3f5f9" }}>
+    <div className="min-h-screen text-slate-800">
       {/* Top nav */}
       <nav className="nav-premium sticky top-0 z-50">
         <div className="max-w-screen-2xl mx-auto px-4 sm:px-8 py-4 flex items-center justify-between">
@@ -246,14 +246,14 @@ export default function DashboardPage() {
               <span className="text-emerald-700 text-[10px]">deterministic</span>
             </div>
             {isPaid ? (
-              <span className="flex items-center gap-x-1.5 px-3 py-1.5 rounded-2xl bg-[#d9a63a]/15 border border-[#7a5c12]/40 text-xs font-semibold text-[#7a5c12]" title="แผนปัจจุบัน">
+              <span className="flex items-center gap-x-1.5 px-3 py-1.5 rounded-2xl bg-[#3c74d4]/15 border border-[#1d4ed8]/40 text-xs font-semibold text-[#1d4ed8]" title="แผนปัจจุบัน">
                 <Crown className="w-3.5 h-3.5" /> {plan === "team" ? "Team" : "Pro"}
               </span>
             ) : (
               <button
                 onClick={upgrade}
                 disabled={upgrading || needLogin}
-                className="btn-gold flex items-center gap-x-1.5 px-3.5 py-1.5 rounded-2xl text-xs font-semibold"
+                className="btn-brand flex items-center gap-x-1.5 px-3.5 py-1.5 rounded-2xl text-xs font-semibold"
                 title="อัปเกรดเป็น Pro — cloud sync, version history, saga เต็มระบบ"
               >
                 {upgrading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Crown className="w-3.5 h-3.5" />}
@@ -270,21 +270,21 @@ export default function DashboardPage() {
         <section className="card-premium hero-wash rounded-3xl p-6 sm:p-8 mb-8" aria-labelledby="dash-title">
         <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-y-4">
           <div>
-            <div className="eyebrow-gold mb-2">Bookisdom · ภาพรวม</div>
+            <div className="eyebrow-brand mb-2">Bookisdom · ภาพรวม</div>
             <h1 id="dash-title" className="text-3xl sm:text-4xl font-semibold tracking-tight">หนังสือของฉัน</h1>
             <p className="text-slate-600 mt-1 text-[15px]">จัดการโปรเจกต์ ต้นฉบับ และเครื่องมือ Bookisdom — ทุกตัวเลขวัดได้จริง</p>
           </div>
           <div className="flex items-center gap-x-3">
-            <Link href="/bookisdom" className="btn-gold flex items-center gap-x-2 px-6 py-3 rounded-3xl font-semibold text-sm">
+            <Link href="/bookisdom" className="btn-brand flex items-center gap-x-2 px-6 py-3 rounded-3xl font-semibold text-sm">
               <Plus className="w-4 h-4" /> สร้างหนังสือใหม่
             </Link>
-            <button onClick={loadProjects} className="tile-frost flex items-center justify-center w-11 h-11 rounded-3xl text-slate-600 hover:text-[#14161c]" aria-label="รีเฟรชรายการ">
+            <button onClick={loadProjects} className="tile-frost flex items-center justify-center w-11 h-11 rounded-3xl text-slate-600 hover:text-[#111827]" aria-label="รีเฟรชรายการ">
               <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
             </button>
           </div>
         </div>
 
-        <div className="rule-gold my-6" />
+        <div className="rule-brand my-6" />
 
         {/* KPI stats — all real */}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
@@ -293,13 +293,13 @@ export default function DashboardPage() {
           <Kpi label="แชร์สาธารณะ" value={String(stats.shared)} icon={<Share2 className="w-5 h-5" />} />
           <Kpi label="ต้นฉบับ (ในเครื่อง)" value={String(manuscripts.length)} icon={<HardDrive className="w-5 h-5" />} />
           <Kpi label="ตัวอักษรที่บันทึก" value={fmt(localChars)} icon={<Type className="w-5 h-5" />} />
-          <Kpi label="ห้องเขียน (เล่ม · บท)" value={`${writing.books.length} · ${writing.chapters}`} icon={<PenLine className="w-5 h-5" />} />
+          <Kpi label="ห้องเขียน (เล่ม·บท)" value={`${writing.books.length}·${writing.chapters}`} icon={<PenLine className="w-5 h-5" />} />
         </div>
         </section>
 
         {/* Quick actions */}
         <div className="mb-8">
-          <div className="eyebrow-gold mb-3 px-1">การดำเนินการด่วน</div>
+          <div className="eyebrow-brand mb-3 px-1">การดำเนินการด่วน</div>
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4">
             <QuickAction href="/bookisdom" icon={<Wand2 className="w-5 h-5" />} title="เครื่องมือ prompt" sub="สร้างชุด prompt แต่งหนังสือคุณภาพสูง" cta="เปิดเครื่องมือ" />
             <QuickAction href="/bookisdom/studio" icon={<Play className="w-5 h-5" />} title="Bookisdom Studio" sub="รัน prompt ด้วย API key ของคุณเอง" cta="เปิด Studio" />
@@ -313,7 +313,7 @@ export default function DashboardPage() {
         <div className="mb-8">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-y-3 mb-4 px-1">
             <div>
-              <div className="eyebrow-gold mb-1">โปรเจกต์นิยายและหนังสือ</div>
+              <div className="eyebrow-brand mb-1">โปรเจกต์นิยายและหนังสือ</div>
               <div className="text-xl font-semibold tracking-tight">My Library <span className="text-slate-600 font-normal text-base">({stats.count})</span></div>
             </div>
             <div className="flex flex-wrap items-center gap-2">
@@ -323,7 +323,7 @@ export default function DashboardPage() {
               </div>
               <div className="flex items-center bg-black/[0.03] border border-black/10 rounded-3xl p-1 text-xs">
                 {([["all", "ทั้งหมด"], ["private", "ส่วนตัว"], ["public", "แชร์"]] as const).map(([k, label]) => (
-                  <button key={k} onClick={() => setFilter(k)} aria-pressed={filter === k} className={`px-3.5 py-1.5 rounded-[20px] font-medium transition-colors ${filter === k ? "btn-gold" : "text-slate-600 hover:text-[#14161c]"}`}>{label}</button>
+                  <button key={k} onClick={() => setFilter(k)} aria-pressed={filter === k} className={`px-3.5 py-1.5 rounded-[20px] font-medium transition-colors ${filter === k ? "btn-brand" : "text-slate-600 hover:text-[#111827]"}`}>{label}</button>
                 ))}
               </div>
               <select value={sort} onChange={(e) => setSort(e.target.value as Sort)} className="bg-black/[0.03] border border-black/10 rounded-3xl px-3 py-2 text-xs text-slate-700 outline-none">
@@ -331,8 +331,8 @@ export default function DashboardPage() {
                 <option value="title">ชื่อ A-Z</option>
               </select>
               <div className="flex items-center border border-black/10 rounded-3xl p-1 text-xs bg-black/[0.03]">
-                <button onClick={() => setView("grid")} aria-pressed={view === "grid"} className={`px-3 py-1.5 rounded-[20px] flex items-center gap-1.5 ${view === "grid" ? "bg-black/[0.06] text-[#14161c]" : "text-slate-600"}`} aria-label="มุมมองการ์ด"><LayoutGrid className="w-3.5 h-3.5" /></button>
-                <button onClick={() => setView("list")} aria-pressed={view === "list"} className={`px-3 py-1.5 rounded-[20px] flex items-center gap-1.5 ${view === "list" ? "bg-black/[0.06] text-[#14161c]" : "text-slate-600"}`} aria-label="มุมมองตาราง"><List className="w-3.5 h-3.5" /></button>
+                <button onClick={() => setView("grid")} aria-pressed={view === "grid"} className={`px-3 py-1.5 rounded-[20px] flex items-center gap-1.5 ${view === "grid" ? "bg-black/[0.06] text-[#111827]" : "text-slate-600"}`} aria-label="มุมมองการ์ด"><LayoutGrid className="w-3.5 h-3.5" /></button>
+                <button onClick={() => setView("list")} aria-pressed={view === "list"} className={`px-3 py-1.5 rounded-[20px] flex items-center gap-1.5 ${view === "list" ? "bg-black/[0.06] text-[#111827]" : "text-slate-600"}`} aria-label="มุมมองตาราง"><List className="w-3.5 h-3.5" /></button>
               </div>
             </div>
           </div>
@@ -343,24 +343,24 @@ export default function DashboardPage() {
 
           {!loading && needLogin && (
             <div className="card-premium rounded-3xl p-10 text-center">
-              <Lock className="w-10 h-10 mx-auto mb-3 text-[#7a5c12]/40" />
+              <Lock className="w-10 h-10 mx-auto mb-3 text-[#1d4ed8]/40" />
               <p className="text-slate-700">เข้าสู่ระบบเพื่อบันทึกและจัดการหนังสือของคุณ</p>
-              <Link href="/login?callbackUrl=/bookisdom/dashboard" className="inline-block mt-4 text-sm text-[#7a5c12] hover:underline">ไปหน้าเข้าสู่ระบบ →</Link>
-              <p className="text-xs text-faint mt-4">หรือ <Link href="/bookisdom" className="text-[#7a5c12] hover:underline">สร้าง prompt โดยไม่ต้องล็อกอิน</Link> (จะไม่ถูกบันทึก)</p>
+              <Link href="/login?callbackUrl=/bookisdom/dashboard" className="inline-block mt-4 text-sm text-[#1d4ed8] hover:underline">ไปหน้าเข้าสู่ระบบ →</Link>
+              <p className="text-xs text-faint mt-4">หรือ <Link href="/bookisdom" className="text-[#1d4ed8] hover:underline">สร้าง prompt โดยไม่ต้องล็อกอิน</Link> (จะไม่ถูกบันทึก)</p>
             </div>
           )}
 
           {!loading && !needLogin && setupDetail && (
             <div className="card-premium rounded-3xl p-10 text-center">
-              <Wrench className="w-10 h-10 mx-auto mb-3 text-[#7a5c12]/50" />
+              <Wrench className="w-10 h-10 mx-auto mb-3 text-[#1d4ed8]/50" />
               <p className="text-slate-700">เซิร์ฟเวอร์ยังตั้งค่าไม่เสร็จ</p>
               <p className="text-xs text-faint mt-1.5 max-w-md mx-auto">{setupDetail}</p>
               <p className="text-xs text-faint mt-3">
-                ถ้าคุณไม่ใช่ผู้ดูแลระบบ: ต้นฉบับในเครื่องยังใช้ได้ตามปกติ และ<Link href="/bookisdom" className="text-[#7a5c12] hover:underline">เครื่องมือ prompt ทำงานได้โดยไม่ต้องมีเซิร์ฟเวอร์</Link>
+                ถ้าคุณไม่ใช่ผู้ดูแลระบบ: ต้นฉบับในเครื่องยังใช้ได้ตามปกติ และ<Link href="/bookisdom" className="text-[#1d4ed8] hover:underline">เครื่องมือ prompt ทำงานได้โดยไม่ต้องมีเซิร์ฟเวอร์</Link>
               </p>
               <button
                 onClick={loadProjects}
-                className="inline-flex items-center gap-1.5 mt-4 text-sm px-4 py-2 rounded-lg border border-[#7a5c12]/40 text-[#7a5c12] hover:bg-[#d9a63a]/15 transition"
+                className="inline-flex items-center gap-1.5 mt-4 text-sm px-4 py-2 rounded-lg border border-[#1d4ed8]/40 text-[#1d4ed8] hover:bg-[#3c74d4]/15 transition"
               >
                 <RefreshCw className="w-4 h-4" /> ตรวจอีกครั้ง
               </button>
@@ -376,7 +376,7 @@ export default function DashboardPage() {
               </p>
               <button
                 onClick={loadProjects}
-                className="inline-flex items-center gap-1.5 mt-4 text-sm px-4 py-2 rounded-lg border border-[#7a5c12]/40 text-[#7a5c12] hover:bg-[#d9a63a]/15 transition"
+                className="inline-flex items-center gap-1.5 mt-4 text-sm px-4 py-2 rounded-lg border border-[#1d4ed8]/40 text-[#1d4ed8] hover:bg-[#3c74d4]/15 transition"
               >
                 <RefreshCw className="w-4 h-4" /> ลองอีกครั้ง
               </button>
@@ -385,9 +385,9 @@ export default function DashboardPage() {
 
           {!loading && !needLogin && !setupDetail && !loadError && projects.length === 0 && (
             <div className="card-premium rounded-3xl p-10 text-center text-faint">
-              <BookOpen className="w-10 h-10 mx-auto mb-3 text-[#7a5c12]/40" />
+              <BookOpen className="w-10 h-10 mx-auto mb-3 text-[#1d4ed8]/40" />
               <p>ยังไม่มีหนังสือที่บันทึกไว้</p>
-              <Link href="/bookisdom" className="inline-flex items-center gap-1 mt-4 text-sm text-[#7a5c12] hover:underline">เริ่มเล่มแรก <ArrowRight className="w-4 h-4" /></Link>
+              <Link href="/bookisdom" className="inline-flex items-center gap-1 mt-4 text-sm text-[#1d4ed8] hover:underline">เริ่มเล่มแรก <ArrowRight className="w-4 h-4" /></Link>
             </div>
           )}
 
@@ -435,8 +435,8 @@ export default function DashboardPage() {
                         <td className="px-4 py-4 text-right font-mono text-xs">{fmt(words(p))}</td>
                         <td className="px-6 py-4 text-right text-xs text-slate-600">{fmtDate(p.updatedAt)}</td>
                         <td className="px-4 py-4 text-right whitespace-nowrap">
-                          <button onClick={() => router.push(`/bookisdom?project=${p.id}`)} className="text-[#7a5c12] text-xs px-3 py-1 rounded-xl border border-black/10 hover:bg-black/[0.04]">เปิด</button>
-                          <button onClick={() => setLogProject(p)} aria-label="บันทึกการผลิต" title="บันทึกการผลิต" className="ml-1.5 text-slate-600 hover:text-[#6b5010] p-1.5"><ClipboardList className="w-4 h-4 inline" /></button>
+                          <button onClick={() => router.push(`/bookisdom?project=${p.id}`)} className="text-[#1d4ed8] text-xs px-3 py-1 rounded-xl border border-black/10 hover:bg-black/[0.04]">เปิด</button>
+                          <button onClick={() => setLogProject(p)} aria-label="บันทึกการผลิต" title="บันทึกการผลิต" className="ml-1.5 text-slate-600 hover:text-[#1e40af] p-1.5"><ClipboardList className="w-4 h-4 inline" /></button>
                         </td>
                       </tr>
                     );
@@ -452,7 +452,7 @@ export default function DashboardPage() {
           <div className="xl:col-span-3">
             <div className="flex items-center justify-between mb-3 px-1">
               <div>
-                <div className="eyebrow-gold">ต้นฉบับที่บันทึก (ในเครื่องนี้)</div>
+                <div className="eyebrow-brand">ต้นฉบับที่บันทึก (ในเครื่องนี้)</div>
                 <div className="text-sm text-slate-600">เก็บฝั่งเบราว์เซอร์ ไม่ขึ้น server — เปิดได้เฉพาะเครื่องนี้</div>
               </div>
             </div>
@@ -482,7 +482,7 @@ export default function DashboardPage() {
                           <td className="px-5 text-right text-xs text-slate-600">{fmtDate(m.updatedAt)}</td>
                           <td className="px-3 text-right whitespace-nowrap">
                             <button onClick={() => router.push(`/bookisdom?analyze=${m.id}`)} className="text-emerald-700 hover:text-emerald-700 p-1.5" aria-label="Analyze"><Search className="w-4 h-4" /></button>
-                            <button onClick={() => exportEpub(m)} className="text-[#7a5c12] hover:text-[#6b5010] p-1.5" aria-label="Export EPUB" title="ดาวน์โหลด .epub"><BookDown className="w-4 h-4" /></button>
+                            <button onClick={() => exportEpub(m)} className="text-[#1d4ed8] hover:text-[#1e40af] p-1.5" aria-label="Export EPUB" title="ดาวน์โหลด .epub"><BookDown className="w-4 h-4" /></button>
                             <DeleteButton
                               onDelete={() => delManuscript(m.id)}
                               what="ต้นฉบับ"
@@ -501,7 +501,7 @@ export default function DashboardPage() {
 
           {/* Honest summary panel (replaces fabricated "AI Insights") */}
           <div className="xl:col-span-2">
-            <div className="eyebrow-gold px-1 mb-3">สรุปการใช้งาน (ในเครื่องนี้)</div>
+            <div className="eyebrow-brand px-1 mb-3">สรุปการใช้งาน (ในเครื่องนี้)</div>
             <div className="card-premium rounded-3xl p-5 h-full flex flex-col">
               <div className="grid grid-cols-3 gap-3 text-center">
                 <Mini value={String(stats.count)} label="หนังสือ" />
@@ -512,7 +512,7 @@ export default function DashboardPage() {
                 ตัวเลขทั้งหมดมาจากข้อมูลจริง (โปรเจกต์ที่บันทึก + ต้นฉบับในเบราว์เซอร์) — ไม่มีสถิติประดิษฐ์
               </p>
               <div className="mt-auto pt-4 space-y-2">
-                <Link href="/bookisdom/studio" className="w-full py-2.5 text-xs rounded-2xl border border-black/10 hover:bg-black/[0.04] flex items-center justify-center gap-x-2 text-[#7a5c12] font-medium">
+                <Link href="/bookisdom/studio" className="w-full py-2.5 text-xs rounded-2xl border border-black/10 hover:bg-black/[0.04] flex items-center justify-center gap-x-2 text-[#1d4ed8] font-medium">
                   เปิด Bookisdom Studio <ArrowRight className="w-3.5 h-3.5" />
                 </Link>
                 <Link href="/bookisdom?tool=thai" className="w-full py-2.5 text-xs rounded-2xl border border-black/10 hover:bg-black/[0.04] flex items-center justify-center gap-x-2 text-emerald-700 font-medium">
@@ -533,7 +533,7 @@ export default function DashboardPage() {
 
 function NavTab({ href, icon, label, active }: { href: string; icon: React.ReactNode; label: string; active?: boolean }) {
   return (
-    <Link href={href} className={`px-4 py-2 rounded-xl font-medium flex items-center gap-x-2 transition-colors ${active ? "text-[#7a5c12]" : "text-slate-700 hover:bg-black/[0.04] hover:text-[#6b5010]"}`}>
+    <Link href={href} className={`px-4 py-2 rounded-xl font-medium flex items-center gap-x-2 transition-colors ${active ? "text-[#1d4ed8]" : "text-slate-700 hover:bg-black/[0.04] hover:text-[#1e40af]"}`}>
       {icon}<span>{label}</span>
     </Link>
   );
@@ -545,9 +545,9 @@ function Kpi({ label, value, icon }: { label: string; value: string; icon: React
       <div className="flex justify-between items-start gap-3">
         <div className="min-w-0">
           <div className="text-xs text-faint font-medium tracking-wider">{label}</div>
-          <div className="text-3xl sm:text-4xl font-semibold text-[#14161c] mt-1 tabular-nums">{value}</div>
+          <div className="text-3xl sm:text-4xl font-semibold text-[#111827] mt-1 tabular-nums whitespace-nowrap">{value}</div>
         </div>
-        <span className="chip-gold w-10 h-10 rounded-xl flex-shrink-0" aria-hidden="true">{icon}</span>
+        <span className="chip-brand w-10 h-10 rounded-xl flex-shrink-0" aria-hidden="true">{icon}</span>
       </div>
     </div>
   );
@@ -556,11 +556,11 @@ function Kpi({ label, value, icon }: { label: string; value: string; icon: React
 function QuickAction({ href, icon, title, sub, cta }: { href: string; icon: React.ReactNode; title: string; sub: string; cta: string }) {
   return (
     <Link href={href} className="group card-premium rounded-3xl p-5 flex gap-x-4 hover:-translate-y-0.5 transition-transform">
-      <div className="chip-gold w-11 h-11 flex-shrink-0 rounded-2xl group-hover:scale-105 transition-transform" aria-hidden="true">{icon}</div>
+      <div className="chip-brand w-11 h-11 flex-shrink-0 rounded-2xl group-hover:scale-105 transition-transform" aria-hidden="true">{icon}</div>
       <div className="flex-1 min-w-0">
         <div className="font-semibold text-lg tracking-tight">{title}</div>
         <div className="text-sm text-slate-600 mt-0.5">{sub}</div>
-        <div className="mt-3 flex items-center text-xs text-[#7a5c12] font-medium">
+        <div className="mt-3 flex items-center text-xs text-[#1d4ed8] font-medium">
           <span>{cta}</span><ArrowRight className="w-3.5 h-3.5 ml-1.5 group-hover:translate-x-0.5 transition-transform" />
         </div>
       </div>
@@ -579,7 +579,7 @@ function ProjectCard({ p, onOpen, onDelete, onOpenLog }: { p: Project; onOpen: (
           {p.visibility === "public" ? (
             <span className="text-[10px] px-2.5 py-px bg-emerald-900/70 border border-emerald-700 text-emerald-700 rounded-full flex items-center gap-x-1"><Globe className="w-3 h-3" /> แชร์</span>
           ) : (
-            <span className="text-[10px] px-2.5 py-px bg-black/60 border border-black/20 text-[#14161c] rounded-full flex items-center gap-x-1"><Lock className="w-3 h-3" /> ส่วนตัว</span>
+            <span className="text-[10px] px-2.5 py-px bg-black/60 border border-black/20 text-[#111827] rounded-full flex items-center gap-x-1"><Lock className="w-3 h-3" /> ส่วนตัว</span>
           )}
         </span>
       </div>
@@ -591,12 +591,12 @@ function ProjectCard({ p, onOpen, onDelete, onOpenLog }: { p: Project; onOpen: (
           <span>{fmtDate(p.updatedAt)}</span>
         </div>
         <div className="flex items-center gap-x-2 mt-3 pt-4 border-t border-black/10">
-          <button onClick={onOpen} className="flex-1 text-xs py-2 rounded-2xl bg-black/[0.03] hover:bg-black/[0.07] border border-black/10 font-medium text-[#7a5c12] transition-colors">เปิดใน Bookisdom →</button>
+          <button onClick={onOpen} className="flex-1 text-xs py-2 rounded-2xl bg-black/[0.03] hover:bg-black/[0.07] border border-black/10 font-medium text-[#1d4ed8] transition-colors">เปิดใน Bookisdom →</button>
           <button
             onClick={onOpenLog}
             aria-label="บันทึกการผลิต"
             title="บันทึกการผลิต — ต้นทุนและตัวชี้วัดที่คุณกรอกเอง"
-            className="w-9 h-9 flex items-center justify-center rounded-2xl border border-black/10 hover:bg-black/[0.07] hover:text-[#6b5010] text-slate-600 transition-colors"
+            className="w-9 h-9 flex items-center justify-center rounded-2xl border border-black/10 hover:bg-black/[0.07] hover:text-[#1e40af] text-slate-600 transition-colors"
           >
             <ClipboardList className="w-4 h-4" />
           </button>
@@ -615,7 +615,7 @@ function ProjectCard({ p, onOpen, onDelete, onOpenLog }: { p: Project; onOpen: (
 function Mini({ value, label }: { value: string; label: string }) {
   return (
     <div>
-      <div className="text-2xl font-semibold text-[#14161c] tabular-nums">{value}</div>
+      <div className="text-2xl font-semibold text-[#111827] tabular-nums">{value}</div>
       <div className="text-[10px] text-faint -mt-0.5">{label}</div>
     </div>
   );

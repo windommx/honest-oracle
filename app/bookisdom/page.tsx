@@ -541,7 +541,7 @@ export default function BookisdomPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#f3f5f9]">
+    <div className="min-h-screen">
       <nav className="fixed top-0 left-0 right-0 z-50 glass-card">
         <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
           <BookisdomLogo />
@@ -549,31 +549,31 @@ export default function BookisdomPage() {
               gap keeps every action reachable on a narrow screen instead of pushing some
               off-canvas — many Thai writers are mobile-first. */}
           <div className="flex flex-wrap items-center justify-end gap-1.5 sm:gap-2 text-sm text-slate-700">
-            <Link href="/bookisdom/dashboard" className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#7a5c12]/30 text-[#7a5c12] hover:border-[#7a5c12] transition-colors text-xs">
+            <Link href="/bookisdom/dashboard" className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#1d4ed8]/30 text-[#1d4ed8] hover:border-[#1d4ed8] transition-colors text-xs">
               <LayoutGrid className="w-3.5 h-3.5" />
               แดชบอร์ด
             </Link>
-            <Link href="/bookisdom/studio" className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#7a5c12]/30 text-[#7a5c12] hover:border-[#7a5c12] transition-colors text-xs">
+            <Link href="/bookisdom/studio" className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#1d4ed8]/30 text-[#1d4ed8] hover:border-[#1d4ed8] transition-colors text-xs">
               <Play className="w-3.5 h-3.5" />
               Studio
             </Link>
-            <Link href="/bookisdom/kdp" className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#7a5c12]/30 text-[#7a5c12] hover:border-[#7a5c12] transition-colors text-xs">
+            <Link href="/bookisdom/kdp" className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#1d4ed8]/30 text-[#1d4ed8] hover:border-[#1d4ed8] transition-colors text-xs">
               <BookMarked className="w-3.5 h-3.5" />
               KDP
             </Link>
-            <Link href="/bookisdom/write" className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#7a5c12]/30 text-[#7a5c12] hover:border-[#7a5c12] transition-colors text-xs">
+            <Link href="/bookisdom/write" className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#1d4ed8]/30 text-[#1d4ed8] hover:border-[#1d4ed8] transition-colors text-xs">
               <PenLine className="w-3.5 h-3.5" />
               ห้องเขียน
             </Link>
-            <button onClick={() => setShowAnalyzer(true)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#7a5c12]/30 text-[#7a5c12] hover:border-[#7a5c12] transition-colors text-xs">
+            <button onClick={() => setShowAnalyzer(true)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#1d4ed8]/30 text-[#1d4ed8] hover:border-[#1d4ed8] transition-colors text-xs">
               <Languages className="w-3.5 h-3.5" />
               วิเคราะห์ไทย
             </button>
-            <button onClick={() => setShowProse(true)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#7a5c12]/30 text-[#7a5c12] hover:border-[#7a5c12] transition-colors text-xs">
+            <button onClick={() => setShowProse(true)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#1d4ed8]/30 text-[#1d4ed8] hover:border-[#1d4ed8] transition-colors text-xs">
               <Languages className="w-3.5 h-3.5" />
               Prose (EN)
             </button>
-            <button onClick={() => setShowGuide(true)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#7a5c12]/30 text-[#7a5c12] hover:border-[#7a5c12] transition-colors text-xs">
+            <button onClick={() => setShowGuide(true)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#1d4ed8]/30 text-[#1d4ed8] hover:border-[#1d4ed8] transition-colors text-xs">
               <HelpCircle className="w-3.5 h-3.5" />
               วิธีใช้
             </button>
@@ -595,7 +595,7 @@ export default function BookisdomPage() {
             </div>
             <button
               onClick={loadExample}
-              className="mt-3 text-xs px-3 py-1.5 rounded-lg border border-[#7a5c12]/40 text-[#7a5c12] hover:bg-[#d9a63a]/15 transition-colors"
+              className="mt-3 text-xs px-3 py-1.5 rounded-lg border border-[#1d4ed8]/40 text-[#1d4ed8] hover:bg-[#3c74d4]/15 transition-colors"
             >
               ⚡ โหลดตัวอย่าง — นิยายสืบสวน 8 บท พร้อม outline + Story Codex (แก้/ลบได้ทุกช่อง)
             </button>
@@ -614,11 +614,11 @@ export default function BookisdomPage() {
                       key={key}
                       onClick={() => selectType(key)}
                       className={`p-3 rounded-xl border text-center transition-colors ${
-                        active ? "border-[#7a5c12] bg-[#d9a63a]/10" : "border-black/10 bg-black/[0.03] hover:border-[#7a5c12]/40"
+                        active ? "border-[#1d4ed8] bg-[#3c74d4]/10" : "border-black/10 bg-black/[0.03] hover:border-[#1d4ed8]/40"
                       }`}
                     >
                       <div className="text-2xl">{t.icon}</div>
-                      <div className={`text-xs mt-1 ${active ? "text-[#7a5c12]" : "text-slate-600"}`}>{t.label}</div>
+                      <div className={`text-xs mt-1 ${active ? "text-[#1d4ed8]" : "text-slate-600"}`}>{t.label}</div>
                     </button>
                   );
                 })}
@@ -703,7 +703,7 @@ export default function BookisdomPage() {
                         setPromptLangTouched(true);
                       }}
                       className={`flex-1 py-2 rounded-lg border text-xs transition-colors ${
-                        promptLanguage === pl ? "border-[#7a5c12] text-[#7a5c12] bg-[#d9a63a]/10" : "border-black/10 text-slate-600 hover:border-[#7a5c12]/40"
+                        promptLanguage === pl ? "border-[#1d4ed8] text-[#1d4ed8] bg-[#3c74d4]/10" : "border-black/10 text-slate-600 hover:border-[#1d4ed8]/40"
                       }`}
                     >
                       {pl === "en" ? "English scaffolding" : "ไทยทั้งชุด"}
@@ -716,16 +716,16 @@ export default function BookisdomPage() {
                 <div className="flex items-center justify-between mb-2">
                   <h2 className="text-xs font-semibold tracking-widest text-slate-600 uppercase">Extra Modules</h2>
                   <div className="flex gap-1">
-                    <button onClick={() => { setGroups(STARTER_GROUPS as OptionalGroup[]); setShowStarter(true); }} className="text-[0.6rem] px-1.5 py-0.5 rounded border border-[#7a5c12]/40 text-[#7a5c12] hover:bg-[#d9a63a]/15" title="เปิดโมดูลสำหรับเริ่มนิยายจากไอเดีย + ดูลำดับ 7 ขั้น">
+                    <button onClick={() => { setGroups(STARTER_GROUPS as OptionalGroup[]); setShowStarter(true); }} className="text-[0.6rem] px-1.5 py-0.5 rounded border border-[#1d4ed8]/40 text-[#1d4ed8] hover:bg-[#3c74d4]/15" title="เปิดโมดูลสำหรับเริ่มนิยายจากไอเดีย + ดูลำดับ 7 ขั้น">
                       เริ่มจากไอเดีย
                     </button>
-                    <button onClick={() => setGroups(defaultGroupsFor(type))} className="text-[0.6rem] px-1.5 py-0.5 rounded border border-black/10 text-slate-600 hover:border-[#7a5c12]/40 hover:text-[#6b5010]" title="กลุ่มที่แนะนำตามประเภทหนังสือ">
+                    <button onClick={() => setGroups(defaultGroupsFor(type))} className="text-[0.6rem] px-1.5 py-0.5 rounded border border-black/10 text-slate-600 hover:border-[#1d4ed8]/40 hover:text-[#1e40af]" title="กลุ่มที่แนะนำตามประเภทหนังสือ">
                       แนะนำ
                     </button>
-                    <button onClick={() => setGroups(allGroups)} className="text-[0.6rem] px-1.5 py-0.5 rounded border border-black/10 text-slate-600 hover:border-[#7a5c12]/40 hover:text-[#6b5010]">
+                    <button onClick={() => setGroups(allGroups)} className="text-[0.6rem] px-1.5 py-0.5 rounded border border-black/10 text-slate-600 hover:border-[#1d4ed8]/40 hover:text-[#1e40af]">
                       ทั้งหมด
                     </button>
-                    <button onClick={() => setGroups([])} className="text-[0.6rem] px-1.5 py-0.5 rounded border border-black/10 text-slate-600 hover:border-[#7a5c12]/40 hover:text-[#6b5010]" title="เฉพาะ prompt หลัก">
+                    <button onClick={() => setGroups([])} className="text-[0.6rem] px-1.5 py-0.5 rounded border border-black/10 text-slate-600 hover:border-[#1d4ed8]/40 hover:text-[#1e40af]" title="เฉพาะ prompt หลัก">
                       ล้าง
                     </button>
                   </div>
@@ -737,7 +737,7 @@ export default function BookisdomPage() {
                         type="checkbox"
                         checked={groups.includes(g.key)}
                         onChange={() => toggleGroup(g.key)}
-                        className="accent-[#c8901f] mt-0.5"
+                        className="accent-[#3366bf] mt-0.5"
                       />
                       <span className="text-xs">
                         <span className="text-slate-800">{g.label}</span>
@@ -751,14 +751,14 @@ export default function BookisdomPage() {
                     ℹ️ Agent Pack สร้าง “system prompt” สำหรับ multi-agent ที่คุณรันเอง (เช่น Claude Projects) — ไม่ได้รันในแอปนี้
                   </p>
                 )}
-                <button onClick={() => setShowStarter((v) => !v)} className="mt-2 text-[0.65rem] text-[#7a5c12] hover:underline">
+                <button onClick={() => setShowStarter((v) => !v)} className="mt-2 text-[0.65rem] text-[#1d4ed8] hover:underline">
                   {showStarter ? "− ซ่อนลำดับเริ่มจากไอเดีย" : "+ ลำดับเริ่มจากไอเดีย (7 ขั้น)"}
                 </button>
                 {showStarter && (
-                  <ol className="mt-2 space-y-1.5 border-l border-[#7a5c12]/25 pl-3">
+                  <ol className="mt-2 space-y-1.5 border-l border-[#1d4ed8]/25 pl-3">
                     {STARTER_SEQUENCE.map((s) => (
                       <li key={s.key} className="text-[0.7rem] leading-snug">
-                        <span className="text-[#7a5c12] font-semibold tabular-nums">{s.n}.</span>{" "}
+                        <span className="text-[#1d4ed8] font-semibold tabular-nums">{s.n}.</span>{" "}
                         <span className="text-slate-800">{s.titleTh}</span>
                         <span className="block text-[0.62rem] text-faint">
                           {s.whyTh} · <span className="text-slate-600">{s.promptIds.join(" + ")}</span>
@@ -778,12 +778,12 @@ export default function BookisdomPage() {
                 <Stat value={String(prompts.length)} label="Prompts" />
               </div>
 
-              <button onClick={generate} className="w-full py-3 bg-[#d9a63a] text-black font-semibold rounded-xl hover:bg-[#c8901f] transition-colors flex items-center justify-center gap-2">
+              <button onClick={generate} className="w-full py-3 bg-[#3c74d4] text-white font-semibold rounded-xl hover:bg-[#3366bf] transition-colors flex items-center justify-center gap-2">
                 <Sparkles className="w-4 h-4" />
                 Generate Prompts
               </button>
 
-              <label className="mt-2 w-full py-2 border border-black/10 text-slate-600 rounded-xl hover:border-[#7a5c12]/40 hover:text-[#6b5010] transition-colors flex items-center justify-center gap-1.5 text-xs cursor-pointer">
+              <label className="mt-2 w-full py-2 border border-black/10 text-slate-600 rounded-xl hover:border-[#1d4ed8]/40 hover:text-[#1e40af] transition-colors flex items-center justify-center gap-1.5 text-xs cursor-pointer">
                 <Upload className="w-4 h-4" /> นำเข้าโปรเจกต์ (.json)
                 <input
                   type="file"
@@ -799,16 +799,16 @@ export default function BookisdomPage() {
 
               {prompts.length > 0 && (
                 <div className="grid grid-cols-2 gap-2 mt-2">
-                  <button onClick={downloadMd} className="py-2.5 border border-[#7a5c12]/30 text-[#7a5c12] rounded-xl hover:border-[#7a5c12] transition-colors flex items-center justify-center gap-1.5 text-xs">
+                  <button onClick={downloadMd} className="py-2.5 border border-[#1d4ed8]/30 text-[#1d4ed8] rounded-xl hover:border-[#1d4ed8] transition-colors flex items-center justify-center gap-1.5 text-xs">
                     <FileText className="w-4 h-4" /> .md
                   </button>
-                  <button onClick={downloadJson} className="py-2.5 border border-[#7a5c12]/30 text-[#7a5c12] rounded-xl hover:border-[#7a5c12] transition-colors flex items-center justify-center gap-1.5 text-xs">
+                  <button onClick={downloadJson} className="py-2.5 border border-[#1d4ed8]/30 text-[#1d4ed8] rounded-xl hover:border-[#1d4ed8] transition-colors flex items-center justify-center gap-1.5 text-xs">
                     <FileJson className="w-4 h-4" /> .json
                   </button>
-                  <button onClick={copyAll} className="py-2.5 border border-black/10 text-slate-700 rounded-xl hover:border-[#7a5c12]/40 transition-colors flex items-center justify-center gap-1.5 text-xs">
+                  <button onClick={copyAll} className="py-2.5 border border-black/10 text-slate-700 rounded-xl hover:border-[#1d4ed8]/40 transition-colors flex items-center justify-center gap-1.5 text-xs">
                     <Copy className="w-4 h-4" /> Copy all
                   </button>
-                  <button onClick={saveProject} disabled={saving} className="py-2.5 border border-black/10 text-slate-700 rounded-xl hover:border-[#7a5c12]/40 transition-colors flex items-center justify-center gap-1.5 text-xs disabled:opacity-50">
+                  <button onClick={saveProject} disabled={saving} className="py-2.5 border border-black/10 text-slate-700 rounded-xl hover:border-[#1d4ed8]/40 transition-colors flex items-center justify-center gap-1.5 text-xs disabled:opacity-50">
                     <Save className="w-4 h-4" /> {projectId ? "Update" : "Save"}
                   </button>
                 </div>
@@ -816,12 +816,12 @@ export default function BookisdomPage() {
 
               {projectId && (
                 <div className="mt-2 space-y-2">
-                  <button onClick={toggleShare} className="w-full py-2.5 border border-black/10 text-slate-700 rounded-xl hover:border-[#7a5c12]/40 transition-colors flex items-center justify-center gap-1.5 text-xs">
+                  <button onClick={toggleShare} className="w-full py-2.5 border border-black/10 text-slate-700 rounded-xl hover:border-[#1d4ed8]/40 transition-colors flex items-center justify-center gap-1.5 text-xs">
                     <Share2 className="w-4 h-4" />
                     {shareInfo.visibility === "public" ? "คัดลอกลิงก์ / ปิดแชร์" : "เปิดแชร์ (ลิงก์อ่านอย่างเดียว)"}
                   </button>
                   {shareInfo.visibility === "public" && shareInfo.token && (
-                    <a href={`/bookisdom/share/${shareInfo.token}`} target="_blank" rel="noreferrer" className="block text-center text-[0.65rem] text-[#7a5c12] hover:underline truncate">
+                    <a href={`/bookisdom/share/${shareInfo.token}`} target="_blank" rel="noreferrer" className="block text-center text-[0.65rem] text-[#1d4ed8] hover:underline truncate">
                       /bookisdom/share/{shareInfo.token.slice(0, 12)}…
                     </a>
                   )}
@@ -847,7 +847,7 @@ export default function BookisdomPage() {
                 </div>
               )}
 
-              {notice && <div className="mt-4 p-3 bg-[#d9a63a]/10 border border-[#7a5c12]/30 rounded-xl text-[#7a5c12] text-xs">{notice}</div>}
+              {notice && <div className="mt-4 p-3 bg-[#3c74d4]/10 border border-[#1d4ed8]/30 rounded-xl text-[#1d4ed8] text-xs">{notice}</div>}
               {error && (
                 <div className="mt-3 p-3 bg-red-500/10 border border-red-500/30 rounded-xl flex items-start gap-2 text-red-700 text-sm">
                   <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
@@ -860,12 +860,12 @@ export default function BookisdomPage() {
                   <div className="flex items-center justify-between mb-2">
                     <h3 className="text-xs font-semibold tracking-widest text-slate-600 uppercase">Saved Projects</h3>
                     {projectId && (
-                      <button onClick={newProject} className="text-[0.65rem] text-faint hover:text-[#6b5010]">+ New</button>
+                      <button onClick={newProject} className="text-[0.65rem] text-faint hover:text-[#1e40af]">+ New</button>
                     )}
                   </div>
                   <div className="space-y-1.5">
                     {projects.map((p) => (
-                      <div key={p.id} className={`flex items-center justify-between gap-2 p-2 rounded-lg border text-xs ${projectId === p.id ? "border-[#7a5c12]/50 bg-[#d9a63a]/5" : "border-black/5 bg-black/[0.03]"}`}>
+                      <div key={p.id} className={`flex items-center justify-between gap-2 p-2 rounded-lg border text-xs ${projectId === p.id ? "border-[#1d4ed8]/50 bg-[#3c74d4]/5" : "border-black/5 bg-black/[0.03]"}`}>
                         <button onClick={() => loadProject(p.id)} className="flex-1 text-left truncate" title={p.title}>
                           <span className="text-slate-800">{p.title}</span>
                           <span className="text-faint ml-1">· {titleCase(p.type)}</span>
@@ -885,7 +885,7 @@ export default function BookisdomPage() {
               <div className="glass-card rounded-2xl p-4 mb-4 border border-black/5">
                 <div className="flex items-center justify-between mb-2">
                   <h3 className="text-xs font-semibold tracking-widest text-slate-600 uppercase flex items-center gap-2">
-                    <BookOpen className="w-3.5 h-3.5 text-[#7a5c12]" />
+                    <BookOpen className="w-3.5 h-3.5 text-[#1d4ed8]" />
                     Story Bible / STATE
                     {storyBible.trim() && <span className="text-[0.6rem] text-green-800 normal-case">● injected</span>}
                   </h3>
@@ -893,7 +893,7 @@ export default function BookisdomPage() {
                     {!storyBible.trim() && (
                       <button
                         onClick={() => setStoryBible("[ตัวละคร]\nชื่อ: ลักษณะเด่น\n\n[สถานที่]\nชื่อ: คำอธิบาย\n\n[สิ่งของ]\nชื่อ: บทบาท\n\n[ความสัมพันธ์]\nA - B: ความสัมพันธ์\nA -> C: การกระทำ\n")}
-                        className="text-[0.65rem] text-[#7a5c12] hover:text-[#6b5010]"
+                        className="text-[0.65rem] text-[#1d4ed8] hover:text-[#1e40af]"
                       >
                         + แทรกโครง Codex
                       </button>
@@ -915,7 +915,7 @@ export default function BookisdomPage() {
                   ปิดช่องว่าง continuity ด้วย prompt ล้วน — แก้ที่นี่ที่เดียว ใช้กับทุกบท (กด Generate Prompts ใหม่เพื่อใช้ค่าล่าสุด)
                 </p>
                 <p className="text-[0.62rem] text-faint mt-1 leading-relaxed">
-                  <span className="text-[#7a5c12]">Story Codex (GraphRAG):</span> ประกาศ entity ใต้หัวข้อ <code className="text-slate-600">[ตัวละคร] [สถานที่] [สิ่งของ] [ความสัมพันธ์]</code> →
+                  <span className="text-[#1d4ed8]">Story Codex (GraphRAG):</span> ประกาศ entity ใต้หัวข้อ <code className="text-slate-600">[ตัวละคร] [สถานที่] [สิ่งของ] [ความสัมพันธ์]</code> →
                   สารบบทั้งเล่มฉีดเข้า master prompt ส่วนแต่ละบทจะได้เฉพาะ entity ที่ปรากฏใน beat บทนั้น + ตัวที่เชื่อมกัน (deterministic ไม่มี LLM แอบทำงาน)
                 </p>
                 <p className="text-[0.62rem] text-faint mt-1 leading-relaxed">
@@ -925,12 +925,12 @@ export default function BookisdomPage() {
 
               {prompts.length === 0 ? (
                 <div className="glass-card rounded-2xl p-10 text-center text-faint">
-                  <Sparkles className="w-10 h-10 mx-auto mb-3 text-[#7a5c12]/40" />
+                  <Sparkles className="w-10 h-10 mx-auto mb-3 text-[#1d4ed8]/40" />
                   <p>ตั้งค่าหนังสือทางซ้าย แล้วกด Generate Prompts</p>
                   <p className="text-xs mt-2 text-faint">
                     จะได้ชุด prompt ครบเซ็ต: Master, Overview, รายบท, Analysis, Revision, Front/Back Matter, Feedback
                   </p>
-                  <button onClick={() => setShowGuide(true)} className="mt-4 text-xs text-[#7a5c12] hover:underline">
+                  <button onClick={() => setShowGuide(true)} className="mt-4 text-xs text-[#1d4ed8] hover:underline">
                     ดูเวิร์กโฟลว์แนะนำ →
                   </button>
                 </div>
@@ -964,10 +964,10 @@ export default function BookisdomPage() {
                                 ≈{estimateTokens(p.prompt).toLocaleString()} tok
                               </span>
                               <span className={`text-[0.6rem] px-1.5 py-0.5 border rounded ${GROUP_COLORS[p.group]}`}>{groupLabel(p.group)}</span>
-                              <button onClick={() => runInStudio(p)} className="text-slate-600 hover:text-[#6b5010]" title="Run in Studio" aria-label={`Run ${p.id} in Studio`}>
+                              <button onClick={() => runInStudio(p)} className="text-slate-600 hover:text-[#1e40af]" title="Run in Studio" aria-label={`Run ${p.id} in Studio`}>
                                 <Play className="w-4 h-4" />
                               </button>
-                              <button onClick={() => copyPrompt(p)} className="text-slate-600 hover:text-[#6b5010]" title="Copy" aria-label={`Copy ${p.id}`}>
+                              <button onClick={() => copyPrompt(p)} className="text-slate-600 hover:text-[#1e40af]" title="Copy" aria-label={`Copy ${p.id}`}>
                                 {copiedId === p.id ? <Check className="w-4 h-4 text-green-800" /> : <Copy className="w-4 h-4" />}
                               </button>
                             </div>
@@ -976,7 +976,7 @@ export default function BookisdomPage() {
                             <div className="px-5 pb-5">
                               <p className="text-[0.7rem] text-faint mb-1">{p.description}</p>
                               <p className="text-[0.65rem] text-faint italic mb-3">Usage: {p.usage}</p>
-                              <pre className="bg-[#f3f5f9] border border-black/5 rounded-lg p-4 text-xs leading-6 text-slate-700 whitespace-pre-wrap max-h-[480px] overflow-y-auto">
+                              <pre className="bg-[#f8f8f8] border border-black/5 rounded-lg p-4 text-xs leading-6 text-slate-700 whitespace-pre-wrap max-h-[480px] overflow-y-auto">
                                 {p.prompt}
                               </pre>
                             </div>
@@ -988,7 +988,7 @@ export default function BookisdomPage() {
                   {filtered.length > visibleCount && (
                     <button
                       onClick={() => setVisibleCount((c) => c + PAGE_SIZE)}
-                      className="w-full mt-3 py-2.5 border border-black/10 text-slate-600 rounded-xl hover:border-[#7a5c12]/40 hover:text-[#6b5010] transition-colors text-xs"
+                      className="w-full mt-3 py-2.5 border border-black/10 text-slate-600 rounded-xl hover:border-[#1d4ed8]/40 hover:text-[#1e40af] transition-colors text-xs"
                     >
                       แสดงเพิ่ม ({filtered.length - visibleCount} ที่เหลือ)
                     </button>

@@ -82,7 +82,7 @@ export function FirstRunOrientation({ show }: { show: boolean }) {
   return (
     <section
       aria-label="เริ่มต้นใช้งาน"
-      className="relative rounded-2xl border border-[#7a5c12]/30 bg-[#d9a63a]/[0.04] p-5 mb-6"
+      className="relative rounded-2xl border border-[#1d4ed8]/30 bg-[#3c74d4]/[0.04] p-5 mb-6"
     >
       <button
         onClick={() => { dismissOrientation(); setDismissed(true); }}
@@ -100,11 +100,11 @@ export function FirstRunOrientation({ show }: { show: boolean }) {
           <Link
             key={p.href}
             href={p.href}
-            className="rounded-xl border border-black/10 bg-black/[0.015] p-3.5 hover:border-[#7a5c12]/50 transition group"
+            className="rounded-xl border border-black/10 bg-black/[0.015] p-3.5 hover:border-[#1d4ed8]/50 transition group"
           >
             <span className="flex items-center gap-2 mb-1.5">
-              <p.icon className="w-4 h-4 text-[#7a5c12]" />
-              <span className="text-[0.78rem] font-medium text-slate-900 group-hover:text-[#6b5010]">{p.title}</span>
+              <p.icon className="w-4 h-4 text-[#1d4ed8]" />
+              <span className="text-[0.78rem] font-medium text-slate-900 group-hover:text-[#1e40af]">{p.title}</span>
             </span>
             <span className="block text-[0.68rem] leading-snug text-faint">{p.body}</span>
           </Link>
@@ -120,11 +120,11 @@ export function OnRamps() {
   return (
     <nav aria-label="ทางลัด" className="flex flex-wrap gap-x-4 gap-y-1.5 text-[0.68rem] text-faint">
       {PATHS.map((p) => (
-        <Link key={p.href} href={p.href} className="hover:text-[#6b5010] transition">
+        <Link key={p.href} href={p.href} className="hover:text-[#1e40af] transition">
           {p.title}
         </Link>
       ))}
-      <Link href="/bookisdom/explore" className="hover:text-[#6b5010] transition">
+      <Link href="/bookisdom/explore" className="hover:text-[#1e40af] transition">
         ดูภาพรวม 8 ประเภท
       </Link>
     </nav>

@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
-import { BG, SURFACE, ELEVATED, ACCENT, ACCENT_BRIGHT, TEXT_FAINT, TEXT_CONTRAST } from "./_tokens";
+import { BG, SURFACE, ELEVATED, ACCENT, ACCENT_BRIGHT, ACCENT_TINT, MESH_GREEN, MESH_PINK, TEXT_FAINT, TEXT_CONTRAST } from "./_tokens";
 
 // ── WCAG 2.1 relative luminance + contrast ratio, computed here rather than trusted ──
 const lin = (c: number) => {
@@ -63,20 +63,23 @@ function over(fg: string, alpha: number, bg: string): string {
   return "#" + [mix(r, x), mix(g, y), mix(b, z)].map((v) => v.toString(16).padStart(2, "0")).join("");
 }
 
-/** Every surface a faint label can actually land on, drawn from the overlay classes the app
- *  uses on the LIGHT ground (bg-black/[0.015]…/10, gold tints bg-[#d9a63a]/15…/25)
- *  composited over the page. */
+/** Every surface a faint label can actually land on: the ground, cards, the elevated
+ *  surface, the two MESH corners (page intros and eyebrows sit on them directly), the
+ *  black overlays in use, the brand tints and the blue-50 chip. */
 const SURFACES: Record<string, string> = {
   "page BG": BG,
   "card SURFACE": SURFACE,
   "ELEVATED": ELEVATED,
+  "mesh mint corner": MESH_GREEN,
+  "mesh orchid corner": MESH_PINK,
   "black/[0.02]": over("#000000", 0.02, BG),
   "black/[0.03]": over("#000000", 0.03, BG),
   "black/[0.04]": over("#000000", 0.04, BG),
   "black/[0.06]": over("#000000", 0.06, BG),
   "black/10": over("#000000", 0.1, BG),
-  "gold/15": over(ACCENT_BRIGHT, 0.15, BG),
-  "gold/25": over(ACCENT_BRIGHT, 0.25, BG),
+  "brand/15": over(ACCENT_BRIGHT, 0.15, BG),
+  "brand/25": over(ACCENT_BRIGHT, 0.25, BG),
+  "blue-50 chip": ACCENT_TINT,
 };
 
 describe("WCAG contrast (2.1 AA, 4.5:1 for normal text)", () => {
@@ -122,24 +125,21 @@ describe("WCAG contrast (2.1 AA, 4.5:1 for normal text)", () => {
 
   it("the faint tier is still visibly fainter than the muted tier", () => {
     // Passing AA by simply brightening to gray-400 would collapse two levels into one.
-    expect(contrast(TEXT_FAINT, BG)).toBeLessThan(contrast("#4b5563", BG));
+    expect(contrast(TEXT_FAINT, BG)).toBeLessThan(contrast("#374151", BG));
   });
 
-  it("dark-on-gold buttons, gold-on-light text, and gold text on gold tints clear AA", () => {
-    // The reference screen's brighter golds were refused for TEXT because they measure
-    // 3.6–4.3:1 here; ACCENT (#7a5c12) is the darkest gold that still reads as gold and
-    // clears 4.5 on every surface. Fills keep the bright gold with DARK text: white on the
-    // fill measured 2.22:1, which is why button text is never white.
-    expect(contrast("#14161c", ACCENT_BRIGHT)).toBeGreaterThanOrEqual(AA_NORMAL);
-    expect(contrast("#000000", ACCENT_BRIGHT)).toBeGreaterThanOrEqual(AA_NORMAL);
-    expect(contrast(ACCENT, BG)).toBeGreaterThanOrEqual(AA_NORMAL);
-    expect(contrast(ACCENT, SURFACE)).toBeGreaterThanOrEqual(AA_NORMAL);
-    expect(contrast(ACCENT, ELEVATED)).toBeGreaterThanOrEqual(AA_NORMAL);
+  it("white-on-brand buttons, brand text on every surface, and the refused reference values", () => {
+    // The reference's link blue (#2563eb) and muted gray (#6b7280) both fail on the mesh's
+    // mint corner, which is a real surface here — so accent text is blue-700 and faint text
+    // gray-600. The button keeps the reference fill with WHITE text (4.52:1); ink on it is
+    // 3.92:1, which is why button text is never dark on this theme.
+    expect(contrast("#ffffff", ACCENT_BRIGHT)).toBeGreaterThanOrEqual(AA_NORMAL);
+    expect(contrast("#111827", ACCENT_BRIGHT)).toBeLessThan(AA_NORMAL); // documents the refusal
     for (const [name, surface] of Object.entries(SURFACES)) {
       expect(contrast(ACCENT, surface), `ACCENT on ${name}`).toBeGreaterThanOrEqual(AA_NORMAL);
     }
-    expect(contrast("#ffffff", ACCENT_BRIGHT)).toBeLessThan(AA_NORMAL); // documents the refusal
-    expect(contrast("#9a7418", BG)).toBeLessThan(AA_NORMAL); // the reference's eyebrow gold — refused for text
+    expect(contrast("#2563eb", MESH_GREEN)).toBeLessThan(AA_NORMAL); // reference link blue — refused for text
+    expect(contrast("#6b7280", MESH_GREEN)).toBeLessThan(AA_NORMAL); // reference gray-500 — refused for text
   });
 
   it("the recorded ratios in _tokens.ts match a fresh computation", () => {

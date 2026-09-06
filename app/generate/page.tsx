@@ -69,22 +69,22 @@ export default function GeneratePage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f3f5f9]">
+    <div className="min-h-screen">
       <nav className="fixed top-0 left-0 right-0 z-50 glass-card">
         <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
           <Link href="/" className="flex items-center gap-2">
-            <Crown className="w-8 h-8 text-[#7a5c12]" />
+            <Crown className="w-8 h-8 text-[#1d4ed8]" />
             <span className="text-xl font-semibold gold-gradient">NaraClear</span>
           </Link>
           <div className="flex gap-6 items-center">
-            <Link href="/analyze" className="text-gray-700 hover:text-[#6b5010] transition-colors">วิเคราะห์ชื่อ</Link>
-            <Link href="/corporate" className="text-gray-700 hover:text-[#6b5010] transition-colors">องค์กร</Link>
-            <Link href="/child" className="text-gray-700 hover:text-[#6b5010] transition-colors">ตั้งชื่อเด็ก</Link>
-            <Link href="/rename" className="text-gray-700 hover:text-[#6b5010] transition-colors">เปลี่ยนชื่อ</Link>
+            <Link href="/analyze" className="text-gray-700 hover:text-[#1e40af] transition-colors">วิเคราะห์ชื่อ</Link>
+            <Link href="/corporate" className="text-gray-700 hover:text-[#1e40af] transition-colors">องค์กร</Link>
+            <Link href="/child" className="text-gray-700 hover:text-[#1e40af] transition-colors">ตั้งชื่อเด็ก</Link>
+            <Link href="/rename" className="text-gray-700 hover:text-[#1e40af] transition-colors">เปลี่ยนชื่อ</Link>
             {session ? (
-              <Link href="/history" className="text-gray-700 hover:text-[#6b5010] transition-colors">ประวัติ</Link>
+              <Link href="/history" className="text-gray-700 hover:text-[#1e40af] transition-colors">ประวัติ</Link>
             ) : (
-              <Link href="/login" className="text-gray-700 hover:text-[#6b5010] transition-colors">เข้าสู่ระบบ</Link>
+              <Link href="/login" className="text-gray-700 hover:text-[#1e40af] transition-colors">เข้าสู่ระบบ</Link>
             )}
           </div>
         </div>
@@ -103,7 +103,7 @@ export default function GeneratePage() {
                   type="text"
                   value={pool}
                   onChange={(e) => setPool(e.target.value)}
-                  className="w-full px-4 py-3 bg-black/[0.03] border border-[#7a5c12]/25 rounded-xl text-[#14161c] placeholder-gray-500 focus:outline-none focus:border-[#7a5c12]/60 transition-colors"
+                  className="w-full px-4 py-3 bg-black/[0.03] border border-[#1d4ed8]/25 rounded-xl text-[#111827] placeholder-gray-500 focus:outline-none focus:border-[#1d4ed8]/60 transition-colors"
                   placeholder="เช่น สมชาย, สมหญิง, วิชัย"
                   required
                 />
@@ -116,7 +116,7 @@ export default function GeneratePage() {
                     type="text"
                     value={lastName}
                     onChange={(e) => setLastName(e.target.value)}
-                    className="w-full px-4 py-3 bg-black/[0.03] border border-[#7a5c12]/25 rounded-xl text-[#14161c] placeholder-gray-500 focus:outline-none focus:border-[#7a5c12]/60 transition-colors"
+                    className="w-full px-4 py-3 bg-black/[0.03] border border-[#1d4ed8]/25 rounded-xl text-[#111827] placeholder-gray-500 focus:outline-none focus:border-[#1d4ed8]/60 transition-colors"
                     placeholder="กรอกนามสกุล"
                     required
                   />
@@ -126,12 +126,12 @@ export default function GeneratePage() {
                   <select
                     value={birthday}
                     onChange={(e) => setBirthday(e.target.value)}
-                    className="w-full px-4 py-3 bg-black/[0.03] border border-[#7a5c12]/25 rounded-xl text-[#14161c] focus:outline-none focus:border-[#7a5c12]/60 transition-colors"
+                    className="w-full px-4 py-3 bg-black/[0.03] border border-[#1d4ed8]/25 rounded-xl text-[#111827] focus:outline-none focus:border-[#1d4ed8]/60 transition-colors"
                     required
                   >
-                    <option value="" className="bg-[#f3f5f9]">เลือกวันเกิด</option>
+                    <option value="" className="bg-[#f8f8f8]">เลือกวันเกิด</option>
                     {DAYS.map((day) => (
-                      <option key={day.value} value={day.value} className="bg-[#f3f5f9]">
+                      <option key={day.value} value={day.value} className="bg-[#f8f8f8]">
                         {day.label}
                       </option>
                     ))}
@@ -145,7 +145,7 @@ export default function GeneratePage() {
                   type="number"
                   value={targetNumber}
                   onChange={(e) => setTargetNumber(e.target.value)}
-                  className="w-full px-4 py-3 bg-black/[0.03] border border-[#7a5c12]/25 rounded-xl text-[#14161c] placeholder-gray-500 focus:outline-none focus:border-[#7a5c12]/60 transition-colors"
+                  className="w-full px-4 py-3 bg-black/[0.03] border border-[#1d4ed8]/25 rounded-xl text-[#111827] placeholder-gray-500 focus:outline-none focus:border-[#1d4ed8]/60 transition-colors"
                   placeholder="เช่น 1, 2, 3, 5, 6 หรือ 9"
                   min="1"
                   max="9"
@@ -155,7 +155,7 @@ export default function GeneratePage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-4 bg-[#d9a63a] text-black font-semibold rounded-xl hover:bg-[#c8901f] transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                className="w-full py-4 bg-[#3c74d4] text-white font-semibold rounded-xl hover:bg-[#3366bf] transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 {loading && <Loader2 className="w-5 h-5 animate-spin" />}
                 {loading ? "กำลังสร้างชื่อ..." : "สร้างชื่อ"}
@@ -176,7 +176,7 @@ export default function GeneratePage() {
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead>
-                    <tr className="border-b border-[#7a5c12]/25">
+                    <tr className="border-b border-[#1d4ed8]/25">
                       <th className="text-left py-3 px-4 text-gray-600 font-medium">ชื่อ</th>
                       <th className="text-center py-3 px-4 text-gray-600 font-medium">คะแนน</th>
                       <th className="text-center py-3 px-4 text-gray-600 font-medium">กาลกิณี</th>
@@ -185,7 +185,7 @@ export default function GeneratePage() {
                   </thead>
                   <tbody>
                     {results.map((item, index) => (
-                      <tr key={index} className="border-b border-[#7a5c12]/15 hover:bg-black/[0.04]">
+                      <tr key={index} className="border-b border-[#1d4ed8]/15 hover:bg-black/[0.04]">
                         <td className="py-4 px-4 font-medium">{item.name}</td>
                         <td className={`text-center py-4 px-4 font-bold ${getScoreClass(item.score)}`}>
                           {item.score}
@@ -198,7 +198,7 @@ export default function GeneratePage() {
                           )}
                         </td>
                         <td className="text-center py-4 px-4">
-                          {item.isTargetNumber && <span className="text-[#7a5c12]">★</span>}
+                          {item.isTargetNumber && <span className="text-[#1d4ed8]">★</span>}
                           {item.numerology}
                         </td>
                       </tr>

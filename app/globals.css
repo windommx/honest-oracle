@@ -5,19 +5,19 @@
 @import url('https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
 
 :root {
-  /* ONE palette for the whole platform (2026-09): light, warm, gold-accented. Mirrors
-     app/bookisdom/_tokens.ts — a test asserts THIS block matches the tokens, so the two
-     cannot drift apart. Both products (Bookisdom and the lifemap/naming apps) share it;
-     the earlier split (a dark gold root palette vs a dark purple palette scoped to the Bookisdom segment) is gone. */
-  --background: #f3f5f9;
+  /* ONE palette for the whole platform (2026-09): "InkStudio Light Blue" on a pastel mesh.
+     Mirrors app/bookisdom/_tokens.ts — a test asserts THIS block matches the tokens, so the
+     two cannot drift apart. Both products (Bookisdom and the lifemap/naming apps) share it. */
+  --background: #f8f8f8;
   --surface: #ffffff;
-  --elevated: #eaedf3;
-  --border: #e2e6ee;
-  --foreground: #14161c;
-  --accent: #7a5c12;
-  --accent-bright: #d9a63a;
-  --accent-deep: #c8901f;
-  --accent-dark: #6b5010;
+  --elevated: #f3f4f6;
+  --border: #e5e7eb;
+  --foreground: #111827;
+  --accent: #1d4ed8;
+  --accent-bright: #3c74d4;
+  --accent-deep: #3366bf;
+  --accent-dark: #1e40af;
+  --accent-tint: #eff6ff;
 }
 
 * {
@@ -37,12 +37,14 @@ body {
 
 body {
   min-height: 100vh;
-  /* The reference screen's ground: pale blue-grey with a warm glow top-right and a cool
-     one left. Gold at ≤16 % over the ground is LIGHTER than the 15 % tint the contrast
-     guard measures against, so no text tier loses AA over the glow. Fixed so it does not
-     scroll with content. */
+  /* The mesh ground, 1:1 with the reference (pixel-sampled by the source project): a white
+     glow top-right, orchid #f3d9f0 bottom-right, mint #b6ddc1 top-left, on #f8f8f8. Fixed so
+     it does not scroll with content. Both mesh colours are measured as SURFACES by the
+     contrast guard, since page intros and section labels sit directly on them. */
   background-image:
-    radial-gradient(ellipse 60% 45% at 88% 0%, rgba(217, 166, 58, 0.11), transparent 70%);
+    radial-gradient(ellipse 62% 48% at 100% 0%, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0) 62%),
+    radial-gradient(ellipse 95% 80% at 102% 108%, #f3d9f0 0%, rgba(243, 217, 240, 0.55) 34%, rgba(243, 217, 240, 0) 68%),
+    radial-gradient(ellipse 88% 70% at -6% -10%, #b6ddc1 0%, rgba(182, 221, 193, 0.55) 36%, rgba(182, 221, 193, 0) 70%);
   background-attachment: fixed;
 }
 
@@ -53,17 +55,17 @@ a {
 
 .gold-gradient,
 .accent-gradient {
-  /* Text gradient between the accent and a mid gold. The mid stop (#a37a1c) measures
-     3.59:1 on the ground — enough for the ≥24px bold headings this is used on (WCAG
+  /* Text gradient between the accent and the reference's link blue. The mid stop (#2563eb)
+     measures 4.87:1 on the ground — enough for the ≥24px bold headings this is used on (WCAG
      large-text 3:1), NOT for body text. Never use these classes on small text. */
-  background: linear-gradient(135deg, var(--accent) 0%, #a37a1c 50%, var(--accent) 100%);
+  background: linear-gradient(135deg, var(--accent) 0%, #2563eb 50%, var(--accent) 100%);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 
 .gold-border {
-  border: 1px solid rgba(122, 92, 18, 0.3);
+  border: 1px solid rgba(29, 78, 216, 0.3);
 }
 
 /* The white rounded card of the reference screen. */
@@ -107,18 +109,18 @@ a {
 .input {
   width: 100%;
   background: var(--surface);
-  border: 1px solid #dfe3ea;
+  border: 1px solid #d1d5db; /* the reference's input border (gray-300) */
   border-radius: 0.5rem;
   padding: 0.5rem 0.75rem;
   font-size: 0.875rem;
   color: var(--foreground);
   transition: border-color 0.15s;
 }
-.input::placeholder { color: #566174; } /* faint tier — measured ≥4.5:1 on every surface */
-.input:hover { border-color: #c9cfda; }
+.input::placeholder { color: #4b5563; } /* faint tier — measured ≥4.5:1 on every surface */
+.input:hover { border-color: #9ca3af; }
 .input:focus { border-color: var(--accent); }
 
-/* ── Premium lighting (dashboard) ──────────────────────────────────────────────
+/* ── Premium lighting (dashboard) — 'brand' classes; formerly gold, now the blue brand ──────────────────────────────────────────────
    Tuned on feedback (2026-09): the preferred look is the QUIET one — flat pale ground,
    crisp white cards — made slightly clearer and more precious, not louder. So: cards are
    pure white with a defined neutral hairline and a tight contact shadow (clarity comes
@@ -142,7 +144,7 @@ a {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background: radial-gradient(ellipse 52% 62% at 100% 0%, rgba(217, 166, 58, 0.13), transparent 66%);
+  background: radial-gradient(ellipse 52% 62% at 100% 0%, rgba(60, 116, 212, 0.13), transparent 66%);
 }
 .hero-wash::after {
   content: "";
@@ -150,7 +152,7 @@ a {
   left: 8%; right: 8%; top: 0;
   height: 1px;
   pointer-events: none;
-  background: linear-gradient(90deg, transparent, rgba(122, 92, 18, 0.45), rgba(217, 166, 58, 0.6), rgba(122, 92, 18, 0.45), transparent);
+  background: linear-gradient(90deg, transparent, rgba(29, 78, 216, 0.45), rgba(60, 116, 212, 0.6), rgba(29, 78, 216, 0.45), transparent);
 }
 .hero-wash > * { position: relative; }
 
@@ -164,34 +166,34 @@ a {
 }
 .tile-frost:hover {
   transform: translateY(-2px);
-  border-color: rgba(122, 92, 18, 0.30);
+  border-color: rgba(29, 78, 216, 0.30);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 8px 20px rgba(20, 22, 28, 0.08);
 }
 
 /* Gold icon chip — one hue for every KPI and action, kept pale so the number leads. */
-.chip-gold {
+.chip-brand {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: #7a5c12;
-  background: linear-gradient(145deg, rgba(217, 166, 58, 0.18), rgba(217, 166, 58, 0.05));
-  border: 1px solid rgba(122, 92, 18, 0.14);
+  color: #1d4ed8;
+  background: linear-gradient(145deg, rgba(60, 116, 212, 0.18), rgba(60, 116, 212, 0.05));
+  border: 1px solid rgba(29, 78, 216, 0.14);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
 }
 
 /* Primary gold button: top highlight, gradient body, a restrained gold ambient shadow. */
-.btn-gold {
-  color: #14161c;
-  background: linear-gradient(180deg, #d9a63a 0%, #c8901f 100%);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.38), 0 1px 2px rgba(20, 22, 28, 0.08), 0 6px 16px rgba(217, 166, 58, 0.28);
+.btn-brand {
+  color: #ffffff; /* white on #3c74d4 = 4.52:1; ink on it = 3.92:1 — measured, so white */
+  background: linear-gradient(180deg, #3c74d4 0%, #3366bf 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.38), 0 1px 2px rgba(20, 22, 28, 0.08), 0 6px 16px rgba(60, 116, 212, 0.28);
   transition: transform 0.15s, box-shadow 0.15s, filter 0.15s;
 }
-.btn-gold:hover { filter: brightness(1.04); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.38), 0 2px 4px rgba(20, 22, 28, 0.08), 0 10px 22px rgba(217, 166, 58, 0.34); }
-.btn-gold:active { transform: scale(0.985); }
-.btn-gold:disabled { filter: none; box-shadow: none; opacity: 0.5; }
+.btn-brand:hover { filter: brightness(1.04); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.38), 0 2px 4px rgba(20, 22, 28, 0.08), 0 10px 22px rgba(60, 116, 212, 0.34); }
+.btn-brand:active { transform: scale(0.985); }
+.btn-brand:disabled { filter: none; box-shadow: none; opacity: 0.5; }
 
 /* Section eyebrow with a short gold rule — quieter than a heading, richer than a label. */
-.eyebrow-gold {
+.eyebrow-brand {
   display: flex;
   align-items: center;
   gap: 0.6rem;
@@ -199,12 +201,12 @@ a {
   letter-spacing: 0.16em;
   text-transform: uppercase;
   font-weight: 600;
-  color: #7a5c12;
+  color: #1d4ed8;
 }
-.eyebrow-gold::before { content: ""; width: 1.25rem; height: 2px; border-radius: 2px; background: linear-gradient(90deg, #d9a63a, #7a5c12); }
+.eyebrow-brand::before { content: ""; width: 1.25rem; height: 2px; border-radius: 2px; background: linear-gradient(90deg, #3c74d4, #1d4ed8); }
 
 /* Hairline that fades at both ends. */
-.rule-gold { height: 1px; background: linear-gradient(90deg, transparent, rgba(122, 92, 18, 0.25), transparent); }
+.rule-brand { height: 1px; background: linear-gradient(90deg, transparent, rgba(29, 78, 216, 0.25), transparent); }
 
 /* Sticky nav as a clean white shelf with a defined bottom edge. */
 .nav-premium {
