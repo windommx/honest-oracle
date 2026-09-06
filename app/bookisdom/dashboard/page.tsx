@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   Crown, BookOpen, FileText, Share2, HardDrive, Type, Plus, RefreshCw, Search,
-  LayoutGrid, List, Lock, Globe, ArrowRight, Play, Wand2, Sparkles, Loader2, BookDown, CloudOff, Wrench, ClipboardList, BookMarked,
+  LayoutGrid, List, Lock, Globe, ArrowRight, Play, Wand2, Sparkles, Loader2, BookDown, CloudOff, Wrench, ClipboardList, BookMarked, PenLine,
 } from "lucide-react";
 import { BOOK_TYPES, buildEpub, type BookConfig, type BookTypeKey } from "@/lib/bookisdom-engine/engine";
 import { splitChapters } from "@/lib/bookisdom-engine/chapters";
@@ -14,6 +14,7 @@ import { titleCase } from "../_utils";
 import { listManuscripts, deleteManuscript, type StoredManuscript } from "../_manuscript-store";
 import { DeleteButton } from "../_ui";
 import { BookisdomLogo } from "../_logo";
+import { listBooks as listWritingBooks, listChapters as listWritingChapters, type WritingBook } from "../_writing-store";
 import { ProductionLogPanel } from "../_production-log-panel";
 
 type Project = {
@@ -65,6 +66,16 @@ export default function DashboardPage() {
   const [view, setView] = useState<View>("grid");
   const [logProject, setLogProject] = useState<Project | null>(null);
   const [manuscripts, setManuscripts] = useState<StoredManuscript[]>([]);
+  // Writer Room (local, IndexedDB): counted from the same store the room writes to.
+  const [writing, setWriting] = useState<{ books: WritingBook[]; chapters: number }>({ books: [], chapters: 0 });
+  useEffect(() => {
+    void (async () => {
+      const books = await listWritingBooks();
+      let chapters = 0;
+      for (const b of books) chapters += (await listWritingChapters(b.id)).length;
+      setWriting({ books, chapters });
+    })();
+  }, []);
   const [plan, setPlan] = useState<string>("free");
   const [upgrading, setUpgrading] = useState(false);
 
@@ -224,6 +235,7 @@ export default function DashboardPage() {
               <NavTab href="/bookisdom/studio" icon={<Play className="w-4 h-4" />} label="Bookisdom Studio" />
               <NavTab href="/bookisdom?tool=thai" icon={<Sparkles className="w-4 h-4" />} label="วิเคราะห์" />
               <NavTab href="/bookisdom/kdp" icon={<BookMarked className="w-4 h-4" />} label="KDP" />
+              <NavTab href="/bookisdom/write" icon={<PenLine className="w-4 h-4" />} label="ห้องเขียน" />
             </div>
           </div>
           <div className="flex items-center gap-x-3">
@@ -275,22 +287,24 @@ export default function DashboardPage() {
         <div className="rule-gold my-6" />
 
         {/* KPI stats — all real */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 [&>*:last-child]:col-span-2 md:[&>*:last-child]:col-span-1">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
           <Kpi label="หนังสือทั้งหมด" value={String(stats.count)} icon={<BookOpen className="w-5 h-5" />} />
           <Kpi label="คำทั้งหมด (ประเมิน)" value={fmt(stats.words)} icon={<FileText className="w-5 h-5" />} />
           <Kpi label="แชร์สาธารณะ" value={String(stats.shared)} icon={<Share2 className="w-5 h-5" />} />
           <Kpi label="ต้นฉบับ (ในเครื่อง)" value={String(manuscripts.length)} icon={<HardDrive className="w-5 h-5" />} />
           <Kpi label="ตัวอักษรที่บันทึก" value={fmt(localChars)} icon={<Type className="w-5 h-5" />} />
+          <Kpi label="ห้องเขียน (เล่ม · บท)" value={`${writing.books.length} · ${writing.chapters}`} icon={<PenLine className="w-5 h-5" />} />
         </div>
         </section>
 
         {/* Quick actions */}
         <div className="mb-8">
           <div className="eyebrow-gold mb-3 px-1">การดำเนินการด่วน</div>
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4">
             <QuickAction href="/bookisdom" icon={<Wand2 className="w-5 h-5" />} title="เครื่องมือ prompt" sub="สร้างชุด prompt แต่งหนังสือคุณภาพสูง" cta="เปิดเครื่องมือ" />
             <QuickAction href="/bookisdom/studio" icon={<Play className="w-5 h-5" />} title="Bookisdom Studio" sub="รัน prompt ด้วย API key ของคุณเอง" cta="เปิด Studio" />
             <QuickAction href="/bookisdom?tool=thai" icon={<Search className="w-5 h-5" />} title="วิเคราะห์ร้อยแก้ว" sub="ตรวจไทย/EN + NIS audit ฟรี ไม่เรียก AI" cta="เริ่มวิเคราะห์" />
+            <QuickAction href="/bookisdom/write" icon={<PenLine className="w-5 h-5" />} title="ห้องเขียน" sub="เขียนทีละบท บันทึกอัตโนมัติ โน้ตตัวละคร → Codex, เล่ม → วิเคราะห์/EPUB" cta="เข้าห้องเขียน" />
             <QuickAction href="/bookisdom/kdp" icon={<BookMarked className="w-5 h-5" />} title="เตรียมส่ง KDP" sub="สันปก ขนาดปก และเช็กลิสต์ metadata — สูตรจริงของ Amazon" cta="คำนวณ" />
           </div>
         </div>

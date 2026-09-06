@@ -11,6 +11,7 @@ import {
 } from "@/lib/bookisdom-engine/kdp";
 import { listManuscripts, type StoredManuscript } from "../_manuscript-store";
 import { countManuscriptWords } from "../_word-count";
+import { listBooks, listChapters, countBookWords, type WritingBook } from "../_writing-store";
 
 // ╔══════════════════════════════════════════════════════════════════╗
 // ║  /bookisdom/kdp — the screen kdp.ts never had.                    ║
@@ -35,6 +36,7 @@ const splitList = (s: string) => s.split(/[,\n]/).map((x) => x.trim()).filter(Bo
 
 export default function KdpPage() {
   const [manuscripts, setManuscripts] = useState<StoredManuscript[]>([]);
+  const [books, setBooks] = useState<WritingBook[]>([]);
   const [sourceId, setSourceId] = useState<string>("");
   const [words, setWords] = useState<string>("");
   const [counting, setCounting] = useState(false);
@@ -48,14 +50,24 @@ export default function KdpPage() {
 
   useEffect(() => {
     listManuscripts().then(setManuscripts).catch(() => setManuscripts([]));
+    listBooks().then(setBooks).catch(() => setBooks([]));
   }, []);
 
   async function pickManuscript(id: string) {
     setSourceId(id);
-    const m = manuscripts.find((x) => x.id === id);
-    if (!m) return;
     setCounting(true);
     try {
+      if (id.startsWith("book:")) {
+        // A Writer-Room book: count every chapter with the same tokenizer.
+        const b = books.find((x) => x.id === id.slice(5));
+        if (!b) return;
+        const n = await countBookWords(b, await listChapters(b.id));
+        setWords(String(n));
+        if (!meta.title) setMeta((s) => ({ ...s, title: b.title, author: b.author }));
+        return;
+      }
+      const m = manuscripts.find((x) => x.id === id);
+      if (!m) return;
       const n = await countManuscriptWords(m);
       setWords(String(n));
       if (!meta.title) setMeta((s) => ({ ...s, title: m.title }));
@@ -132,7 +144,8 @@ export default function KdpPage() {
                   <span className="block text-[0.7rem] text-slate-600 mb-1">นับคำจากต้นฉบับที่บันทึกไว้</span>
                   <select value={sourceId} onChange={(e) => void pickManuscript(e.target.value)} className="input" aria-label="เลือกต้นฉบับ">
                     <option value="">— พิมพ์จำนวนคำเอง —</option>
-                    {manuscripts.map((m) => <option key={m.id} value={m.id}>{m.title} ({m.lang.toUpperCase()})</option>)}
+                    {books.length > 0 && <optgroup label="เล่มในห้องเขียน">{books.map((b) => <option key={b.id} value={`book:${b.id}`}>{b.title} ({b.lang.toUpperCase()})</option>)}</optgroup>}
+                    {manuscripts.length > 0 && <optgroup label="ต้นฉบับที่บันทึก">{manuscripts.map((m) => <option key={m.id} value={m.id}>{m.title} ({m.lang.toUpperCase()})</option>)}</optgroup>}
                   </select>
                 </label>
                 <label className="block">

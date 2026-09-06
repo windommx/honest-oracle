@@ -8,6 +8,7 @@ import { BookOpen, Play, Loader2, Save, Check, KeyRound, ShieldCheck, Server, Bo
 import { PROVIDERS, DIRECT_BROWSER, validateRunInput, type Provider } from "@/lib/bookisdom-engine/llm-provider";
 import { saveManuscript } from "../_manuscript-store";
 import { runDirect } from "../_studio-direct";
+import { listBooks, addChapter, updateChapter, type WritingBook } from "../_writing-store";
 
 export default function StudioPage() {
   const [provider, setProvider] = useState<Provider>("anthropic");
@@ -22,6 +23,12 @@ export default function StudioPage() {
   const [error, setError] = useState("");
   const [saved, setSaved] = useState(false);
   const [saveLang, setSaveLang] = useState<"th" | "en">("th");
+  // Writer-Room bridge: the output can land as a NEW CHAPTER of a book instead of a loose
+  // manuscript — the chapter's title is the first line of the output.
+  const [books, setBooks] = useState<WritingBook[]>([]);
+  const [targetBook, setTargetBook] = useState("");
+  const [savedChapter, setSavedChapter] = useState(false);
+  useEffect(() => { listBooks().then(setBooks).catch(() => setBooks([])); }, []);
   // Transport. DIRECT = browser → provider (Bookisdom's server never sees the text or the
   // key). RELAY = through /api/bookisdom/studio/run. Direct is the default wherever we have
   // MEASURED that the provider's API accepts a browser preflight; elsewhere it is offered
@@ -156,6 +163,20 @@ export default function StudioPage() {
       });
   }
 
+  async function saveAsChapter() {
+    if (!output.trim() || !targetBook) return;
+    const firstLine = output.trim().split(/\r?\n/)[0].slice(0, 80);
+    try {
+      const ch = await addChapter(targetBook, firstLine);
+      await updateChapter(ch.id, { content: output });
+      setSavedChapter(true);
+      setTimeout(() => setSavedChapter(false), 2500);
+      toast(`เพิ่มเป็นบทใหม่ใน "${books.find((b) => b.id === targetBook)?.title ?? "เล่ม"}" แล้ว`);
+    } catch {
+      toast("เพิ่มบทไม่สำเร็จ — พื้นที่เก็บของเบราว์เซอร์อาจเต็ม", { variant: "error" });
+    }
+  }
+
   return (
     <div className="min-h-screen bg-[#f3f5f9]">
       <nav className="fixed top-0 left-0 right-0 z-50 glass-card">
@@ -284,6 +305,18 @@ export default function StudioPage() {
                       {saved ? <Check className="w-3 h-3 text-green-800" /> : <Save className="w-3 h-3" />}
                       {saved ? "บันทึกแล้ว → แดชบอร์ด" : "บันทึกเป็นต้นฉบับ"}
                     </button>
+                    {books.length > 0 && (
+                      <>
+                        <select value={targetBook} onChange={(e) => setTargetBook(e.target.value)} className="text-[0.65rem] bg-[#f3f5f9] border border-black/10 rounded px-1.5 py-0.5 text-slate-700" aria-label="เล่มปลายทาง">
+                          <option value="">เล่มในห้องเขียน…</option>
+                          {books.map((b) => <option key={b.id} value={b.id}>{b.title}</option>)}
+                        </select>
+                        <button onClick={() => void saveAsChapter()} disabled={!targetBook} className="text-[0.65rem] px-2 py-1 rounded border border-[#7a5c12]/40 text-[#7a5c12] hover:bg-[#d9a63a]/15 disabled:opacity-50 flex items-center gap-1">
+                          {savedChapter ? <Check className="w-3 h-3 text-green-800" /> : <BookMarked className="w-3 h-3" />}
+                          {savedChapter ? "เพิ่มบทแล้ว" : "เป็นบทใหม่ในเล่ม"}
+                        </button>
+                      </>
+                    )}
                   </div>
                 )}
               </div>

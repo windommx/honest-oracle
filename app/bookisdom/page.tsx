@@ -23,6 +23,7 @@ import {
   LayoutGrid,
   Play,
   BookMarked,
+  PenLine,
 } from "lucide-react";
 import { titleCase, copyText, slug, downloadBlob } from "./_utils";
 import { GROUP_COLORS, Field, Stat, FilterChip } from "./_ui";
@@ -559,6 +560,10 @@ export default function BookisdomPage() {
             <Link href="/bookisdom/kdp" className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#7a5c12]/30 text-[#7a5c12] hover:border-[#7a5c12] transition-colors text-xs">
               <BookMarked className="w-3.5 h-3.5" />
               KDP
+            </Link>
+            <Link href="/bookisdom/write" className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#7a5c12]/30 text-[#7a5c12] hover:border-[#7a5c12] transition-colors text-xs">
+              <PenLine className="w-3.5 h-3.5" />
+              ห้องเขียน
             </Link>
             <button onClick={() => setShowAnalyzer(true)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#7a5c12]/30 text-[#7a5c12] hover:border-[#7a5c12] transition-colors text-xs">
               <Languages className="w-3.5 h-3.5" />
