@@ -118,3 +118,95 @@ a {
 .input::placeholder { color: #566174; } /* faint tier — measured ≥4.5:1 on every surface */
 .input:hover { border-color: #c9cfda; }
 .input:focus { border-color: var(--accent); }
+
+/* ── Premium lighting (dashboard) ──────────────────────────────────────────────
+   "Premium" on a light theme is depth and warmth, not more colour: a warm wash that
+   reads as light falling on paper, shadows in two layers (contact + ambient, both
+   tinted toward the gold so they sit in the same light), a 1px top highlight that
+   makes a card read as a raised surface, and ONE accent hue for every chip instead of
+   a rainbow. Every colour here is a palette hex or an rgba of one. Text contrast is
+   unaffected: the warm wash never exceeds the 15 % gold tint the contrast guard
+   measures the faint tier against. */
+.card-premium {
+  position: relative;
+  background:
+    linear-gradient(160deg, #ffffff 0%, #ffffff 58%, rgba(217, 166, 58, 0.10) 100%);
+  border: 1px solid rgba(122, 92, 18, 0.14);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 1px 2px rgba(20, 22, 28, 0.05),
+    0 12px 32px rgba(122, 92, 18, 0.08),
+    0 28px 64px rgba(20, 22, 28, 0.05);
+}
+/* The hero's light source: a warm glow top-right, a cool one bottom-left, clipped. */
+.hero-wash { overflow: hidden; }
+.hero-wash::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 55% 70% at 100% 0%, rgba(217, 166, 58, 0.22), transparent 65%),
+    radial-gradient(ellipse 45% 55% at 0% 100%, rgba(29, 78, 216, 0.06), transparent 65%);
+}
+.hero-wash > * { position: relative; }
+
+/* Inner tile on a premium card: frosted white so the wash shows through faintly. */
+.tile-frost {
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(122, 92, 18, 0.10);
+  backdrop-filter: blur(8px);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 1px 2px rgba(20, 22, 28, 0.04);
+  transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+}
+.tile-frost:hover {
+  transform: translateY(-2px);
+  border-color: rgba(122, 92, 18, 0.28);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 10px 24px rgba(122, 92, 18, 0.12);
+}
+
+/* Gold icon chip — one hue for every KPI and action, so the eye reads a system. */
+.chip-gold {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #7a5c12;
+  background: linear-gradient(145deg, rgba(217, 166, 58, 0.26), rgba(217, 166, 58, 0.06));
+  border: 1px solid rgba(122, 92, 18, 0.16);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+}
+
+/* Primary gold button with a light source: top highlight, gradient body, gold ambient shadow. */
+.btn-gold {
+  color: #14161c;
+  background: linear-gradient(180deg, #d9a63a 0%, #c8901f 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.38), 0 1px 2px rgba(20, 22, 28, 0.08), 0 8px 20px rgba(217, 166, 58, 0.38);
+  transition: transform 0.15s, box-shadow 0.15s, filter 0.15s;
+}
+.btn-gold:hover { filter: brightness(1.04); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.38), 0 2px 4px rgba(20, 22, 28, 0.08), 0 12px 28px rgba(217, 166, 58, 0.45); }
+.btn-gold:active { transform: scale(0.985); }
+.btn-gold:disabled { filter: none; box-shadow: none; opacity: 0.5; }
+
+/* Section eyebrow with a short gold rule — quieter than a heading, richer than a label. */
+.eyebrow-gold {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.68rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: #7a5c12;
+}
+.eyebrow-gold::before { content: ""; width: 1.25rem; height: 2px; border-radius: 2px; background: linear-gradient(90deg, #d9a63a, #7a5c12); }
+
+/* Hairline that fades at both ends — a divider that belongs to the light, not a ruler. */
+.rule-gold { height: 1px; background: linear-gradient(90deg, transparent, rgba(122, 92, 18, 0.28), transparent); }
+
+/* Sticky nav as a lit glass shelf. */
+.nav-premium {
+  background: rgba(255, 255, 255, 0.78);
+  backdrop-filter: blur(14px);
+  border-bottom: 1px solid rgba(122, 92, 18, 0.10);
+  box-shadow: 0 8px 24px rgba(20, 22, 28, 0.04);
+}

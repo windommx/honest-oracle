@@ -214,7 +214,7 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen text-slate-800" style={{ background: "#f3f5f9" }}>
       {/* Top nav */}
-      <nav className="border-b border-black/10 bg-[#f3f5f9]/95 backdrop-blur-xl sticky top-0 z-50">
+      <nav className="nav-premium sticky top-0 z-50">
         <div className="max-w-screen-2xl mx-auto px-4 sm:px-8 py-4 flex items-center justify-between">
           <div className="flex items-center gap-x-8">
             <BookisdomLogo tagline />
@@ -241,7 +241,7 @@ export default function DashboardPage() {
               <button
                 onClick={upgrade}
                 disabled={upgrading || needLogin}
-                className="flex items-center gap-x-1.5 px-3.5 py-1.5 rounded-2xl bg-[#d9a63a] text-[#14161c] text-xs font-semibold hover:bg-[#c8901f] disabled:opacity-50 transition-colors"
+                className="btn-gold flex items-center gap-x-1.5 px-3.5 py-1.5 rounded-2xl text-xs font-semibold"
                 title="อัปเกรดเป็น Pro — cloud sync, version history, saga เต็มระบบ"
               >
                 {upgrading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Crown className="w-3.5 h-3.5" />}
@@ -253,42 +253,45 @@ export default function DashboardPage() {
       </nav>
 
       <main className="max-w-screen-2xl mx-auto px-4 sm:px-8 pt-8 pb-16">
-        {/* Header */}
-        <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-y-4 mb-8">
+        {/* Hero — header + KPIs on one lit surface. The light source is the card's own
+            warm wash (top-right), so the numbers read as printed on paper under a lamp. */}
+        <section className="card-premium hero-wash rounded-[2rem] p-6 sm:p-8 mb-8" aria-labelledby="dash-title">
+        <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-y-4">
           <div>
-            <div className="flex items-center gap-x-3">
-              <h1 className="text-3xl sm:text-4xl font-semibold tracking-tight">หนังสือของฉัน</h1>
-              <span className="px-3 py-1 text-xs font-mono tracking-wider bg-black/[0.03] border border-black/10 rounded-full text-[#7a5c12] self-start mt-2">BOOKISDOM</span>
-            </div>
+            <div className="eyebrow-gold mb-2">Bookisdom · ภาพรวม</div>
+            <h1 id="dash-title" className="text-3xl sm:text-4xl font-semibold tracking-tight">หนังสือของฉัน</h1>
             <p className="text-slate-600 mt-1 text-[15px]">จัดการโปรเจกต์ ต้นฉบับ และเครื่องมือ Bookisdom — ทุกตัวเลขวัดได้จริง</p>
           </div>
           <div className="flex items-center gap-x-3">
-            <Link href="/bookisdom" className="flex items-center gap-x-2 px-6 py-3 rounded-3xl bg-[#d9a63a] text-[#14161c] font-semibold text-sm hover:bg-[#c8901f] active:scale-[0.985] transition-all">
+            <Link href="/bookisdom" className="btn-gold flex items-center gap-x-2 px-6 py-3 rounded-3xl font-semibold text-sm">
               <Plus className="w-4 h-4" /> สร้างหนังสือใหม่
             </Link>
-            <button onClick={loadProjects} className="flex items-center justify-center w-11 h-11 rounded-3xl border border-black/10 hover:bg-black/[0.04] text-slate-600 hover:text-[#14161c] transition-colors" aria-label="รีเฟรชรายการ">
+            <button onClick={loadProjects} className="tile-frost flex items-center justify-center w-11 h-11 rounded-3xl text-slate-600 hover:text-[#14161c]" aria-label="รีเฟรชรายการ">
               <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
             </button>
           </div>
         </div>
 
+        <div className="rule-gold my-6" />
+
         {/* KPI stats — all real */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
-          <Kpi label="หนังสือทั้งหมด" value={String(stats.count)} icon={<BookOpen className="w-7 h-7" />} tint="text-[#7a5c12]/30" />
-          <Kpi label="คำทั้งหมด (ประเมิน)" value={fmt(stats.words)} icon={<FileText className="w-7 h-7" />} tint="text-sky-700" />
-          <Kpi label="แชร์สาธารณะ" value={String(stats.shared)} icon={<Share2 className="w-7 h-7" />} tint="text-violet-700" />
-          <Kpi label="ต้นฉบับ (ในเครื่อง)" value={String(manuscripts.length)} icon={<HardDrive className="w-7 h-7" />} tint="text-emerald-700" />
-          <Kpi label="ตัวอักษรที่บันทึก" value={fmt(localChars)} icon={<Type className="w-7 h-7" />} tint="text-fuchsia-700" />
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+          <Kpi label="หนังสือทั้งหมด" value={String(stats.count)} icon={<BookOpen className="w-5 h-5" />} />
+          <Kpi label="คำทั้งหมด (ประเมิน)" value={fmt(stats.words)} icon={<FileText className="w-5 h-5" />} />
+          <Kpi label="แชร์สาธารณะ" value={String(stats.shared)} icon={<Share2 className="w-5 h-5" />} />
+          <Kpi label="ต้นฉบับ (ในเครื่อง)" value={String(manuscripts.length)} icon={<HardDrive className="w-5 h-5" />} />
+          <Kpi label="ตัวอักษรที่บันทึก" value={fmt(localChars)} icon={<Type className="w-5 h-5" />} />
         </div>
+        </section>
 
         {/* Quick actions */}
         <div className="mb-8">
-          <div className="section-header mb-3 px-1 text-xs uppercase tracking-wider text-faint font-semibold">การดำเนินการด่วน</div>
+          <div className="eyebrow-gold mb-3 px-1">การดำเนินการด่วน</div>
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-            <QuickAction href="/bookisdom" icon={<Wand2 className="w-6 h-6" />} title="เครื่องมือ prompt" sub="สร้างชุด prompt แต่งหนังสือคุณภาพสูง" cta="เปิดเครื่องมือ" tone="from-indigo-500/20 to-violet-500/10 text-indigo-700" />
-            <QuickAction href="/bookisdom/studio" icon={<Play className="w-6 h-6" />} title="Bookisdom Studio" sub="รัน prompt ด้วย API key ของคุณเอง" cta="เปิด Studio" tone="from-[#d9a63a]/20 to-[#c8901f]/10 text-[#7a5c12]" />
-            <QuickAction href="/bookisdom?tool=thai" icon={<Search className="w-6 h-6" />} title="วิเคราะห์ร้อยแก้ว" sub="ตรวจไทย/EN + NIS audit ฟรี ไม่เรียก AI" cta="เริ่มวิเคราะห์" tone="from-emerald-500/20 to-teal-500/10 text-emerald-700" />
-            <QuickAction href="/bookisdom/kdp" icon={<BookMarked className="w-6 h-6" />} title="เตรียมส่ง KDP" sub="สันปก ขนาดปก และเช็กลิสต์ metadata — สูตรจริงของ Amazon" cta="คำนวณ" tone="from-amber-500/20 to-orange-500/10 text-amber-800" />
+            <QuickAction href="/bookisdom" icon={<Wand2 className="w-5 h-5" />} title="เครื่องมือ prompt" sub="สร้างชุด prompt แต่งหนังสือคุณภาพสูง" cta="เปิดเครื่องมือ" />
+            <QuickAction href="/bookisdom/studio" icon={<Play className="w-5 h-5" />} title="Bookisdom Studio" sub="รัน prompt ด้วย API key ของคุณเอง" cta="เปิด Studio" />
+            <QuickAction href="/bookisdom?tool=thai" icon={<Search className="w-5 h-5" />} title="วิเคราะห์ร้อยแก้ว" sub="ตรวจไทย/EN + NIS audit ฟรี ไม่เรียก AI" cta="เริ่มวิเคราะห์" />
+            <QuickAction href="/bookisdom/kdp" icon={<BookMarked className="w-5 h-5" />} title="เตรียมส่ง KDP" sub="สันปก ขนาดปก และเช็กลิสต์ metadata — สูตรจริงของ Amazon" cta="คำนวณ" />
           </div>
         </div>
 
@@ -296,7 +299,7 @@ export default function DashboardPage() {
         <div className="mb-8">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-y-3 mb-4 px-1">
             <div>
-              <div className="text-xs uppercase tracking-wider text-faint font-semibold mb-1">โปรเจกต์นิยายและหนังสือ</div>
+              <div className="eyebrow-gold mb-1">โปรเจกต์นิยายและหนังสือ</div>
               <div className="text-xl font-semibold tracking-tight">My Library <span className="text-slate-600 font-normal text-base">({stats.count})</span></div>
             </div>
             <div className="flex flex-wrap items-center gap-2">
@@ -306,7 +309,7 @@ export default function DashboardPage() {
               </div>
               <div className="flex items-center bg-black/[0.03] border border-black/10 rounded-3xl p-1 text-xs">
                 {([["all", "ทั้งหมด"], ["private", "ส่วนตัว"], ["public", "แชร์"]] as const).map(([k, label]) => (
-                  <button key={k} onClick={() => setFilter(k)} aria-pressed={filter === k} className={`px-3.5 py-1.5 rounded-[20px] font-medium transition-colors ${filter === k ? "bg-[#d9a63a] text-[#14161c]" : "text-slate-600 hover:text-[#14161c]"}`}>{label}</button>
+                  <button key={k} onClick={() => setFilter(k)} aria-pressed={filter === k} className={`px-3.5 py-1.5 rounded-[20px] font-medium transition-colors ${filter === k ? "btn-gold" : "text-slate-600 hover:text-[#14161c]"}`}>{label}</button>
                 ))}
               </div>
               <select value={sort} onChange={(e) => setSort(e.target.value as Sort)} className="bg-black/[0.03] border border-black/10 rounded-3xl px-3 py-2 text-xs text-slate-700 outline-none">
@@ -325,7 +328,7 @@ export default function DashboardPage() {
           )}
 
           {!loading && needLogin && (
-            <div className="glass-card rounded-3xl p-10 text-center">
+            <div className="card-premium rounded-3xl p-10 text-center">
               <Lock className="w-10 h-10 mx-auto mb-3 text-[#7a5c12]/40" />
               <p className="text-slate-700">เข้าสู่ระบบเพื่อบันทึกและจัดการหนังสือของคุณ</p>
               <Link href="/login?callbackUrl=/bookisdom/dashboard" className="inline-block mt-4 text-sm text-[#7a5c12] hover:underline">ไปหน้าเข้าสู่ระบบ →</Link>
@@ -334,7 +337,7 @@ export default function DashboardPage() {
           )}
 
           {!loading && !needLogin && setupDetail && (
-            <div className="glass-card rounded-3xl p-10 text-center">
+            <div className="card-premium rounded-3xl p-10 text-center">
               <Wrench className="w-10 h-10 mx-auto mb-3 text-[#7a5c12]/50" />
               <p className="text-slate-700">เซิร์ฟเวอร์ยังตั้งค่าไม่เสร็จ</p>
               <p className="text-xs text-faint mt-1.5 max-w-md mx-auto">{setupDetail}</p>
@@ -351,7 +354,7 @@ export default function DashboardPage() {
           )}
 
           {!loading && !needLogin && !setupDetail && loadError && (
-            <div className="glass-card rounded-3xl p-10 text-center">
+            <div className="card-premium rounded-3xl p-10 text-center">
               <CloudOff className="w-10 h-10 mx-auto mb-3 text-rose-700" />
               <p className="text-slate-700">โหลดรายการหนังสือไม่สำเร็จ</p>
               <p className="text-xs text-faint mt-1.5">
@@ -367,7 +370,7 @@ export default function DashboardPage() {
           )}
 
           {!loading && !needLogin && !setupDetail && !loadError && projects.length === 0 && (
-            <div className="glass-card rounded-3xl p-10 text-center text-faint">
+            <div className="card-premium rounded-3xl p-10 text-center text-faint">
               <BookOpen className="w-10 h-10 mx-auto mb-3 text-[#7a5c12]/40" />
               <p>ยังไม่มีหนังสือที่บันทึกไว้</p>
               <Link href="/bookisdom" className="inline-flex items-center gap-1 mt-4 text-sm text-[#7a5c12] hover:underline">เริ่มเล่มแรก <ArrowRight className="w-4 h-4" /></Link>
@@ -395,7 +398,7 @@ export default function DashboardPage() {
 
           {/* List */}
           {!loading && !needLogin && view === "list" && visible.length > 0 && (
-            <div className="glass-card rounded-3xl overflow-hidden overflow-x-auto">
+            <div className="card-premium rounded-3xl overflow-hidden overflow-x-auto">
               <table className="w-full text-sm min-w-[640px]">
                 <thead>
                   <tr className="border-b border-black/10 text-xs text-slate-600">
@@ -435,11 +438,11 @@ export default function DashboardPage() {
           <div className="xl:col-span-3">
             <div className="flex items-center justify-between mb-3 px-1">
               <div>
-                <div className="text-xs uppercase tracking-wider text-faint font-semibold">ต้นฉบับที่บันทึก (ในเครื่องนี้)</div>
+                <div className="eyebrow-gold">ต้นฉบับที่บันทึก (ในเครื่องนี้)</div>
                 <div className="text-sm text-slate-600">เก็บฝั่งเบราว์เซอร์ ไม่ขึ้น server — เปิดได้เฉพาะเครื่องนี้</div>
               </div>
             </div>
-            <div className="glass-card rounded-3xl p-1">
+            <div className="card-premium rounded-3xl p-1">
               {manuscripts.length === 0 ? (
                 <p className="text-center text-faint text-sm py-10">ยังไม่มีต้นฉบับ — บันทึกจาก analyzer หรือ Studio</p>
               ) : (
@@ -459,7 +462,7 @@ export default function DashboardPage() {
                         <tr key={m.id} className="hover:bg-black/[0.04]">
                           <td className="px-5 py-3.5 font-medium truncate max-w-[200px]" title={m.title}>{m.title}</td>
                           <td className="px-4 text-center">
-                            <span className={`inline-block text-[10px] px-2 py-px rounded ${m.lang === "th" ? "bg-sky-900/60 text-sky-700" : "bg-violet-900/60 text-violet-700"}`}>{m.lang === "th" ? "ไทย" : "EN"}</span>
+                            <span className={`inline-block text-[10px] px-2 py-px rounded ${m.lang === "th" ? "bg-sky-100 text-sky-700" : "bg-violet-100 text-violet-700"}`}>{m.lang === "th" ? "ไทย" : "EN"}</span>
                           </td>
                           <td className="px-4 text-right font-mono text-xs text-slate-700">{m.text.length.toLocaleString("th-TH")}</td>
                           <td className="px-5 text-right text-xs text-slate-600">{fmtDate(m.updatedAt)}</td>
@@ -484,8 +487,8 @@ export default function DashboardPage() {
 
           {/* Honest summary panel (replaces fabricated "AI Insights") */}
           <div className="xl:col-span-2">
-            <div className="text-xs uppercase tracking-wider text-faint font-semibold px-1 mb-3">สรุปการใช้งาน (ในเครื่องนี้)</div>
-            <div className="glass-card rounded-3xl p-5 h-full flex flex-col">
+            <div className="eyebrow-gold px-1 mb-3">สรุปการใช้งาน (ในเครื่องนี้)</div>
+            <div className="card-premium rounded-3xl p-5 h-full flex flex-col">
               <div className="grid grid-cols-3 gap-3 text-center">
                 <Mini value={String(stats.count)} label="หนังสือ" />
                 <Mini value={String(manuscripts.length)} label="ต้นฉบับ" />
@@ -522,24 +525,24 @@ function NavTab({ href, icon, label, active }: { href: string; icon: React.React
   );
 }
 
-function Kpi({ label, value, icon, tint }: { label: string; value: string; icon: React.ReactNode; tint: string }) {
+function Kpi({ label, value, icon }: { label: string; value: string; icon: React.ReactNode }) {
   return (
-    <div className="glass-card rounded-3xl p-5 hover:-translate-y-0.5 transition-transform">
-      <div className="flex justify-between items-start">
-        <div>
+    <div className="tile-frost rounded-2xl p-5">
+      <div className="flex justify-between items-start gap-3">
+        <div className="min-w-0">
           <div className="text-xs text-faint font-medium tracking-wider">{label}</div>
           <div className="text-3xl sm:text-4xl font-semibold text-[#14161c] mt-1 tabular-nums">{value}</div>
         </div>
-        <span className={tint}>{icon}</span>
+        <span className="chip-gold w-10 h-10 rounded-xl flex-shrink-0" aria-hidden="true">{icon}</span>
       </div>
     </div>
   );
 }
 
-function QuickAction({ href, icon, title, sub, cta, tone }: { href: string; icon: React.ReactNode; title: string; sub: string; cta: string; tone: string }) {
+function QuickAction({ href, icon, title, sub, cta }: { href: string; icon: React.ReactNode; title: string; sub: string; cta: string }) {
   return (
-    <Link href={href} className="group glass-card rounded-3xl p-5 hover:border-[#7a5c12]/40 transition-colors flex gap-x-4">
-      <div className={`w-11 h-11 flex-shrink-0 rounded-2xl bg-gradient-to-br ${tone} flex items-center justify-center group-hover:scale-110 transition-transform`}>{icon}</div>
+    <Link href={href} className="group card-premium rounded-3xl p-5 flex gap-x-4 hover:-translate-y-0.5 transition-transform">
+      <div className="chip-gold w-11 h-11 flex-shrink-0 rounded-2xl group-hover:scale-105 transition-transform" aria-hidden="true">{icon}</div>
       <div className="flex-1 min-w-0">
         <div className="font-semibold text-lg tracking-tight">{title}</div>
         <div className="text-sm text-slate-600 mt-0.5">{sub}</div>
