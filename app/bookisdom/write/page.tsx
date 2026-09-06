@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   BookOpen, Plus, ChevronUp, ChevronDown, Check, Loader2, Save, Search, BookDown, FileDown, Pin, PinOff,
-  Wand2, LayoutGrid, Play, BookMarked, PenLine, StickyNote, Library,
+  Wand2, LayoutGrid, Play, BookMarked, PenLine, StickyNote, Library, Printer, Type as TypeIcon, Columns3,
 } from "lucide-react";
 import { toast } from "../_toast";
 import { BookisdomLogo } from "../_logo";
@@ -18,9 +18,10 @@ import {
   createBook, listBooks, updateBook, deleteBook, listChapters, addChapter, updateChapter, deleteChapter, moveChapter,
   addNote, listNotes, updateNote, deleteNote,
   compileBook, chaptersForEpub, exportMarkdown, exportText, bookProgress, countBookWords, notesToCodex, sendCodexToPromptTool,
-  STATUS_LABEL, NOTE_META, NOTE_TYPES,
-  type WritingBook, type WritingChapter, type WritingNote, type BookStatus, type NoteType,
+  STATUS_LABEL, NOTE_META, NOTE_TYPES, exportPrintHtml, recordWritingDelta, listWritingDays,
+  type WritingBook, type WritingChapter, type WritingNote, type BookStatus, type NoteType, type WritingDay,
 } from "../_writing-store";
+import { SnapshotPanel, ChapterAnalysis, SpeakButton, WritingHeatmap, PlotBoard } from "../_writer-pro";
 
 // ╔══════════════════════════════════════════════════════════════════╗
 // ║  /bookisdom/write — ห้องเขียน. Absorbed from InkStudio and wired  ║
@@ -34,7 +35,7 @@ import {
 const AUTOSAVE_MS = 1200;
 const fmt = (n: number) => n.toLocaleString("en-US");
 
-type Pane = "books" | "write" | "notes";
+type Pane = "books" | "write" | "plot" | "notes";
 
 export default function WritePage() {
   const router = useRouter();
@@ -48,6 +49,9 @@ export default function WritePage() {
   const [newTitle, setNewTitle] = useState("");
   const [newLang, setNewLang] = useState<"th" | "en">("th");
   const [newTarget, setNewTarget] = useState("");
+  const [days, setDays] = useState<WritingDay[]>([]);
+  const refreshDays = useCallback(async () => setDays(await listWritingDays()), []);
+  useEffect(() => { void refreshDays(); }, [refreshDays]);
 
   const book = useMemo(() => books.find((b) => b.id === bookId) ?? null, [books, bookId]);
   const chapter = useMemo(() => chapters.find((c) => c.id === chapterId) ?? null, [chapters, chapterId]);
@@ -118,9 +122,11 @@ export default function WritePage() {
   }
 
   // ── bridges ──
+  // Every bridge reads the chapters FRESH from the store at click time — the in-memory list
+  // is refreshed after a save finishes, and a click can land in that window.
   async function compileAndAnalyze() {
     if (!book) return;
-    const text = compileBook(book, chapters);
+    const text = compileBook(book, await listChapters(book.id));
     if (!text.trim()) { toast("ยังไม่มีเนื้อหาให้วิเคราะห์", { variant: "error" }); return; }
     try {
       const m = await saveManuscript({ title: book.title, lang: book.lang, text });
@@ -130,9 +136,9 @@ export default function WritePage() {
       toast(e instanceof Error ? e.message : "บันทึกต้นฉบับไม่สำเร็จ", { variant: "error" });
     }
   }
-  function exportEpub() {
+  async function exportEpub() {
     if (!book) return;
-    const bytes = buildEpub({ title: book.title, author: book.author || undefined, language: book.lang, chapters: chaptersForEpub(book, chapters) });
+    const bytes = buildEpub({ title: book.title, author: book.author || undefined, language: book.lang, chapters: chaptersForEpub(book, await listChapters(book.id)) });
     const blob = new Blob([bytes as BlobPart], { type: "application/epub+zip" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a"); a.href = url; a.download = `${book.title}.epub`; a.click();
@@ -166,7 +172,7 @@ export default function WritePage() {
 
       {/* Mobile pane switcher */}
       <div className="lg:hidden sticky top-[57px] z-40 bg-[#f8f8f8]/95 backdrop-blur border-b border-black/10 px-4 py-2 flex gap-2" role="tablist" aria-label="ส่วนของห้องเขียน">
-        {([["books", "เล่ม", Library], ["write", "เขียน", PenLine], ["notes", "โน้ต", StickyNote]] as const).map(([k, label, Icon]) => (
+        {([["books", "เล่ม", Library], ["write", "เขียน", PenLine], ["plot", "ผัง", Columns3], ["notes", "โน้ต", StickyNote]] as const).map(([k, label, Icon]) => (
           <button key={k} role="tab" aria-selected={pane === k} onClick={() => setPane(k)}
             className={`flex-1 flex items-center justify-center gap-1.5 text-xs px-3 py-2 rounded-xl border ${pane === k ? "btn-brand border-transparent font-semibold" : "border-black/10 text-slate-600 bg-white"}`}>
             <Icon className="w-3.5 h-3.5" /> {label}
@@ -229,14 +235,28 @@ export default function WritePage() {
           )}
         </aside>
 
-        {/* ── centre: editor ── */}
-        <section className={`${pane === "write" ? "" : "hidden"} lg:block`}>
-          {book && chapter ? (
+        {/* ── centre: editor or plot board ── */}
+        <section className={`${pane === "write" || pane === "plot" ? "" : "hidden"} lg:block min-w-0`}>
+          {book && (
+            <div className="hidden lg:flex items-center gap-1 mb-3" role="tablist" aria-label="มุมมองกลาง">
+              {([["write", "เขียน", PenLine], ["plot", "ผังเรื่อง", Columns3]] as const).map(([k, label, Icon]) => {
+                const on = k === "plot" ? pane === "plot" : pane !== "plot";
+                return (
+                  <button key={k} role="tab" aria-selected={on} onClick={() => setPane(k)} className={`text-xs px-3 py-1.5 rounded-lg border flex items-center gap-1.5 ${on ? "btn-brand border-transparent font-semibold" : "border-black/10 text-slate-600 bg-white"}`}><Icon className="w-3.5 h-3.5" /> {label}</button>
+                );
+              })}
+            </div>
+          )}
+          {book && pane === "plot" ? (
+            <PlotBoard bookId={book.id} />
+          ) : book && chapter ? (
             <ChapterEditor
               key={chapter.id}
               chapter={chapter}
               lang={book.lang}
-              onSaved={async () => { if (bookId) await refreshChapters(bookId); }}
+              bookId={book.id}
+              codexNames={notes.filter((n) => NOTE_META[n.type].codexSection && n.type !== "THREAD").map((n) => n.title.trim()).filter(Boolean)}
+              onSaved={async () => { if (bookId) await refreshChapters(bookId); await refreshDays(); }}
             />
           ) : (
             <div className="card-premium rounded-3xl p-10 text-center">
@@ -275,17 +295,19 @@ export default function WritePage() {
               <div className="eyebrow-brand mb-2">ส่งต่อ</div>
               <div className="space-y-2">
                 <button onClick={() => void compileAndAnalyze()} className="w-full text-xs py-2 rounded-xl border border-[#1d4ed8]/30 text-[#1d4ed8] hover:bg-[#3c74d4]/10 flex items-center justify-center gap-1.5"><Search className="w-3.5 h-3.5" /> รวมเล่มเป็นต้นฉบับ → วิเคราะห์</button>
-                <button onClick={exportEpub} className="w-full text-xs py-2 rounded-xl border border-black/10 text-slate-700 hover:bg-black/[0.04] flex items-center justify-center gap-1.5"><BookDown className="w-3.5 h-3.5" /> ดาวน์โหลด EPUB</button>
+                <button onClick={() => void exportEpub()} className="w-full text-xs py-2 rounded-xl border border-black/10 text-slate-700 hover:bg-black/[0.04] flex items-center justify-center gap-1.5"><BookDown className="w-3.5 h-3.5" /> ดาวน์โหลด EPUB</button>
                 <div className="grid grid-cols-2 gap-2">
-                  <button onClick={() => downloadBlob(`${book.title}.md`, exportMarkdown(book, chapters), "text/markdown")} className="text-xs py-2 rounded-xl border border-black/10 text-slate-700 hover:bg-black/[0.04] flex items-center justify-center gap-1.5"><FileDown className="w-3.5 h-3.5" /> .md</button>
-                  <button onClick={() => downloadBlob(`${book.title}.txt`, exportText(book, chapters), "text/plain")} className="text-xs py-2 rounded-xl border border-black/10 text-slate-700 hover:bg-black/[0.04] flex items-center justify-center gap-1.5"><FileDown className="w-3.5 h-3.5" /> .txt</button>
+                  <button onClick={async () => downloadBlob(`${book.title}.md`, exportMarkdown(book, await listChapters(book.id)), "text/markdown")} className="text-xs py-2 rounded-xl border border-black/10 text-slate-700 hover:bg-black/[0.04] flex items-center justify-center gap-1.5"><FileDown className="w-3.5 h-3.5" /> .md</button>
+                  <button onClick={async () => downloadBlob(`${book.title}.txt`, exportText(book, await listChapters(book.id)), "text/plain")} className="text-xs py-2 rounded-xl border border-black/10 text-slate-700 hover:bg-black/[0.04] flex items-center justify-center gap-1.5"><FileDown className="w-3.5 h-3.5" /> .txt</button>
                 </div>
+                <button onClick={async () => { const html = exportPrintHtml(book, await listChapters(book.id)); const w = window.open("", "_blank"); if (!w) { toast("เบราว์เซอร์บล็อกหน้าต่างใหม่ — อนุญาต pop-up แล้วลองอีกครั้ง", { variant: "error" }); return; } w.document.write(html); w.document.close(); w.focus(); }} className="w-full text-xs py-2 rounded-xl border border-black/10 text-slate-700 hover:bg-black/[0.04] flex items-center justify-center gap-1.5"><Printer className="w-3.5 h-3.5" /> พิมพ์ / บันทึก PDF (A5)</button>
                 <button onClick={sendCodex} className="w-full text-xs py-2 rounded-xl border border-[#1d4ed8]/30 text-[#1d4ed8] hover:bg-[#3c74d4]/10 flex items-center justify-center gap-1.5"><Wand2 className="w-3.5 h-3.5" /> ส่งโน้ตเข้า Story Codex</button>
                 <p className="text-[0.65rem] text-faint">Codex รับเฉพาะโน้ตประเภท ตัวละคร · สถานที่ · สิ่งของ · ปมค้าง — บรรทัด &quot;อยาก: …&quot; / &quot;เสียง: …&quot; ในโน้ตตัวละครกลายเป็น trait</p>
               </div>
             </section>
           )}
 
+          {book && <section className="card-premium rounded-3xl p-4"><WritingHeatmap days={days} /></section>}
           {book && <NotesPanel bookId={book.id} notes={notes} onChange={() => void refreshNotes(book.id)} />}
         </aside>
       </main>
@@ -294,26 +316,49 @@ export default function WritePage() {
 }
 
 // ── editor (remounted per chapter via key) ─────────────────────────────
-function ChapterEditor({ chapter, lang, onSaved }: { chapter: WritingChapter; lang: "th" | "en"; onSaved: () => Promise<void> }) {
+function ChapterEditor({ chapter, lang, bookId, codexNames, onSaved }: { chapter: WritingChapter; lang: "th" | "en"; bookId: string; codexNames: string[]; onSaved: () => Promise<void> }) {
   const [title, setTitle] = useState(chapter.title);
   const [content, setContent] = useState(chapter.content);
   const [state, setState] = useState<"idle" | "dirty" | "saving" | "saved">("idle");
   const [words, setWords] = useState<number | null>(null);
+  const [typewriter, setTypewriter] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const latest = useRef({ title, content });
   latest.current = { title, content };
+  const lastSavedWords = useRef<number | null>(null);
+  const areaRef = useRef<HTMLTextAreaElement | null>(null);
 
-  const recount = useCallback(async (text: string) => setWords(await countManuscriptWords({ lang, text })), [lang]);
-  useEffect(() => { void recount(chapter.content); }, [chapter.content, recount]);
+  const recount = useCallback(async (text: string) => {
+    const n = await countManuscriptWords({ lang, text });
+    setWords(n);
+    return n;
+  }, [lang]);
+  useEffect(() => { void recount(chapter.content).then((n) => { if (lastSavedWords.current === null) lastSavedWords.current = n; }); }, [chapter.content, recount]);
+  // A snapshot restore rewrites the chapter from outside the editor: adopt the new text
+  // unless the writer has unsaved keystrokes, which must never be silently discarded.
+  useEffect(() => { if (state === "idle" || state === "saved") setContent(chapter.content); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [chapter.content]);
 
   const persist = useCallback(async () => {
     setState("saving");
     const { title: t, content: c } = latest.current;
     await updateChapter(chapter.id, { title: t, content: c });
-    await recount(c);
+    const n = await recount(c);
+    // Words WRITTEN since the last save feed the heatmap — positive deltas only.
+    await recordWritingDelta(bookId, lastSavedWords.current ?? n, n);
+    lastSavedWords.current = n;
     await onSaved();
     setState("saved");
-  }, [chapter.id, onSaved, recount]);
+  }, [chapter.id, bookId, onSaved, recount]);
+
+  /** Typewriter mode: keep the caret's line near the vertical middle (iA Writer style).
+   *  Line index is counted by newlines before the caret — an approximation for wrapped
+   *  lines, and said so in the title attribute. */
+  const centreCaret = () => {
+    const ta = areaRef.current; if (!typewriter || !ta) return;
+    const line = ta.value.slice(0, ta.selectionStart).split("\n").length - 1;
+    const lh = parseFloat(getComputedStyle(ta).lineHeight) || 24;
+    ta.scrollTop = Math.max(0, line * lh - ta.clientHeight / 2);
+  };
 
   const schedule = () => {
     setState("dirty");
@@ -331,9 +376,15 @@ function ChapterEditor({ chapter, lang, onSaved }: { chapter: WritingChapter; la
           {state === "saving" && <><Loader2 className="w-3 h-3 animate-spin" /> กำลังบันทึก…</>}
           {state === "saved" && <><Check className="w-3 h-3 text-[#166534]" /> บันทึกแล้ว</>}
         </span>
-        <button onClick={() => { if (timer.current) clearTimeout(timer.current); void persist(); }} disabled={state === "idle" || state === "saving"} className="ml-auto text-xs px-3 py-1.5 rounded-lg border border-black/10 text-slate-700 hover:bg-black/[0.04] disabled:opacity-50 flex items-center gap-1.5">
-          <Save className="w-3.5 h-3.5" /> บันทึกเดี๋ยวนี้
-        </button>
+        <div className="ml-auto flex items-center gap-1.5">
+          <button onClick={() => setTypewriter((v) => !v)} aria-pressed={typewriter} title="โหมดพิมพ์ดีด: เลื่อนให้บรรทัดที่พิมพ์อยู่กลางจอ (นับบรรทัดจากขึ้นบรรทัดใหม่ — โดยประมาณเมื่อบรรทัดยาวถูกตัด)" className={`text-xs px-2.5 py-1.5 rounded-lg border flex items-center gap-1.5 ${typewriter ? "border-[#1d4ed8] text-[#1d4ed8] bg-[#3c74d4]/10" : "border-black/10 text-slate-700 hover:bg-black/[0.04]"}`}>
+            <TypeIcon className="w-3.5 h-3.5" /> พิมพ์ดีด
+          </button>
+          <SpeakButton text={content} lang={lang} />
+          <button onClick={() => { if (timer.current) clearTimeout(timer.current); void persist(); }} disabled={state === "idle" || state === "saving"} className="text-xs px-3 py-1.5 rounded-lg border border-black/10 text-slate-700 hover:bg-black/[0.04] disabled:opacity-50 flex items-center gap-1.5">
+            <Save className="w-3.5 h-3.5" /> บันทึกเดี๋ยวนี้
+          </button>
+        </div>
       </div>
       <input value={title} onChange={(e) => { setTitle(e.target.value); schedule(); }} placeholder="ชื่อบท" className="w-full text-lg font-semibold bg-transparent outline-none border-b border-transparent focus:border-[#1d4ed8]/40 py-1 mb-2" aria-label="ชื่อบท" />
       <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-faint border-y border-black/10 py-2 mb-3" data-testid="chapter-counts">
@@ -341,7 +392,9 @@ function ChapterEditor({ chapter, lang, onSaved }: { chapter: WritingChapter; la
         <span>{fmt(content.length)} ตัวอักษร</span>
         <span className="text-slate-600">{lang === "th" ? "นับด้วยตัวตัดคำไทย" : "นับด้วย tokenizer อังกฤษ"}</span>
       </div>
-      <textarea value={content} onChange={(e) => { setContent(e.target.value); schedule(); }} placeholder="เริ่มพิมพ์เรื่องราวของคุณ… ระบบบันทึกอัตโนมัติเมื่อหยุดพิมพ์ 1.2 วินาที" className="w-full min-h-[440px] leading-relaxed text-[15px] bg-transparent outline-none resize-y" aria-label="เนื้อหาบท" />
+      <textarea ref={areaRef} value={content} onChange={(e) => { setContent(e.target.value); schedule(); centreCaret(); }} onKeyUp={centreCaret} onClick={centreCaret} placeholder="เริ่มพิมพ์เรื่องราวของคุณ… ระบบบันทึกอัตโนมัติเมื่อหยุดพิมพ์ 1.2 วินาที" className="w-full min-h-[440px] leading-relaxed text-[15px] bg-transparent outline-none resize-y" style={typewriter ? { paddingBottom: "40vh", maxHeight: "70vh", overflowY: "auto" } : undefined} aria-label="เนื้อหาบท" />
+      <SnapshotPanel chapterId={chapter.id} onRestored={() => void onSaved()} />
+      <ChapterAnalysis text={content} lang={lang} codexNames={codexNames} />
     </div>
   );
 }

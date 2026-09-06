@@ -144,3 +144,117 @@ describe("notesToCodex — notes become the prompt tool's Story Codex, in parseC
     expect((await listNotes(b.id)).map((n) => n.title)).toEqual(["a"]);
   });
 });
+
+// ═══ Pro additions ═══
+import {
+  takeSnapshot, listSnapshots, restoreSnapshot, deleteSnapshot,
+  addPlotLine, listPlotLines, renamePlotLine, deletePlotLine, addPlotCard, listPlotCards, updatePlotCard, deletePlotCard, applyTemplate,
+  plotToOutline, mergeOutlineIntoDraft, sendOutlineToPromptTool, OUTLINE_MARK_BEGIN,
+  recordWritingDelta, listWritingDays, heatmapWeeks, heatLevel, localDayKey, exportPrintHtml,
+} from "./_writing-store";
+import { STORY_TEMPLATES } from "@/lib/bookisdom-engine/story-templates";
+
+describe("snapshots — a version is a real copy, and a restore can itself be undone", () => {
+  it("snapshot stores the text and its tokenizer word count; restore swaps text but snapshots the current first", async () => {
+    const b = await createBook({ title: "snap", lang: "th" });
+    const [c] = await listChapters(b.id);
+    await updateChapter(c.id, { content: "ฝนตกลงมาเหมือนคนใจร้าย" });
+    const s1 = (await takeSnapshot(c.id, "ร่างแรก"))!;
+    expect(s1.words).toBeGreaterThan(2);
+    await updateChapter(c.id, { content: "แก้ใหม่ทั้งหมด" });
+    expect(await restoreSnapshot(s1.id)).toBe(true);
+    expect((await listChapters(b.id))[0].content).toBe("ฝนตกลงมาเหมือนคนใจร้าย");
+    const snaps = await listSnapshots(c.id);
+    expect(snaps).toHaveLength(2);
+    expect(snaps[0].label).toBe("ก่อนย้อนกลับ"); expect(snaps[0].content).toBe("แก้ใหม่ทั้งหมด");
+    await deleteSnapshot(snaps[0].id);
+    expect(await listSnapshots(c.id)).toHaveLength(1);
+    expect(await restoreSnapshot("missing")).toBe(false);
+  });
+});
+
+describe("plot board → outline for the prompt tool", () => {
+  it("lines and cards round-trip; deleting a line deletes its cards", async () => {
+    const b = await createBook({ title: "plot", lang: "th" });
+    const l1 = await addPlotLine(b.id, "เส้นหลัก");
+    const l2 = await addPlotLine(b.id, "");
+    expect(l2.title).toBe("เส้นเรื่อง 2");
+    await addPlotCard(l1.id, 0, "เปิดเรื่อง", "ฝนตก");
+    await addPlotCard(l1.id, 2, "พลิก");
+    const card = await addPlotCard(l2.id, 1, "เรื่องรอง");
+    await updatePlotCard(card.id, { colIndex: 0, description: "รักครั้งแรก" });
+    await renamePlotLine(l2.id, "เส้นรัก");
+    const cards = await listPlotCards(b.id);
+    expect(cards.map((c) => c.colIndex)).toEqual([0, 0, 2]);
+    const outline = plotToOutline(await listPlotLines(b.id), cards);
+    expect(outline).toBe("ฉาก 1:\n  - [เส้นหลัก] เปิดเรื่อง — ฝนตก\n  - [เส้นรัก] เรื่องรอง — รักครั้งแรก\nฉาก 3:\n  - [เส้นหลัก] พลิก");
+    await deletePlotCard(card.id);
+    await deletePlotLine(l1.id);
+    expect(await listPlotCards(b.id)).toEqual([]);
+    expect((await listPlotLines(b.id)).map((l) => l.title)).toEqual(["เส้นรัก"]);
+  });
+
+  it("applying a template adds a NEW line with one card per beat at its computed column, leaving existing cards alone", async () => {
+    const b = await createBook({ title: "tpl", lang: "th" });
+    const mine = await addPlotLine(b.id, "ของฉัน");
+    await addPlotCard(mine.id, 0, "การ์ดเดิม");
+    const line = (await applyTemplate(b.id, "three-act", 12))!;
+    expect(line.title).toContain("สามองก์");
+    const cards = await listPlotCards(b.id);
+    const tpl = cards.filter((c) => c.plotLineId === line.id);
+    expect(tpl).toHaveLength(9);
+    expect(tpl[0]).toMatchObject({ colIndex: 0, title: "คว้าใจตั้งแต่หน้าแรก" });
+    expect(tpl[tpl.length - 1].colIndex).toBe(11);
+    expect(cards.some((c) => c.title === "การ์ดเดิม")).toBe(true);
+    expect(await applyTemplate(b.id, "nope")).toBeNull();
+  });
+
+  it("outline merge is idempotent and lands in the prompt tool's draft `outline`, preserving other fields", () => {
+    const once = mergeOutlineIntoDraft("บทที่ 1 ของฉันเอง", "ฉาก 1:\n  - [a] x");
+    const twice = mergeOutlineIntoDraft(once, "ฉาก 1:\n  - [a] y");
+    expect(twice.startsWith("บทที่ 1 ของฉันเอง")).toBe(true);
+    expect(twice.split(OUTLINE_MARK_BEGIN)).toHaveLength(2);
+    expect(twice).toContain("[a] y"); expect(twice).not.toContain("[a] x");
+    window.localStorage.setItem(DRAFT_KEY, JSON.stringify({ config: { title: "T", outline: "เดิม" }, groups: [] }));
+    expect(sendOutlineToPromptTool("ฉาก 1:\n  - [a] x")).toEqual({ ok: true });
+    const d = JSON.parse(window.localStorage.getItem(DRAFT_KEY)!);
+    expect(d.config.title).toBe("T"); expect(d.config.outline).toContain("เดิม"); expect(d.config.outline).toContain("[a] x");
+  });
+});
+
+describe("writing days — words written, not words present", () => {
+  it("records only positive deltas, sums within a day per book, and buckets are a legend", async () => {
+    const b = await createBook({ title: "days", lang: "th" });
+    const day = new Date(2026, 8, 5, 10, 0, 0);
+    expect(await recordWritingDelta(b.id, 0, 120, day)).toBe(120);
+    expect(await recordWritingDelta(b.id, 120, 100, day)).toBe(0); // deleting is not negative writing
+    expect(await recordWritingDelta(b.id, 100, 180, day)).toBe(80);
+    const rows = (await listWritingDays()).filter((r) => r.bookId === b.id);
+    expect(rows).toEqual([{ key: `2026-09-05|${b.id}`, date: "2026-09-05", bookId: b.id, words: 200 }]);
+    expect([heatLevel(0), heatLevel(1), heatLevel(250), heatLevel(999), heatLevel(1000)]).toEqual([0, 1, 2, 3, 4]);
+  });
+
+  it("the 27-week grid starts on a Monday, ends on today's week, and marks days after today as future", () => {
+    const today = new Date(2026, 8, 5); // Saturday
+    const weeks = heatmapWeeks([{ key: "k", date: "2026-09-05", bookId: "b", words: 300 }, { key: "k2", date: "2026-09-05", bookId: "c", words: 50 }], today);
+    expect(weeks).toHaveLength(27);
+    expect(new Date(`${weeks[0][0].date}T00:00:00`).getDay()).toBe(1);
+    const flat = weeks.flat();
+    const sat = flat.find((d) => d.date === "2026-09-05")!;
+    expect(sat.words).toBe(350); expect(sat.future).toBe(false);
+    expect(flat.find((d) => d.date === "2026-09-06")!.future).toBe(true);
+    expect(localDayKey(new Date(2026, 0, 9))).toBe("2026-01-09");
+  });
+});
+
+describe("print export", () => {
+  it("escapes HTML, one section per chapter in order, paragraphs from blank lines", () => {
+    const book = { id: "b", title: "ชื่อ <เล่ม>", subtitle: "", author: "A & B", genre: "", lang: "th" as const, status: "DRAFT" as const, targetWords: 0, createdAt: 0, updatedAt: 0 };
+    const html = exportPrintHtml(book, [ch({ id: "2", title: "สอง", content: "ย่อหน้าหนึ่ง\n\nย่อหน้าสอง", order: 2 }), ch({ id: "1", title: "หนึ่ง", content: "<b>ไม่ใช่แท็ก</b>", order: 1 })]);
+    expect(html).toContain("<title>ชื่อ &lt;เล่ม&gt;</title>"); expect(html).toContain("A &amp; B");
+    expect(html.indexOf("บทที่ 1: หนึ่ง")).toBeLessThan(html.indexOf("บทที่ 2: สอง"));
+    expect(html).toContain("&lt;b&gt;ไม่ใช่แท็ก&lt;/b&gt;");
+    expect((html.match(/<p>/g) ?? [])).toHaveLength(3);
+    expect(html).toContain("@page{size:A5");
+  });
+});

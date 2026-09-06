@@ -14,7 +14,7 @@ import { titleCase } from "../_utils";
 import { listManuscripts, deleteManuscript, type StoredManuscript } from "../_manuscript-store";
 import { DeleteButton } from "../_ui";
 import { BookisdomLogo } from "../_logo";
-import { listBooks as listWritingBooks, listChapters as listWritingChapters, type WritingBook } from "../_writing-store";
+import { listBooks as listWritingBooks, listChapters as listWritingChapters, listWritingDays, localDayKey, type WritingBook } from "../_writing-store";
 import { ProductionLogPanel } from "../_production-log-panel";
 
 type Project = {
@@ -67,13 +67,15 @@ export default function DashboardPage() {
   const [logProject, setLogProject] = useState<Project | null>(null);
   const [manuscripts, setManuscripts] = useState<StoredManuscript[]>([]);
   // Writer Room (local, IndexedDB): counted from the same store the room writes to.
-  const [writing, setWriting] = useState<{ books: WritingBook[]; chapters: number }>({ books: [], chapters: 0 });
+  const [writing, setWriting] = useState<{ books: WritingBook[]; chapters: number; today: number }>({ books: [], chapters: 0, today: 0 });
   useEffect(() => {
     void (async () => {
       const books = await listWritingBooks();
       let chapters = 0;
       for (const b of books) chapters += (await listWritingChapters(b.id)).length;
-      setWriting({ books, chapters });
+      const today = localDayKey(new Date());
+      const wordsToday = (await listWritingDays()).filter((d) => d.date === today).reduce((sum, d) => sum + d.words, 0);
+      setWriting({ books, chapters, today: wordsToday });
     })();
   }, []);
   const [plan, setPlan] = useState<string>("free");
@@ -293,7 +295,7 @@ export default function DashboardPage() {
           <Kpi label="แชร์สาธารณะ" value={String(stats.shared)} icon={<Share2 className="w-5 h-5" />} />
           <Kpi label="ต้นฉบับ (ในเครื่อง)" value={String(manuscripts.length)} icon={<HardDrive className="w-5 h-5" />} />
           <Kpi label="ตัวอักษรที่บันทึก" value={fmt(localChars)} icon={<Type className="w-5 h-5" />} />
-          <Kpi label="ห้องเขียน (เล่ม·บท)" value={`${writing.books.length}·${writing.chapters}`} icon={<PenLine className="w-5 h-5" />} />
+          <Kpi label="คำที่เขียนวันนี้" value={fmt(writing.today)} icon={<PenLine className="w-5 h-5" />} />
         </div>
         </section>
 

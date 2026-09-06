@@ -74,16 +74,36 @@ export const NOTE_META: Record<NoteType, { label: string; codexSection: string |
 };
 export const NOTE_TYPES = Object.keys(NOTE_META) as NoteType[];
 
+export interface ChapterSnapshot { id: string; chapterId: string; label: string; content: string; words: number; createdAt: number }
+export interface PlotLine { id: string; bookId: string; title: string; order: number }
+export interface PlotCard { id: string; plotLineId: string; colIndex: number; title: string; description: string; createdAt: number }
+/** Words WRITTEN on a local calendar day (positive deltas between saves), per book. */
+export interface WritingDay { key: string; date: string; bookId: string; words: number }
+
 class WritingDB extends Dexie {
   books!: Table<WritingBook, string>;
   chapters!: Table<WritingChapter, string>;
   notes!: Table<WritingNote, string>;
+  snapshots!: Table<ChapterSnapshot, string>;
+  plotLines!: Table<PlotLine, string>;
+  plotCards!: Table<PlotCard, string>;
+  writingDays!: Table<WritingDay, string>;
   constructor() {
     super("bookisdom-writing");
     this.version(1).stores({
       books: "id, updatedAt, status",
       chapters: "id, bookId, order, updatedAt",
       notes: "id, bookId, type, updatedAt",
+    });
+    // v2 (Pro additions): snapshots, plot board, writing days. Additive — v1 data upgrades in place.
+    this.version(2).stores({
+      books: "id, updatedAt, status",
+      chapters: "id, bookId, order, updatedAt",
+      notes: "id, bookId, type, updatedAt",
+      snapshots: "id, chapterId, createdAt",
+      plotLines: "id, bookId, order",
+      plotCards: "id, plotLineId, colIndex",
+      writingDays: "key, date, bookId",
     });
   }
 }
@@ -293,4 +313,187 @@ export function sendCodexToPromptTool(generated: string): { ok: boolean; reason?
   } catch (e) {
     return { ok: false, reason: e instanceof Error ? e.message : "localStorage unavailable" };
   }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  Pro additions (absorbed from InkStudio Pro, 2026-09): chapter snapshots, plot board,
+//  writing days, print export. Same rules: local, deterministic, counts not verdicts.
+// ═══════════════════════════════════════════════════════════════════════════
+
+
+// ── snapshots ───────────────────────────────────────────────────────────
+export async function takeSnapshot(chapterId: string, label = ""): Promise<ChapterSnapshot | null> {
+  const d = db(); if (!d) return null;
+  const ch = await d.chapters.get(chapterId);
+  if (!ch) return null;
+  const book = await d.books.get(ch.bookId);
+  const words = await countManuscriptWords({ lang: book?.lang ?? "th", text: ch.content });
+  const snap: ChapterSnapshot = { id: newId(), chapterId, label: label.trim(), content: ch.content, words, createdAt: Date.now() };
+  await d.snapshots.put(snap);
+  return snap;
+}
+export async function listSnapshots(chapterId: string): Promise<ChapterSnapshot[]> {
+  const rows = (await db()?.snapshots.where("chapterId").equals(chapterId).toArray()) ?? [];
+  return rows.sort((a, b) => b.createdAt - a.createdAt);
+}
+/** Restore a snapshot's text into its chapter. The CURRENT text is snapshotted first
+ *  (label "ก่อนย้อนกลับ"), so a restore can itself be undone — nothing is ever lost. */
+export async function restoreSnapshot(snapshotId: string): Promise<boolean> {
+  const d = db(); if (!d) return false;
+  const snap = await d.snapshots.get(snapshotId);
+  if (!snap) return false;
+  await takeSnapshot(snap.chapterId, "ก่อนย้อนกลับ");
+  await updateChapter(snap.chapterId, { content: snap.content });
+  return true;
+}
+export async function deleteSnapshot(id: string): Promise<void> { await db()?.snapshots.delete(id); }
+
+// ── plot board ──────────────────────────────────────────────────────────
+export async function listPlotLines(bookId: string): Promise<PlotLine[]> {
+  const rows = (await db()?.plotLines.where("bookId").equals(bookId).toArray()) ?? [];
+  return rows.sort((a, b) => a.order - b.order);
+}
+export async function addPlotLine(bookId: string, title: string): Promise<PlotLine> {
+  const existing = await listPlotLines(bookId);
+  const line: PlotLine = { id: newId(), bookId, title: title.trim() || `เส้นเรื่อง ${existing.length + 1}`, order: existing.length ? existing[existing.length - 1].order + 1 : 1 };
+  await db()?.plotLines.put(line);
+  return line;
+}
+export async function renamePlotLine(id: string, title: string): Promise<void> { await db()?.plotLines.update(id, { title }); }
+export async function deletePlotLine(id: string): Promise<void> {
+  const d = db(); if (!d) return;
+  await d.transaction("rw", d.plotLines, d.plotCards, async () => {
+    await d.plotCards.where("plotLineId").equals(id).delete();
+    await d.plotLines.delete(id);
+  });
+}
+export async function listPlotCards(bookId: string): Promise<PlotCard[]> {
+  const d = db(); if (!d) return [];
+  const lines = await listPlotLines(bookId);
+  const ids = lines.map((l) => l.id);
+  const rows = await d.plotCards.where("plotLineId").anyOf(ids).toArray();
+  // Deterministic: by scene, then by plot-line order, then by creation. Storage order is
+  // not stable across runs, and this list feeds the outline the prompt is built from.
+  const lineOrder = new Map(lines.map((l) => [l.id, l.order]));
+  return rows.sort((a, b) => a.colIndex - b.colIndex || (lineOrder.get(a.plotLineId) ?? 0) - (lineOrder.get(b.plotLineId) ?? 0) || a.createdAt - b.createdAt);
+}
+export async function addPlotCard(plotLineId: string, colIndex: number, title: string, description = ""): Promise<PlotCard> {
+  const card: PlotCard = { id: newId(), plotLineId, colIndex: Math.max(0, Math.floor(colIndex)), title: title.trim(), description: description.trim(), createdAt: Date.now() };
+  await db()?.plotCards.put(card);
+  return card;
+}
+export async function updatePlotCard(id: string, patch: Partial<Pick<PlotCard, "title" | "description" | "colIndex">>): Promise<void> {
+  await db()?.plotCards.update(id, patch);
+}
+export async function deletePlotCard(id: string): Promise<void> { await db()?.plotCards.delete(id); }
+
+/** Lay a structure template on the board as a NEW plot line — never over existing cards. */
+export async function applyTemplate(bookId: string, templateId: string, sceneCount?: number): Promise<PlotLine | null> {
+  const { templateById, beatColIndexes } = await import("@/lib/bookisdom-engine/story-templates");
+  const t = templateById(templateId);
+  if (!t) return null;
+  const line = await addPlotLine(bookId, `${t.emoji} ${t.nameTh}`);
+  const cols = beatColIndexes(t, sceneCount);
+  for (let i = 0; i < t.beats.length; i++) await addPlotCard(line.id, cols[i], t.beats[i].th, t.beats[i].desc);
+  return line;
+}
+
+/** The board as an outline: scenes in column order; each scene lists its cards as
+ *  "[เส้นเรื่อง] title — description". This is the text the prompt tool's `outline` field
+ *  takes, so a planned board becomes the chapter plan the master prompt is built from. */
+export function plotToOutline(lines: PlotLine[], cards: PlotCard[]): string {
+  const byLine = new Map(lines.map((l) => [l.id, l.title]));
+  const lineOrder = new Map(lines.map((l) => [l.id, l.order]));
+  const maxCol = cards.reduce((m, c) => Math.max(m, c.colIndex), -1);
+  const out: string[] = [];
+  for (let col = 0; col <= maxCol; col++) {
+    const here = cards.filter((c) => c.colIndex === col).sort((a, b) => (lineOrder.get(a.plotLineId) ?? 0) - (lineOrder.get(b.plotLineId) ?? 0) || a.createdAt - b.createdAt);
+    if (!here.length) continue;
+    out.push(`ฉาก ${col + 1}:`);
+    for (const c of here) out.push(`  - [${byLine.get(c.plotLineId) ?? "?"}] ${c.title}${c.description ? ` — ${c.description}` : ""}`);
+  }
+  return out.join("\n");
+}
+export const OUTLINE_MARK_BEGIN = "# ── ส่วนที่ส่งมาจากผังเรื่องในห้องเขียน Bookisdom — บล็อกนี้จะถูกเขียนทับทั้งก้อนเมื่อกดส่งใหม่ ──";
+export const OUTLINE_MARK_END = "# ── จบส่วนที่ส่งมาจากผังเรื่อง — ข้อความใต้บรรทัดนี้เป็นของผู้เขียนเองและจะไม่ถูกแตะ ──";
+export function mergeOutlineIntoDraft(existing: string, generated: string): string {
+  const block = `${OUTLINE_MARK_BEGIN}\n${generated.trim()}\n${OUTLINE_MARK_END}`;
+  const b = existing.indexOf(OUTLINE_MARK_BEGIN), e = existing.indexOf(OUTLINE_MARK_END);
+  if (b >= 0 && e > b) return (existing.slice(0, b) + block + existing.slice(e + OUTLINE_MARK_END.length)).trim();
+  return (existing.trim() ? existing.trim() + "\n\n" : "") + block;
+}
+export function sendOutlineToPromptTool(generated: string): { ok: boolean; reason?: string } {
+  try {
+    const raw = window.localStorage.getItem(DRAFT_KEY);
+    const draft = raw ? (JSON.parse(raw) as { config?: Record<string, unknown>; groups?: unknown }) : {};
+    const config = { ...(draft.config ?? {}) };
+    const existing = typeof config.outline === "string" ? config.outline : "";
+    config.outline = mergeOutlineIntoDraft(existing, generated);
+    window.localStorage.setItem(DRAFT_KEY, JSON.stringify({ ...draft, config }));
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, reason: e instanceof Error ? e.message : "localStorage unavailable" };
+  }
+}
+
+// ── writing days (heatmap) ───────────────────────────────────────────────
+export function localDayKey(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+/** Record words WRITTEN in a save: only a positive delta counts (deleting text is not
+ *  negative writing; it is editing). Idempotent per (day, book) — adds to the day's total. */
+export async function recordWritingDelta(bookId: string, prevWords: number, nextWords: number, now = new Date()): Promise<number> {
+  const delta = Math.max(0, nextWords - prevWords);
+  const d = db(); if (!d || delta === 0) return 0;
+  const date = localDayKey(now);
+  const key = `${date}|${bookId}`;
+  await d.transaction("rw", d.writingDays, async () => {
+    const row = await d.writingDays.get(key);
+    await d.writingDays.put({ key, date, bookId, words: (row?.words ?? 0) + delta });
+  });
+  return delta;
+}
+export async function listWritingDays(): Promise<WritingDay[]> {
+  return (await db()?.writingDays.toArray()) ?? [];
+}
+/** 26-week grid ending today, Monday-first, summed across books. Pure; `today` injectable. */
+export function heatmapWeeks(days: WritingDay[], today = new Date()): { date: string; words: number; future: boolean }[][] {
+  const total = new Map<string, number>();
+  for (const d of days) total.set(d.date, (total.get(d.date) ?? 0) + d.words);
+  const todayKey = localDayKey(today);
+  const start = new Date(today); start.setHours(0, 0, 0, 0);
+  start.setDate(start.getDate() - 181);
+  start.setDate(start.getDate() - ((start.getDay() + 6) % 7)); // back to Monday
+  const weeks: { date: string; words: number; future: boolean }[][] = [];
+  const cur = new Date(start);
+  for (let w = 0; w < 27; w++) {
+    const week = [];
+    for (let i = 0; i < 7; i++) {
+      const key = localDayKey(cur);
+      week.push({ date: key, words: total.get(key) ?? 0, future: key > todayKey });
+      cur.setDate(cur.getDate() + 1);
+    }
+    weeks.push(week);
+  }
+  return weeks;
+}
+/** Display bucket for a day — a LEGEND, printed next to the map, not a grade. */
+export const HEAT_BUCKETS = [0, 1, 250, 500, 1000] as const;
+export function heatLevel(words: number): 0 | 1 | 2 | 3 | 4 {
+  if (words <= 0) return 0; if (words < 250) return 1; if (words < 500) return 2; if (words < 1000) return 3; return 4;
+}
+
+// ── print export ─────────────────────────────────────────────────────────
+const escapeHtml = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]!));
+/** A self-contained, printable HTML of the book (A5 pages, running header, page breaks per
+ *  chapter). Deterministic; opens in the browser's print dialog for PDF. */
+export function exportPrintHtml(book: WritingBook, chapters: WritingChapter[]): string {
+  const ordered = [...chapters].sort((a, b) => a.order - b.order);
+  const body = ordered.map((c, i) => `<section class="chapter"><h2>${escapeHtml(chapterHeading(i + 1, c.title, book.lang))}</h2>${
+    c.content.trim().split(/\n{2,}/).map((p) => `<p>${escapeHtml(p).replace(/\n/g, "<br>")}</p>`).join("")}</section>`).join("");
+  return `<!doctype html><html lang="${book.lang}"><head><meta charset="utf-8"><title>${escapeHtml(book.title)}</title>
+<style>@page{size:A5;margin:18mm 16mm}body{font-family:"Noto Serif Thai","TH Sarabun New",Georgia,serif;font-size:11.5pt;line-height:1.7;color:#111827;max-width:120mm;margin:0 auto;padding:24px}
+h1{font-size:22pt;margin:0 0 4px}h2{font-size:14pt;margin:0 0 12px;page-break-before:always}.chapter:first-of-type h2{page-break-before:auto}
+p{margin:0 0 0.8em;text-indent:1.5em}.front{page-break-after:always}.meta{color:#374151;font-size:10pt}@media print{body{padding:0}}</style></head>
+<body><div class="front"><h1>${escapeHtml(book.title)}</h1>${book.subtitle ? `<p class="meta">${escapeHtml(book.subtitle)}</p>` : ""}${book.author ? `<p class="meta">${escapeHtml(book.author)}</p>` : ""}</div>${body}</body></html>`;
 }

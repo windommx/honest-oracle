@@ -84,3 +84,36 @@ describe("/bookisdom/write — ห้องเขียน", () => {
     expect(m.text).toContain("ฝนตกลงมา");
   });
 });
+
+describe("Pro panels — snapshots and the plot board", () => {
+  it("a snapshot is a real copy; restoring swaps the editor text and keeps the pre-restore version", async () => {
+    render(<WritePage />);
+    await createBookViaUi("เล่ม snapshot");
+    fireEvent.change(screen.getByLabelText("เนื้อหาบท"), { target: { value: "ร่างแรก" } });
+    fireEvent.click(screen.getByText("บันทึกเดี๋ยวนี้"));
+    await waitFor(() => expect(screen.getByText("บันทึกแล้ว")).toBeTruthy());
+    fireEvent.click(screen.getByText("บันทึกเวอร์ชัน"));
+    await waitFor(() => expect(screen.getByLabelText("รายการเวอร์ชัน").textContent).toContain("คำ"));
+    fireEvent.change(screen.getByLabelText("เนื้อหาบท"), { target: { value: "ร่างสอง" } });
+    fireEvent.click(screen.getByText("บันทึกเดี๋ยวนี้"));
+    await waitFor(() => expect(screen.getByText("บันทึกแล้ว")).toBeTruthy());
+    fireEvent.click(screen.getAllByLabelText(/ย้อนกลับไปเวอร์ชัน/)[0]);
+    await waitFor(() => expect((screen.getByLabelText("เนื้อหาบท") as HTMLTextAreaElement).value).toBe("ร่างแรก"));
+    expect(screen.getByLabelText("รายการเวอร์ชัน").textContent).toContain("ก่อนย้อนกลับ");
+  });
+
+  it("laying a template puts one card per beat on the board, and the board becomes the prompt tool's outline", async () => {
+    window.localStorage.setItem(DRAFT_KEY, JSON.stringify({ config: { title: "คง" }, groups: [] }));
+    render(<WritePage />);
+    await createBookViaUi("เล่มผัง");
+    fireEvent.click(screen.getAllByRole("tab", { name: /ผัง/ })[0]);
+    fireEvent.change(screen.getByLabelText("เทมเพลตโครงเรื่อง"), { target: { value: "kishotenketsu" } });
+    fireEvent.click(screen.getByText("วางโครง"));
+    await waitFor(() => expect(screen.getByText("การพลิก (Ten)")).toBeTruthy());
+    fireEvent.click(screen.getByText("ส่งผังเป็น outline"));
+    const d = JSON.parse(window.localStorage.getItem(DRAFT_KEY)!);
+    expect(d.config.title).toBe("คง");
+    expect(d.config.outline).toContain("ฉาก 1:");
+    expect(d.config.outline).toContain("การเปิด (Ki)");
+  });
+});
