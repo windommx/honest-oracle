@@ -10,9 +10,11 @@ export type SyncResult =
 export interface RemoteBook { bookId: string; title: string; bytes: number; updatedAt: string }
 
 async function classify(res: Response): Promise<SyncResult & { ok: false }> {
-  const j = (await res.json().catch(() => ({}))) as { error?: string; code?: string };
+  // The platform's 503 carries a machine code in `error` and the human sentence (naming the
+  // missing variable) in `detail` — show the sentence, never the code.
+  const j = (await res.json().catch(() => ({}))) as { error?: string; detail?: string; code?: string };
   if (res.status === 401) return { ok: false, kind: "login", message: "ต้องเข้าสู่ระบบก่อนจึงจะซิงก์กับบัญชีได้" };
-  if (res.status === 503) return { ok: false, kind: "server", message: j.error ?? "เซิร์ฟเวอร์ยังตั้งค่าไม่เสร็จ" };
+  if (res.status === 503) return { ok: false, kind: "server", message: j.detail ?? "เซิร์ฟเวอร์ยังตั้งค่าไม่เสร็จ" };
   if (res.status === 403) return { ok: false, kind: "limit", message: j.error ?? "ถึงขีดจำกัด" };
   if (res.status === 404) return { ok: false, kind: "notfound", message: "ยังไม่มีเล่มนี้บนบัญชี" };
   return { ok: false, kind: "invalid", message: j.error ?? `ผิดพลาด (${res.status})` };

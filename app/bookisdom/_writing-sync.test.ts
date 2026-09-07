@@ -16,7 +16,8 @@ describe("sync client — explicit, typed outcomes; a pull never loses local tex
     expect(seen!.url).toBe(`/api/bookisdom/writing/${b.id}`);
     expect(JSON.parse(seen!.body).bundle.books[0].id).toBe(b.id);
     expect((await pushBook(b.id, fake(() => json(401, {})))) as { kind?: string }).toMatchObject({ ok: false, kind: "login" });
-    expect((await pushBook(b.id, fake(() => json(503, { error: "ไม่ได้ตั้งค่า" })))) as { kind?: string }).toMatchObject({ ok: false, kind: "server", message: "ไม่ได้ตั้งค่า" });
+    // the platform's real 503 shape: a code in `error`, the sentence in `detail` — the sentence must win
+    expect((await pushBook(b.id, fake(() => json(503, { error: "server_not_configured", detail: "เซิร์ฟเวอร์ยังตั้งค่าไม่เสร็จ (NEXTAUTH_SECRET)" })))) as { kind?: string }).toMatchObject({ ok: false, kind: "server", message: "เซิร์ฟเวอร์ยังตั้งค่าไม่เสร็จ (NEXTAUTH_SECRET)" });
     expect((await pushBook(b.id, fake(() => json(403, { error: "แผน Free", code: "upgrade_required" })))) as { kind?: string }).toMatchObject({ ok: false, kind: "limit" });
     expect((await pushBook(b.id, fake(() => { throw new TypeError("net"); }))) as { kind?: string }).toMatchObject({ ok: false, kind: "network" });
   });
