@@ -351,7 +351,7 @@ export default function WritePage() {
               chapter={chapter}
               lang={book.lang}
               bookId={book.id}
-              codexNames={notes.filter((n) => NOTE_META[n.type].codexSection && n.type !== "THREAD").map((n) => n.title.trim()).filter(Boolean)}
+              notes={notes}
               onSaved={async () => { if (bookId) await refreshChapters(bookId); await refreshDays(); }}
             />
           ) : (
@@ -412,7 +412,7 @@ export default function WritePage() {
 }
 
 // ── editor (remounted per chapter via key) ─────────────────────────────
-function ChapterEditor({ chapter, lang, bookId, codexNames, onSaved }: { chapter: WritingChapter; lang: "th" | "en"; bookId: string; codexNames: string[]; onSaved: () => Promise<void> }) {
+function ChapterEditor({ chapter, lang, bookId, notes, onSaved }: { chapter: WritingChapter; lang: "th" | "en"; bookId: string; notes: WritingNote[]; onSaved: () => Promise<void> }) {
   const [title, setTitle] = useState(chapter.title);
   const [content, setContent] = useState(chapter.content);
   const [state, setState] = useState<"idle" | "dirty" | "saving" | "saved">("idle");
@@ -490,7 +490,7 @@ function ChapterEditor({ chapter, lang, bookId, codexNames, onSaved }: { chapter
       </div>
       <textarea ref={areaRef} value={content} onChange={(e) => { setContent(e.target.value); schedule(); centreCaret(); }} onKeyUp={centreCaret} onClick={centreCaret} placeholder="เริ่มพิมพ์เรื่องราวของคุณ… ระบบบันทึกอัตโนมัติเมื่อหยุดพิมพ์ 1.2 วินาที" className="w-full min-h-[440px] leading-relaxed text-[15px] bg-transparent outline-none resize-y" style={typewriter ? { paddingBottom: "40vh", maxHeight: "70vh", overflowY: "auto" } : undefined} aria-label="เนื้อหาบท" />
       <SnapshotPanel chapterId={chapter.id} onRestored={() => void onSaved()} />
-      <ChapterAnalysis text={content} lang={lang} codexNames={codexNames} />
+      <ChapterAnalysis text={content} lang={lang} notes={notes} />
     </div>
   );
 }

@@ -7,8 +7,8 @@ import { DeleteButton } from "./_ui";
 import {
   takeSnapshot, listSnapshots, restoreSnapshot, deleteSnapshot,
   listPlotLines, addPlotLine, renamePlotLine, deletePlotLine, listPlotCards, addPlotCard, updatePlotCard, deletePlotCard, applyTemplate,
-  plotToOutline, sendOutlineToPromptTool, heatmapWeeks, heatLevel, HEAT_BUCKETS,
-  type ChapterSnapshot, type PlotLine, type PlotCard, type WritingDay,
+  plotToOutline, sendOutlineToPromptTool, heatmapWeeks, heatLevel, HEAT_BUCKETS, notesToCodex,
+  type ChapterSnapshot, type PlotLine, type PlotCard, type WritingDay, type WritingNote,
 } from "./_writing-store";
 import { STORY_TEMPLATES } from "@/lib/bookisdom-engine/story-templates";
 
@@ -57,10 +57,13 @@ export function SnapshotPanel({ chapterId, onRestored }: { chapterId: string; on
 
 // ── in-place analysis (Bookisdom's own analyzers) ────────────────────────
 interface Row { tier: "ประจักษ์" | "อนุมาน"; label: string; value: string }
-export function ChapterAnalysis({ text, lang, codexNames }: { text: string; lang: "th" | "en"; codexNames: string[] }) {
+interface AuditView { present: number; canon: number; variants: string[]; missing: string[]; statusConflicts: string[]; forbidden: string[]; threads: string[] }
+export function ChapterAnalysis({ text, lang, notes }: { text: string; lang: "th" | "en"; notes: WritingNote[] }) {
   const [rows, setRows] = useState<Row[] | null>(null);
   const [lists, setLists] = useState<{ title: string; items: string[] }[]>([]);
+  const [audit, setAudit] = useState<AuditView | null>(null);
   const [busy, setBusy] = useState(false);
+  const codexNames = useMemo(() => notes.filter((n) => ["CHARACTER", "PLACE", "ITEM"].includes(n.type)).map((n) => n.title.trim()).filter(Boolean), [notes]);
 
   async function run() {
     setBusy(true);
@@ -86,6 +89,21 @@ export function ChapterAnalysis({ text, lang, codexNames }: { text: string; lang
         const m = countNames(text, codexNames, lang);
         ls.push({ title: "การเอ่ยถึงจาก Codex", items: Array.from(m.entries()).map(([n, c]) => `${n} ×${c}`) });
       }
+      // Codex audit — the engine's own continuity check (codex.ts), fed by the SAME text the
+      // "ส่งโน้ตเข้า Story Codex" button sends, so what the prompt tool obeys is what is checked.
+      const { text: codexText, included } = notesToCodex(notes);
+      if (included) {
+        const { parseCodex, codexAudit } = await import("@/lib/bookisdom-engine/codex");
+        const a = codexAudit(parseCodex(codexText), text, lang);
+        setAudit({
+          present: a.present.length, canon: a.canonSize,
+          variants: a.variants.map((v) => `${v.declared} → พบสะกด "${v.found}"`),
+          missing: a.missing.map((e) => e.name),
+          statusConflicts: a.statusConflicts.map((e) => `${e.name} (สถานะ: ${e.status ?? "—"})`),
+          forbidden: a.forbiddenHits.map((f) => `${f.name}: "${f.word}" ×${f.count}`),
+          threads: a.threadsNoTrace.map((t) => `${t.desc} [${t.priority}] ตรงคำ ${t.matched}/${t.total}`),
+        });
+      } else setAudit(null);
       setRows(out); setLists(ls);
     } finally { setBusy(false); }
   }
@@ -113,6 +131,24 @@ export function ChapterAnalysis({ text, lang, codexNames }: { text: string; lang
               <div key={l.title}><div className="text-faint mb-0.5">{l.title}</div><div className="flex flex-wrap gap-1">{l.items.map((it) => <span key={it} className="px-1.5 py-0.5 rounded bg-[#eff6ff] text-[#1d4ed8] border border-[#1d4ed8]/20">{it}</span>)}</div></div>
             ))}
           </div>
+          {audit && (
+            <div className="mt-3 rounded-lg border border-black/10 p-2.5 text-xs" data-testid="codex-audit">
+              <div className="flex items-baseline justify-between mb-1.5">
+                <span className="font-medium">ตรวจกับ Story Codex</span>
+                <span className="text-faint tabular-nums">พบในบท {audit.present}/{audit.canon} รายการ</span>
+              </div>
+              {[
+                ["สะกดใกล้เคียง (อาจพิมพ์เพี้ยน)", audit.variants],
+                ["ไม่ปรากฏในบทนี้", audit.missing],
+                ["ปรากฏทั้งที่สถานะบอกว่าตาย/หาย — สัญญาณให้ตรวจ ไม่ใช่ข้อผิด", audit.statusConflicts],
+                ["คำต้องห้ามปรากฏ (ใครพูดต้องดูเอง)", audit.forbidden],
+                ["ปมค้างสำคัญที่ไม่มีร่องรอยคำในบทนี้", audit.threads],
+              ].map(([title, items]) => (items as string[]).length ? (
+                <div key={title as string} className="mb-1.5"><div className="text-faint">{title as string}</div><div className="flex flex-wrap gap-1 mt-0.5">{(items as string[]).map((it) => <span key={it} className="px-1.5 py-0.5 rounded bg-black/[0.03] border border-black/10">{it}</span>)}</div></div>
+              ) : null)}
+              {!audit.variants.length && !audit.missing.length && !audit.statusConflicts.length && !audit.forbidden.length && !audit.threads.length && <p className="text-faint">ไม่มีข้อสังเกต — ทุก entity ที่ประกาศปรากฏในบทนี้ตรงตามสะกด</p>}
+            </div>
+          )}
         </>
       )}
     </div>

@@ -144,7 +144,10 @@ export const DIRECT_BROWSER: Record<Provider, { cors: "verified" | "unverified";
   },
   openai: { cors: "unverified", asOf: "2026-09", note: "preflight could not be sent — egress gateway answered 403 to CONNECT api.openai.com; the vendor SDK's dangerouslyAllowBrowser flag suggests the API accepts browser origins, but that is not our measurement" },
   groq: { cors: "unverified", asOf: "2026-09", note: "preflight could not be sent — egress gateway answered 403 to CONNECT api.groq.com" },
-  gemini: { cors: "unverified", asOf: "2026-09", note: "OPTIONS generateContent answered 403 with no Access-Control headers through the measuring network — inconclusive" },
+  gemini: {
+    cors: "verified", asOf: "2026-09",
+    note: "OPTIONS generateContent → 200, access-control-allow-origin echoes the requesting origin, allow-headers include content-type (the key travels in the query string, so no custom header is needed). A first attempt through a different egress had returned 403 — re-measured directly.",
+  },
 };
 
 /** Build the provider-specific HTTP request. Pure: no I/O, no key logging.

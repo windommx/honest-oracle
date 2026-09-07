@@ -136,10 +136,11 @@ describe("DIRECT_BROWSER — measured CORS support, not assumed", () => {
       expect(["verified", "unverified"]).toContain(d.cors);
     }
   });
-  it("Anthropic is the one provider verified so far (preflight 200 + allow-origin * on 2026-09)", () => {
+  it("Anthropic and Gemini are verified (preflight 200 + allow-origin, 2026-09); OpenAI and Groq say so when they are not", () => {
     expect(DIRECT_BROWSER.anthropic.cors).toBe("verified");
+    expect(DIRECT_BROWSER.gemini.cors).toBe("verified");
     // The unverified ones must SAY they are unverified — never quietly upgraded.
-    for (const id of ["openai", "gemini", "groq"] as const) expect(DIRECT_BROWSER[id].cors).toBe("unverified");
+    for (const id of ["openai", "groq"] as const) expect(DIRECT_BROWSER[id].cors).toBe("unverified");
   });
 });
 
