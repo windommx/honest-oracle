@@ -258,3 +258,63 @@ describe("print export", () => {
     expect(html).toContain("@page{size:A5");
   });
 });
+
+// ═══ Backup ═══
+import { exportBundle, parseBundle, importBundle, BUNDLE_FORMAT } from "./_writing-store";
+
+describe("backup — a bundle is the writer's own complete copy; import never overwrites", () => {
+  it("exports everything that belongs to the book, and import brings it back as a NEW copy with the original intact", async () => {
+    const b = await createBook({ title: "ต้นฉบับ", lang: "th", targetWords: 1000 });
+    const [c1] = await listChapters(b.id);
+    await updateChapter(c1.id, { title: "หนึ่ง", content: "เนื้อหาบทหนึ่ง" });
+    const c2 = await addChapter(b.id, "สอง");
+    await updateChapter(c2.id, { content: "เนื้อหาบทสอง" });
+    await takeSnapshot(c1.id, "v1");
+    await addNote({ bookId: b.id, type: "CHARACTER", title: "มะลิ", content: "นักข่าว" });
+    const line = await addPlotLine(b.id, "หลัก");
+    await addPlotCard(line.id, 2, "พลิก", "x");
+    await recordWritingDelta(b.id, 0, 40, new Date(2026, 8, 1));
+
+    const bundle = await exportBundle([b.id]);
+    expect(bundle.format).toBe(BUNDLE_FORMAT);
+    expect(bundle.books.map((x) => x.title)).toEqual(["ต้นฉบับ"]);
+    expect(bundle.chapters.map((x) => x.title)).toEqual(["หนึ่ง", "สอง"]);
+    expect(bundle.snapshots).toHaveLength(1); expect(bundle.notes).toHaveLength(1);
+    expect(bundle.plotLines).toHaveLength(1); expect(bundle.plotCards).toHaveLength(1); expect(bundle.writingDays).toHaveLength(1);
+
+    // round-trip through text, as a file would
+    const parsed = parseBundle(JSON.stringify(bundle));
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) return;
+    const r = await importBundle(parsed.bundle);
+    expect(r).toMatchObject({ books: 1, chapters: 2, notes: 1, snapshots: 1, plotLines: 1, plotCards: 1, writingDays: 1, titles: ["ต้นฉบับ"] });
+
+    const books = await listBooks();
+    const copy = books.find((x) => x.title === "ต้นฉบับ (นำเข้า)")!;
+    const orig = books.find((x) => x.id === b.id)!;
+    expect(copy).toBeTruthy(); expect(copy.id).not.toBe(b.id); expect(orig.title).toBe("ต้นฉบับ");
+    const copyCh = await listChapters(copy.id);
+    expect(copyCh.map((x) => [x.title, x.content])).toEqual([["หนึ่ง", "เนื้อหาบทหนึ่ง"], ["สอง", "เนื้อหาบทสอง"]]);
+    expect(copyCh[0].id).not.toBe(c1.id);
+    expect(await listSnapshots(copyCh[0].id)).toHaveLength(1);
+    expect((await listNotes(copy.id)).map((n) => n.title)).toEqual(["มะลิ"]);
+    const copyCards = await listPlotCards(copy.id);
+    expect(copyCards).toHaveLength(1); expect(copyCards[0].plotLineId).not.toBe(line.id);
+    expect((await listWritingDays()).filter((w) => w.bookId === copy.id)).toEqual([{ key: `2026-09-01|${copy.id}`, date: "2026-09-01", bookId: copy.id, words: 40 }]);
+    // the original is untouched
+    expect((await listChapters(b.id)).map((x) => x.content)).toEqual(["เนื้อหาบทหนึ่ง", "เนื้อหาบทสอง"]);
+  });
+
+  it("refuses a wrong file with a reason, and nothing is imported", async () => {
+    expect(parseBundle("not json")).toEqual({ ok: false, reason: "ไฟล์ไม่ใช่ JSON" });
+    expect(parseBundle("null").ok).toBe(false);
+    expect(parseBundle(JSON.stringify({ format: "other/9" }))).toMatchObject({ ok: false, reason: expect.stringContaining("รูปแบบไม่ตรง") });
+    expect(parseBundle(JSON.stringify({ format: BUNDLE_FORMAT, books: [] }))).toMatchObject({ ok: false, reason: "ขาดรายการ chapters" });
+    expect(parseBundle(JSON.stringify({ format: BUNDLE_FORMAT, books: [{ id: "x" }], chapters: [], notes: [], snapshots: [], plotLines: [], plotCards: [], writingDays: [] }))).toMatchObject({ ok: false, reason: expect.stringContaining("เล่ม") });
+  });
+
+  it("orphans in a bundle (a chapter whose book is missing) are skipped, not half-imported", async () => {
+    const r = await importBundle({ format: BUNDLE_FORMAT, exportedAt: "x", books: [], chapters: [{ id: "c", bookId: "ghost", title: "t", content: "", order: 1, createdAt: 0, updatedAt: 0 }], notes: [], snapshots: [], plotLines: [], plotCards: [], writingDays: [] });
+    expect(r.chapters).toBe(0);
+  });
+});

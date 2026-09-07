@@ -497,3 +497,109 @@ h1{font-size:22pt;margin:0 0 4px}h2{font-size:14pt;margin:0 0 12px;page-break-be
 p{margin:0 0 0.8em;text-indent:1.5em}.front{page-break-after:always}.meta{color:#374151;font-size:10pt}@media print{body{padding:0}}</style></head>
 <body><div class="front"><h1>${escapeHtml(book.title)}</h1>${book.subtitle ? `<p class="meta">${escapeHtml(book.subtitle)}</p>` : ""}${book.author ? `<p class="meta">${escapeHtml(book.author)}</p>` : ""}</div>${body}</body></html>`;
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  Backup — export / import a book as one JSON bundle. IndexedDB lives in ONE browser
+//  profile; clearing site data erases everything. A bundle is the writer's own copy.
+//  Import NEVER overwrites: every record gets a fresh id, so an existing book cannot be
+//  clobbered by a stale backup — the writer deletes the one they no longer want.
+// ═══════════════════════════════════════════════════════════════════════════
+
+export const BUNDLE_FORMAT = "bookisdom-writing/1";
+export interface BookBundle {
+  format: typeof BUNDLE_FORMAT;
+  exportedAt: string; // ISO — the only timestamp not from the record itself
+  books: WritingBook[];
+  chapters: WritingChapter[];
+  notes: WritingNote[];
+  snapshots: ChapterSnapshot[];
+  plotLines: PlotLine[];
+  plotCards: PlotCard[];
+  writingDays: WritingDay[];
+}
+
+export async function exportBundle(bookIds: string[] | "all", now = new Date()): Promise<BookBundle> {
+  const d = db();
+  const empty: BookBundle = { format: BUNDLE_FORMAT, exportedAt: now.toISOString(), books: [], chapters: [], notes: [], snapshots: [], plotLines: [], plotCards: [], writingDays: [] };
+  if (!d) return empty;
+  const books = (await d.books.toArray()).filter((b) => bookIds === "all" || bookIds.includes(b.id)).sort((a, b) => a.createdAt - b.createdAt);
+  const ids = new Set(books.map((b) => b.id));
+  const chapters = (await d.chapters.toArray()).filter((c) => ids.has(c.bookId)).sort((a, b) => a.bookId.localeCompare(b.bookId, "en") || a.order - b.order);
+  const chIds = new Set(chapters.map((c) => c.id));
+  const notes = (await d.notes.toArray()).filter((n) => n.bookId !== null && ids.has(n.bookId)).sort((a, b) => a.createdAt - b.createdAt);
+  const snapshots = (await d.snapshots.toArray()).filter((s) => chIds.has(s.chapterId)).sort((a, b) => a.createdAt - b.createdAt);
+  const plotLines = (await d.plotLines.toArray()).filter((l) => ids.has(l.bookId)).sort((a, b) => a.order - b.order);
+  const lineIds = new Set(plotLines.map((l) => l.id));
+  const plotCards = (await d.plotCards.toArray()).filter((c) => lineIds.has(c.plotLineId)).sort((a, b) => a.colIndex - b.colIndex || a.createdAt - b.createdAt);
+  const writingDays = (await d.writingDays.toArray()).filter((w) => ids.has(w.bookId)).sort((a, b) => a.date.localeCompare(b.date, "en"));
+  return { ...empty, books, chapters, notes, snapshots, plotLines, plotCards, writingDays };
+}
+
+export type BundleCheck = { ok: true; bundle: BookBundle } | { ok: false; reason: string };
+/** Structural validation — a wrong file is refused with a reason, never half-imported. */
+export function parseBundle(text: string): BundleCheck {
+  let j: unknown;
+  try { j = JSON.parse(text); } catch { return { ok: false, reason: "ไฟล์ไม่ใช่ JSON" }; }
+  const o = j as Partial<BookBundle> | null;
+  if (!o || typeof o !== "object") return { ok: false, reason: "ไฟล์ว่างหรือไม่ใช่ออบเจ็กต์" };
+  if (o.format !== BUNDLE_FORMAT) return { ok: false, reason: `รูปแบบไม่ตรง: ${String(o.format ?? "ไม่มี format")} (ต้องการ ${BUNDLE_FORMAT})` };
+  const arr = (k: keyof BookBundle) => Array.isArray(o[k]);
+  for (const k of ["books", "chapters", "notes", "snapshots", "plotLines", "plotCards", "writingDays"] as const) if (!arr(k)) return { ok: false, reason: `ขาดรายการ ${k}` };
+  if (!o.books!.every((b) => b && typeof b.id === "string" && typeof b.title === "string" && (b.lang === "th" || b.lang === "en"))) return { ok: false, reason: "รายการเล่มมีข้อมูลไม่ครบ (id/title/lang)" };
+  if (!o.chapters!.every((c) => c && typeof c.id === "string" && typeof c.bookId === "string" && typeof c.content === "string")) return { ok: false, reason: "รายการบทมีข้อมูลไม่ครบ" };
+  return { ok: true, bundle: o as BookBundle };
+}
+
+export interface ImportResult { books: number; chapters: number; notes: number; snapshots: number; plotLines: number; plotCards: number; writingDays: number; titles: string[] }
+/** Import as NEW copies (fresh ids everywhere, relations re-linked). Existing data untouched. */
+export async function importBundle(bundle: BookBundle): Promise<ImportResult> {
+  const d = db();
+  const res: ImportResult = { books: 0, chapters: 0, notes: 0, snapshots: 0, plotLines: 0, plotCards: 0, writingDays: 0, titles: [] };
+  if (!d) return res;
+  const bookMap = new Map<string, string>(), chMap = new Map<string, string>(), lineMap = new Map<string, string>();
+  const now = Date.now();
+  await d.transaction("rw", [d.books, d.chapters, d.notes, d.snapshots, d.plotLines, d.plotCards, d.writingDays], async () => {
+    for (const b of bundle.books) {
+      const id = newId(); bookMap.set(b.id, id);
+      await d.books.put({ ...b, id, title: `${b.title} (นำเข้า)`, updatedAt: now });
+      res.books++; res.titles.push(b.title);
+    }
+    for (const c of bundle.chapters) {
+      const bookId = bookMap.get(c.bookId); if (!bookId) continue;
+      const id = newId(); chMap.set(c.id, id);
+      await d.chapters.put({ ...c, id, bookId }); res.chapters++;
+    }
+    for (const n of bundle.notes) {
+      const bookId = n.bookId ? bookMap.get(n.bookId) : null; if (n.bookId && !bookId) continue;
+      await d.notes.put({ ...n, id: newId(), bookId: bookId ?? null }); res.notes++;
+    }
+    for (const s of bundle.snapshots) {
+      const chapterId = chMap.get(s.chapterId); if (!chapterId) continue;
+      await d.snapshots.put({ ...s, id: newId(), chapterId }); res.snapshots++;
+    }
+    for (const l of bundle.plotLines) {
+      const bookId = bookMap.get(l.bookId); if (!bookId) continue;
+      const id = newId(); lineMap.set(l.id, id);
+      await d.plotLines.put({ ...l, id, bookId }); res.plotLines++;
+    }
+    for (const c of bundle.plotCards) {
+      const plotLineId = lineMap.get(c.plotLineId); if (!plotLineId) continue;
+      await d.plotCards.put({ ...c, id: newId(), plotLineId, createdAt: c.createdAt ?? now }); res.plotCards++;
+    }
+    for (const w of bundle.writingDays) {
+      const bookId = bookMap.get(w.bookId); if (!bookId) continue;
+      await d.writingDays.put({ ...w, bookId, key: `${w.date}|${bookId}` }); res.writingDays++;
+    }
+  });
+  return res;
+}
+
+/** What the browser reports about this origin's storage — an estimate, labelled as one. */
+export async function storageEstimate(): Promise<{ usedMb: number; quotaMb: number; percent: number } | null> {
+  try {
+    if (typeof navigator === "undefined" || !navigator.storage?.estimate) return null;
+    const e = await navigator.storage.estimate();
+    const used = e.usage ?? 0, quota = e.quota ?? 0;
+    return { usedMb: Math.round((used / 1048576) * 10) / 10, quotaMb: Math.round(quota / 1048576), percent: quota ? Math.round((used / quota) * 100) : 0 };
+  } catch { return null; }
+}

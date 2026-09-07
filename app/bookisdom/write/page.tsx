@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   BookOpen, Plus, ChevronUp, ChevronDown, Check, Loader2, Save, Search, BookDown, FileDown, Pin, PinOff,
-  Wand2, LayoutGrid, Play, BookMarked, PenLine, StickyNote, Library, Printer, Type as TypeIcon, Columns3,
+  Wand2, LayoutGrid, Play, BookMarked, PenLine, StickyNote, Library, Printer, Type as TypeIcon, Columns3, HardDriveDownload, HardDriveUpload, Database,
 } from "lucide-react";
 import { toast } from "../_toast";
 import { BookisdomLogo } from "../_logo";
@@ -19,6 +19,7 @@ import {
   addNote, listNotes, updateNote, deleteNote,
   compileBook, chaptersForEpub, exportMarkdown, exportText, bookProgress, countBookWords, notesToCodex, sendCodexToPromptTool,
   STATUS_LABEL, NOTE_META, NOTE_TYPES, exportPrintHtml, recordWritingDelta, listWritingDays,
+  exportBundle, parseBundle, importBundle, storageEstimate,
   type WritingBook, type WritingChapter, type WritingNote, type BookStatus, type NoteType, type WritingDay,
 } from "../_writing-store";
 import { SnapshotPanel, ChapterAnalysis, SpeakButton, WritingHeatmap, PlotBoard } from "../_writer-pro";
@@ -50,6 +51,9 @@ export default function WritePage() {
   const [newLang, setNewLang] = useState<"th" | "en">("th");
   const [newTarget, setNewTarget] = useState("");
   const [days, setDays] = useState<WritingDay[]>([]);
+  const [storage, setStorage] = useState<{ usedMb: number; quotaMb: number; percent: number } | null>(null);
+  const refreshStorage = useCallback(async () => setStorage(await storageEstimate()), []);
+  useEffect(() => { void refreshStorage(); }, [refreshStorage, books.length]);
   const refreshDays = useCallback(async () => setDays(await listWritingDays()), []);
   useEffect(() => { void refreshDays(); }, [refreshDays]);
 
@@ -153,6 +157,23 @@ export default function WritePage() {
     toast(`ส่งโน้ต ${included} รายการเข้า Story Codex แล้ว${skipped ? ` (ข้าม ${skipped} ที่ไม่ใช่ entity)` : ""} — เปิดเครื่องมือ prompt เพื่อใช้`, { duration: 6000 });
   }
 
+  async function backup(scope: "book" | "all") {
+    const bundle = await exportBundle(scope === "book" && book ? [book.id] : "all");
+    const name = scope === "book" && book ? book.title : "bookisdom-ทั้งหมด";
+    downloadBlob(`${name}-${bundle.exportedAt.slice(0, 10)}.bookisdom.json`, JSON.stringify(bundle, null, 2), "application/json");
+    toast(`สำรอง ${bundle.books.length} เล่ม · ${bundle.chapters.length} บท · ${bundle.snapshots.length} เวอร์ชัน · ${bundle.notes.length} โน้ต · ${bundle.plotCards.length} การ์ด`);
+  }
+  async function restoreFromFile(file: File) {
+    const check = parseBundle(await file.text());
+    if (!check.ok) { toast(`นำเข้าไม่ได้: ${check.reason}`, { variant: "error", duration: 7000 }); return; }
+    const r = await importBundle(check.bundle);
+    const rows = await refreshBooks();
+    const first = rows.find((b) => r.titles.length && b.title === `${r.titles[0]} (นำเข้า)`);
+    if (first) setBookId(first.id);
+    await refreshDays(); await refreshStorage();
+    toast(`นำเข้าเป็นสำเนาใหม่ ${r.books} เล่ม · ${r.chapters} บท · ${r.snapshots} เวอร์ชัน · ${r.notes} โน้ต · ${r.plotCards} การ์ด — ของเดิมไม่ถูกแตะ`, { duration: 7000 });
+  }
+
   const progress = book && bookWords !== null ? bookProgress(bookWords, book.targetWords) : null;
 
   return (
@@ -211,6 +232,25 @@ export default function WritePage() {
                 </li>
               ))}
             </ul>
+          </section>
+
+          <section className="card-premium rounded-3xl p-4" data-testid="backup-panel">
+            <div className="eyebrow-brand mb-2">สำรองข้อมูล</div>
+            <p className="text-[0.7rem] text-faint mb-3">ทุกอย่างในห้องเขียนอยู่ในเบราว์เซอร์นี้เครื่องเดียว — ล้างข้อมูลเว็บไซต์ = หาย ไฟล์สำรองคือสำเนาของคุณเอง (บท, เวอร์ชัน, โน้ต, ผัง, วันเขียน)</p>
+            <div className="grid grid-cols-2 gap-2 mb-2">
+              <button onClick={() => void backup("book")} disabled={!book} className="text-xs py-2 rounded-xl border border-[#1d4ed8]/30 text-[#1d4ed8] hover:bg-[#3c74d4]/10 disabled:opacity-50 flex items-center justify-center gap-1.5"><HardDriveDownload className="w-3.5 h-3.5" /> เล่มนี้</button>
+              <button onClick={() => void backup("all")} disabled={!books.length} className="text-xs py-2 rounded-xl border border-[#1d4ed8]/30 text-[#1d4ed8] hover:bg-[#3c74d4]/10 disabled:opacity-50 flex items-center justify-center gap-1.5"><HardDriveDownload className="w-3.5 h-3.5" /> ทั้งหมด</button>
+            </div>
+            <label className="text-xs py-2 rounded-xl border border-black/10 text-slate-700 hover:bg-black/[0.04] flex items-center justify-center gap-1.5 cursor-pointer">
+              <HardDriveUpload className="w-3.5 h-3.5" /> นำเข้า .bookisdom.json
+              <input type="file" accept=".json,application/json" className="sr-only" aria-label="นำเข้าไฟล์สำรอง" onChange={(e) => { const f = e.target.files?.[0]; if (f) void restoreFromFile(f); e.target.value = ""; }} />
+            </label>
+            <p className="text-[0.65rem] text-faint mt-1.5">นำเข้าจะสร้าง<span className="text-slate-700">สำเนาใหม่</span>เสมอ ไม่ทับเล่มเดิม — ลบเล่มที่ไม่ต้องการเองภายหลัง</p>
+            {storage && (
+              <p className={`text-[0.65rem] mt-2 flex items-center gap-1 ${storage.percent >= 80 ? "text-[#b91c1c]" : "text-faint"}`} data-testid="storage-line">
+                <Database className="w-3 h-3" /> พื้นที่เบราว์เซอร์ (ประมาณการ): {storage.usedMb} MB / {storage.quotaMb} MB · {storage.percent}%{storage.percent >= 80 ? " — ใกล้เต็ม สำรองไฟล์ตอนนี้" : ""}
+              </p>
+            )}
           </section>
 
           {book && (

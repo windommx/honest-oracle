@@ -117,3 +117,34 @@ describe("Pro panels — snapshots and the plot board", () => {
     expect(d.config.outline).toContain("การเปิด (Ki)");
   });
 });
+
+import { exportBundle } from "../_writing-store";
+import { Toaster } from "../_toast";
+
+describe("backup — export/import through the real UI", () => {
+  it("importing a bundle file creates a NEW copy of the book and selects it; the original stays", async () => {
+    render(<WritePage />);
+    await createBookViaUi("เล่มสำรอง");
+    const book = (await listBooks()).find((b) => b.title === "เล่มสำรอง")!;
+    fireEvent.change(screen.getByLabelText("เนื้อหาบท"), { target: { value: "ข้อความที่ต้องรอด" } });
+    fireEvent.click(screen.getByText("บันทึกเดี๋ยวนี้"));
+    await waitFor(async () => expect((await listChapters(book.id))[0].content).toBe("ข้อความที่ต้องรอด"));
+    const bundle = await exportBundle([book.id]);
+    const file = new File([JSON.stringify(bundle)], "เล่มสำรอง.bookisdom.json", { type: "application/json" });
+    fireEvent.change(screen.getByLabelText("นำเข้าไฟล์สำรอง"), { target: { files: [file] } });
+    await waitFor(async () => expect((await listBooks()).some((b) => b.title === "เล่มสำรอง (นำเข้า)")).toBe(true), { timeout: 4000 });
+    const copy = (await listBooks()).find((b) => b.title === "เล่มสำรอง (นำเข้า)")!;
+    expect((await listChapters(copy.id))[0].content).toBe("ข้อความที่ต้องรอด");
+    expect((await listChapters(book.id))[0].content).toBe("ข้อความที่ต้องรอด"); // original untouched
+    await waitFor(() => expect((screen.getByLabelText("ชื่อเล่ม (แก้ไข)") as HTMLInputElement).value).toBe("เล่มสำรอง (นำเข้า)"));
+  });
+
+  it("a wrong file is refused with the reason shown, and nothing is created", async () => {
+    render(<><WritePage /><Toaster /></>); // the toast stack lives in the layout, so mount it here
+    const before = (await listBooks()).length;
+    const file = new File(["{\"format\":\"other/9\"}"], "x.json", { type: "application/json" });
+    fireEvent.change(screen.getByLabelText("นำเข้าไฟล์สำรอง"), { target: { files: [file] } });
+    await waitFor(() => expect(screen.getByText(/นำเข้าไม่ได้: รูปแบบไม่ตรง/)).toBeTruthy());
+    expect((await listBooks()).length).toBe(before);
+  });
+});
