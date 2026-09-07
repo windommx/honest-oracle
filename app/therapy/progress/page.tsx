@@ -12,8 +12,10 @@ import { toast } from "../../rush/_toast";
 import { Card, Chip, Disclaimer, PageHeader, PrimaryLink } from "../_components";
 import { SEVERITY_COLOR } from "../_tokens";
 import { browserStorage, clearAll, readAssessments, readNights, readSessions, totalMinutes } from "../_store";
+import { localDateOf } from "../_dates";
 
-const fmtDate = (ms: number) => new Date(ms).toISOString().slice(0, 10);
+// Local, not UTC — an assessment taken at 6am should not be dated yesterday.
+const fmtDate = localDateOf;
 
 /** A sparkline over the scores. Deliberately NOT a smoothed curve: joining four
  *  fortnightly points with a spline draws a trajectory between measurements that

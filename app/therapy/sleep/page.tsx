@@ -8,6 +8,7 @@ import { toast } from "../../rush/_toast";
 import { Card, CitationLine, Disclaimer, GradeBadge, PageHeader } from "../_components";
 import { SEVERITY_COLOR } from "../_tokens";
 import { browserStorage, readNights, upsertNight } from "../_store";
+import { localDate } from "../_dates";
 import { outcomeMessage, syncNight } from "../_sync";
 
 const FIELDS = [
@@ -18,7 +19,9 @@ const FIELDS = [
   { key: "awakenings", th: "ตื่นกี่ครั้ง", hint: "" },
 ] as const;
 
-const today = () => new Date().toISOString().slice(0, 10);
+// Local, not UTC: see _dates.ts — the UTC version defaulted the diary to the
+// wrong night before 07:00 in Bangkok, and blocked selecting the right one.
+const today = () => localDate();
 
 const EMPTY: SleepDiaryEntry = {
   date: today(),

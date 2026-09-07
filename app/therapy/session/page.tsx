@@ -20,6 +20,7 @@ import { SEVERITY_COLOR } from "../_tokens";
 import { addSession, browserStorage, readAssessments } from "../_store";
 import { outcomeMessage, syncSession } from "../_sync";
 import { TherapyAudio, audioSupported } from "../_audio";
+import * as clock from "../_session-clock";
 
 type Mode = "music" | "breath";
 
@@ -56,8 +57,8 @@ export default function SessionPage() {
   const [supported, setSupported] = useState(true);
 
   const audio = useRef<TherapyAudio | null>(null);
-  const startedAt = useRef<number | null>(null);
-  const accumulated = useRef(0);
+  // One clock, one reader. See _session-clock.ts for why this is not two refs.
+  const session = useRef<clock.ClockState>(clock.IDLE);
   const lastCue = useRef<string>("");
 
   // Read the browser-only bits after mount: reading localStorage during render
@@ -88,9 +89,10 @@ export default function SessionPage() {
       audio.current = null;
       setRunning(false);
 
-      const done = Math.min(sessionMinutes, Math.round(accumulated.current / 60));
-      startedAt.current = null;
-      accumulated.current = 0;
+      // completedMinutes() folds in the segment still running, which the old
+      // hand-rolled version did not — a session stopped by the button logged 0.
+      const done = clock.completedMinutes(session.current, Date.now(), sessionMinutes);
+      session.current = clock.reset();
       setElapsed(0);
 
       // A session is logged whatever happened, including a zero-minute one:
@@ -119,13 +121,12 @@ export default function SessionPage() {
   useEffect(() => {
     if (!running) return;
     const id = setInterval(() => {
-      if (startedAt.current === null) return;
-      const next = accumulated.current + (Date.now() - startedAt.current) / 1000;
+      // Guard against a tick landing between stop() and this effect's cleanup,
+      // which would log the same session twice.
+      if (!clock.isRunning(session.current)) return;
+      const next = clock.elapsedSeconds(session.current, Date.now());
       setElapsed(next);
-      if (next >= totalSeconds) {
-        accumulated.current = totalSeconds;
-        void stop(true);
-      }
+      if (next >= totalSeconds) void stop(true);
     }, 200);
     return () => clearInterval(id);
   }, [running, totalSeconds, stop]);
@@ -152,7 +153,10 @@ export default function SessionPage() {
   function play() {
     const engine = audio.current ?? new TherapyAudio();
     const ok = engine.start({
-      bpm: mode === "music" ? plan.startBpm : 60,
+      // The CURRENT segment's tempo, not the ramp's opening one: resuming a
+      // paused session at minute 15 should come back at the tempo it left off
+      // at, not jump back to the arousal-matched start.
+      bpm: mode === "music" ? segment.bpm : 60,
       pulse: mode === "music",
       pad: true,
       volume: 0.35,
@@ -163,16 +167,30 @@ export default function SessionPage() {
       return;
     }
     audio.current = engine;
-    startedAt.current = Date.now();
+    session.current = clock.start(session.current, Date.now());
     setRunning(true);
   }
 
   function pause() {
-    if (startedAt.current !== null) accumulated.current += (Date.now() - startedAt.current) / 1000;
-    startedAt.current = null;
+    session.current = clock.pause(session.current, Date.now());
     audio.current?.stop();
     audio.current = null;
     setRunning(false);
+  }
+
+  /** Switching mode or length starts a DIFFERENT session, so the clock goes back
+   *  to zero. Without this, pausing five minutes of music and switching to the
+   *  breathing pacer logged those five minutes as a breathing session — the
+   *  running guard alone does not cover a paused clock. */
+  function reconfigure(next: { mode?: Mode; minutes?: number }) {
+    if (running) return;
+    session.current = clock.reset();
+    setElapsed(0);
+    if (next.mode !== undefined) {
+      setMode(next.mode);
+      setMinutes(next.mode === "breath" ? 5 : 20);
+    }
+    if (next.minutes !== undefined) setMinutes(next.minutes);
   }
 
   const music = getIntervention("music-listening")!;
@@ -196,11 +214,7 @@ export default function SessionPage() {
         {(["music", "breath"] as Mode[]).map((m) => (
           <button
             key={m}
-            onClick={() => {
-              if (running) return;
-              setMode(m);
-              setMinutes(m === "breath" ? 5 : 20);
-            }}
+            onClick={() => reconfigure({ mode: m })}
             disabled={running}
             aria-pressed={mode === m}
             className={`inline-flex items-center gap-2 px-4 py-2 rounded-full border text-sm transition disabled:opacity-40 ${
@@ -315,7 +329,7 @@ export default function SessionPage() {
             {DURATIONS.map((d) => (
               <button
                 key={d}
-                onClick={() => setMinutes(d)}
+                onClick={() => reconfigure({ minutes: d })}
                 aria-pressed={minutes === d}
                 className={`px-3 py-1.5 rounded-full border text-sm transition disabled:opacity-40 ${
                   minutes === d ? "border-gold text-gold bg-gold/10" : "border-white/10 text-gray-400 hover:border-gold/40"

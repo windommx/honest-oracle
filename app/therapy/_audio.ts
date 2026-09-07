@@ -76,6 +76,10 @@ export class TherapyAudio {
 
     this.opts = { ...this.opts, ...opts };
     this.ctx = new Ctor();
+    // A context can come back suspended even when constructed from a gesture
+    // (Safari, and Chrome under some autoplay settings). Without this the
+    // session runs its whole clock in silence with no error anywhere.
+    if (this.ctx.state === "suspended") void this.ctx.resume();
     const now = this.ctx.currentTime;
 
     this.master = this.ctx.createGain();
