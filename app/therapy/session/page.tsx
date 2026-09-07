@@ -150,9 +150,15 @@ export default function SessionPage() {
 
   useEffect(() => () => audio.current?.stop(), []);
 
-  function play() {
+  async function play() {
+    // The clock starts on the user's press, not after the audio engine has
+    // loaded: the worklet takes a moment to fetch, and charging that to the
+    // user's session would under-report every session by a fraction.
+    session.current = clock.start(session.current, Date.now());
+    setRunning(true);
+
     const engine = audio.current ?? new TherapyAudio();
-    const ok = engine.start({
+    const ok = await engine.start({
       // The CURRENT segment's tempo, not the ramp's opening one: resuming a
       // paused session at minute 15 should come back at the tempo it left off
       // at, not jump back to the arousal-matched start.
@@ -167,8 +173,6 @@ export default function SessionPage() {
       return;
     }
     audio.current = engine;
-    session.current = clock.start(session.current, Date.now());
-    setRunning(true);
   }
 
   function pause() {
@@ -290,7 +294,7 @@ export default function SessionPage() {
         <div className="mt-6 flex justify-center gap-3">
           {!running ? (
             <button
-              onClick={play}
+              onClick={() => void play()}
               className="inline-flex items-center gap-2 px-6 py-2.5 rounded-lg bg-gold text-black font-semibold hover:bg-gold-light transition"
             >
               <Play className="w-4 h-4" aria-hidden /> {elapsed > 0 ? "เล่นต่อ" : "เริ่ม"}

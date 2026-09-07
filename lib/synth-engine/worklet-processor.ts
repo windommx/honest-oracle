@@ -14,7 +14,7 @@
 // ║  render(), and report a little state back for the meters.          ║
 // ╚══════════════════════════════════════════════════════════════════╝
 
-import { Synth } from "./synth";
+import { Synth, type PulseSettings } from "./synth";
 import type { PatchUpdate } from "./types";
 
 /** Messages the UI thread sends in. */
@@ -23,6 +23,7 @@ export type WorkletCommand =
   | { type: "noteOff"; note: number }
   | { type: "patch"; patch: PatchUpdate }
   | { type: "allNotesOff" }
+  | { type: "pulse"; pulse: Partial<PulseSettings> }
   | { type: "panic" };
 
 /** Messages the worklet sends back. */
@@ -67,6 +68,9 @@ class SynthProcessor extends AudioWorkletProcessor {
           break;
         case "allNotesOff":
           this.synth.allNotesOff();
+          break;
+        case "pulse":
+          this.synth.setPulse(msg.pulse);
           break;
         case "panic":
           this.synth.panic();

@@ -33,6 +33,32 @@ interface NoteEvent {
   velocity: number;
 }
 
+/** A steady pulse generated ON THE AUDIO THREAD.
+ *
+ *  A metronome driven from the main thread inherits setInterval's jitter, which
+ *  under load is tens of milliseconds — several percent of a beat, and audible
+ *  as an unsteady tempo. Counting samples inside the render loop makes the
+ *  period exact by construction. MindBridge's iso-principle ramp uses this to
+ *  hold each segment's tempo; a synth can use it as a metronome or a simple
+ *  repeat. */
+export interface PulseSettings {
+  enabled: boolean;
+  bpm: number;
+  /** MIDI note the pulse plays. */
+  note: number;
+  velocity: number;
+  /** How long each pulse sounds, in seconds. */
+  gateSeconds: number;
+}
+
+export const PULSE_OFF: PulseSettings = {
+  enabled: false,
+  bpm: 60,
+  note: 67,
+  velocity: 0.5,
+  gateSeconds: 0.1,
+};
+
 export class Synth {
   readonly sampleRate: number;
   patch: SynthPatch;
@@ -50,6 +76,12 @@ export class Synth {
   private ageCounter = 0;
   /** Events queued between render calls, applied at the top of the next block. */
   private pending: NoteEvent[] = [];
+
+  private pulse: PulseSettings = { ...PULSE_OFF };
+  /** Samples until the next pulse fires. */
+  private pulseCountdown = 0;
+  /** Samples until the sounding pulse is released; -1 when none is sounding. */
+  private pulseGate = -1;
 
   constructor(sampleRate: number, patch: Partial<SynthPatch> = {}) {
     this.sampleRate = sampleRate;
@@ -85,6 +117,7 @@ export class Synth {
   panic(): void {
     for (const v of this.voices) v.steal();
     this.pending = [];
+    this.pulseGate = -1;
     this.saturator.reset();
     this.chorus.reset();
     this.delay.reset();
@@ -96,6 +129,43 @@ export class Synth {
   setPatch(update: PatchUpdate): void {
     this.patch = { ...this.patch, ...update };
     for (const v of this.voices) v.retune(this.patch);
+  }
+
+  /** Configure the audio-thread pulse. Changing the tempo keeps the phase — the
+   *  next beat lands where the new tempo says, rather than restarting the bar,
+   *  so a tempo ramp glides instead of stuttering at every segment boundary. */
+  setPulse(update: Partial<PulseSettings>): void {
+    const wasEnabled = this.pulse.enabled;
+    this.pulse = { ...this.pulse, ...update };
+    if (this.pulse.enabled && !wasEnabled) {
+      // Fire immediately on enable so the first beat is not a period late.
+      this.pulseCountdown = 0;
+    }
+    if (!this.pulse.enabled && wasEnabled && this.pulseGate >= 0) {
+      this.applyNoteOff(this.pulse.note);
+      this.pulseGate = -1;
+    }
+  }
+
+  get pulseSettings(): Readonly<PulseSettings> {
+    return this.pulse;
+  }
+
+  /** Advance the pulse by one sample, triggering and releasing as due. */
+  private tickPulse(): void {
+    if (this.pulseGate >= 0 && --this.pulseGate <= 0) {
+      this.applyNoteOff(this.pulse.note);
+      this.pulseGate = -1;
+    }
+    if (!this.pulse.enabled) return;
+    if (--this.pulseCountdown > 0) return;
+
+    const period = Math.max(1, Math.round((60 / Math.max(1, this.pulse.bpm)) * this.sampleRate));
+    this.pulseCountdown = period;
+    // A gate longer than the period would retrigger a note that is still
+    // sounding, which on a fast tempo silently drops beats.
+    this.pulseGate = Math.min(period - 1, Math.max(1, Math.round(this.pulse.gateSeconds * this.sampleRate)));
+    this.applyNoteOn(this.pulse.note, this.pulse.velocity);
   }
 
   private applyNoteOn(note: number, velocity: number): void {
@@ -148,6 +218,8 @@ export class Synth {
     const lfo2Inc = p.lfo2Rate / this.sampleRate;
 
     for (let i = 0; i < n; i++) {
+      this.tickPulse();
+
       this.lfo1Phase += lfo1Inc;
       if (this.lfo1Phase >= 1) this.lfo1Phase -= 1;
       this.lfo2Phase += lfo2Inc;

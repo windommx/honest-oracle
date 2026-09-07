@@ -1,47 +1,72 @@
 // ╔══════════════════════════════════════════════════════════════════╗
-// ║  AUDIO — a tone bed and a tempo pulse, and no pretence about it.  ║
+// ║  AUDIO — the session player's sound, on the shared synth engine.  ║
 // ║                                                                    ║
-// ║  What this synthesises is NOT what the music-therapy trials        ║
-// ║  measured. Those studied listener-chosen music and therapist-led   ║
-// ║  sessions; this is two detuned oscillators and a click. The UI     ║
-// ║  says so on the same screen, and the honest use of this module is  ║
-// ║  the SECOND one: it holds the tempo the iso-principle ramp asks    ║
-// ║  for, so you can put on music you actually like at that tempo.     ║
+// ║  What this produces is still NOT what the music-therapy trials     ║
+// ║  measured, and the UI still says so on the same screen. Those      ║
+// ║  studied listener-chosen music and therapist-led sessions; this is ║
+// ║  a synthesised tone bed. Better synthesis does not change that     ║
+// ║  claim, and nothing here should be read as making it.              ║
 // ║                                                                    ║
-// ║  Implementation notes:                                             ║
-// ║   · An AudioContext may only be created from a user gesture, so    ║
-// ║     construction is deferred to start().                           ║
-// ║   · The pulse uses the standard lookahead scheduler — a JS timer   ║
-// ║     wakes every 25ms and schedules any beat falling inside the     ║
-// ║     next 100ms against the audio clock. Scheduling beats straight  ║
-// ║     from setInterval would inherit the timer's jitter, which is    ║
-// ║     audible as an unsteady pulse at exactly the tempos we use.     ║
-// ║   · Every gain change is a ramp, never a step: an instant gain     ║
-// ║     change produces a click, and a click in a relaxation app is    ║
-// ║     the opposite of the product.                                   ║
+// ║  What it does change is the two things the tone bed is honestly    ║
+// ║  for. The pad was three sine oscillators through a lowpass; it is  ║
+// ║  now the shared engine's pad — unison, ladder filter, plate        ║
+// ║  reverb. And the tempo pulse, which is the genuinely useful part   ║
+// ║  (it tells you which tempo to put your own music on), now runs on  ║
+// ║  the audio thread's own sample counter instead of a JS timer, so   ║
+// ║  it cannot drift when the page is busy.                            ║
 // ╚══════════════════════════════════════════════════════════════════╝
 
-/** How far ahead of the audio clock beats are scheduled, in seconds. */
-const LOOKAHEAD_S = 0.1;
-/** How often the scheduler wakes, in ms. */
-const TICK_MS = 25;
-/** Root of the pad, in Hz. A low A — deliberately below the register that
- *  competes with speech, so the bed sits under thought rather than in it. */
-const ROOT_HZ = 110;
-
-type Ctor = typeof AudioContext;
-
-function audioContextCtor(): Ctor | null {
-  if (typeof window === "undefined") return null;
-  const w = window as unknown as { AudioContext?: Ctor; webkitAudioContext?: Ctor };
-  return w.AudioContext ?? w.webkitAudioContext ?? null;
-}
+import type { SynthPatch } from "@/lib/synth-engine/types";
+import { SynthClient, audioWorkletSupported } from "../synth/_engine-client";
 
 /** True when this browser can produce sound at all — checked before the UI
  *  offers a Play button it cannot honour. */
 export function audioSupported(): boolean {
-  return audioContextCtor() !== null;
+  return audioWorkletSupported();
 }
+
+/** MIDI note of the drone. A low A, deliberately below the register that
+ *  competes with speech, so the bed sits under thought rather than in it. */
+const DRONE_NOTE = 45;
+const DRONE_FIFTH = 52;
+/** The pulse's own note — high and short, so it reads as a tick over the pad. */
+const PULSE_NOTE = 81;
+
+/** A deliberately plain pad: slow, dark, and with nothing that pulls attention.
+ *  A patch that is interesting to listen to would be working against the task. */
+const TONE_BED: Partial<SynthPatch> = {
+  osc1Morph: 0.35,
+  osc1Level: 0.5,
+  osc2Morph: 0.2,
+  osc2Detune: 6,
+  osc2Level: 0.4,
+  subLevel: 0.2,
+  unisonVoices: 4,
+  unisonDetune: 9,
+  filterCutoff: 900,
+  filterResonance: 0.08,
+  filterEnvAmount: 400,
+  filterAttack: 2,
+  filterDecay: 3,
+  filterSustain: 0.7,
+  ampAttack: 2.5,
+  ampDecay: 2,
+  ampSustain: 0.85,
+  ampRelease: 3,
+  lfo1Rate: 0.08,
+  lfo1Amount: 0.18,
+  lfo1Target: "cutoff",
+  chorusRate: 0.35,
+  chorusDepth: 0.5,
+  delayMix: 0,
+  reverbDecay: 0.85,
+  reverbMix: 0.4,
+  compThreshold: -26,
+  compRatio: 2.5,
+  compMakeup: 2,
+  volume: 0.32,
+  stereoWidth: 0.6,
+};
 
 export interface AudioOptions {
   bpm: number;
@@ -54,183 +79,111 @@ export interface AudioOptions {
 }
 
 export class TherapyAudio {
-  private ctx: AudioContext | null = null;
-  private master: GainNode | null = null;
-  private padGain: GainNode | null = null;
-  private oscillators: OscillatorNode[] = [];
-  private timer: ReturnType<typeof setInterval> | null = null;
-  private nextBeat = 0;
+  private client: SynthClient | null = null;
   private opts: AudioOptions = { bpm: 62, pad: true, pulse: true, volume: 0.4 };
 
   get running(): boolean {
-    return this.ctx !== null;
+    return this.client?.running ?? false;
   }
 
   /** Start playback. Must be called from a user gesture. Returns false when the
-   *  browser has no Web Audio at all, so the caller can say so rather than
-   *  leaving a dead Play button. */
-  start(opts: Partial<AudioOptions> = {}): boolean {
-    if (this.ctx) return true;
-    const Ctor = audioContextCtor();
-    if (!Ctor) return false;
-
+   *  browser cannot produce sound, so the caller can say so rather than leaving
+   *  a dead Play button. */
+  async start(opts: Partial<AudioOptions> = {}): Promise<boolean> {
+    if (this.client?.running) return true;
     this.opts = { ...this.opts, ...opts };
-    this.ctx = new Ctor();
-    // A context can come back suspended even when constructed from a gesture
-    // (Safari, and Chrome under some autoplay settings). Without this the
-    // session runs its whole clock in silence with no error anywhere.
-    if (this.ctx.state === "suspended") void this.ctx.resume();
-    const now = this.ctx.currentTime;
 
-    this.master = this.ctx.createGain();
-    this.master.gain.setValueAtTime(0, now);
-    // Fade in over a second — a relaxation session that begins with a jolt has
-    // undone its own first minute.
-    this.master.gain.linearRampToValueAtTime(this.opts.volume, now + 1);
-    this.master.connect(this.ctx.destination);
+    const client = new SynthClient();
+    const state = await client.start({
+      ...TONE_BED,
+      volume: TONE_BED.volume! * this.opts.volume * 2,
+    } as SynthPatch);
+    if (state !== "running") return false;
 
-    this.buildPad();
-    this.nextBeat = now + 0.2;
-    this.timer = setInterval(() => this.schedule(), TICK_MS);
+    this.client = client;
+    if (this.opts.pad) {
+      // A root and a fifth: an interval with no third is neither major nor
+      // minor, so it does not push the listener toward an emotion.
+      client.noteOn(DRONE_NOTE, 0.75);
+      client.noteOn(DRONE_FIFTH, 0.55);
+    }
+    client.setPulse({
+      enabled: this.opts.pulse,
+      bpm: this.opts.bpm,
+      note: PULSE_NOTE,
+      velocity: 0.32,
+      gateSeconds: 0.14,
+    });
     return true;
   }
 
-  /** A soft bed: a root, its fifth, and a slightly detuned root for movement,
-   *  all under a lowpass so the upper partials never get bright. */
-  private buildPad(): void {
-    if (!this.ctx || !this.master) return;
-
-    const filter = this.ctx.createBiquadFilter();
-    filter.type = "lowpass";
-    filter.frequency.value = 700;
-    filter.Q.value = 0.6;
-
-    this.padGain = this.ctx.createGain();
-    this.padGain.gain.value = this.opts.pad ? 0.22 : 0;
-
-    filter.connect(this.padGain);
-    this.padGain.connect(this.master);
-
-    for (const [hz, detune] of [
-      [ROOT_HZ, 0],
-      [ROOT_HZ, 6], // a few cents apart: the beating between them is the movement
-      [ROOT_HZ * 1.5, -4], // the fifth
-    ] as const) {
-      const osc = this.ctx.createOscillator();
-      osc.type = "sine";
-      osc.frequency.value = hz;
-      osc.detune.value = detune;
-      osc.connect(filter);
-      osc.start();
-      this.oscillators.push(osc);
-    }
-  }
-
-  /** Schedule every beat that falls inside the lookahead window. */
-  private schedule(): void {
-    if (!this.ctx) return;
-    const period = 60 / this.opts.bpm;
-    while (this.nextBeat < this.ctx.currentTime + LOOKAHEAD_S) {
-      if (this.opts.pulse) this.click(this.nextBeat);
-      this.nextBeat += period;
-    }
-  }
-
-  /** One pulse: a short sine with a fast attack and an exponential tail. */
-  private click(at: number): void {
-    if (!this.ctx || !this.master) return;
-    const osc = this.ctx.createOscillator();
-    const gain = this.ctx.createGain();
-    osc.type = "sine";
-    osc.frequency.setValueAtTime(392, at); // a soft G, not a hard tick
-    gain.gain.setValueAtTime(0.0001, at);
-    gain.gain.exponentialRampToValueAtTime(0.16, at + 0.01);
-    gain.gain.exponentialRampToValueAtTime(0.0001, at + 0.22);
-    osc.connect(gain);
-    gain.connect(this.master);
-    osc.start(at);
-    osc.stop(at + 0.25);
-  }
-
-  /** Change tempo mid-session. The ramp calls this at each segment boundary; the
-   *  already-scheduled beat stands, so the change takes effect on the next one
-   *  rather than cutting a beat short. */
+  /** Change tempo mid-session. The ramp calls this at each segment boundary;
+   *  the clock keeps its phase, so the tempo glides rather than restarting. */
   setBpm(bpm: number): void {
     this.opts.bpm = Math.max(30, Math.min(220, bpm));
+    this.client?.setPulse({ bpm: this.opts.bpm });
   }
 
   setVolume(volume: number): void {
     this.opts.volume = Math.max(0, Math.min(1, volume));
-    if (this.ctx && this.master) {
-      this.master.gain.linearRampToValueAtTime(this.opts.volume, this.ctx.currentTime + 0.1);
-    }
+    this.client?.setPatch({ volume: TONE_BED.volume! * this.opts.volume * 2 });
   }
 
   setPad(on: boolean): void {
     this.opts.pad = on;
-    if (this.ctx && this.padGain) {
-      this.padGain.gain.linearRampToValueAtTime(on ? 0.22 : 0, this.ctx.currentTime + 0.3);
+    if (!this.client?.running) return;
+    if (on) {
+      this.client.noteOn(DRONE_NOTE, 0.75);
+      this.client.noteOn(DRONE_FIFTH, 0.55);
+    } else {
+      this.client.noteOff(DRONE_NOTE);
+      this.client.noteOff(DRONE_FIFTH);
     }
   }
 
   setPulse(on: boolean): void {
     this.opts.pulse = on;
+    this.client?.setPulse({ enabled: on });
   }
 
-  /** A breath cue: a tone that glides up over an inhale and down over an exhale.
-   *  `seconds` comes from the pattern, so the cue is exactly as long as the phase. */
+  /**
+   * A breath cue: a tone that glides up over an inhale and down over an exhale.
+   *
+   * Deliberately NOT a synth voice. A glide between two pitches is one
+   * oscillator with a frequency ramp; routing it through a polyphonic engine
+   * with envelopes and a filter would be more machinery for a worse result, so
+   * it borrows the engine's context and mixes in beside it.
+   */
   cueBreath(direction: "up" | "down" | "hold", seconds: number): void {
-    if (!this.ctx || !this.master || direction === "hold") return;
-    const now = this.ctx.currentTime;
-    const osc = this.ctx.createOscillator();
-    const gain = this.ctx.createGain();
+    const ctx = this.client?.context;
+    const dest = this.client?.destination;
+    if (!ctx || !dest || direction === "hold" || seconds <= 0) return;
+
+    const now = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
     osc.type = "sine";
 
     const [from, to] = direction === "up" ? [220, 330] : [330, 220];
     osc.frequency.setValueAtTime(from, now);
     osc.frequency.linearRampToValueAtTime(to, now + seconds);
 
+    // Ramps rather than steps at both ends: an instant gain change is a click,
+    // and a click in a breathing exercise is the opposite of the point.
     gain.gain.setValueAtTime(0.0001, now);
-    gain.gain.linearRampToValueAtTime(0.1, now + Math.min(0.4, seconds / 3));
+    gain.gain.linearRampToValueAtTime(0.08 * this.opts.volume, now + Math.min(0.4, seconds / 3));
     gain.gain.linearRampToValueAtTime(0.0001, now + seconds);
 
     osc.connect(gain);
-    gain.connect(this.master);
+    gain.connect(dest);
     osc.start(now);
     osc.stop(now + seconds + 0.05);
   }
 
-  /** Stop and release everything. Fades out first, then closes the context a
-   *  beat later — closing mid-tone is an audible click. */
+  /** Stop and release everything. */
   stop(): void {
-    if (this.timer) {
-      clearInterval(this.timer);
-      this.timer = null;
-    }
-    const ctx = this.ctx;
-    const master = this.master;
-    if (!ctx) return;
-
-    if (master) {
-      master.gain.cancelScheduledValues(ctx.currentTime);
-      master.gain.setValueAtTime(master.gain.value, ctx.currentTime);
-      master.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.4);
-    }
-    const oscillators = this.oscillators;
-    setTimeout(() => {
-      for (const o of oscillators) {
-        try {
-          o.stop();
-        } catch {
-          /* already stopped */
-        }
-      }
-      void ctx.close();
-    }, 500);
-
-    this.ctx = null;
-    this.master = null;
-    this.padGain = null;
-    this.oscillators = [];
+    const client = this.client;
+    this.client = null;
+    void client?.stop();
   }
 }

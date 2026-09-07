@@ -355,3 +355,115 @@ describe("presets", () => {
     expect(getPreset("nope")).toBeUndefined();
   });
 });
+
+describe("pulse clock — steady because it counts samples", () => {
+  /** Sample indices at which the output rises from silence — one per pulse. */
+  function onsets(b: Float32Array, threshold = 0.02): number[] {
+    const out: number[] = [];
+    let quiet = true;
+    for (let i = 0; i < b.length; i++) {
+      const loud = Math.abs(b[i]) > threshold;
+      if (loud && quiet) out.push(i);
+      // A little hysteresis, so one pulse's zero-crossings do not read as many.
+      if (!loud && !quiet) {
+        let stillQuiet = true;
+        for (let j = i; j < Math.min(b.length, i + 200); j++) {
+          if (Math.abs(b[j]) > threshold) {
+            stillQuiet = false;
+            break;
+          }
+        }
+        if (stillQuiet) quiet = true;
+      } else if (loud) {
+        quiet = false;
+      }
+    }
+    return out;
+  }
+
+  const clicky = {
+    ampAttack: 0,
+    ampDecay: 0.05,
+    ampSustain: 0,
+    ampRelease: 0.02,
+    reverbMix: 0,
+    delayMix: 0,
+    chorusDepth: 0,
+    filterEnvAmount: 0,
+    filterCutoff: 8000,
+  } as const;
+
+  it("fires at exactly the tempo asked for", () => {
+    const s = new Synth(SR, clicky);
+    s.setPulse({ enabled: true, bpm: 120, note: 72, gateSeconds: 0.05 });
+    const { left } = s.renderSeconds(4);
+    const hits = onsets(left);
+    expect(hits.length).toBeGreaterThanOrEqual(7); // 120bpm over 4s
+    const period = SR / 2; // 120bpm = 0.5s
+    for (let i = 1; i < hits.length; i++) {
+      // Exact, not approximate: the period is a sample count, not a timer.
+      expect(Math.abs(hits[i] - hits[i - 1] - period)).toBeLessThan(64);
+    }
+  });
+
+  it("fires on the first sample rather than a beat late", () => {
+    const s = new Synth(SR, clicky);
+    s.setPulse({ enabled: true, bpm: 60, note: 72, gateSeconds: 0.05 });
+    const { left } = s.renderSeconds(0.2);
+    expect(onsets(left)[0]).toBeLessThan(64);
+  });
+
+  it("a tempo change keeps the phase instead of restarting the bar", () => {
+    // The iso-principle ramp changes tempo at every segment boundary; a clock
+    // that restarted would stutter audibly at each one.
+    const s = new Synth(SR, clicky);
+    s.setPulse({ enabled: true, bpm: 60, note: 72, gateSeconds: 0.05 });
+    s.renderSeconds(2.5);
+    s.setPulse({ bpm: 120 });
+    const hits = onsets(s.renderSeconds(3).left);
+    for (let i = 1; i < hits.length; i++) {
+      expect(Math.abs(hits[i] - hits[i - 1] - SR / 2)).toBeLessThan(64);
+    }
+  });
+
+  it("does not drop beats when the gate is longer than the period", () => {
+    // A gate that outlives its period would retrigger a still-sounding note.
+    const s = new Synth(SR, clicky);
+    s.setPulse({ enabled: true, bpm: 200, note: 72, gateSeconds: 5 });
+    const { left } = s.renderSeconds(3);
+    expect(onsets(left).length).toBeGreaterThan(5);
+  });
+
+  it("stops, and silences a sounding pulse, when disabled", () => {
+    const s = new Synth(SR, { ...clicky, ampRelease: 0.01 });
+    s.setPulse({ enabled: true, bpm: 120, note: 72, gateSeconds: 0.05 });
+    s.renderSeconds(1);
+    s.setPulse({ enabled: false });
+    const { left } = s.renderSeconds(1);
+    expect(rms(left, left.length - 2000)).toBeLessThan(1e-4);
+  });
+
+  it("is off by default, so nothing ticks unless asked", () => {
+    const s = new Synth(SR);
+    expect(s.pulseSettings.enabled).toBe(false);
+    expect(peak(s.renderSeconds(1).left)).toBe(0);
+  });
+
+  it("coexists with played notes", () => {
+    const s = new Synth(SR, clicky);
+    s.setPulse({ enabled: true, bpm: 90, note: 84, gateSeconds: 0.05 });
+    s.noteOn(48, 1);
+    const { left } = s.renderSeconds(1);
+    expect(rms(left)).toBeGreaterThan(0);
+    expect(peak(left)).toBeLessThanOrEqual(1);
+  });
+
+  it("is deterministic", () => {
+    const go = () => {
+      const s = new Synth(SR, clicky);
+      s.setPulse({ enabled: true, bpm: 96, note: 72, gateSeconds: 0.05 });
+      return Array.from(s.renderSeconds(1).left);
+    };
+    expect(go()).toEqual(go());
+  });
+});

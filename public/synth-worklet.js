@@ -976,6 +976,13 @@
 
   // lib/synth-engine/synth.ts
   var MAX_VOICES = 16;
+  var PULSE_OFF = {
+    enabled: false,
+    bpm: 60,
+    note: 67,
+    velocity: 0.5,
+    gateSeconds: 0.1
+  };
   var Synth = class {
     constructor(sampleRate2, patch = {}) {
       __publicField(this, "sampleRate");
@@ -992,6 +999,11 @@
       __publicField(this, "ageCounter", 0);
       /** Events queued between render calls, applied at the top of the next block. */
       __publicField(this, "pending", []);
+      __publicField(this, "pulse", { ...PULSE_OFF });
+      /** Samples until the next pulse fires. */
+      __publicField(this, "pulseCountdown", 0);
+      /** Samples until the sounding pulse is released; -1 when none is sounding. */
+      __publicField(this, "pulseGate", -1);
       this.sampleRate = sampleRate2;
       this.patch = { ...DEFAULT_PATCH, ...patch };
       for (let i = 0; i < MAX_VOICES; i++) this.voices.push(new Voice(sampleRate2, i));
@@ -1020,6 +1032,7 @@
     panic() {
       for (const v of this.voices) v.steal();
       this.pending = [];
+      this.pulseGate = -1;
       this.saturator.reset();
       this.chorus.reset();
       this.delay.reset();
@@ -1030,6 +1043,36 @@
     setPatch(update) {
       this.patch = { ...this.patch, ...update };
       for (const v of this.voices) v.retune(this.patch);
+    }
+    /** Configure the audio-thread pulse. Changing the tempo keeps the phase — the
+     *  next beat lands where the new tempo says, rather than restarting the bar,
+     *  so a tempo ramp glides instead of stuttering at every segment boundary. */
+    setPulse(update) {
+      const wasEnabled = this.pulse.enabled;
+      this.pulse = { ...this.pulse, ...update };
+      if (this.pulse.enabled && !wasEnabled) {
+        this.pulseCountdown = 0;
+      }
+      if (!this.pulse.enabled && wasEnabled && this.pulseGate >= 0) {
+        this.applyNoteOff(this.pulse.note);
+        this.pulseGate = -1;
+      }
+    }
+    get pulseSettings() {
+      return this.pulse;
+    }
+    /** Advance the pulse by one sample, triggering and releasing as due. */
+    tickPulse() {
+      if (this.pulseGate >= 0 && --this.pulseGate <= 0) {
+        this.applyNoteOff(this.pulse.note);
+        this.pulseGate = -1;
+      }
+      if (!this.pulse.enabled) return;
+      if (--this.pulseCountdown > 0) return;
+      const period = Math.max(1, Math.round(60 / Math.max(1, this.pulse.bpm) * this.sampleRate));
+      this.pulseCountdown = period;
+      this.pulseGate = Math.min(period - 1, Math.max(1, Math.round(this.pulse.gateSeconds * this.sampleRate)));
+      this.applyNoteOn(this.pulse.note, this.pulse.velocity);
     }
     applyNoteOn(note, velocity) {
       let voice = this.voices.find((v) => v.active && v.note === note);
@@ -1072,6 +1115,7 @@
       const lfo1Inc = p.lfo1Rate / this.sampleRate;
       const lfo2Inc = p.lfo2Rate / this.sampleRate;
       for (let i = 0; i < n; i++) {
+        this.tickPulse();
         this.lfo1Phase += lfo1Inc;
         if (this.lfo1Phase >= 1) this.lfo1Phase -= 1;
         this.lfo2Phase += lfo2Inc;
@@ -1135,6 +1179,9 @@
             break;
           case "allNotesOff":
             this.synth.allNotesOff();
+            break;
+          case "pulse":
+            this.synth.setPulse(msg.pulse);
             break;
           case "panic":
             this.synth.panic();

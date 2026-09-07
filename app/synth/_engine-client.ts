@@ -11,6 +11,7 @@
 // ╚══════════════════════════════════════════════════════════════════╝
 
 import type { PatchUpdate, SynthPatch } from "@/lib/synth-engine/types";
+import type { PulseSettings } from "@/lib/synth-engine/synth";
 import type { WorkletCommand, WorkletStatus } from "@/lib/synth-engine/worklet-processor";
 
 /** Where scripts/build-worklet.ts writes the bundle. */
@@ -45,6 +46,18 @@ export class SynthClient {
 
   get sampleRate(): number {
     return this.ctx?.sampleRate ?? 0;
+  }
+
+  /** The underlying context, for a caller that needs to add a node of its own
+   *  alongside the synth — MindBridge's breath cue is a single glide tone,
+   *  which is not a synth voice and does not need to be one. Null until started. */
+  get context(): AudioContext | null {
+    return this.ctx;
+  }
+
+  /** Where a caller's own node should connect to be heard and metered. */
+  get destination(): AudioNode | null {
+    return this.analyser;
   }
 
   /**
@@ -123,6 +136,10 @@ export class SynthClient {
 
   panic(): void {
     this.send({ type: "panic" });
+  }
+
+  setPulse(pulse: Partial<PulseSettings>): void {
+    this.send({ type: "pulse", pulse });
   }
 
   /** Magnitudes in dB, one per FFT bin. The array is reused between calls, so
