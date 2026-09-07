@@ -25,6 +25,9 @@ model User {
   usage     UsageDay[]
   subscription Subscription?
   rushProjects RushProject[]
+  therapyAssessments TherapyAssessment[]
+  therapySessions    TherapySession[]
+  therapySleepNights TherapySleepNight[]
 }
 
 model Analysis {
@@ -182,4 +185,72 @@ model RushProjectVersion {
   createdAt  DateTime @default(now())
 
   project    RushProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+// ── MindBridge (music therapy) ────────────────────────────────────────────────
+// One completed administration of a screening instrument.
+//
+// `responses` is the source of truth and `total`/`band` are stored derivations:
+// the API re-scores every submission through lib/therapy-engine rather than
+// trusting a client-supplied total, so a score in this table can always be
+// re-derived from the answers beside it.
+model TherapyAssessment {
+  id         String   @id @default(cuid())
+  userId     String
+  // "gad7" | "phq9" — the instrument the responses belong to.
+  instrument String
+  // number[] — one entry per item, in item order.
+  responses  Json
+  total      Int
+  band       String
+  // Set when a safety-critical item was endorsed (PHQ-9 item 9), independent of total.
+  safetyFlag Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, instrument, createdAt])
+}
+
+// A completed listening or breathing session. Adherence data — what was actually
+// done, not what was recommended.
+model TherapySession {
+  id            String   @id @default(cuid())
+  userId        String
+  // "music" | "breath"
+  kind          String
+  // Iso-principle ramp endpoints, for a music session.
+  startBpm      Int?
+  targetBpm     Int?
+  // Breath pattern id, for a breathing session.
+  breathPattern String?
+  plannedMin    Int
+  completedMin  Int
+  createdAt     DateTime @default(now())
+
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+}
+
+// One night of the sleep diary. Raw reported quantities only — total sleep time
+// and sleep efficiency are computed by sleep.ts on read, never stored, so the
+// stored row cannot drift from the formula that derives them.
+model TherapySleepNight {
+  id                     String   @id @default(cuid())
+  userId                 String
+  // YYYY-MM-DD, the morning being reported.
+  date                   String
+  timeInBedMin           Int
+  sleepLatencyMin        Int
+  wakeAfterSleepOnsetMin Int
+  terminalWakefulnessMin Int
+  awakenings             Int
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  user                   User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
+  @@index([userId, date])
 }
