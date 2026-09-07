@@ -25,6 +25,7 @@ model User {
   usage     UsageDay[]
   subscription Subscription?
   bookisdomProjects BookisdomProject[]
+  writingBooks BookisdomWritingBook[]
 }
 
 model Analysis {
@@ -182,4 +183,23 @@ model BookisdomProjectVersion {
   createdAt  DateTime @default(now())
 
   project    BookisdomProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+// Writer Room cloud copy — ONE JSON bundle per (user, client book id). Opt-in: nothing is
+// uploaded until the writer presses "ส่งขึ้นบัญชี". The bundle is validated server-side with
+// the same pure validator the browser uses (app/bookisdom/_bundle.ts).
+model BookisdomWritingBook {
+  id        String   @id @default(cuid())
+  userId    String
+  bookId    String   // the client-side book id — stable across devices, so a pull lands on the same book
+  title     String
+  bytes     Int
+  bundle    Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user      User @relation(fields: [userId], references: [id])
+
+  @@unique([userId, bookId])
+  @@index([userId])
 }

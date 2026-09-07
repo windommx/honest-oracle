@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   BookOpen, Plus, ChevronUp, ChevronDown, Check, Loader2, Save, Search, BookDown, FileDown, Pin, PinOff,
-  Wand2, LayoutGrid, Play, BookMarked, PenLine, StickyNote, Library, Printer, Type as TypeIcon, Columns3, HardDriveDownload, HardDriveUpload, Database,
+  Wand2, LayoutGrid, Play, BookMarked, PenLine, StickyNote, Library, Printer, Type as TypeIcon, Columns3, HardDriveDownload, HardDriveUpload, Database, CloudUpload, CloudDownload, Undo2,
 } from "lucide-react";
 import { toast } from "../_toast";
 import { BookisdomLogo } from "../_logo";
@@ -19,10 +19,11 @@ import {
   addNote, listNotes, updateNote, deleteNote,
   compileBook, chaptersForEpub, exportMarkdown, exportText, bookProgress, countBookWords, notesToCodex, sendCodexToPromptTool,
   STATUS_LABEL, NOTE_META, NOTE_TYPES, exportPrintHtml, recordWritingDelta, listWritingDays,
-  exportBundle, parseBundle, importBundle, storageEstimate,
+  exportBundle, parseBundle, importBundle, storageEstimate, getSafetyCopy, restoreSafetyCopy,
   type WritingBook, type WritingChapter, type WritingNote, type BookStatus, type NoteType, type WritingDay,
 } from "../_writing-store";
 import { SnapshotPanel, ChapterAnalysis, SpeakButton, WritingHeatmap, PlotBoard } from "../_writer-pro";
+import { pushBook, pullBook, listRemote, type RemoteBook } from "../_writing-sync";
 
 // ╔══════════════════════════════════════════════════════════════════╗
 // ║  /bookisdom/write — ห้องเขียน. Absorbed from InkStudio and wired  ║
@@ -52,6 +53,12 @@ export default function WritePage() {
   const [newTarget, setNewTarget] = useState("");
   const [days, setDays] = useState<WritingDay[]>([]);
   const [storage, setStorage] = useState<{ usedMb: number; quotaMb: number; percent: number } | null>(null);
+  // Account sync — opt-in and explicit. `remote` is null until the writer asks.
+  const [remote, setRemote] = useState<{ books: RemoteBook[] } | { note: string } | null>(null);
+  const [syncBusy, setSyncBusy] = useState(false);
+  const [safety, setSafety] = useState<{ title: string; createdAt: number } | null>(null);
+  const refreshSafety = useCallback(async (id: string | null) => { setSafety(id ? ((await getSafetyCopy(id)) ?? null) : null); }, []);
+  useEffect(() => { void refreshSafety(bookId); }, [bookId, refreshSafety]);
   const refreshStorage = useCallback(async () => setStorage(await storageEstimate()), []);
   useEffect(() => { void refreshStorage(); }, [refreshStorage, books.length]);
   const refreshDays = useCallback(async () => setDays(await listWritingDays()), []);
@@ -174,6 +181,38 @@ export default function WritePage() {
     toast(`นำเข้าเป็นสำเนาใหม่ ${r.books} เล่ม · ${r.chapters} บท · ${r.snapshots} เวอร์ชัน · ${r.notes} โน้ต · ${r.plotCards} การ์ด — ของเดิมไม่ถูกแตะ`, { duration: 7000 });
   }
 
+  async function checkRemote() {
+    setSyncBusy(true);
+    const r = await listRemote();
+    setRemote(r.ok ? { books: r.books } : { note: r.message });
+    setSyncBusy(false);
+  }
+  async function doPush() {
+    if (!book) return;
+    setSyncBusy(true);
+    const r = await pushBook(book.id);
+    setSyncBusy(false);
+    if (r.ok) { toast(`ส่ง "${book.title}" ขึ้นบัญชีแล้ว (${Math.round(r.bytes / 1024)} KB)`); await checkRemote(); }
+    else toast(r.kind === "login" ? `${r.message} — ไปหน้าเข้าสู่ระบบ` : r.message, { variant: "error", duration: 7000 });
+  }
+  async function doPull() {
+    if (!book) return;
+    setSyncBusy(true);
+    const r = await pullBook(book.id);
+    setSyncBusy(false);
+    if (!r.ok) { toast(r.message, { variant: "error", duration: 7000 }); return; }
+    await refreshBooks(); await refreshChapters(book.id); await refreshNotes(book.id); await refreshDays(); await refreshSafety(book.id);
+    toast(r.replaced ? "ดึงจากบัญชีแล้ว — ข้อความในเครื่องก่อนดึงถูกเก็บเป็นสำเนากู้คืนได้" : "ดึงจากบัญชีแล้ว", { duration: 7000 });
+  }
+  async function undoPull() {
+    if (!book) return;
+    const ok = await restoreSafetyCopy(book.id);
+    if (!ok) { toast("ไม่มีสำเนาให้กู้คืน", { variant: "error" }); return; }
+    await refreshBooks(); await refreshChapters(book.id); await refreshNotes(book.id); await refreshDays(); await refreshSafety(book.id);
+    toast("กู้คืนสำเนาก่อนดึงแล้ว (การกู้คืนนี้ก็ย้อนกลับได้อีก)");
+  }
+  const remoteMine = book && remote && "books" in remote ? remote.books.find((r) => r.bookId === book.id) ?? null : null;
+
   const progress = book && bookWords !== null ? bookProgress(bookWords, book.targetWords) : null;
 
   return (
@@ -246,6 +285,23 @@ export default function WritePage() {
               <input type="file" accept=".json,application/json" className="sr-only" aria-label="นำเข้าไฟล์สำรอง" onChange={(e) => { const f = e.target.files?.[0]; if (f) void restoreFromFile(f); e.target.value = ""; }} />
             </label>
             <p className="text-[0.65rem] text-faint mt-1.5">นำเข้าจะสร้าง<span className="text-slate-700">สำเนาใหม่</span>เสมอ ไม่ทับเล่มเดิม — ลบเล่มที่ไม่ต้องการเองภายหลัง</p>
+            <div className="rule-brand my-3" />
+            <div className="eyebrow-brand mb-1">ซิงก์กับบัญชี (ตามสั่ง)</div>
+            <p className="text-[0.7rem] text-faint mb-2">ไม่มีอะไรขึ้นบัญชีจนกว่าจะกด &quot;ส่งขึ้น&quot; · ต้องเข้าสู่ระบบ · แผน Free ซิงก์ได้ 3 เล่ม</p>
+            <div className="grid grid-cols-2 gap-2 mb-2" data-testid="sync-panel">
+              <button onClick={() => void doPush()} disabled={!book || syncBusy} className="text-xs py-2 rounded-xl border border-[#1d4ed8]/30 text-[#1d4ed8] hover:bg-[#3c74d4]/10 disabled:opacity-50 flex items-center justify-center gap-1.5"><CloudUpload className="w-3.5 h-3.5" /> ส่งขึ้นบัญชี</button>
+              <button onClick={() => void doPull()} disabled={!book || syncBusy} title="แทนที่เล่มนี้ในเครื่องด้วยสำเนาบนบัญชี — เก็บสำเนาก่อนเสมอ" className="text-xs py-2 rounded-xl border border-black/10 text-slate-700 hover:bg-black/[0.04] disabled:opacity-50 flex items-center justify-center gap-1.5"><CloudDownload className="w-3.5 h-3.5" /> ดึงจากบัญชี</button>
+            </div>
+            <button onClick={() => void checkRemote()} disabled={syncBusy} className="w-full text-[0.7rem] py-1.5 rounded-lg text-[#1d4ed8] hover:bg-[#3c74d4]/10 disabled:opacity-50">{syncBusy ? "กำลังติดต่อ…" : "ดูสถานะบนบัญชี"}</button>
+            {remote && "note" in remote && <p className="text-[0.65rem] text-[#b91c1c] mt-1">{remote.note}{remote.note.includes("เข้าสู่ระบบ") && <> · <Link href="/login" className="underline">เข้าสู่ระบบ</Link></>}</p>}
+            {remote && "books" in remote && (
+              <p className="text-[0.65rem] text-faint mt-1" data-testid="remote-status">
+                บนบัญชี {remote.books.length} เล่ม{remoteMine ? ` · เล่มนี้อัปเดต ${new Date(remoteMine.updatedAt).toLocaleString("th-TH", { dateStyle: "short", timeStyle: "short" })} (${Math.round(remoteMine.bytes / 1024)} KB)` : book ? " · เล่มนี้ยังไม่อยู่บนบัญชี" : ""}
+              </p>
+            )}
+            {safety && (
+              <button onClick={() => void undoPull()} className="mt-2 w-full text-[0.7rem] py-1.5 rounded-lg border border-black/10 text-slate-700 hover:bg-black/[0.04] flex items-center justify-center gap-1.5"><Undo2 className="w-3 h-3" /> กู้คืนสำเนาก่อนดึง ({new Date(safety.createdAt).toLocaleString("th-TH", { dateStyle: "short", timeStyle: "short" })})</button>
+            )}
             {storage && (
               <p className={`text-[0.65rem] mt-2 flex items-center gap-1 ${storage.percent >= 80 ? "text-[#b91c1c]" : "text-faint"}`} data-testid="storage-line">
                 <Database className="w-3 h-3" /> พื้นที่เบราว์เซอร์ (ประมาณการ): {storage.usedMb} MB / {storage.quotaMb} MB · {storage.percent}%{storage.percent >= 80 ? " — ใกล้เต็ม สำรองไฟล์ตอนนี้" : ""}

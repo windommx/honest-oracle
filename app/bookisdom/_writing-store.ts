@@ -23,40 +23,10 @@
 import Dexie, { type Table } from "dexie";
 import { countManuscriptWords } from "./_word-count";
 
-export type BookStatus = "DRAFT" | "WRITING" | "COMPLETED" | "PUBLISHED";
-export type NoteType = "IDEA" | "CHARACTER" | "PLACE" | "ITEM" | "THREAD" | "PLOT" | "RESEARCH";
-
-export interface WritingBook {
-  id: string;
-  title: string;
-  subtitle: string;
-  author: string;
-  genre: string;
-  lang: "th" | "en";
-  status: BookStatus;
-  targetWords: number; // 0 = no target set
-  createdAt: number;
-  updatedAt: number;
-}
-export interface WritingChapter {
-  id: string;
-  bookId: string;
-  title: string;
-  content: string;
-  order: number;
-  createdAt: number;
-  updatedAt: number;
-}
-export interface WritingNote {
-  id: string;
-  bookId: string | null; // null = free-standing
-  type: NoteType;
-  title: string;
-  content: string;
-  pinned: boolean;
-  createdAt: number;
-  updatedAt: number;
-}
+import type { WritingBook, WritingChapter, WritingNote, BookStatus, NoteType, ChapterSnapshot, PlotLine, PlotCard, WritingDay } from "./_writing-types";
+export type { WritingBook, WritingChapter, WritingNote, BookStatus, NoteType, ChapterSnapshot, PlotLine, PlotCard, WritingDay } from "./_writing-types";
+export { BUNDLE_FORMAT, parseBundle, type BookBundle, type BundleCheck } from "./_bundle";
+import { BUNDLE_FORMAT, parseBundle, type BookBundle } from "./_bundle";
 
 export const STATUS_LABEL: Record<BookStatus, string> = {
   DRAFT: "ฉบับร่าง", WRITING: "กำลังเขียน", COMPLETED: "เขียนจบ", PUBLISHED: "เผยแพร่แล้ว",
@@ -74,11 +44,8 @@ export const NOTE_META: Record<NoteType, { label: string; codexSection: string |
 };
 export const NOTE_TYPES = Object.keys(NOTE_META) as NoteType[];
 
-export interface ChapterSnapshot { id: string; chapterId: string; label: string; content: string; words: number; createdAt: number }
-export interface PlotLine { id: string; bookId: string; title: string; order: number }
-export interface PlotCard { id: string; plotLineId: string; colIndex: number; title: string; description: string; createdAt: number }
-/** Words WRITTEN on a local calendar day (positive deltas between saves), per book. */
-export interface WritingDay { key: string; date: string; bookId: string; words: number }
+
+export interface SafetyCopy { bookId: string; title: string; json: string; createdAt: number }
 
 class WritingDB extends Dexie {
   books!: Table<WritingBook, string>;
@@ -88,6 +55,7 @@ class WritingDB extends Dexie {
   plotLines!: Table<PlotLine, string>;
   plotCards!: Table<PlotCard, string>;
   writingDays!: Table<WritingDay, string>;
+  safety!: Table<SafetyCopy, string>;
   constructor() {
     super("bookisdom-writing");
     this.version(1).stores({
@@ -104,6 +72,17 @@ class WritingDB extends Dexie {
       plotLines: "id, bookId, order",
       plotCards: "id, plotLineId, colIndex",
       writingDays: "key, date, bookId",
+    });
+    // v3: one safety copy per book, taken before a cloud pull replaces local records.
+    this.version(3).stores({
+      books: "id, updatedAt, status",
+      chapters: "id, bookId, order, updatedAt",
+      notes: "id, bookId, type, updatedAt",
+      snapshots: "id, chapterId, createdAt",
+      plotLines: "id, bookId, order",
+      plotCards: "id, plotLineId, colIndex",
+      writingDays: "key, date, bookId",
+      safety: "bookId, createdAt",
     });
   }
 }
@@ -505,19 +484,6 @@ p{margin:0 0 0.8em;text-indent:1.5em}.front{page-break-after:always}.meta{color:
 //  clobbered by a stale backup — the writer deletes the one they no longer want.
 // ═══════════════════════════════════════════════════════════════════════════
 
-export const BUNDLE_FORMAT = "bookisdom-writing/1";
-export interface BookBundle {
-  format: typeof BUNDLE_FORMAT;
-  exportedAt: string; // ISO — the only timestamp not from the record itself
-  books: WritingBook[];
-  chapters: WritingChapter[];
-  notes: WritingNote[];
-  snapshots: ChapterSnapshot[];
-  plotLines: PlotLine[];
-  plotCards: PlotCard[];
-  writingDays: WritingDay[];
-}
-
 export async function exportBundle(bookIds: string[] | "all", now = new Date()): Promise<BookBundle> {
   const d = db();
   const empty: BookBundle = { format: BUNDLE_FORMAT, exportedAt: now.toISOString(), books: [], chapters: [], notes: [], snapshots: [], plotLines: [], plotCards: [], writingDays: [] };
@@ -533,21 +499,6 @@ export async function exportBundle(bookIds: string[] | "all", now = new Date()):
   const plotCards = (await d.plotCards.toArray()).filter((c) => lineIds.has(c.plotLineId)).sort((a, b) => a.colIndex - b.colIndex || a.createdAt - b.createdAt);
   const writingDays = (await d.writingDays.toArray()).filter((w) => ids.has(w.bookId)).sort((a, b) => a.date.localeCompare(b.date, "en"));
   return { ...empty, books, chapters, notes, snapshots, plotLines, plotCards, writingDays };
-}
-
-export type BundleCheck = { ok: true; bundle: BookBundle } | { ok: false; reason: string };
-/** Structural validation — a wrong file is refused with a reason, never half-imported. */
-export function parseBundle(text: string): BundleCheck {
-  let j: unknown;
-  try { j = JSON.parse(text); } catch { return { ok: false, reason: "ไฟล์ไม่ใช่ JSON" }; }
-  const o = j as Partial<BookBundle> | null;
-  if (!o || typeof o !== "object") return { ok: false, reason: "ไฟล์ว่างหรือไม่ใช่ออบเจ็กต์" };
-  if (o.format !== BUNDLE_FORMAT) return { ok: false, reason: `รูปแบบไม่ตรง: ${String(o.format ?? "ไม่มี format")} (ต้องการ ${BUNDLE_FORMAT})` };
-  const arr = (k: keyof BookBundle) => Array.isArray(o[k]);
-  for (const k of ["books", "chapters", "notes", "snapshots", "plotLines", "plotCards", "writingDays"] as const) if (!arr(k)) return { ok: false, reason: `ขาดรายการ ${k}` };
-  if (!o.books!.every((b) => b && typeof b.id === "string" && typeof b.title === "string" && (b.lang === "th" || b.lang === "en"))) return { ok: false, reason: "รายการเล่มมีข้อมูลไม่ครบ (id/title/lang)" };
-  if (!o.chapters!.every((c) => c && typeof c.id === "string" && typeof c.bookId === "string" && typeof c.content === "string")) return { ok: false, reason: "รายการบทมีข้อมูลไม่ครบ" };
-  return { ok: true, bundle: o as BookBundle };
 }
 
 export interface ImportResult { books: number; chapters: number; notes: number; snapshots: number; plotLines: number; plotCards: number; writingDays: number; titles: string[] }
@@ -602,4 +553,56 @@ export async function storageEstimate(): Promise<{ usedMb: number; quotaMb: numb
     const used = e.usage ?? 0, quota = e.quota ?? 0;
     return { usedMb: Math.round((used / 1048576) * 10) / 10, quotaMb: Math.round(quota / 1048576), percent: quota ? Math.round((used / quota) * 100) : 0 };
   } catch { return null; }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  Sync support — install a bundle KEEPING ids (so the same book stays the same book
+//  across devices), with a local safety copy taken first so a pull can be undone.
+// ═══════════════════════════════════════════════════════════════════════════
+
+
+/** Replace the local records of the bundle's book with the bundle's records, ids intact.
+ *  The current local state of that book is saved as a safety copy FIRST (one per book,
+ *  newest wins), so "ดึงจากบัญชี" can always be undone with restoreSafetyCopy(). Returns
+ *  whether a local book existed before. */
+export async function installBundleKeepingIds(bundle: BookBundle): Promise<{ replaced: boolean; bookId: string }> {
+  const d = db();
+  const book = bundle.books[0];
+  if (!d || !book) return { replaced: false, bookId: book?.id ?? "" };
+  const existed = !!(await d.books.get(book.id));
+  if (existed) {
+    const prev = await exportBundle([book.id]);
+    await d.safety.put({ bookId: book.id, title: prev.books[0]?.title ?? book.title, json: JSON.stringify(prev), createdAt: Date.now() });
+  }
+  await d.transaction("rw", [d.books, d.chapters, d.notes, d.snapshots, d.plotLines, d.plotCards, d.writingDays], async () => {
+    const oldChapters = await d.chapters.where("bookId").equals(book.id).primaryKeys();
+    const oldLines = await d.plotLines.where("bookId").equals(book.id).primaryKeys();
+    if (oldChapters.length) await d.snapshots.where("chapterId").anyOf(oldChapters as string[]).delete();
+    if (oldLines.length) await d.plotCards.where("plotLineId").anyOf(oldLines as string[]).delete();
+    await d.chapters.where("bookId").equals(book.id).delete();
+    await d.notes.where("bookId").equals(book.id).delete();
+    await d.plotLines.where("bookId").equals(book.id).delete();
+    await d.writingDays.where("bookId").equals(book.id).delete();
+    await d.books.put(book);
+    await d.chapters.bulkPut(bundle.chapters.filter((c) => c.bookId === book.id));
+    await d.notes.bulkPut(bundle.notes.filter((n) => n.bookId === book.id));
+    const chIds = new Set(bundle.chapters.map((c) => c.id));
+    await d.snapshots.bulkPut(bundle.snapshots.filter((s) => chIds.has(s.chapterId)));
+    await d.plotLines.bulkPut(bundle.plotLines.filter((l) => l.bookId === book.id));
+    const lineIds = new Set(bundle.plotLines.map((l) => l.id));
+    await d.plotCards.bulkPut(bundle.plotCards.filter((c) => lineIds.has(c.plotLineId)));
+    await d.writingDays.bulkPut(bundle.writingDays.filter((w) => w.bookId === book.id).map((w) => ({ ...w, key: `${w.date}|${w.bookId}` })));
+  });
+  return { replaced: existed, bookId: book.id };
+}
+export async function getSafetyCopy(bookId: string): Promise<SafetyCopy | undefined> { return db()?.safety.get(bookId); }
+/** Undo a pull: reinstall the safety copy (which itself takes a new safety copy of the
+ *  pulled state — so even the undo can be undone). */
+export async function restoreSafetyCopy(bookId: string): Promise<boolean> {
+  const c = await getSafetyCopy(bookId);
+  if (!c) return false;
+  const check = parseBundle(c.json);
+  if (!check.ok) return false;
+  await installBundleKeepingIds(check.bundle);
+  return true;
 }
