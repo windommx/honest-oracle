@@ -49,6 +49,11 @@ This product's whole thesis is *not faking rigor* (see
 - **Flag syntheses.** Where data is a scholarly composite rather than a fixed
   source (e.g. the Thai narrative structures in `thai-structures.ts`), say so in
   the data itself.
+- **In `lib/therapy-engine/`, the same rule has teeth.** It is a health product,
+  so the failure mode is not an unimpressive tool but a harmful one: every
+  intervention must carry a citation (a test fails the build otherwise), no
+  screening band may be presented as a diagnosis, and safety routing is decided
+  before any score is read. See that folder's README for the full list.
 
 If a change would make the tool *look* more capable than it honestly is, that's
 a bug, not a feature.
@@ -59,5 +64,8 @@ a bug, not a feature.
 |------|------|
 | `lib/rush-engine/` | Pure, deterministic prompt-generation engine + tests |
 | `app/rush/` | Rush Studio UI — generator, `/explore` landing, `/start` wizard |
+| `lib/therapy-engine/` | MindBridge — screening instruments, evidence catalog, safety rules, iso-principle math (pure + tested) |
+| `app/therapy/` | MindBridge UI — assessment, interventions, session player, sleep diary |
+| `lib/design/tokens.ts` | The app-wide palette both products share; each has a guard test over it |
 | `scripts/rush.ts` | CLI entry (`npm run rush`) |
 | `.github/workflows/` | CI — `web-tests.yml` runs `npm run verify` |
