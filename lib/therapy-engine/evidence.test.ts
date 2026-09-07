@@ -5,6 +5,7 @@ import {
   INTERVENTIONS,
   VERIFICATION_NOTE,
   byGrade,
+  catalogTotals,
   getIntervention,
   selfAdministered,
 } from "./evidence";
@@ -145,5 +146,33 @@ describe("dose", () => {
   it("byGrade partitions the catalog with nothing lost", () => {
     const total = GRADE_ORDER.reduce((n, g) => n + byGrade(g).length, 0);
     expect(total).toBe(INTERVENTIONS.length);
+  });
+});
+
+describe("catalogTotals — counted from the table, with the overlap admitted", () => {
+  it("counts what is actually in the catalog", () => {
+    const t = catalogTotals();
+    expect(t.interventions).toBe(INTERVENTIONS.length);
+    expect(t.citations).toBe(INTERVENTIONS.reduce((n, i) => n + i.citations.length, 0));
+  });
+
+  it("sums pooled trials and participants across cited syntheses", () => {
+    const t = catalogTotals();
+    expect(t.trials).toBeGreaterThan(0);
+    expect(t.participants).toBeGreaterThan(0);
+  });
+
+  it("never ships the participant count without its double-counting caveat", () => {
+    // The exact trick a "13,000+ participants" hero stat normally plays: reviews
+    // overlap, so this is the size of the cited literature, not a headcount.
+    const t = catalogTotals();
+    expect(t.overlapNoteTh).toContain("นับซ้ำ");
+    expect(t.overlapNoteTh).toContain("ไม่ใช่จำนวนคนที่ไม่ซ้ำกัน");
+  });
+
+  it("recomputes when the catalog changes rather than being a stored constant", () => {
+    // catalogTotals() is a function over INTERVENTIONS, so a landing-page number
+    // cannot drift from the table beneath it.
+    expect(catalogTotals()).toEqual(catalogTotals());
   });
 });

@@ -318,3 +318,25 @@ export function getIntervention(id: string): Intervention | undefined {
 export function selfAdministered(): Intervention[] {
   return INTERVENTIONS.filter((i) => i.selfAdministered);
 }
+
+/** Counts computed from the catalog itself — never hardcoded into a marketing
+ *  headline, so the numbers on the landing page cannot drift from the table
+ *  beneath them.
+ *
+ *  ⚠ `participants` and `trials` are SUMS ACROSS REVIEWS, and reviews overlap:
+ *  a trial included in two meta-analyses is counted twice here. That makes these
+ *  a measure of the cited literature's size, NOT a headcount of distinct people.
+ *  `overlapNoteTh` ships with them so the figure is never displayed bare — which
+ *  is exactly the trick a "13,000+ participants" hero stat normally plays. */
+export function catalogTotals() {
+  const citations = INTERVENTIONS.flatMap((i) => i.citations);
+  return {
+    interventions: INTERVENTIONS.length,
+    citations: citations.length,
+    trials: citations.reduce((n, c) => n + (c.pooled?.trials ?? 0), 0),
+    participants: citations.reduce((n, c) => n + (c.pooled?.participants ?? 0), 0),
+    overlapNoteTh:
+      "ตัวเลขนี้คือผลรวมจากงานทบทวนที่อ้างอิง ซึ่งอาจนับซ้ำได้ (งานวิจัยชิ้นเดียวอาจอยู่ในหลาย meta-analysis) " +
+      "จึงเป็นขนาดของฐานงานวิจัยที่อ้างอิง ไม่ใช่จำนวนคนที่ไม่ซ้ำกัน",
+  };
+}
