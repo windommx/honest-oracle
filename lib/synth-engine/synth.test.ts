@@ -3,27 +3,11 @@ import { MAX_VOICES, Synth } from "./synth";
 import { DEFAULT_PATCH, PRESETS, getPreset } from "./presets";
 import { midiToFrequency } from "./voice";
 import { LFO_TARGETS } from "./types";
+import { dominantFrequency, onsets, peak, rms } from "./analysis";
 
 const SR = 48000;
 
-const rms = (b: Float32Array, from = 0, to = b.length) => {
-  let s = 0;
-  for (let i = from; i < to; i++) s += b[i] * b[i];
-  return Math.sqrt(s / Math.max(1, to - from));
-};
-
-const peak = (b: Float32Array) => {
-  let m = 0;
-  for (let i = 0; i < b.length; i++) m = Math.max(m, Math.abs(b[i]));
-  return m;
-};
-
-/** Dominant frequency of a buffer, by counting rising zero crossings. */
-function dominantHz(b: Float32Array, sr = SR): number {
-  let crossings = 0;
-  for (let i = 1; i < b.length; i++) if (b[i - 1] < 0 && b[i] >= 0) crossings++;
-  return (crossings * sr) / b.length;
-}
+const dominantHz = (b: Float32Array, sr = SR) => dominantFrequency(b, sr);
 
 describe("synth — it makes a sound", () => {
   it("is silent with no notes held", () => {
@@ -357,30 +341,6 @@ describe("presets", () => {
 });
 
 describe("pulse clock — steady because it counts samples", () => {
-  /** Sample indices at which the output rises from silence — one per pulse. */
-  function onsets(b: Float32Array, threshold = 0.02): number[] {
-    const out: number[] = [];
-    let quiet = true;
-    for (let i = 0; i < b.length; i++) {
-      const loud = Math.abs(b[i]) > threshold;
-      if (loud && quiet) out.push(i);
-      // A little hysteresis, so one pulse's zero-crossings do not read as many.
-      if (!loud && !quiet) {
-        let stillQuiet = true;
-        for (let j = i; j < Math.min(b.length, i + 200); j++) {
-          if (Math.abs(b[j]) > threshold) {
-            stillQuiet = false;
-            break;
-          }
-        }
-        if (stillQuiet) quiet = true;
-      } else if (loud) {
-        quiet = false;
-      }
-    }
-    return out;
-  }
-
   const clicky = {
     ampAttack: 0,
     ampDecay: 0.05,

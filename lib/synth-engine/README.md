@@ -68,6 +68,18 @@ now backs every time-based effect.
 The curve is still exponential; a sample countdown now ends each stage exactly
 when the knob says.
 
+## Testing a worklet
+
+`worklet-harness.ts` runs any `AudioWorkletProcessor` in Node — unmodified — by
+supplying the three globals its realm needs, so its output lands in an array you
+can assert on. `analysis.ts` measures the properties a listener would notice
+(level, pitch, aliasing, onsets, DC) rather than exact samples.
+
+Both are dependency-free and runner-agnostic, so they drop into any project with
+a worklet. See [docs/worklet-testing.md](../../docs/worklet-testing.md) for the
+recipe, the four checks worth having on any worklet, and a worked example of
+what it found in a third-party engine.
+
 ## Tests
 
 ```bash

@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { Oscillator, WAVE_NAMES, waveIndex } from "./oscillator";
+import { inharmonicEnergy } from "./analysis";
 
 const SR = 48000;
 
@@ -25,29 +26,6 @@ function naiveSaw(freq: number, n: number, sr = SR): Float64Array {
   return out;
 }
 
-/** Energy at frequencies that are NOT harmonics of `freq` — i.e. aliasing.
- *  Computed with a plain DFT over a window; slow but exact and dependency-free. */
-function inharmonicEnergy(sig: Float64Array, freq: number, sr = SR): number {
-  const n = sig.length;
-  let alias = 0;
-  // Walk bins up to Nyquist, skipping those within half a bin of a harmonic.
-  for (let k = 1; k < n / 2; k++) {
-    const binHz = (k * sr) / n;
-    const ratio = binHz / freq;
-    const nearHarmonic = Math.abs(ratio - Math.round(ratio)) < 0.03;
-    if (nearHarmonic) continue;
-    let re = 0;
-    let im = 0;
-    for (let i = 0; i < n; i++) {
-      const w = 0.5 - 0.5 * Math.cos((2 * Math.PI * i) / n); // Hann
-      re += sig[i] * w * Math.cos((-2 * Math.PI * k * i) / n);
-      im += sig[i] * w * Math.sin((-2 * Math.PI * k * i) / n);
-    }
-    alias += (re * re + im * im) / (n * n);
-  }
-  return alias;
-}
-
 describe("oscillator — band-limiting is the whole point", () => {
   it("aliases far less than a naive saw at a high pitch", () => {
     // The measurement that justifies PolyBLEP existing. At 2.6kHz a naive saw
@@ -55,8 +33,8 @@ describe("oscillator — band-limiting is the whole point", () => {
     // one should be markedly cleaner.
     const freq = 2637; // E7
     const n = 2048;
-    const clean = inharmonicEnergy(render(freq, 2, n), freq);
-    const naive = inharmonicEnergy(naiveSaw(freq, n), freq);
+    const clean = inharmonicEnergy(render(freq, 2, n), freq, SR);
+    const naive = inharmonicEnergy(naiveSaw(freq, n), freq, SR);
     expect(clean).toBeLessThan(naive * 0.5);
   });
 

@@ -1,10 +1,9 @@
 import { describe, it, expect } from "vitest";
 import { Allpass, DelayLine } from "./delay-line";
 import { Chorus, Compressor, PlateReverb, Saturator, StereoDelay } from "./effects";
+import { rms } from "./analysis";
 
 const SR = 48000;
-
-const rms = (xs: number[]) => Math.sqrt(xs.reduce((a, b) => a + b * b, 0) / Math.max(1, xs.length));
 
 describe("delay line", () => {
   it("returns what was written, the requested number of samples ago", () => {
