@@ -4,7 +4,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { Play, Square, Volume2 } from "lucide-react";
 import { DEFAULT_PATCH, PRESETS } from "@/lib/synth-engine/presets";
-import { LFO_TARGETS, type LfoTarget, type SynthPatch } from "@/lib/synth-engine/types";
+import { LFO_TARGETS, OSC_SOURCES, type LfoTarget, type OscSource, type SynthPatch } from "@/lib/synth-engine/types";
+import { DRUM_IDS, type DrumId } from "@/lib/synth-engine/drums";
 import { toast } from "../rush/_toast";
 import { Knob } from "./_knob";
 import { Keyboard } from "./_keyboard";
@@ -12,6 +13,14 @@ import { Spectrum } from "./_spectrum";
 import { PANELS } from "./_panels";
 import { SynthClient, audioWorkletSupported } from "./_engine-client";
 import { GROUP_COLOR, TEXT_FAINT } from "./_tokens";
+
+/** Short labels for the voice architectures. */
+const SOURCE_LABEL: Record<OscSource, string> = {
+  classic: "Classic",
+  granular: "Granular",
+  karplus: "String",
+  user: "Drawn",
+};
 
 export default function SynthPage() {
   const [patch, setPatch] = useState<SynthPatch>(DEFAULT_PATCH);
@@ -66,7 +75,7 @@ export default function SynthPage() {
     setStatus({ activeVoices: 0, peak: 0 });
   }, []);
 
-  const update = useCallback((key: keyof SynthPatch, value: number | LfoTarget) => {
+  const update = useCallback((key: keyof SynthPatch, value: number | LfoTarget | OscSource) => {
     setPatch((prev) => {
       const next = { ...prev, [key]: value } as SynthPatch;
       client.current?.setPatch({ [key]: value });
@@ -100,6 +109,10 @@ export default function SynthPage() {
       next.delete(note);
       return next;
     });
+  }, []);
+
+  const hitDrum = useCallback((id: DrumId) => {
+    client.current?.triggerDrum(id, 1);
   }, []);
 
   const readSpectrum = useCallback(() => client.current?.readSpectrum() ?? new Float32Array(0), []);
@@ -185,6 +198,49 @@ export default function SynthPage() {
         )}
       </section>
 
+      {/* voice architecture */}
+      <section className="mt-5 flex flex-wrap items-center gap-4">
+        <div>
+          <h2 className="text-[0.65rem] tracking-widest uppercase mb-2" style={{ color: TEXT_FAINT }}>
+            Voice
+          </h2>
+          <div className="flex flex-wrap gap-2" role="group" aria-label="สถาปัตยกรรมเสียง">
+            {OSC_SOURCES.map((src) => (
+              <button
+                key={src}
+                onClick={() => update("oscSource", src)}
+                aria-pressed={patch.oscSource === src}
+                className={`px-3 py-1.5 rounded-full border text-xs transition ${
+                  patch.oscSource === src
+                    ? "border-gold text-gold bg-gold/10"
+                    : "border-white/10 text-gray-400 hover:border-gold/40"
+                }`}
+              >
+                {SOURCE_LABEL[src]}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <h2 className="text-[0.65rem] tracking-widest uppercase mb-2" style={{ color: TEXT_FAINT }}>
+            Drums
+          </h2>
+          <div className="flex flex-wrap gap-2">
+            {DRUM_IDS.map((id) => (
+              <button
+                key={id}
+                onClick={() => hitDrum(id)}
+                disabled={!running}
+                className="px-3 py-1.5 rounded-lg border border-white/10 text-xs text-gray-300 hover:border-gold/40 active:bg-gold/20 transition disabled:opacity-30 capitalize"
+              >
+                {id}
+              </button>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* spectrum */}
       <section className="mt-5">
         <Spectrum read={readSpectrum} sampleRate={sampleRate} active={running} />
@@ -211,6 +267,7 @@ export default function SynthPage() {
                   unit={k.unit}
                   logarithmic={k.log}
                   precision={k.precision}
+                  integer={k.integer}
                   group={panel.group}
                   defaultValue={DEFAULT_PATCH[k.key]}
                   onChange={(v) => update(k.key, v)}

@@ -8,6 +8,7 @@ import { Envelope } from "./envelope";
 import { LadderFilter } from "./filter";
 import { Oscillator } from "./oscillator";
 import { Rng } from "./rng";
+import { GranularOscillator, KarplusStrong, UserWavetable } from "./sources";
 import type { SynthPatch } from "./types";
 
 /** Hard cap on unison width. Each voice above one costs two more oscillators,
@@ -26,6 +27,12 @@ export class Voice {
   private readonly osc1: Oscillator[] = [];
   private readonly osc2: Oscillator[] = [];
   private readonly sub: Oscillator;
+  // The alternate architectures. Built once per voice rather than per note:
+  // allocating a 4096-sample delay line inside noteOn() would put the cost on
+  // the audio thread at exactly the moment it has least room for it.
+  private readonly granular: GranularOscillator;
+  private readonly karplus: KarplusStrong;
+  private readonly userTable: UserWavetable;
   private readonly filter: LadderFilter;
   private readonly ampEnv: Envelope;
   private readonly filterEnv: Envelope;
@@ -50,6 +57,9 @@ export class Voice {
     // decorrelated between voices (it would comb-filter if identical) while the
     // engine as a whole stays reproducible.
     this.rng = new Rng(0x1234567 + seed * 2654435761);
+    this.granular = new GranularOscillator(sampleRate, this.rng);
+    this.karplus = new KarplusStrong(sampleRate, this.rng);
+    this.userTable = new UserWavetable(sampleRate);
   }
 
   get active(): boolean {
@@ -76,6 +86,24 @@ export class Voice {
     }
     this.sub.reset();
     this.filter.reset();
+
+    switch (patch.oscSource) {
+      case "granular":
+        this.granular.reset();
+        this.granular.setFrequency(this.baseFrequency * Math.pow(2, patch.osc1Octave));
+        break;
+      case "karplus":
+        // A string is excited once, at the attack; there is no continuous
+        // oscillator to retune afterwards.
+        this.karplus.pluck(this.baseFrequency * Math.pow(2, patch.osc1Octave), patch.stringDamping);
+        break;
+      case "user":
+        this.userTable.reset();
+        this.userTable.setFrequency(this.baseFrequency * Math.pow(2, patch.osc1Octave));
+        break;
+      default:
+        break;
+    }
 
     this.ampEnv.noteOn(patch.ampAttack, patch.ampDecay, patch.ampSustain);
     this.filterEnv.noteOn(patch.filterAttack, patch.filterDecay, patch.filterSustain);
@@ -106,7 +134,14 @@ export class Voice {
   steal(): void {
     this.ampEnv.kill();
     this.filterEnv.kill();
+    this.karplus.mute();
+    this.granular.reset();
     this.note = -1;
+  }
+
+  /** Replace the drawable wavetable this voice reads. */
+  setUserTable(samples: ArrayLike<number>): void {
+    this.userTable.setTable(samples);
   }
 
   /**
@@ -135,6 +170,44 @@ export class Voice {
         this.osc1[i].setFrequency(f1 * ratio);
         this.osc2[i].setFrequency(f2 * ratio);
       }
+    }
+
+    // The alternate architectures replace the oscillator pair entirely, then
+    // rejoin the same filter and amplifier below.
+    if (patch.oscSource !== "classic") {
+      let source = 0;
+      if (patch.oscSource === "granular") {
+        if (lfoPitch !== 0) {
+          this.granular.setFrequency(
+            this.baseFrequency * Math.pow(2, patch.osc1Octave) * Math.pow(2, lfoPitch / 12)
+          );
+        }
+        source = this.granular.tick(patch.grainDensity, patch.grainSize, patch.grainJitter);
+      } else if (patch.oscSource === "karplus") {
+        source = this.karplus.tick();
+      } else {
+        if (lfoPitch !== 0) {
+          this.userTable.setFrequency(
+            this.baseFrequency * Math.pow(2, patch.osc1Octave) * Math.pow(2, lfoPitch / 12)
+          );
+        }
+        source = this.userTable.tick();
+      }
+
+      let mixed = source * patch.osc1Level;
+      if (patch.subLevel > 0) mixed += this.sub.tick(3) * patch.subLevel;
+      if (patch.noiseLevel > 0) mixed += this.rng.bipolar() * patch.noiseLevel;
+      mixed *= this.velocity;
+
+      const keyTrackAlt = (this.note - 60) * 100 * patch.filterKeyTrack;
+      const cutoffAlt = patch.filterCutoff + filterLevel * patch.filterEnvAmount + keyTrackAlt + lfoCutoff;
+      const filteredAlt = this.filter.tick(
+        mixed,
+        cutoffAlt,
+        patch.filterResonance,
+        Math.max(0.01, patch.filterDrive)
+      );
+      return filteredAlt * ampLevel * lfoVolume;
     }
 
     const morph1 = patch.osc1Morph + lfoMorph;

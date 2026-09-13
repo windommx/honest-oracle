@@ -35,6 +35,8 @@ export interface KnobProps {
   unit?: string;
   /** Decimal places; inferred from the range when omitted. */
   precision?: number;
+  /** Snap to whole numbers — for parameters the engine rounds anyway. */
+  integer?: boolean;
   size?: number;
 }
 
@@ -66,6 +68,7 @@ export function Knob({
   logarithmic = false,
   unit = "",
   precision,
+  integer = false,
   size = 54,
 }: KnobProps) {
   const id = useId();
@@ -77,8 +80,11 @@ export function Knob({
   const angle = START_ANGLE + normal * SWEEP;
 
   const commit = useCallback(
-    (n: number) => onChange(fromNormal(n, min, max, logarithmic)),
-    [onChange, min, max, logarithmic]
+    (n: number) => {
+      const value = fromNormal(n, min, max, logarithmic);
+      onChange(integer ? Math.round(value) : value);
+    },
+    [onChange, min, max, logarithmic, integer]
   );
 
   const onPointerDown = (e: React.PointerEvent) => {
@@ -105,35 +111,47 @@ export function Knob({
     setDragging(false);
   };
 
+  /** Move by `steps` notches. On an integer knob a notch is one whole unit —
+   *  a fraction of the range would round straight back to where it started,
+   *  which left keyboard users unable to change these knobs at all. */
+  const nudge = useCallback(
+    (steps: number, fine: boolean) => {
+      if (integer) {
+        onChange(Math.min(max, Math.max(min, Math.round(value) + steps)));
+        return;
+      }
+      commit(normal + steps * (fine ? 0.002 : 0.02));
+    },
+    [integer, onChange, min, max, value, commit, normal]
+  );
+
   const onKeyDown = (e: React.KeyboardEvent) => {
-    const step = e.shiftKey ? 0.002 : 0.02;
-    let next: number | null = null;
+    const coarse = integer ? Math.max(1, Math.round((max - min) / 10)) : 5;
     switch (e.key) {
       case "ArrowUp":
       case "ArrowRight":
-        next = normal + step;
+        nudge(1, e.shiftKey);
         break;
       case "ArrowDown":
       case "ArrowLeft":
-        next = normal - step;
+        nudge(-1, e.shiftKey);
         break;
       case "PageUp":
-        next = normal + 0.1;
+        nudge(coarse, false);
         break;
       case "PageDown":
-        next = normal - 0.1;
+        nudge(-coarse, false);
         break;
       case "Home":
-        next = 0;
+        onChange(min);
         break;
       case "End":
-        next = 1;
+        onChange(max);
         break;
       default:
         return;
     }
     e.preventDefault();
-    commit(next);
   };
 
   const r = size / 2 - 7;
@@ -168,7 +186,7 @@ export function Knob({
         onPointerCancel={endDrag}
         onKeyDown={onKeyDown}
         onDoubleClick={() => defaultValue !== undefined && onChange(defaultValue)}
-        onWheel={(e) => commit(normal + (e.deltaY > 0 ? -1 : 1) * (e.shiftKey ? 0.002 : 0.02))}
+        onWheel={(e) => nudge(e.deltaY > 0 ? -1 : 1, e.shiftKey)}
         className="cursor-ns-resize touch-none rounded-full"
         style={{ width: size, height: size }}
       >

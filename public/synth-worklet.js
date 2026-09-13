@@ -238,9 +238,302 @@
       this.dampL = this.dampR = this.feedL = this.feedR = 0;
     }
   };
+  var PHASER_STAGES = 6;
+  var Phaser = class {
+    constructor(sampleRate2) {
+      __publicField(this, "state", new Float64Array(PHASER_STAGES));
+      __publicField(this, "phase", 0);
+      __publicField(this, "feedbackSample", 0);
+      __publicField(this, "sampleRate");
+      this.sampleRate = sampleRate2;
+    }
+    /**
+     * @param rate  LFO speed in Hz
+     * @param depth 0..1 wet amount
+     * @param feedback 0..1 — resonance, clamped below unity
+     */
+    tick(x, rate, depth, feedback = 0) {
+      if (depth <= 1e-3) return x;
+      this.phase += Math.max(0.01, rate) / this.sampleRate;
+      if (this.phase >= 1) this.phase -= 1;
+      const lfo = 0.5 + 0.5 * Math.sin(2 * Math.PI * this.phase);
+      const centre = 200 * Math.pow(40, lfo);
+      const fb = Math.min(Math.max(feedback, 0), 0.95);
+      let out = x + this.feedbackSample * fb;
+      for (let i = 0; i < PHASER_STAGES; i++) {
+        const hz = Math.min(centre * (1 + i * 0.35), this.sampleRate * 0.45);
+        const t = Math.tan(Math.PI * hz / this.sampleRate);
+        const c = (t - 1) / (t + 1);
+        const v = c * out + this.state[i];
+        this.state[i] = out - c * v;
+        out = v;
+      }
+      this.feedbackSample = out;
+      return x + out * depth;
+    }
+    reset() {
+      this.state.fill(0);
+      this.phase = 0;
+      this.feedbackSample = 0;
+    }
+  };
+  var Flanger = class {
+    constructor(sampleRate2) {
+      __publicField(this, "line");
+      __publicField(this, "phase", 0);
+      __publicField(this, "sampleRate");
+      this.sampleRate = sampleRate2;
+      this.line = new DelayLine(Math.ceil(sampleRate2 * 0.03));
+    }
+    tick(x, rate, depth, feedback = 0) {
+      if (depth <= 1e-3) {
+        this.line.write(x);
+        return x;
+      }
+      this.phase += Math.max(0.01, rate) / this.sampleRate;
+      if (this.phase >= 1) this.phase -= 1;
+      const lfo = Math.sin(2 * Math.PI * this.phase);
+      const base = (1e-3 + depth * 4e-3) * this.sampleRate;
+      const swing = lfo * depth * 2e-3 * this.sampleRate;
+      const delayed = this.line.readInterpolated(Math.max(1, base + swing));
+      const fb = Math.min(Math.max(feedback, 0), 0.92);
+      this.line.write(x + delayed * fb);
+      return x + delayed * depth;
+    }
+    reset() {
+      this.line.clear();
+      this.phase = 0;
+    }
+  };
+  var BitCrusher = class {
+    constructor() {
+      __publicField(this, "held", 0);
+      __publicField(this, "countdown", 0);
+      __publicField(this, "primed", false);
+    }
+    /**
+     * @param bits 1..16
+     * @param rateDivisor 1 = untouched; 8 = one sample in eight
+     */
+    tick(x, bits, rateDivisor) {
+      const b = Math.min(Math.max(bits, 1), 16);
+      const div = Math.max(1, Math.round(rateDivisor));
+      if (b >= 16 && div === 1) {
+        this.held = x;
+        this.primed = true;
+        return x;
+      }
+      if (--this.countdown <= 0 || !this.primed) {
+        this.countdown = div;
+        this.primed = true;
+        const levels = Math.pow(2, b - 1);
+        this.held = Math.round(x * levels) / levels;
+      }
+      return this.held;
+    }
+    reset() {
+      this.held = 0;
+      this.countdown = 0;
+      this.primed = false;
+    }
+  };
+
+  // lib/synth-engine/envelope.ts
+  var NINETY_NINE_PERCENT = 4.605;
+  var Envelope = class {
+    constructor(sampleRate2) {
+      __publicField(this, "stage", "idle");
+      __publicField(this, "level", 0);
+      __publicField(this, "target", 0);
+      __publicField(this, "coeff", 1);
+      /** Samples left in the current timed stage. */
+      __publicField(this, "remaining", 0);
+      __publicField(this, "sustainLevel", 0);
+      __publicField(this, "decaySeconds", 0);
+      __publicField(this, "sampleRate");
+      this.sampleRate = sampleRate2;
+    }
+    /** Per-sample coefficient that covers 99% of the span in `seconds`. */
+    coeffFor(seconds) {
+      const samples = seconds * this.sampleRate;
+      return samples >= 1 ? 1 - Math.exp(-NINETY_NINE_PERCENT / samples) : 1;
+    }
+    beginStage(stage, target, seconds) {
+      this.stage = stage;
+      this.target = target;
+      this.coeff = this.coeffFor(seconds);
+      this.remaining = Math.max(0, Math.round(seconds * this.sampleRate));
+    }
+    noteOn(attack, decay, sustain) {
+      this.sustainLevel = Math.min(Math.max(sustain, 0), 1);
+      this.decaySeconds = Math.max(0, decay);
+      this.beginStage("attack", 1, Math.max(0, attack));
+      if (this.remaining === 0) {
+        this.level = 1;
+        this.beginStage("decay", this.sustainLevel, this.decaySeconds);
+        if (this.remaining === 0) {
+          this.level = this.sustainLevel;
+          this.stage = "sustain";
+        }
+      }
+    }
+    noteOff(release) {
+      if (this.stage === "idle") return;
+      this.beginStage("release", 0, Math.max(0, release));
+      if (this.remaining === 0) {
+        this.level = 0;
+        this.stage = "idle";
+      }
+    }
+    /** Cut to silence immediately — for voice stealing, where the stolen note's
+     *  release tail would otherwise bleed into the new one. */
+    kill() {
+      this.stage = "idle";
+      this.level = 0;
+      this.remaining = 0;
+    }
+    tick() {
+      if (this.stage === "idle") return 0;
+      if (this.stage === "sustain") {
+        this.level = this.sustainLevel;
+        return this.level;
+      }
+      this.level += (this.target - this.level) * this.coeff;
+      this.remaining--;
+      if (this.remaining <= 0) {
+        this.level = this.target;
+        if (this.stage === "attack") {
+          this.beginStage("decay", this.sustainLevel, this.decaySeconds);
+          if (this.remaining === 0) {
+            this.level = this.sustainLevel;
+            this.stage = "sustain";
+          }
+        } else if (this.stage === "decay") {
+          this.stage = "sustain";
+        } else {
+          this.stage = "idle";
+          this.level = 0;
+        }
+      }
+      return this.level;
+    }
+    get active() {
+      return this.stage !== "idle";
+    }
+    get currentStage() {
+      return this.stage;
+    }
+    get currentLevel() {
+      return this.level;
+    }
+  };
+
+  // lib/synth-engine/drums.ts
+  var TAU = Math.PI * 2;
+  var DRUM_IDS = ["kick", "snare", "hat", "perc"];
+  var DRUM_RECIPES = {
+    // Falling, not rising: 150Hz at impact down to 45Hz.
+    kick: { attack: 1e-3, decay: 0.36, startHz: 150, endHz: 45, pitchCurve: 26, noise: 0, gain: 1.1 },
+    // Noise for the snares, plus a body tone around 190Hz.
+    snare: { attack: 1e-3, decay: 0.19, startHz: 240, endHz: 185, pitchCurve: 40, noise: 0.72, gain: 0.85 },
+    // Almost pure noise with a very short tail — the tone is just enough to keep
+    // it from sounding like a burst of static.
+    hat: { attack: 5e-4, decay: 0.055, startHz: 8e3, endHz: 6e3, pitchCurve: 60, noise: 0.94, gain: 0.55 },
+    perc: { attack: 1e-3, decay: 0.13, startHz: 760, endHz: 300, pitchCurve: 34, noise: 0.08, gain: 0.7 }
+  };
+  var DrumVoice = class {
+    constructor(sampleRate2, rng) {
+      __publicField(this, "envelope");
+      __publicField(this, "rng");
+      __publicField(this, "sampleRate");
+      __publicField(this, "recipe", DRUM_RECIPES.kick);
+      __publicField(this, "phase", 0);
+      __publicField(this, "elapsed", 0);
+      __publicField(this, "velocity", 1);
+      this.sampleRate = sampleRate2;
+      this.rng = rng;
+      this.envelope = new Envelope(sampleRate2);
+    }
+    trigger(id, velocity = 1) {
+      this.recipe = DRUM_RECIPES[id];
+      this.velocity = Math.min(Math.max(velocity, 0), 1);
+      this.elapsed = 0;
+      this.phase = 0;
+      this.envelope.noteOn(this.recipe.attack, this.recipe.decay, 0);
+    }
+    get active() {
+      return this.envelope.active;
+    }
+    tick() {
+      if (!this.envelope.active) return 0;
+      const level = this.envelope.tick();
+      const r = this.recipe;
+      const fall = Math.exp(-this.elapsed * r.pitchCurve);
+      const hz = r.endHz + (r.startHz - r.endHz) * fall;
+      this.elapsed += 1 / this.sampleRate;
+      this.phase += hz / this.sampleRate;
+      if (this.phase >= 1) this.phase -= 1;
+      const tone = Math.sin(TAU * this.phase);
+      const noise = this.rng.bipolar();
+      const mixed = tone * (1 - r.noise) + noise * r.noise;
+      return Math.tanh(mixed * level * this.velocity * r.gain * 1.4);
+    }
+    silence() {
+      this.envelope.kill();
+    }
+  };
+  var DrumKit = class {
+    constructor(sampleRate2, rng) {
+      __publicField(this, "voices");
+      this.voices = {
+        kick: new DrumVoice(sampleRate2, rng),
+        snare: new DrumVoice(sampleRate2, rng),
+        hat: new DrumVoice(sampleRate2, rng),
+        perc: new DrumVoice(sampleRate2, rng)
+      };
+    }
+    trigger(id, velocity = 1) {
+      this.voices[id].trigger(id, velocity);
+    }
+    get activeCount() {
+      return DRUM_IDS.reduce((n, id) => n + (this.voices[id].active ? 1 : 0), 0);
+    }
+    tick() {
+      let out = 0;
+      for (const id of DRUM_IDS) out += this.voices[id].tick();
+      return out;
+    }
+    silence() {
+      for (const id of DRUM_IDS) this.voices[id].silence();
+    }
+  };
+
+  // lib/synth-engine/rng.ts
+  var Rng = class {
+    constructor(seed = 2654435769) {
+      __publicField(this, "state");
+      this.state = seed >>> 0 || 2654435769;
+    }
+    /** Uniform in [0, 1). */
+    next() {
+      this.state = this.state + 1831565813 >>> 0;
+      let t = this.state;
+      t = Math.imul(t ^ t >>> 15, t | 1);
+      t ^= t + Math.imul(t ^ t >>> 7, t | 61);
+      return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    }
+    /** Uniform in [-1, 1) — the white-noise sample. */
+    bipolar() {
+      return this.next() * 2 - 1;
+    }
+    reset(seed = 2654435769) {
+      this.state = seed >>> 0 || 2654435769;
+    }
+  };
 
   // lib/synth-engine/presets.ts
   var DEFAULT_PATCH = {
+    oscSource: "classic",
     osc1Morph: 2,
     // sawtooth
     osc1Octave: 0,
@@ -252,6 +545,10 @@
     noiseLevel: 0,
     fmAmount: 0,
     ringAmount: 0,
+    grainDensity: 60,
+    grainSize: 0.04,
+    grainJitter: 0,
+    stringDamping: 0.3,
     unisonVoices: 1,
     unisonDetune: 10,
     filterCutoff: 8e3,
@@ -273,6 +570,14 @@
     lfo2Amount: 0,
     lfo2Target: "pitch",
     saturation: 0,
+    phaserRate: 0.5,
+    phaserDepth: 0,
+    phaserFeedback: 0.4,
+    flangerRate: 0.3,
+    flangerDepth: 0,
+    flangerFeedback: 0.5,
+    crushBits: 16,
+    crushRateDivisor: 1,
     chorusRate: 1.2,
     chorusDepth: 0,
     delayTime: 0.35,
@@ -586,98 +891,90 @@
         volume: 0.42,
         stereoWidth: 0.35
       })
+    },
+    {
+      id: "plucked",
+      name: "Plucked",
+      note: "Karplus-Strong: a burst of noise circulating through a delay line one period long, losing a little each lap.",
+      patch: from({
+        oscSource: "karplus",
+        osc1Level: 0.9,
+        stringDamping: 0.25,
+        filterCutoff: 9e3,
+        filterResonance: 0.1,
+        filterEnvAmount: 0,
+        ampAttack: 0,
+        ampDecay: 2.5,
+        ampSustain: 0,
+        ampRelease: 1.2,
+        delayTime: 0.28,
+        delayMix: 0.2,
+        reverbDecay: 0.75,
+        reverbMix: 0.35,
+        compThreshold: -24,
+        compMakeup: 3,
+        stereoWidth: 0.4
+      })
+    },
+    {
+      id: "cloud",
+      name: "Cloud",
+      note: "Granular: hundreds of short detuned grains a second, which is why the density knob changes texture rather than volume.",
+      patch: from({
+        oscSource: "granular",
+        osc1Level: 0.8,
+        grainDensity: 420,
+        grainSize: 0.09,
+        grainJitter: 45,
+        filterCutoff: 4200,
+        filterResonance: 0.12,
+        filterEnvAmount: 900,
+        ampAttack: 0.9,
+        ampDecay: 1.2,
+        ampSustain: 0.85,
+        ampRelease: 1.8,
+        chorusRate: 0.5,
+        chorusDepth: 0.5,
+        reverbDecay: 0.9,
+        reverbMix: 0.5,
+        compThreshold: -28,
+        compRatio: 2,
+        compMakeup: 3,
+        volume: 0.42,
+        stereoWidth: 0.7
+      })
+    },
+    {
+      id: "crush",
+      name: "Crush",
+      note: "Bit reduction and rate division into a resonant phaser \u2014 two separate degradations that usually get conflated.",
+      patch: from({
+        osc1Morph: 3,
+        osc1Octave: -1,
+        osc2Detune: 14,
+        subLevel: 0.25,
+        filterCutoff: 3200,
+        filterResonance: 0.4,
+        filterEnvAmount: 1800,
+        ampAttack: 2e-3,
+        ampDecay: 0.25,
+        ampSustain: 0.6,
+        ampRelease: 0.25,
+        crushBits: 5,
+        crushRateDivisor: 6,
+        phaserRate: 0.35,
+        phaserDepth: 0.7,
+        phaserFeedback: 0.7,
+        saturation: 0.25,
+        delayMix: 0.18,
+        reverbMix: 0.15,
+        compThreshold: -16,
+        compRatio: 6,
+        compMakeup: 3,
+        volume: 0.4
+      })
     }
   ];
-
-  // lib/synth-engine/envelope.ts
-  var NINETY_NINE_PERCENT = 4.605;
-  var Envelope = class {
-    constructor(sampleRate2) {
-      __publicField(this, "stage", "idle");
-      __publicField(this, "level", 0);
-      __publicField(this, "target", 0);
-      __publicField(this, "coeff", 1);
-      /** Samples left in the current timed stage. */
-      __publicField(this, "remaining", 0);
-      __publicField(this, "sustainLevel", 0);
-      __publicField(this, "decaySeconds", 0);
-      __publicField(this, "sampleRate");
-      this.sampleRate = sampleRate2;
-    }
-    /** Per-sample coefficient that covers 99% of the span in `seconds`. */
-    coeffFor(seconds) {
-      const samples = seconds * this.sampleRate;
-      return samples >= 1 ? 1 - Math.exp(-NINETY_NINE_PERCENT / samples) : 1;
-    }
-    beginStage(stage, target, seconds) {
-      this.stage = stage;
-      this.target = target;
-      this.coeff = this.coeffFor(seconds);
-      this.remaining = Math.max(0, Math.round(seconds * this.sampleRate));
-    }
-    noteOn(attack, decay, sustain) {
-      this.sustainLevel = Math.min(Math.max(sustain, 0), 1);
-      this.decaySeconds = Math.max(0, decay);
-      this.beginStage("attack", 1, Math.max(0, attack));
-      if (this.remaining === 0) {
-        this.level = 1;
-        this.beginStage("decay", this.sustainLevel, this.decaySeconds);
-        if (this.remaining === 0) {
-          this.level = this.sustainLevel;
-          this.stage = "sustain";
-        }
-      }
-    }
-    noteOff(release) {
-      if (this.stage === "idle") return;
-      this.beginStage("release", 0, Math.max(0, release));
-      if (this.remaining === 0) {
-        this.level = 0;
-        this.stage = "idle";
-      }
-    }
-    /** Cut to silence immediately — for voice stealing, where the stolen note's
-     *  release tail would otherwise bleed into the new one. */
-    kill() {
-      this.stage = "idle";
-      this.level = 0;
-      this.remaining = 0;
-    }
-    tick() {
-      if (this.stage === "idle") return 0;
-      if (this.stage === "sustain") {
-        this.level = this.sustainLevel;
-        return this.level;
-      }
-      this.level += (this.target - this.level) * this.coeff;
-      this.remaining--;
-      if (this.remaining <= 0) {
-        this.level = this.target;
-        if (this.stage === "attack") {
-          this.beginStage("decay", this.sustainLevel, this.decaySeconds);
-          if (this.remaining === 0) {
-            this.level = this.sustainLevel;
-            this.stage = "sustain";
-          }
-        } else if (this.stage === "decay") {
-          this.stage = "sustain";
-        } else {
-          this.stage = "idle";
-          this.level = 0;
-        }
-      }
-      return this.level;
-    }
-    get active() {
-      return this.stage !== "idle";
-    }
-    get currentStage() {
-      return this.stage;
-    }
-    get currentLevel() {
-      return this.level;
-    }
-  };
 
   // lib/synth-engine/filter.ts
   var SELF_OSCILLATION_K = 4;
@@ -732,7 +1029,7 @@
 
   // lib/synth-engine/oscillator.ts
   var WAVE_NAMES = ["sine", "triangle", "sawtooth", "square"];
-  var TAU = Math.PI * 2;
+  var TAU2 = Math.PI * 2;
   function blep(t, dt) {
     if (t < dt) {
       const x = t / dt;
@@ -770,7 +1067,7 @@
     // ── The four shapes, each band-limited where it needs to be ───────────────
     /** A sine has no discontinuity, so it needs no correction. */
     sineAt(t) {
-      return Math.sin(TAU * t);
+      return Math.sin(TAU2 * t);
     }
     /** A triangle is continuous (its DERIVATIVE steps), so plain evaluation is
      *  already close to band-limited — its harmonics fall off as 1/n². */
@@ -821,26 +1118,165 @@
     }
   };
 
-  // lib/synth-engine/rng.ts
-  var Rng = class {
-    constructor(seed = 2654435769) {
-      __publicField(this, "state");
-      this.state = seed >>> 0 || 2654435769;
+  // lib/synth-engine/sources.ts
+  var TAU3 = Math.PI * 2;
+  var MAX_GRAINS = 24;
+  var GranularOscillator = class {
+    constructor(sampleRate2, rng) {
+      __publicField(this, "grains", []);
+      __publicField(this, "spawnCountdown", 0);
+      __publicField(this, "frequency", 220);
+      __publicField(this, "sampleRate");
+      __publicField(this, "rng");
+      this.sampleRate = sampleRate2;
+      this.rng = rng;
     }
-    /** Uniform in [0, 1). */
-    next() {
-      this.state = this.state + 1831565813 >>> 0;
-      let t = this.state;
-      t = Math.imul(t ^ t >>> 15, t | 1);
-      t ^= t + Math.imul(t ^ t >>> 7, t | 61);
-      return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    setFrequency(hz) {
+      this.frequency = Math.max(1, Math.min(hz, this.sampleRate * 0.45));
     }
-    /** Uniform in [-1, 1) — the white-noise sample. */
-    bipolar() {
-      return this.next() * 2 - 1;
+    reset() {
+      this.grains.length = 0;
+      this.spawnCountdown = 0;
     }
-    reset(seed = 2654435769) {
-      this.state = seed >>> 0 || 2654435769;
+    spawn(sizeSeconds, jitterCents) {
+      if (this.grains.length >= MAX_GRAINS) return;
+      const detune = jitterCents === 0 ? 0 : this.rng.bipolar() * jitterCents;
+      const hz = this.frequency * Math.pow(2, detune / 1200);
+      const lengthSamples = Math.max(8, sizeSeconds * this.sampleRate);
+      this.grains.push({
+        // A random start phase per grain: identical phases would sum into one
+        // loud in-phase transient instead of a cloud.
+        phase: this.rng.next(),
+        phaseInc: hz / this.sampleRate,
+        window: 0,
+        windowInc: 1 / lengthSamples,
+        amplitude: 0.6 + this.rng.next() * 0.4
+      });
+    }
+    /**
+     * @param density grains per second
+     * @param sizeSeconds length of each grain
+     * @param jitterCents pitch spread between grains
+     */
+    tick(density, sizeSeconds = 0.04, jitterCents = 0) {
+      const rate = Math.max(0.1, density);
+      const size = Math.max(2e-3, sizeSeconds);
+      if (--this.spawnCountdown <= 0) {
+        this.spawnCountdown = Math.max(1, Math.round(this.sampleRate / rate));
+        this.spawn(size, jitterCents);
+      }
+      let out = 0;
+      for (let i = this.grains.length - 1; i >= 0; i--) {
+        const g = this.grains[i];
+        const envelope = 0.5 - 0.5 * Math.cos(TAU3 * g.window);
+        out += Math.sin(TAU3 * g.phase) * envelope * g.amplitude;
+        g.phase += g.phaseInc;
+        if (g.phase >= 1) g.phase -= 1;
+        g.window += g.windowInc;
+        if (g.window >= 1) this.grains.splice(i, 1);
+      }
+      const overlap = Math.max(1, rate * size);
+      return out / Math.sqrt(overlap);
+    }
+    get activeGrains() {
+      return this.grains.length;
+    }
+  };
+  var KS_MAX = 4096;
+  var KarplusStrong = class {
+    constructor(sampleRate2, rng) {
+      __publicField(this, "buffer", new Float64Array(KS_MAX));
+      __publicField(this, "length", 0);
+      __publicField(this, "position", 0);
+      __publicField(this, "brightness", 0.5);
+      __publicField(this, "loopGain", 0.999);
+      __publicField(this, "sampleRate");
+      __publicField(this, "rng");
+      this.sampleRate = sampleRate2;
+      this.rng = rng;
+    }
+    /**
+     * @param frequency pitch in Hz
+     * @param damping 0..1 — 0 is a long bright string, 1 a short dull one
+     */
+    pluck(frequency, damping = 0.3) {
+      const d = Math.min(Math.max(damping, 0), 1);
+      const hz = Math.max(this.sampleRate / KS_MAX, Math.min(frequency, this.sampleRate * 0.45));
+      this.length = Math.max(2, Math.min(KS_MAX, Math.round(this.sampleRate / hz)));
+      this.brightness = 1 - d * 0.85;
+      const decaySeconds = 6 * Math.pow(0.06, d);
+      this.loopGain = Math.pow(1e-3, this.length / Math.max(1, decaySeconds * this.sampleRate));
+      for (let i = 0; i < this.length; i++) this.buffer[i] = this.rng.bipolar();
+      this.position = 0;
+    }
+    tick() {
+      if (this.length < 2) return 0;
+      const current = this.buffer[this.position];
+      const next = this.buffer[(this.position + 1) % this.length];
+      const averaged = (current + next) * 0.5;
+      const filtered = (averaged + (current - averaged) * this.brightness) * this.loopGain;
+      this.buffer[this.position] = filtered;
+      this.position = (this.position + 1) % this.length;
+      return filtered;
+    }
+    /** Silence the string — voice stealing. */
+    mute() {
+      this.length = 0;
+    }
+  };
+  var USER_TABLE_SIZE = 128;
+  var UserWavetable = class {
+    constructor(sampleRate2) {
+      __publicField(this, "table", new Float64Array(USER_TABLE_SIZE));
+      __publicField(this, "phase", 0);
+      __publicField(this, "inc", 0);
+      __publicField(this, "sampleRate");
+      this.sampleRate = sampleRate2;
+      for (let i = 0; i < USER_TABLE_SIZE; i++) {
+        this.table[i] = Math.sin(TAU3 * i / USER_TABLE_SIZE);
+      }
+    }
+    /** Replace the table. Input of any length is resampled to USER_TABLE_SIZE and
+     *  normalised to peak 1, so a faintly-drawn shape is as loud as a bold one. */
+    setTable(samples) {
+      if (samples.length === 0) return;
+      const next = new Float64Array(USER_TABLE_SIZE);
+      for (let i = 0; i < USER_TABLE_SIZE; i++) {
+        const source = i / USER_TABLE_SIZE * samples.length;
+        const i0 = Math.floor(source) % samples.length;
+        const i1 = (i0 + 1) % samples.length;
+        const frac = source - Math.floor(source);
+        const value = samples[i0] * (1 - frac) + samples[i1] * frac;
+        next[i] = Number.isFinite(value) ? value : 0;
+      }
+      let peak = 0;
+      for (let i = 0; i < USER_TABLE_SIZE; i++) peak = Math.max(peak, Math.abs(next[i]));
+      if (peak > 1e-6) for (let i = 0; i < USER_TABLE_SIZE; i++) next[i] /= peak;
+      this.table = next;
+    }
+    getTable() {
+      return this.table.slice();
+    }
+    setFrequency(hz) {
+      this.inc = Math.max(0, Math.min(hz, this.sampleRate * 0.49)) / this.sampleRate;
+    }
+    reset(phase = 0) {
+      this.phase = phase - Math.floor(phase);
+    }
+    /** True once the pitch is high enough that an edge in the table will fold.
+     *  The UI uses it to warn rather than to silently change the sound. */
+    get aliasWarning() {
+      return this.inc * USER_TABLE_SIZE > 0.5;
+    }
+    tick() {
+      const pos = this.phase * USER_TABLE_SIZE;
+      const i0 = Math.floor(pos) % USER_TABLE_SIZE;
+      const i1 = (i0 + 1) % USER_TABLE_SIZE;
+      const frac = pos - Math.floor(pos);
+      const out = this.table[i0] * (1 - frac) + this.table[i1] * frac;
+      this.phase += this.inc;
+      if (this.phase >= 1) this.phase -= 1;
+      return out;
     }
   };
 
@@ -857,6 +1293,12 @@
       __publicField(this, "osc1", []);
       __publicField(this, "osc2", []);
       __publicField(this, "sub");
+      // The alternate architectures. Built once per voice rather than per note:
+      // allocating a 4096-sample delay line inside noteOn() would put the cost on
+      // the audio thread at exactly the moment it has least room for it.
+      __publicField(this, "granular");
+      __publicField(this, "karplus");
+      __publicField(this, "userTable");
       __publicField(this, "filter");
       __publicField(this, "ampEnv");
       __publicField(this, "filterEnv");
@@ -875,6 +1317,9 @@
       this.ampEnv = new Envelope(sampleRate2);
       this.filterEnv = new Envelope(sampleRate2);
       this.rng = new Rng(19088743 + seed * 2654435761);
+      this.granular = new GranularOscillator(sampleRate2, this.rng);
+      this.karplus = new KarplusStrong(sampleRate2, this.rng);
+      this.userTable = new UserWavetable(sampleRate2);
     }
     get active() {
       return this.ampEnv.active;
@@ -893,6 +1338,21 @@
       }
       this.sub.reset();
       this.filter.reset();
+      switch (patch.oscSource) {
+        case "granular":
+          this.granular.reset();
+          this.granular.setFrequency(this.baseFrequency * Math.pow(2, patch.osc1Octave));
+          break;
+        case "karplus":
+          this.karplus.pluck(this.baseFrequency * Math.pow(2, patch.osc1Octave), patch.stringDamping);
+          break;
+        case "user":
+          this.userTable.reset();
+          this.userTable.setFrequency(this.baseFrequency * Math.pow(2, patch.osc1Octave));
+          break;
+        default:
+          break;
+      }
       this.ampEnv.noteOn(patch.ampAttack, patch.ampDecay, patch.ampSustain);
       this.filterEnv.noteOn(patch.filterAttack, patch.filterDecay, patch.filterSustain);
     }
@@ -916,7 +1376,13 @@
     steal() {
       this.ampEnv.kill();
       this.filterEnv.kill();
+      this.karplus.mute();
+      this.granular.reset();
       this.note = -1;
+    }
+    /** Replace the drawable wavetable this voice reads. */
+    setUserTable(samples) {
+      this.userTable.setTable(samples);
     }
     /**
      * One sample.
@@ -939,6 +1405,39 @@
           this.osc1[i].setFrequency(f1 * ratio);
           this.osc2[i].setFrequency(f2 * ratio);
         }
+      }
+      if (patch.oscSource !== "classic") {
+        let source = 0;
+        if (patch.oscSource === "granular") {
+          if (lfoPitch !== 0) {
+            this.granular.setFrequency(
+              this.baseFrequency * Math.pow(2, patch.osc1Octave) * Math.pow(2, lfoPitch / 12)
+            );
+          }
+          source = this.granular.tick(patch.grainDensity, patch.grainSize, patch.grainJitter);
+        } else if (patch.oscSource === "karplus") {
+          source = this.karplus.tick();
+        } else {
+          if (lfoPitch !== 0) {
+            this.userTable.setFrequency(
+              this.baseFrequency * Math.pow(2, patch.osc1Octave) * Math.pow(2, lfoPitch / 12)
+            );
+          }
+          source = this.userTable.tick();
+        }
+        let mixed = source * patch.osc1Level;
+        if (patch.subLevel > 0) mixed += this.sub.tick(3) * patch.subLevel;
+        if (patch.noiseLevel > 0) mixed += this.rng.bipolar() * patch.noiseLevel;
+        mixed *= this.velocity;
+        const keyTrackAlt = (this.note - 60) * 100 * patch.filterKeyTrack;
+        const cutoffAlt = patch.filterCutoff + filterLevel * patch.filterEnvAmount + keyTrackAlt + lfoCutoff;
+        const filteredAlt = this.filter.tick(
+          mixed,
+          cutoffAlt,
+          patch.filterResonance,
+          Math.max(0.01, patch.filterDrive)
+        );
+        return filteredAlt * ampLevel * lfoVolume;
       }
       const morph1 = patch.osc1Morph + lfoMorph;
       const morph2 = patch.osc2Morph + lfoMorph;
@@ -994,6 +1493,10 @@
       __publicField(this, "reverb");
       __publicField(this, "compL");
       __publicField(this, "compR");
+      __publicField(this, "phaser");
+      __publicField(this, "flanger");
+      __publicField(this, "crusher");
+      __publicField(this, "drums");
       __publicField(this, "lfo1Phase", 0);
       __publicField(this, "lfo2Phase", 0);
       __publicField(this, "ageCounter", 0);
@@ -1013,9 +1516,25 @@
       this.reverb = new PlateReverb(sampleRate2);
       this.compL = new Compressor(sampleRate2);
       this.compR = new Compressor(sampleRate2);
+      this.phaser = new Phaser(sampleRate2);
+      this.flanger = new Flanger(sampleRate2);
+      this.crusher = new BitCrusher();
+      this.drums = new DrumKit(sampleRate2, new Rng(860165));
+    }
+    /** Hit a drum pad. Independent of the keyboard: pads do not consume voices
+     *  and are not affected by note-off. */
+    triggerDrum(id, velocity = 1) {
+      this.drums.trigger(id, velocity);
+    }
+    /** Replace the drawable wavetable every voice reads. */
+    setUserTable(samples) {
+      for (const v of this.voices) v.setUserTable(samples);
     }
     get activeVoiceCount() {
       return this.voices.reduce((n, v) => n + (v.active ? 1 : 0), 0);
+    }
+    get activeDrumCount() {
+      return this.drums.activeCount;
     }
     noteOn(note, velocity = 1) {
       this.pending.push({ type: "on", note, velocity });
@@ -1035,6 +1554,10 @@
       this.pulseGate = -1;
       this.saturator.reset();
       this.chorus.reset();
+      this.phaser.reset();
+      this.flanger.reset();
+      this.crusher.reset();
+      this.drums.silence();
       this.delay.reset();
       this.reverb.reset();
       this.compL.reset();
@@ -1128,8 +1651,12 @@
             mono += v.tick(p, a.cutoff + b.cutoff, a.pitch + b.pitch, a.morph + b.morph, a.volume * b.volume);
           }
         }
+        mono += this.drums.tick() * 0.8;
         mono *= 0.35;
         mono = this.saturator.tick(mono, p.saturation);
+        mono = this.phaser.tick(mono, p.phaserRate, p.phaserDepth, p.phaserFeedback);
+        mono = this.flanger.tick(mono, p.flangerRate, p.flangerDepth, p.flangerFeedback);
+        mono = this.crusher.tick(mono, p.crushBits, p.crushRateDivisor);
         const [chL, chR] = this.chorus.tick(mono, p.chorusRate, p.chorusDepth);
         const mid = (chL + chR) * 0.5;
         const side = (chL - chR) * 0.5 * p.stereoWidth;
@@ -1182,6 +1709,12 @@
             break;
           case "pulse":
             this.synth.setPulse(msg.pulse);
+            break;
+          case "drum":
+            this.synth.triggerDrum(msg.id, msg.velocity);
+            break;
+          case "userTable":
+            this.synth.setUserTable(msg.samples);
             break;
           case "panic":
             this.synth.panic();

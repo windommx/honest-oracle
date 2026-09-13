@@ -66,3 +66,26 @@ describe("control surface — ranges are usable", () => {
     }
   });
 });
+
+describe("integer parameters snap", () => {
+  it("every parameter the engine rounds is marked integer", () => {
+    // A knob that reports 4.7 for a value the engine uses as 5 is lying about
+    // the patch. For octave it is worse than cosmetic: 2^0.37 is a detune, not
+    // an octave, so a dragged knob detunes the voice instead of transposing it.
+    const mustSnap = ["osc1Octave", "unisonVoices", "crushBits", "crushRateDivisor"];
+    for (const key of mustSnap) {
+      const knob = ALL_KNOBS.find((k) => k.key === key);
+      expect(knob, `no knob for ${key}`).toBeDefined();
+      expect(knob!.integer, `${key} should snap to whole numbers`).toBe(true);
+    }
+  });
+
+  it("every integer knob's defaults and presets are already whole", () => {
+    for (const k of ALL_KNOBS.filter((x) => x.integer)) {
+      expect(Number.isInteger(DEFAULT_PATCH[k.key]), `default ${k.key}`).toBe(true);
+      for (const preset of PRESETS) {
+        expect(Number.isInteger(preset.patch[k.key]), `preset ${preset.id} ${k.key}`).toBe(true);
+      }
+    }
+  });
+});

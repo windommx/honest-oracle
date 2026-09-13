@@ -15,6 +15,7 @@
 // ╚══════════════════════════════════════════════════════════════════╝
 
 import { Synth, type PulseSettings } from "./synth";
+import type { DrumId } from "./drums";
 import type { PatchUpdate } from "./types";
 
 /** Messages the UI thread sends in. */
@@ -24,6 +25,8 @@ export type WorkletCommand =
   | { type: "patch"; patch: PatchUpdate }
   | { type: "allNotesOff" }
   | { type: "pulse"; pulse: Partial<PulseSettings> }
+  | { type: "drum"; id: DrumId; velocity: number }
+  | { type: "userTable"; samples: number[] }
   | { type: "panic" };
 
 /** Messages the worklet sends back. */
@@ -71,6 +74,12 @@ class SynthProcessor extends AudioWorkletProcessor {
           break;
         case "pulse":
           this.synth.setPulse(msg.pulse);
+          break;
+        case "drum":
+          this.synth.triggerDrum(msg.id, msg.velocity);
+          break;
+        case "userTable":
+          this.synth.setUserTable(msg.samples);
           break;
         case "panic":
           this.synth.panic();

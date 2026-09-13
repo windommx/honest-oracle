@@ -11,6 +11,7 @@
 // ╚══════════════════════════════════════════════════════════════════╝
 
 import type { PatchUpdate, SynthPatch } from "@/lib/synth-engine/types";
+import type { DrumId } from "@/lib/synth-engine/drums";
 import type { PulseSettings } from "@/lib/synth-engine/synth";
 import type { WorkletCommand, WorkletStatus } from "@/lib/synth-engine/worklet-processor";
 
@@ -140,6 +141,14 @@ export class SynthClient {
 
   setPulse(pulse: Partial<PulseSettings>): void {
     this.send({ type: "pulse", pulse });
+  }
+
+  triggerDrum(id: DrumId, velocity = 1): void {
+    this.send({ type: "drum", id, velocity });
+  }
+
+  setUserTable(samples: number[]): void {
+    this.send({ type: "userTable", samples });
   }
 
   /** Magnitudes in dB, one per FFT bin. The array is reused between calls, so

@@ -4,7 +4,15 @@
 // postMessage boundary into the AudioWorklet on every change. A class with
 // methods, or a nested structure with getters, would not survive the trip.
 
+/** Which sound source the voice is built from. "classic" is the two
+ *  band-limited oscillators; the others replace them entirely. */
+export const OSC_SOURCES = ["classic", "granular", "karplus", "user"] as const;
+export type OscSource = (typeof OSC_SOURCES)[number];
+
 export interface SynthPatch {
+  /** The voice architecture. */
+  oscSource: OscSource;
+
   // ── Oscillator 1 ──
   /** 0..3 along sine → triangle → saw → square. Fractional values crossfade. */
   osc1Morph: number;
@@ -25,6 +33,18 @@ export interface SynthPatch {
   fmAmount: number;
   /** Osc 1 × osc 2. */
   ringAmount: number;
+
+  // ── Granular (oscSource "granular") ──
+  /** Grains per second. Low is a stutter, high is a continuous cloud. */
+  grainDensity: number;
+  /** Length of each grain, in seconds. */
+  grainSize: number;
+  /** Pitch spread between grains, in cents. */
+  grainJitter: number;
+
+  // ── Karplus-Strong (oscSource "karplus") ──
+  /** 0 is a long bright string, 1 a short dull one. */
+  stringDamping: number;
 
   // ── Unison ──
   /** 1..8 copies of each oscillator, detuned across `unisonDetune`. */
@@ -62,6 +82,16 @@ export interface SynthPatch {
 
   // ── Effects ──
   saturation: number;
+  phaserRate: number;
+  phaserDepth: number;
+  phaserFeedback: number;
+  flangerRate: number;
+  flangerDepth: number;
+  flangerFeedback: number;
+  /** 1..16. At 16 with no rate division the crusher is bypassed. */
+  crushBits: number;
+  /** 1 = untouched; 8 = one sample in eight. */
+  crushRateDivisor: number;
   chorusRate: number;
   chorusDepth: number;
   delayTime: number;

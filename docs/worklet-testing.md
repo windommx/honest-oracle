@@ -101,18 +101,28 @@ unmodified:
 
 ```
 loaded "synthpro-processor"
-  module eval      : 0.7ms
-  construct one    : 6888.9ms   <- charged to the audio thread
+  module eval      : 0.9ms
+  construct one    : 506.8ms   <- charged to the audio thread
   buildMorphTable(): 384 calls just to construct
-  idle block       : 0.477ms  (budget 2.67ms)
-  8-note block     : 3.547ms = 133% of budget
+  idle block       : 0.252ms  (budget 2.67ms)
+  8-note block     : 0.529ms = 20% of budget
 ```
 
-**Construction is seconds, and all of it is one function.** `PolyOsc`'s
-constructor calls `buildMorphTable(2, 32)`, and there are 24 voices × 8 unison ×
-2 oscillators of them — 384 calls, every one computing the *same* default saw
-table, 2048 entries × 32 harmonics each. The timing depends on the machine; the
-call count does not, which is why `countCalls()` exists.
+> These numbers replace an earlier set that were an order of magnitude worse.
+> The first version of this harness evaluated the processor inside a `node:vm`
+> context, which costs about 10x — so it reported this engine constructing in
+> 6.9 seconds and overrunning its real-time deadline, when the truth is half a
+> second and 20% of budget. The harness measuring itself is a real failure mode;
+> it is why the loader runs in the host realm now, and why the header of
+> `worklet-harness.ts` says so at length.
+
+**Half a second of it is one function.** `PolyOsc`'s constructor calls
+`buildMorphTable(2, 32)`, and there are 24 voices × 8 unison × 2 oscillators of
+them — 384 calls, every one computing the *same* default saw table, 2048 entries
+× 32 harmonics each. Half a second is charged to the audio thread the moment the
+node is created, so it is the delay between pressing RUN and hearing anything.
+The timing depends on the machine; the call count does not, which is why
+`countCalls()` exists.
 
 Memoising the table fixes it. The 0.004 threshold is the one `setTable()` already
 uses to decide a rebuild is needed, so quantising to 1/250 matches it exactly:
@@ -134,10 +144,10 @@ function buildMorphTable(waveIdx, maxH) {
 Safe because the tables are read-only at playback (bilinear interpolation reads
 them), and the user-drawn wavetable takes a separate `userMode` path.
 
-**Eight notes exceeded the real-time budget in Node.** 3.547ms against 2.67ms.
-Node in a VM context is slower than a browser's worklet thread, so this is *not*
-a browser measurement and should not be reported as one — but a 24-voice engine
-spending 133% of its deadline on eight notes is worth measuring where it runs.
+**Per-block cost is healthy.** Eight notes render in 0.529ms against a 2.67ms
+deadline — about a fifth of budget, with plenty of room for the remaining
+polyphony. (An earlier draft of this document claimed the opposite, on a
+measurement the harness itself had inflated.)
 
 **The resonance range is non-monotonic and flat at the top.** `PARAM_META` gives
 `fRes` a range of `0..25`; the filter uses `k = fRes * 0.4`, and a ladder

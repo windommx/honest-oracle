@@ -20,6 +20,10 @@ export interface KnobSpec {
   unit?: string;
   log?: boolean;
   precision?: number;
+  /** Snap to whole numbers. Required wherever the engine rounds the value
+   *  anyway — otherwise the knob reports a figure the engine never uses, and in
+   *  the case of octave a fractional value is a DETUNE, not an octave. */
+  integer?: boolean;
 }
 
 export interface PanelSpec {
@@ -34,7 +38,7 @@ export const PANELS: PanelSpec[] = [
     group: "source",
     knobs: [
       { key: "osc1Morph", label: "Morph 1", min: 0, max: 3, precision: 2 },
-      { key: "osc1Octave", label: "Oct 1", min: -3, max: 3, precision: 0 },
+      { key: "osc1Octave", label: "Oct 1", min: -3, max: 3, precision: 0, integer: true },
       { key: "osc1Level", label: "Level 1", min: 0, max: 1 },
       { key: "osc2Morph", label: "Morph 2", min: 0, max: 3, precision: 2 },
       { key: "osc2Detune", label: "Detune", min: -50, max: 50, unit: "¢", precision: 0 },
@@ -49,8 +53,18 @@ export const PANELS: PanelSpec[] = [
       { key: "noiseLevel", label: "Noise", min: 0, max: 1 },
       { key: "fmAmount", label: "FM", min: 0, max: 500, precision: 0 },
       { key: "ringAmount", label: "Ring", min: 0, max: 1 },
-      { key: "unisonVoices", label: "Unison", min: 1, max: 8, precision: 0 },
+      { key: "unisonVoices", label: "Unison", min: 1, max: 8, precision: 0, integer: true },
       { key: "unisonDetune", label: "Spread", min: 0, max: 50, unit: "¢", precision: 0 },
+    ],
+  },
+  {
+    title: "GRANULAR · STRING",
+    group: "source",
+    knobs: [
+      { key: "grainDensity", label: "Density", min: 1, max: 2000, unit: "/s", log: true, precision: 0 },
+      { key: "grainSize", label: "Grain", min: 0.002, max: 0.4, unit: "s", log: true },
+      { key: "grainJitter", label: "Jitter", min: 0, max: 200, unit: "¢", precision: 0 },
+      { key: "stringDamping", label: "Damp", min: 0, max: 1 },
     ],
   },
   {
@@ -105,6 +119,20 @@ export const PANELS: PanelSpec[] = [
       { key: "delayMix", label: "Dly mix", min: 0, max: 1 },
       { key: "reverbDecay", label: "Rev size", min: 0, max: 1 },
       { key: "reverbMix", label: "Rev mix", min: 0, max: 1 },
+    ],
+  },
+  {
+    title: "PHASER · FLANGER · CRUSH",
+    group: "effects",
+    knobs: [
+      { key: "phaserRate", label: "Ph rate", min: 0.02, max: 8, unit: "Hz", log: true },
+      { key: "phaserDepth", label: "Ph depth", min: 0, max: 1 },
+      { key: "phaserFeedback", label: "Ph fb", min: 0, max: 0.95 },
+      { key: "flangerRate", label: "Fl rate", min: 0.02, max: 8, unit: "Hz", log: true },
+      { key: "flangerDepth", label: "Fl depth", min: 0, max: 1 },
+      { key: "flangerFeedback", label: "Fl fb", min: 0, max: 0.92 },
+      { key: "crushBits", label: "Bits", min: 1, max: 16, precision: 0, integer: true },
+      { key: "crushRateDivisor", label: "SR div", min: 1, max: 32, precision: 0, integer: true },
     ],
   },
   {

@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { Allpass, DelayLine } from "./delay-line";
-import { Chorus, Compressor, PlateReverb, Saturator, StereoDelay } from "./effects";
-import { rms } from "./analysis";
+import { BitCrusher, Chorus, Compressor, Flanger, Phaser, PlateReverb, Saturator, StereoDelay } from "./effects";
+import { allFinite, levelVariation, magnitudeAt, peak, rms } from "./analysis";
 
 const SR = 48000;
 
@@ -308,5 +308,137 @@ describe("plate reverb", () => {
       return out;
     };
     expect(run()).toEqual(run());
+  });
+});
+
+describe("phaser", () => {
+  const sweep = (fx: Phaser, seconds: number, depth: number, feedback: number) => {
+    const out: number[] = [];
+    let phase = 0;
+    for (let i = 0; i < SR * seconds; i++) {
+      // Broadband input, so the notches have something to cut.
+      phase += (i % 2 === 0 ? 220 : 221) / SR;
+      const x = Math.sin(2 * Math.PI * phase) * 0.5 + (Math.sin(i * 0.31) + Math.sin(i * 1.07)) * 0.25;
+      out.push(fx.tick(x, 0.5, depth, feedback));
+    }
+    return out;
+  };
+
+  it("is a passthrough at zero depth", () => {
+    const fx = new Phaser(SR);
+    for (let i = 0; i < 200; i++) {
+      const x = Math.sin(i * 0.1);
+      expect(fx.tick(x, 1, 0, 0.5)).toBe(x);
+    }
+  });
+
+  it("sweeps — the level moves as the notches travel", () => {
+    const fx = new Phaser(SR);
+    expect(levelVariation(sweep(fx, 3, 1, 0), 4096)).toBeGreaterThan(0.02);
+  });
+
+  it("feedback sharpens the notches instead of just raising the level", () => {
+    // The bug this port fixes: the source version's feedback term scaled the
+    // DRY signal, so the knob was a volume control and the notches never moved.
+    // Resonant notches make the level vary MORE across the sweep; a volume knob
+    // would leave the variation unchanged while raising the mean.
+    const flat = sweep(new Phaser(SR), 3, 1, 0);
+    const resonant = sweep(new Phaser(SR), 3, 1, 0.85);
+    expect(levelVariation(resonant, 4096)).toBeGreaterThan(levelVariation(flat, 4096) * 1.2);
+  });
+
+  it("stays bounded at maximum feedback", () => {
+    const out = sweep(new Phaser(SR), 4, 1, 1);
+    expect(allFinite(out)).toBe(true);
+    expect(peak(out)).toBeLessThan(20);
+  });
+});
+
+describe("flanger", () => {
+  it("is a passthrough at zero depth", () => {
+    const fx = new Flanger(SR);
+    for (let i = 0; i < 200; i++) {
+      const x = Math.sin(i * 0.1);
+      expect(fx.tick(x, 1, 0, 0.5)).toBe(x);
+    }
+  });
+
+  it("combs the spectrum — some frequencies survive, others cancel", () => {
+    // A static short delay summed with the dry signal nulls every frequency
+    // whose half-period matches the delay. That comb IS the effect.
+    const fx = new Flanger(SR);
+    const out: number[] = [];
+    for (let i = 0; i < SR; i++) {
+      let x = 0;
+      for (const hz of [300, 600, 900, 1200, 1500, 1800]) x += Math.sin((2 * Math.PI * hz * i) / SR) / 6;
+      out.push(fx.tick(x, 0.05, 0.6, 0.3));
+    }
+    const tail = out.slice(SR / 2);
+    const levels = [300, 600, 900, 1200, 1500, 1800].map((hz) => magnitudeAt(tail, hz, SR));
+    expect(Math.max(...levels) / Math.max(1e-9, Math.min(...levels))).toBeGreaterThan(1.5);
+  });
+
+  it("cannot run away at maximum feedback", () => {
+    const fx = new Flanger(SR);
+    let worst = 0;
+    for (let i = 0; i < SR * 3; i++) {
+      const y = fx.tick(i < 200 ? 1 : 0, 0.3, 1, 1);
+      worst = Math.max(worst, Math.abs(y));
+      expect(Number.isFinite(y)).toBe(true);
+    }
+    expect(worst).toBeLessThan(30);
+  });
+});
+
+describe("bit crusher", () => {
+  it("is a passthrough at full resolution", () => {
+    const fx = new BitCrusher();
+    for (let i = 0; i < 100; i++) {
+      const x = Math.sin(i * 0.1) * 0.7;
+      expect(fx.tick(x, 16, 1)).toBe(x);
+    }
+  });
+
+  it("quantises to the number of levels asked for", () => {
+    const fx = new BitCrusher();
+    const seen = new Set<number>();
+    for (let i = 0; i < 4000; i++) seen.add(fx.tick(Math.sin(i * 0.01), 3, 1));
+    // 3 bits => 2^2 = 4 => steps of 0.25 across -1..1, so at most 9 values.
+    expect(seen.size).toBeLessThanOrEqual(9);
+    expect(seen.size).toBeGreaterThan(2);
+  });
+
+  it("fewer bits means coarser steps", () => {
+    const distinct = (bits: number) => {
+      const fx = new BitCrusher();
+      const seen = new Set<number>();
+      for (let i = 0; i < 4000; i++) seen.add(fx.tick(Math.sin(i * 0.01), bits, 1));
+      return seen.size;
+    };
+    expect(distinct(2)).toBeLessThan(distinct(6));
+  });
+
+  it("holds each sample for the rate divisor", () => {
+    const fx = new BitCrusher();
+    const out: number[] = [];
+    for (let i = 0; i < 40; i++) out.push(fx.tick(i / 40, 16, 4));
+    // Runs of four identical values.
+    expect(out[4]).toBe(out[5]);
+    expect(out[4]).toBe(out[7]);
+    expect(out[8]).not.toBe(out[4]);
+  });
+
+  it("opens with sound rather than a gap", () => {
+    // Without priming, the first `divisor` samples come out as the initial
+    // hold value of zero — an audible dropout whenever the effect engages.
+    const fx = new BitCrusher();
+    expect(fx.tick(0.8, 8, 16)).not.toBe(0);
+  });
+
+  it("clamps absurd settings", () => {
+    const fx = new BitCrusher();
+    for (const [bits, div] of [[0, 0], [-4, -1], [99, 1e6]]) {
+      expect(Number.isFinite(fx.tick(0.5, bits, div))).toBe(true);
+    }
   });
 });

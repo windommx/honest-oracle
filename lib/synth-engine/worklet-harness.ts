@@ -16,12 +16,28 @@
 // ║  assert on.                                                        ║
 // ║                                                                    ║
 // ║  Deliberately dependency-free and runner-agnostic (no vitest, no   ║
-// ║  jest): this file plus analysis.ts should drop into any project    ║
-// ║  that has a worklet, whatever it tests with.                       ║
+// ║  jest, not even node:vm): this file plus analysis.ts should drop   ║
+// ║  into any project that has a worklet, whatever it tests with.      ║
+// ║                                                                    ║
+// ║  WHY new Function AND NOT node:vm. The obvious implementation runs ║
+// ║  the source in a fresh vm context, which is tidier — a real global ║
+// ║  object per load, no chance of leaking. It is also TEN TIMES       ║
+// ║  SLOWER: measured on this engine, a render block took 3.1ms inside ║
+// ║  a vm context against 0.31ms for the same code imported directly,  ║
+// ║  and moving the output buffers into the guest realm changed        ║
+// ║  nothing, so the cost is the context boundary itself.              ║
+// ║                                                                    ║
+// ║  That matters because one of the things worth measuring is whether ║
+// ║  a block fits its real-time deadline — and at 10x overhead the     ║
+// ║  answer is always no, so the check measures the harness instead of ║
+// ║  the processor. (It told me my own engine had blown its budget at  ║
+// ║  3.6ms when it was actually running at 0.5ms.) Evaluating in the   ║
+// ║  host realm with the worklet globals injected as parameters is     ║
+// ║  full speed, and module-level state still stays private to each    ║
+// ║  load because it lives in the function body's own scope.           ║
 // ╚══════════════════════════════════════════════════════════════════╝
 
 import { readFileSync } from "node:fs";
-import vm from "node:vm";
 
 /** The shape a processor must have; matches the real AudioWorkletProcessor. */
 interface ProcessorLike {
@@ -123,43 +139,45 @@ export function evaluateWorkletSource(source: string, options: HarnessOptions = 
     }
   }
 
-  const sandbox = buildSandbox(sampleRate, Base, (name, ctor) => {
-    registered = { name, ctor };
-  }, options);
+  /** The one object shared with the evaluated source. Holds the clock the
+   *  harness advances, and anything countCalls() tallies. */
+  const harness: Record<string, unknown> = { sampleRate };
 
-  vm.createContext(sandbox);
-  new vm.Script(source, { filename: "worklet-processor.js" }).runInContext(sandbox);
+  const extraNames = Object.keys(options.globals ?? {});
+  const extraValues = extraNames.map((k) => (options.globals as Record<string, unknown>)[k]);
+
+  // `sampleRate`, `currentTime` and `currentFrame` are declared INSIDE the
+  // wrapper so the source sees them as the bare globals a worklet realm
+  // provides, while `__harnessTick` gives the host a way to advance the clock
+  // between blocks — which parameters alone could not do.
+  const prelude = `
+    const sampleRate = __harness.sampleRate;
+    let currentTime = 0, currentFrame = 0;
+    __harness.tick = (frame) => { currentFrame = frame; currentTime = frame / sampleRate; };
+  `;
+
+  const factory = new Function(
+    "__harness",
+    "AudioWorkletProcessor",
+    "registerProcessor",
+    ...extraNames,
+    prelude + "\n" + source
+  );
+
+  factory(
+    harness,
+    Base,
+    (name: string, ctor: new () => ProcessorLike) => {
+      registered = { name, ctor };
+    },
+    ...extraValues
+  );
 
   if (registered === null) {
     throw new Error("the source never called registerProcessor() — is this an AudioWorklet module?");
   }
   const { name, ctor } = registered as { name: string; ctor: new () => ProcessorLike };
-  return { name, createProcessor: () => new ctor(), globals: sandbox, outbox };
-}
-
-function buildSandbox(
-  sampleRate: number,
-  Base: unknown,
-  register: (name: string, ctor: new () => ProcessorLike) => void,
-  options: HarnessOptions
-): Record<string, unknown> {
-  const sandbox: Record<string, unknown> = {
-    sampleRate,
-    currentTime: 0,
-    currentFrame: 0,
-    AudioWorkletProcessor: Base,
-    registerProcessor: register,
-    // A processor legitimately reaches for these; withholding them would make
-    // the harness reject working code.
-    console, Math, Date,
-    Float32Array, Float64Array, Int32Array, Uint8Array, Uint32Array,
-    Array, Object, Number, String, Boolean, Map, Set, JSON,
-    isFinite, isNaN, parseFloat, parseInt,
-    Error, RangeError, TypeError,
-    ...options.globals,
-  };
-  sandbox.globalThis = sandbox;
-  return sandbox;
+  return { name, createProcessor: () => new ctor(), globals: harness, outbox };
 }
 
 /** Evaluate a processor module and construct one instance of it. */
@@ -176,6 +194,7 @@ export function loadWorkletSource(source: string, options: HarnessOptions = {}):
   const parameters = options.parameters ?? {};
   const scratch: Float32Array[] = Array.from({ length: channels }, () => new Float32Array(blockSize));
   const outputs: Float32Array[][] = [scratch];
+  let frame = 0;
 
   const renderBlocks = (count: number): RenderResult => {
     const total = Math.max(0, Math.floor(count)) * blockSize;
@@ -189,8 +208,8 @@ export function loadWorkletSource(source: string, options: HarnessOptions = {}):
       const keepAlive = processor.process([], outputs, parameters);
       if (keepAlive === false) ended = true;
       for (let c = 0; c < channels; c++) out[c].set(scratch[c], b * blockSize);
-      sandbox.currentFrame = (sandbox.currentFrame as number) + blockSize;
-      sandbox.currentTime = (sandbox.currentFrame as number) / sampleRate;
+      frame += blockSize;
+      (sandbox.tick as ((f: number) => void) | undefined)?.(frame);
     }
     return { channels: out, left: out[0], right: out[Math.min(1, channels - 1)], ended };
   };
@@ -269,15 +288,17 @@ export function countCalls(
   run: (worklet: LoadedWorklet) => void,
   options: HarnessOptions = {}
 ): number {
-  const marker = `__calls_${functionName}`;
+  const marker = `calls_${functionName}`;
   const declaration = new RegExp(`function\\s+${functionName}\\s*\\(`);
   if (!declaration.test(source)) {
     throw new Error(`no \`function ${functionName}(\` declaration found to count`);
   }
   const opener = new RegExp(`(function\\s+${functionName}\\s*\\([^)]*\\)\\s*\\{)`);
+  // Tallied on the harness object, not on a real global: the source now runs in
+  // the host realm, and writing a counter to globalThis would leak out of it.
   const instrumented = source.replace(
     opener,
-    `$1 globalThis.${marker} = (globalThis.${marker} || 0) + 1;`
+    `$1 __harness.${marker} = (__harness.${marker} || 0) + 1;`
   );
 
   const worklet = loadWorkletSource(instrumented, options);

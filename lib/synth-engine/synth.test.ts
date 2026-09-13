@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { MAX_VOICES, Synth } from "./synth";
 import { DEFAULT_PATCH, PRESETS, getPreset } from "./presets";
 import { midiToFrequency } from "./voice";
-import { LFO_TARGETS } from "./types";
+import { LFO_TARGETS, OSC_SOURCES } from "./types";
 import { dominantFrequency, onsets, peak, rms } from "./analysis";
 
 const SR = 48000;
@@ -425,5 +425,84 @@ describe("pulse clock — steady because it counts samples", () => {
       return Array.from(s.renderSeconds(1).left);
     };
     expect(go()).toEqual(go());
+  });
+});
+
+describe("voice architectures", () => {
+  it.each(OSC_SOURCES)("%s produces sound through the full chain", (oscSource) => {
+    const s = new Synth(SR, { oscSource, ampAttack: 0.01, ampSustain: 0.8 });
+    s.noteOn(57, 1);
+    const { left, right } = s.renderSeconds(1);
+    expect(rms(left), `${oscSource} is silent`).toBeGreaterThan(1e-3);
+    expect(peak(left), `${oscSource} clips`).toBeLessThanOrEqual(1);
+    expect(peak(right)).toBeLessThanOrEqual(1);
+    for (let i = 0; i < left.length; i++) {
+      if (!Number.isFinite(left[i])) throw new Error(`${oscSource} went non-finite at sample ${i}`);
+    }
+  });
+
+  it("each architecture sounds different from the others", () => {
+    const fingerprint = (oscSource: (typeof OSC_SOURCES)[number]) => {
+      const s = new Synth(SR, { oscSource, reverbMix: 0, delayMix: 0 });
+      s.noteOn(57, 1);
+      return rms(s.renderSeconds(0.6).left);
+    };
+    const levels = OSC_SOURCES.map(fingerprint);
+    expect(new Set(levels.map((l) => l.toFixed(4))).size).toBe(OSC_SOURCES.length);
+  });
+
+  it("a drawn table reaches every voice", () => {
+    const s = new Synth(SR, { oscSource: "user", filterCutoff: 16000, filterEnvAmount: 0 });
+    const flat = new Array(128).fill(0);
+    s.setUserTable(flat);
+    s.noteOn(57, 1);
+    // A table of silence renders silence — proof the table was actually used.
+    expect(peak(s.renderSeconds(0.4).left)).toBeLessThan(1e-3);
+  });
+
+  it("switching architecture mid-patch takes effect on the next note", () => {
+    const s = new Synth(SR, { oscSource: "classic", reverbMix: 0, delayMix: 0 });
+    s.noteOn(57, 1);
+    const classic = rms(s.renderSeconds(0.4).left);
+    s.allNotesOff();
+    s.renderSeconds(0.6);
+    s.setPatch({ oscSource: "karplus" });
+    s.noteOn(57, 1);
+    const string = rms(s.renderSeconds(0.4).left);
+    expect(Math.abs(classic - string)).toBeGreaterThan(1e-4);
+  });
+});
+
+describe("drums", () => {
+  it("a pad sounds without consuming a voice", () => {
+    const s = new Synth(SR);
+    s.triggerDrum("kick", 1);
+    const { left } = s.renderSeconds(0.5);
+    expect(rms(left)).toBeGreaterThan(1e-3);
+    expect(s.activeVoiceCount).toBe(0);
+  });
+
+  it.each(["kick", "snare", "hat", "perc"] as const)("%s is audible", (id) => {
+    const s = new Synth(SR);
+    s.triggerDrum(id, 1);
+    expect(rms(s.renderSeconds(0.4).left), `${id} is silent`).toBeGreaterThan(1e-3);
+  });
+
+  it("pads keep playing through a note-off", () => {
+    const s = new Synth(SR);
+    s.noteOn(60, 1);
+    s.triggerDrum("kick", 1);
+    s.renderSeconds(0.02);
+    s.noteOff(60);
+    expect(s.activeDrumCount).toBe(1);
+  });
+
+  it("panic silences pads too", () => {
+    const s = new Synth(SR);
+    s.triggerDrum("kick", 1);
+    s.renderSeconds(0.05);
+    s.panic();
+    expect(s.activeDrumCount).toBe(0);
+    expect(peak(s.renderSeconds(0.2).left)).toBe(0);
   });
 });

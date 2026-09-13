@@ -265,3 +265,159 @@ export class PlateReverb {
     this.dampL = this.dampR = this.feedL = this.feedR = 0;
   }
 }
+
+// ── Phaser ────────────────────────────────────────────────────────────────────
+
+/** Allpass stages. Six gives three notches, the classic sound. */
+const PHASER_STAGES = 6;
+
+/**
+ * A sweeping comb of notches, made by summing the signal with a phase-shifted
+ * copy of itself. The notches are where the two cancel.
+ *
+ * ⚠ THE FEEDBACK CONTROL IN THE VERSION THIS WAS PORTED FROM WAS A VOLUME KNOB.
+ * Its return was `x + out * depth * 0.5 + x * fb * 0.3` — the `fb` term scales
+ * the DRY signal, so turning "feedback" up made the patch louder and left the
+ * notches exactly where they were. Real phaser feedback routes the allpass
+ * chain's OUTPUT back into its input, which is what sharpens the notches into
+ * the resonant whistle the control is reached for.
+ */
+export class Phaser {
+  private readonly state = new Float64Array(PHASER_STAGES);
+  private phase = 0;
+  private feedbackSample = 0;
+  private readonly sampleRate: number;
+
+  constructor(sampleRate: number) {
+    this.sampleRate = sampleRate;
+  }
+
+  /**
+   * @param rate  LFO speed in Hz
+   * @param depth 0..1 wet amount
+   * @param feedback 0..1 — resonance, clamped below unity
+   */
+  tick(x: number, rate: number, depth: number, feedback = 0): number {
+    if (depth <= 0.001) return x;
+
+    this.phase += Math.max(0.01, rate) / this.sampleRate;
+    if (this.phase >= 1) this.phase -= 1;
+
+    // The sweep is exponential in frequency because pitch is: a linear sweep
+    // spends most of its time in the top octave and lurches through the rest.
+    const lfo = 0.5 + 0.5 * Math.sin(2 * Math.PI * this.phase);
+    const centre = 200 * Math.pow(40, lfo);
+
+    const fb = Math.min(Math.max(feedback, 0), 0.95);
+    let out = x + this.feedbackSample * fb;
+
+    for (let i = 0; i < PHASER_STAGES; i++) {
+      // Stages spread around the centre so the notches are not all stacked.
+      const hz = Math.min(centre * (1 + i * 0.35), this.sampleRate * 0.45);
+      const t = Math.tan((Math.PI * hz) / this.sampleRate);
+      const c = (t - 1) / (t + 1);
+      const v = c * out + this.state[i];
+      this.state[i] = out - c * v;
+      out = v;
+    }
+
+    this.feedbackSample = out;
+    return x + out * depth;
+  }
+
+  reset(): void {
+    this.state.fill(0);
+    this.phase = 0;
+    this.feedbackSample = 0;
+  }
+}
+
+// ── Flanger ───────────────────────────────────────────────────────────────────
+
+/**
+ * A very short modulated delay fed back on itself. The difference from a
+ * chorus is only the delay length — a few milliseconds instead of tens — which
+ * puts the comb's teeth inside the audible band and makes the jet-plane sweep.
+ */
+export class Flanger {
+  private readonly line: DelayLine;
+  private phase = 0;
+  private readonly sampleRate: number;
+
+  constructor(sampleRate: number) {
+    this.sampleRate = sampleRate;
+    this.line = new DelayLine(Math.ceil(sampleRate * 0.03));
+  }
+
+  tick(x: number, rate: number, depth: number, feedback = 0): number {
+    if (depth <= 0.001) {
+      this.line.write(x);
+      return x;
+    }
+
+    this.phase += Math.max(0.01, rate) / this.sampleRate;
+    if (this.phase >= 1) this.phase -= 1;
+
+    const lfo = Math.sin(2 * Math.PI * this.phase);
+    const base = (0.001 + depth * 0.004) * this.sampleRate;
+    const swing = lfo * depth * 0.002 * this.sampleRate;
+    const delayed = this.line.readInterpolated(Math.max(1, base + swing));
+
+    // Clamped below unity: a flanger's feedback path has no loss of its own, so
+    // a knob at 1 builds energy until the output goes non-finite.
+    const fb = Math.min(Math.max(feedback, 0), 0.92);
+    this.line.write(x + delayed * fb);
+
+    return x + delayed * depth;
+  }
+
+  reset(): void {
+    this.line.clear();
+    this.phase = 0;
+  }
+}
+
+// ── Bit crusher ───────────────────────────────────────────────────────────────
+
+/**
+ * Quantise the amplitude, and hold each sample for several output samples.
+ *
+ * Two separate degradations that are usually conflated: fewer bits adds
+ * quantisation noise, a lower sample rate folds everything above the new
+ * Nyquist back down. Both are what an early digital sampler sounded like.
+ */
+export class BitCrusher {
+  private held = 0;
+  private countdown = 0;
+  private primed = false;
+
+  /**
+   * @param bits 1..16
+   * @param rateDivisor 1 = untouched; 8 = one sample in eight
+   */
+  tick(x: number, bits: number, rateDivisor: number): number {
+    const b = Math.min(Math.max(bits, 1), 16);
+    const div = Math.max(1, Math.round(rateDivisor));
+    if (b >= 16 && div === 1) {
+      this.held = x;
+      this.primed = true;
+      return x;
+    }
+
+    // Prime on the first sample: otherwise the effect opens with a burst of
+    // silence up to `div` samples long, which is audible as a gap.
+    if (--this.countdown <= 0 || !this.primed) {
+      this.countdown = div;
+      this.primed = true;
+      const levels = Math.pow(2, b - 1);
+      this.held = Math.round(x * levels) / levels;
+    }
+    return this.held;
+  }
+
+  reset(): void {
+    this.held = 0;
+    this.countdown = 0;
+    this.primed = false;
+  }
+}

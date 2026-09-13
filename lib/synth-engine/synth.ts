@@ -19,7 +19,9 @@
 // ║  seeded generator, so the same notes always render the same bytes. ║
 // ╚══════════════════════════════════════════════════════════════════╝
 
-import { Chorus, Compressor, PlateReverb, Saturator, StereoDelay } from "./effects";
+import { BitCrusher, Chorus, Compressor, Flanger, Phaser, PlateReverb, Saturator, StereoDelay } from "./effects";
+import { DrumKit, type DrumId } from "./drums";
+import { Rng } from "./rng";
 import { DEFAULT_PATCH } from "./presets";
 import { Voice } from "./voice";
 import type { LfoTarget, PatchUpdate, SynthPatch } from "./types";
@@ -70,6 +72,10 @@ export class Synth {
   private readonly reverb: PlateReverb;
   private readonly compL: Compressor;
   private readonly compR: Compressor;
+  private readonly phaser: Phaser;
+  private readonly flanger: Flanger;
+  private readonly crusher: BitCrusher;
+  private readonly drums: DrumKit;
 
   private lfo1Phase = 0;
   private lfo2Phase = 0;
@@ -93,10 +99,32 @@ export class Synth {
     this.reverb = new PlateReverb(sampleRate);
     this.compL = new Compressor(sampleRate);
     this.compR = new Compressor(sampleRate);
+    this.phaser = new Phaser(sampleRate);
+    this.flanger = new Flanger(sampleRate);
+    this.crusher = new BitCrusher();
+    // The kit gets its own noise stream so a drum hit cannot change what a
+    // held note's noise oscillator produces — which would make the engine
+    // non-reproducible in exactly the way the seeded Rng exists to prevent.
+    this.drums = new DrumKit(sampleRate, new Rng(0xd2005));
+  }
+
+  /** Hit a drum pad. Independent of the keyboard: pads do not consume voices
+   *  and are not affected by note-off. */
+  triggerDrum(id: DrumId, velocity = 1): void {
+    this.drums.trigger(id, velocity);
+  }
+
+  /** Replace the drawable wavetable every voice reads. */
+  setUserTable(samples: ArrayLike<number>): void {
+    for (const v of this.voices) v.setUserTable(samples);
   }
 
   get activeVoiceCount(): number {
     return this.voices.reduce((n, v) => n + (v.active ? 1 : 0), 0);
+  }
+
+  get activeDrumCount(): number {
+    return this.drums.activeCount;
   }
 
   noteOn(note: number, velocity = 1): void {
@@ -120,6 +148,10 @@ export class Synth {
     this.pulseGate = -1;
     this.saturator.reset();
     this.chorus.reset();
+    this.phaser.reset();
+    this.flanger.reset();
+    this.crusher.reset();
+    this.drums.silence();
     this.delay.reset();
     this.reverb.reset();
     this.compL.reset();
@@ -235,12 +267,22 @@ export class Synth {
         }
       }
 
+      // Drums join before the effects so they are shaped by the same chain —
+      // a crushed, reverbed kit is most of what the effects are for here.
+      mono += this.drums.tick() * 0.8;
+
       // Voices are summed, not averaged: a chord IS louder than one note. The
       // gentle scaling keeps a full 16-voice chord inside headroom without
       // making a single note quiet.
       mono *= 0.35;
 
+      // Chain order follows the v7 layout: distortion first (it is loudest
+      // when fed a clean signal), then the phase effects, then the crusher,
+      // then the time effects. Reordering changes the sound, so it is fixed.
       mono = this.saturator.tick(mono, p.saturation);
+      mono = this.phaser.tick(mono, p.phaserRate, p.phaserDepth, p.phaserFeedback);
+      mono = this.flanger.tick(mono, p.flangerRate, p.flangerDepth, p.flangerFeedback);
+      mono = this.crusher.tick(mono, p.crushBits, p.crushRateDivisor);
 
       const [chL, chR] = this.chorus.tick(mono, p.chorusRate, p.chorusDepth);
 
