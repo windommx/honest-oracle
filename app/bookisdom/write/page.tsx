@@ -24,6 +24,8 @@ import {
 } from "../_writing-store";
 import { SnapshotPanel, ChapterAnalysis, SpeakButton, WritingHeatmap, PlotBoard } from "../_writer-pro";
 import { pushBook, pullBook, listRemote, type RemoteBook } from "../_writing-sync";
+import { composeStudioContext, prefillStudio } from "../_studio-context";
+import { listPlotLines, listPlotCards } from "../_writing-store";
 
 // ╔══════════════════════════════════════════════════════════════════╗
 // ║  /bookisdom/write — ห้องเขียน. Absorbed from InkStudio and wired  ║
@@ -164,6 +166,15 @@ export default function WritePage() {
     toast(`ส่งโน้ต ${included} รายการเข้า Story Codex แล้ว${skipped ? ` (ข้าม ${skipped} ที่ไม่ใช่ entity)` : ""} — เปิดเครื่องมือ prompt เพื่อใช้`, { duration: 6000 });
   }
 
+  async function sendToStudio() {
+    if (!book) return;
+    const [chs, lines, cards] = await Promise.all([listChapters(book.id), listPlotLines(book.id), listPlotCards(book.id)]);
+    const ctx = composeStudioContext({ book, chapters: chs, notes, plotLines: lines, plotCards: cards, targetChapterId: chapterId });
+    if (!prefillStudio(ctx)) { toast("ส่งไม่ได้ — เบราว์เซอร์ไม่ให้ใช้ sessionStorage", { variant: "error" }); return; }
+    const parts = [ctx.parts.codex ? "Codex" : null, ctx.parts.outline ? "โครงจากผัง" : null, ctx.parts.previous ? "ท้ายบทก่อนหน้า" : null].filter(Boolean);
+    toast(`ส่งบริบทไป Studio แล้ว${parts.length ? ` (${parts.join(" · ")})` : " (ยังไม่มี Codex/ผัง/บทก่อนหน้า — ส่งเฉพาะบทบาทและชื่อเล่ม)"} — ใส่ key แล้วกดรัน`, { duration: 6000 });
+    router.push("/bookisdom/studio");
+  }
   async function backup(scope: "book" | "all") {
     const bundle = await exportBundle(scope === "book" && book ? [book.id] : "all");
     const name = scope === "book" && book ? book.title : "bookisdom-ทั้งหมด";
@@ -397,6 +408,7 @@ export default function WritePage() {
                   <button onClick={async () => downloadBlob(`${book.title}.txt`, exportText(book, await listChapters(book.id)), "text/plain")} className="text-xs py-2 rounded-xl border border-black/10 text-slate-700 hover:bg-black/[0.04] flex items-center justify-center gap-1.5"><FileDown className="w-3.5 h-3.5" /> .txt</button>
                 </div>
                 <button onClick={async () => { const html = exportPrintHtml(book, await listChapters(book.id)); const w = window.open("", "_blank"); if (!w) { toast("เบราว์เซอร์บล็อกหน้าต่างใหม่ — อนุญาต pop-up แล้วลองอีกครั้ง", { variant: "error" }); return; } w.document.write(html); w.document.close(); w.focus(); }} className="w-full text-xs py-2 rounded-xl border border-black/10 text-slate-700 hover:bg-black/[0.04] flex items-center justify-center gap-1.5"><Printer className="w-3.5 h-3.5" /> พิมพ์ / บันทึก PDF (A5)</button>
+                <button onClick={() => void sendToStudio()} className="w-full text-xs py-2 rounded-xl border border-[#1d4ed8]/30 text-[#1d4ed8] hover:bg-[#3c74d4]/10 flex items-center justify-center gap-1.5"><Play className="w-3.5 h-3.5" /> เขียนบทนี้ด้วย Studio (ส่ง Codex + ผัง + บทก่อนหน้า)</button>
                 <button onClick={sendCodex} className="w-full text-xs py-2 rounded-xl border border-[#1d4ed8]/30 text-[#1d4ed8] hover:bg-[#3c74d4]/10 flex items-center justify-center gap-1.5"><Wand2 className="w-3.5 h-3.5" /> ส่งโน้ตเข้า Story Codex</button>
                 <p className="text-[0.65rem] text-faint">Codex รับเฉพาะโน้ตประเภท ตัวละคร · สถานที่ · สิ่งของ · ปมค้าง — บรรทัด &quot;อยาก: …&quot; / &quot;เสียง: …&quot; ในโน้ตตัวละครกลายเป็น trait</p>
               </div>

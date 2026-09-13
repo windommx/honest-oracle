@@ -435,7 +435,12 @@ export function codexCanon(codex: Codex): string[] {
 export interface CodexAudit {
   present: CodexEntity[];                              // named verbatim in the draft
   variants: Array<{ declared: string; found: string }>; // near-miss spelling in the draft
-  missing: CodexEntity[];                              // neither present nor a near-miss
+  missing: CodexEntity[];                              // neither present nor a near-miss nor run-together
+  /** The name occurs, but only run together with adjacent Thai letters ("เข้าซอยทับทิม"),
+   *  so the whole-word test cannot confirm it is THIS name and not part of a longer word.
+   *  Reported as its own bucket — "found, check it yourself" — instead of being counted
+   *  missing (the old behaviour) or present (which would risk accusing "สม" in "สมชาย"). */
+  runTogether: CodexEntity[];
   /** Present in the draft while their declared status says dead/missing — could be
    *  a flashback or a ghost, so it's a SIGNAL to check, not an error. */
   statusConflicts: CodexEntity[];
@@ -458,8 +463,9 @@ export function codexAudit(codex: Codex, draft: string, lang: "th" | "en"): Code
   const present: CodexEntity[] = [];
   const variants: Array<{ declared: string; found: string }> = [];
   const missing: CodexEntity[] = [];
+  const runTogether: CodexEntity[] = [];
   if (!hasCodex(codex) || !draft) {
-    return { present, variants, missing: codex.entities.slice(), statusConflicts: [], forbiddenHits: [], threadsNoTrace: [], canonSize: codex.entities.length };
+    return { present, variants, missing: codex.entities.slice(), runTogether, statusConflicts: [], forbiddenHits: [], threadsNoTrace: [], canonSize: codex.entities.length };
   }
   const hay = draft.toLowerCase();
   const tokens = lang === "th" ? tokenizeThai(draft) : tokenizeProse(draft);
@@ -473,6 +479,7 @@ export function codexAudit(codex: Codex, draft: string, lang: "th" | "en"): Code
       lang === "th" ? thaiMarkVariant(e.name, t) : withinOneEdit(e.name.toLowerCase(), t.toLowerCase())
     );
     if (hit) variants.push({ declared: e.name, found: hit });
+    else if (e.name.length >= 2 && hay.includes(e.name.toLowerCase())) runTogether.push(e);
     else missing.push(e);
   }
   // A dead/gone entity only conflicts if its name appears as a WHOLE WORD — a substring
@@ -506,7 +513,7 @@ export function codexAudit(codex: Codex, draft: string, lang: "th" | "en"): Code
     if (matched === 0) threadsNoTrace.push({ desc: t.desc, priority: t.priority, matched, total: words.length });
   }
 
-  return { present, variants, missing, statusConflicts, forbiddenHits, threadsNoTrace, canonSize: codex.entities.length };
+  return { present, variants, missing, runTogether, statusConflicts, forbiddenHits, threadsNoTrace, canonSize: codex.entities.length };
 }
 
 /** Human-readable audit report (bilingual). Counts, not a verdict. */

@@ -57,7 +57,7 @@ export function SnapshotPanel({ chapterId, onRestored }: { chapterId: string; on
 
 // ── in-place analysis (Bookisdom's own analyzers) ────────────────────────
 interface Row { tier: "ประจักษ์" | "อนุมาน"; label: string; value: string }
-interface AuditView { present: number; canon: number; variants: string[]; missing: string[]; statusConflicts: string[]; forbidden: string[]; threads: string[] }
+interface AuditView { present: number; canon: number; variants: string[]; runTogether: string[]; missing: string[]; statusConflicts: string[]; forbidden: string[]; threads: string[] }
 export function ChapterAnalysis({ text, lang, notes }: { text: string; lang: "th" | "en"; notes: WritingNote[] }) {
   const [rows, setRows] = useState<Row[] | null>(null);
   const [lists, setLists] = useState<{ title: string; items: string[] }[]>([]);
@@ -98,6 +98,7 @@ export function ChapterAnalysis({ text, lang, notes }: { text: string; lang: "th
         setAudit({
           present: a.present.length, canon: a.canonSize,
           variants: a.variants.map((v) => `${v.declared} → พบสะกด "${v.found}"`),
+          runTogether: a.runTogether.map((e) => e.name),
           missing: a.missing.map((e) => e.name),
           statusConflicts: a.statusConflicts.map((e) => `${e.name} (สถานะ: ${e.status ?? "—"})`),
           forbidden: a.forbiddenHits.map((f) => `${f.name}: "${f.word}" ×${f.count}`),
@@ -139,6 +140,7 @@ export function ChapterAnalysis({ text, lang, notes }: { text: string; lang: "th
               </div>
               {[
                 ["สะกดใกล้เคียง (อาจพิมพ์เพี้ยน)", audit.variants],
+                ["พบติดกับคำอื่น — ตรวจเองว่าใช่ชื่อนี้ (เว้นวรรคหน้า-หลังชื่อจะนับได้แน่)", audit.runTogether],
                 ["ไม่ปรากฏในบทนี้", audit.missing],
                 ["ปรากฏทั้งที่สถานะบอกว่าตาย/หาย — สัญญาณให้ตรวจ ไม่ใช่ข้อผิด", audit.statusConflicts],
                 ["คำต้องห้ามปรากฏ (ใครพูดต้องดูเอง)", audit.forbidden],
@@ -146,7 +148,7 @@ export function ChapterAnalysis({ text, lang, notes }: { text: string; lang: "th
               ].map(([title, items]) => (items as string[]).length ? (
                 <div key={title as string} className="mb-1.5"><div className="text-faint">{title as string}</div><div className="flex flex-wrap gap-1 mt-0.5">{(items as string[]).map((it) => <span key={it} className="px-1.5 py-0.5 rounded bg-black/[0.03] border border-black/10">{it}</span>)}</div></div>
               ) : null)}
-              {!audit.variants.length && !audit.missing.length && !audit.statusConflicts.length && !audit.forbidden.length && !audit.threads.length && <p className="text-faint">ไม่มีข้อสังเกต — ทุก entity ที่ประกาศปรากฏในบทนี้ตรงตามสะกด</p>}
+              {!audit.variants.length && !audit.runTogether.length && !audit.missing.length && !audit.statusConflicts.length && !audit.forbidden.length && !audit.threads.length && <p className="text-faint">ไม่มีข้อสังเกต — ทุก entity ที่ประกาศปรากฏในบทนี้ตรงตามสะกด</p>}
             </div>
           )}
         </>

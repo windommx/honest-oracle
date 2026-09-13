@@ -376,7 +376,10 @@ describe("Thai substring false-positives (audit fix)", () => {
     const cTh = parseCodex("[ตัวละคร]\nสม: ยาม\nสมหญิง: นางเอก");
     const aTh = codexAudit(cTh, "สมชาย เดินเข้ามาในเมืองคนเดียว", "th");
     expect(aTh.present.map((e) => e.name)).toEqual([]);       // neither declared name appears
-    expect(aTh.missing.map((e) => e.name)).toContain("สม");
+    // 2026-09: a name that only occurs INSIDE another word is now its own bucket, "run
+    // together — check yourself", rather than counted missing: still never "present".
+    expect(aTh.runTogether.map((e) => e.name)).toEqual(["สม"]);
+    expect(aTh.missing.map((e) => e.name)).toEqual(["สมหญิง"]);
     const cEn = parseCodex("[CHARACTERS]\nAl: guard\nBob: hero");
     const aEn = codexAudit(cEn, "Although Bob walked in, all was calm.", "en");
     expect(aEn.present.map((e) => e.name)).toEqual(["Bob"]);  // Al is inside "Although"/"all", not present
@@ -399,5 +402,21 @@ describe("prose paragraph under a section header is not registered as an entity 
     expect(names).toContain("Bob");
     expect(names).toContain("St. John");           // one period → still a name
     expect(names.some((n) => n.includes("went to the store"))).toBe(false); // prose skipped
+  });
+});
+
+describe("codexAudit — run-together names are reported, not silently 'missing'", () => {
+  it("a place name fused to a preceding Thai word lands in runTogether; a short name inside a longer one does NOT become 'present'", async () => {
+    const { parseCodex, codexAudit } = await import("./codex");
+    const codex = parseCodex("[ตัวละคร]\nสม: ชายชรา\n[สถานที่]\nซอยทับทิม: ซอยเก่า");
+    const a = codexAudit(codex, "มะลิเดินเข้าซอยทับทิม แล้วเจอสมชาย", "th");
+    expect(a.present).toEqual([]); // neither is bounded-present
+    expect(a.runTogether.map((e) => e.name).sort()).toEqual(["ซอยทับทิม", "สม"]); // both occur as substrings — writer checks
+    expect(a.missing).toEqual([]);
+    // with a space, the place becomes present and leaves the run-together bucket
+    const b = codexAudit(codex, "มะลิเดินเข้า ซอยทับทิม", "th");
+    expect(b.present.map((e) => e.name)).toEqual(["ซอยทับทิม"]);
+    expect(b.missing.map((e) => e.name)).toEqual(["สม"]);
+    expect(b.runTogether).toEqual([]);
   });
 });
