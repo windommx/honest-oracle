@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { GOLD, KEY_BLACK, KEY_WHITE, TEXT_FAINT } from "./_tokens";
+import { isBlackKey, noteName } from "./_notes";
 
 // A playable keyboard: mouse/touch on the keys, and the QWERTY row mapped the
 // way trackers and soft synths have mapped it for decades.
@@ -9,9 +10,6 @@ import { GOLD, KEY_BLACK, KEY_WHITE, TEXT_FAINT } from "./_tokens";
 // Accessibility note: the keys are buttons, so they are tabbable and operable
 // with Enter/Space. A 36-key keyboard is a lot of tab stops, so the whole
 // instrument is also playable from the computer keyboard without tabbing at all.
-
-const NOTE_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
-const BLACK = new Set([1, 3, 6, 8, 10]);
 
 /** QWERTY → semitone offset. Two rows, an octave apart, as on a tracker. */
 const KEY_MAP: Record<string, number> = {
@@ -38,7 +36,7 @@ export function Keyboard({ octave, onOctaveChange, onNoteOn, onNoteOff, held, oc
   const first = octave * 12;
   const count = octaves * 12;
   const notes = Array.from({ length: count }, (_, i) => first + i);
-  const whiteNotes = notes.filter((n) => !BLACK.has(n % 12));
+  const whiteNotes = notes.filter((n) => !isBlackKey(n));
 
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
@@ -130,7 +128,7 @@ export function Keyboard({ octave, onOctaveChange, onNoteOn, onNoteOff, held, oc
               <button
                 key={note}
                 type="button"
-                aria-label={`${NOTE_NAMES[note % 12]}${Math.floor(note / 12) - 1}`}
+                aria-label={noteName(note)}
                 aria-pressed={on}
                 onPointerDown={(e) => {
                   setPointerDown(true);
@@ -143,7 +141,7 @@ export function Keyboard({ octave, onOctaveChange, onNoteOn, onNoteOff, held, oc
                 style={{ backgroundColor: on ? GOLD : KEY_WHITE }}
               >
                 <span className="text-[0.55rem] text-black/40">
-                  {note % 12 === 0 ? `C${Math.floor(note / 12) - 1}` : ""}
+                  {note % 12 === 0 ? noteName(note) : ""}
                 </span>
               </button>
             );
@@ -152,14 +150,14 @@ export function Keyboard({ octave, onOctaveChange, onNoteOn, onNoteOff, held, oc
 
         <div className="absolute inset-0 pointer-events-none">
           {notes.map((note) => {
-            if (!BLACK.has(note % 12)) return null;
-            const whitesBefore = notes.filter((n) => n < note && !BLACK.has(n % 12)).length;
+            if (!isBlackKey(note)) return null;
+            const whitesBefore = notes.filter((n) => n < note && !isBlackKey(n)).length;
             const on = held.has(note);
             return (
               <button
                 key={note}
                 type="button"
-                aria-label={`${NOTE_NAMES[note % 12]}${Math.floor(note / 12) - 1}`}
+                aria-label={noteName(note)}
                 aria-pressed={on}
                 onPointerDown={(e) => {
                   setPointerDown(true);

@@ -3,11 +3,27 @@ import { MAX_VOICES, Synth } from "./synth";
 import { DEFAULT_PATCH, PRESETS, getPreset } from "./presets";
 import { midiToFrequency } from "./voice";
 import { LFO_TARGETS, OSC_SOURCES } from "./types";
-import { dominantFrequency, onsets, peak, rms } from "./analysis";
+import { dominantFrequency, onsetIntervals, onsets, peak, rms } from "./analysis";
+import { emptyPattern } from "./sequencer";
 
 const SR = 48000;
 
 const dominantHz = (b: Float32Array, sr = SR) => dominantFrequency(b, sr);
+
+/** A short, dry, bright note. Onset detection needs one: a reverb tail or a
+ *  slow release smears the attack it is trying to find, and a low-frequency
+ *  tone spends long enough near zero between peaks to look like a new hit. */
+const clicky = {
+  ampAttack: 0,
+  ampDecay: 0.05,
+  ampSustain: 0,
+  ampRelease: 0.02,
+  reverbMix: 0,
+  delayMix: 0,
+  chorusDepth: 0,
+  filterEnvAmount: 0,
+  filterCutoff: 8000,
+} as const;
 
 describe("synth — it makes a sound", () => {
   it("is silent with no notes held", () => {
@@ -341,17 +357,6 @@ describe("presets", () => {
 });
 
 describe("pulse clock — steady because it counts samples", () => {
-  const clicky = {
-    ampAttack: 0,
-    ampDecay: 0.05,
-    ampSustain: 0,
-    ampRelease: 0.02,
-    reverbMix: 0,
-    delayMix: 0,
-    chorusDepth: 0,
-    filterEnvAmount: 0,
-    filterCutoff: 8000,
-  } as const;
 
   it("fires at exactly the tempo asked for", () => {
     const s = new Synth(SR, clicky);
@@ -504,5 +509,110 @@ describe("drums", () => {
     s.panic();
     expect(s.activeDrumCount).toBe(0);
     expect(peak(s.renderSeconds(0.2).left)).toBe(0);
+  });
+});
+
+describe("sequencer inside the render loop", () => {
+  /** Spacing between hits, in seconds — onsetIntervals counts samples. */
+  const gapSeconds = (b: Float32Array) => onsetIntervals(b).map((g) => g / SR);
+
+  const everyStep = () => {
+    const p = emptyPattern(4);
+    p.bpm = 120;
+    p.stepsPerBeat = 4;
+    for (const step of p.steps) {
+      step.notes = [84];
+      step.gate = 0.3;
+    }
+    return p;
+  };
+
+  it("plays notes without anyone touching the keyboard", () => {
+    const s = new Synth(SR);
+    const p = emptyPattern(4);
+    p.bpm = 240;
+    p.steps[0].notes = [60];
+    s.setPattern(p);
+    s.startSequencer();
+    expect(rms(s.renderSeconds(0.2).left)).toBeGreaterThan(1e-3);
+  });
+
+  it("is silent until started", () => {
+    const s = new Synth(SR);
+    const p = emptyPattern(4);
+    p.steps[0].notes = [60];
+    s.setPattern(p);
+    expect(peak(s.renderSeconds(0.3).left)).toBe(0);
+  });
+
+  it("releases the notes it started when stopped", () => {
+    const s = new Synth(SR);
+    const p = emptyPattern(4);
+    p.bpm = 60;
+    p.steps[0] = { notes: [60], drums: [], velocity: 1, gate: 1 };
+    s.setPattern(p);
+    s.startSequencer();
+    s.renderSeconds(0.05);
+    expect(s.activeVoiceCount).toBe(1);
+    s.stopSequencer();
+    // The release is queued like any note-off and applied at the next block.
+    s.renderSeconds(0.6);
+    expect(s.activeVoiceCount).toBe(0);
+  });
+
+  it("reports the step that is sounding, not the one queued next", () => {
+    // A playhead drawn from the internal cursor lights the wrong square for the
+    // entire duration of every step.
+    const s = new Synth(SR);
+    const p = emptyPattern(4);
+    p.bpm = 120;
+    s.setPattern(p);
+    expect(s.sequencerStep).toBe(-1);
+    s.startSequencer();
+    s.renderSeconds(0.01);
+    expect(s.sequencerStep).toBe(0);
+  });
+
+  it("keeps steps a whole number of samples apart", () => {
+    // The reason the sequencer lives on the audio thread at all: a
+    // setInterval-driven step drifts by milliseconds under load.
+    const s = new Synth(SR, clicky);
+    s.setPattern(everyStep());
+    s.startSequencer();
+    const { left } = s.renderSeconds(2);
+    const gaps = gapSeconds(left);
+    // 120bpm, 4 steps per beat = 8 hits a second = 0.125s apart.
+    expect(gaps.length).toBeGreaterThan(8);
+    for (const gap of gaps) expect(gap).toBeCloseTo(0.125, 3);
+  });
+
+  it("swing shuffles the groove without changing the tempo", () => {
+    const s = new Synth(SR, clicky);
+    const p = everyStep();
+    p.swing = 0.5;
+    s.setPattern(p);
+    s.startSequencer();
+    const { left } = s.renderSeconds(2);
+    const gaps = gapSeconds(left);
+    expect(gaps.length).toBeGreaterThan(8);
+    // Long, short, long, short — and each PAIR still spans two straight steps,
+    // which is what keeps the bar the same length.
+    for (let i = 0; i + 1 < gaps.length; i++) {
+      expect(gaps[i] + gaps[i + 1]).toBeCloseTo(0.25, 2);
+    }
+    expect(Math.max(...gaps) - Math.min(...gaps)).toBeGreaterThan(0.03);
+  });
+
+  it("panic stops the sequence rather than letting it refill the voices", () => {
+    const s = new Synth(SR);
+    const p = emptyPattern(4);
+    p.bpm = 240;
+    for (const step of p.steps) step.notes = [60];
+    s.setPattern(p);
+    s.startSequencer();
+    s.renderSeconds(0.1);
+    s.panic();
+    expect(s.sequencerRunning).toBe(false);
+    expect(peak(s.renderSeconds(0.5).left)).toBe(0);
   });
 });

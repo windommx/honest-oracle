@@ -36,10 +36,15 @@ const { left, right } = synth.renderSeconds(2); // …assert on the samples
 | `filter.ts` | Four-pole ladder with a saturated resonance path |
 | `envelope.ts` | Exponential ADSR whose stage times are exact |
 | `delay-line.ts` | Circular buffer + Schroeder allpass — the primitive under every time effect |
-| `effects.ts` | Saturation, chorus, ping-pong delay, plate reverb, compressor |
+| `effects.ts` | Saturation, chorus, ping-pong delay, plate reverb, compressor, phaser, flanger, bit crusher |
+| `sources.ts` | Granular, Karplus-Strong, and a drawable wavetable |
+| `drums.ts` | Synthesised kick, snare, hat, perc — no samples |
 | `voice.ts` | One note: oscillators, unison, sub, noise, FM, ring, filter, envelopes |
+| `sequencer.ts` | A step pattern, advanced one sample at a time |
 | `synth.ts` | Polyphony, voice stealing, LFO routing, effects chain, `render()` |
 | `presets.ts` | Factory patches |
+| `offline.ts` | Render a pattern with no device attached |
+| `wav.ts` | 16-bit RIFF/WAVE encode and decode |
 
 ## Four fixes the port made, rather than carried over
 
@@ -67,6 +72,39 @@ now backs every time-based effect.
 `attack` needs about four of them to arrive, so a knob reading 10ms took 39ms.
 The curve is still exponential; a sample countdown now ends each stage exactly
 when the knob says.
+
+## The sequencer runs on the audio thread
+
+`Sequencer` is a state machine that is advanced one sample at a time from inside
+`Synth.render()`, and emits note-on / note-off / drum events at exact sample
+positions. The versions this was fused from drove their sequencer and arpeggiator
+from `setInterval` on the main thread, which is the normal approach and also why
+so much browser music wobbles: `setInterval` is a lower bound, and under layout
+or GC it slips by tens of milliseconds — several percent of a sixteenth note,
+and plainly audible.
+
+Swing lengthens even steps and shortens odd ones by the same amount, so a *pair*
+always spans exactly two straight steps: the groove shuffles without the tempo
+moving. A test asserts both halves of that.
+
+## Export is just rendering
+
+Because the engine is a pure function into a buffer, writing a file needs no
+audio device and no real-time wait:
+
+```ts
+const render = renderPattern({ pattern, patch, sampleRate: 48000, repeats: 2 });
+const bytes = encodeWav([render.left, render.right], render.sampleRate);
+```
+
+Measured at ~13x real time on a busy four-note pattern, bit-exact, and identical
+on every run. The usual browser alternative — play it back through
+`MediaRecorder` and capture the stream — takes as long as the music, is lossy,
+and bakes in any dropout the audio thread had on the way past.
+
+`renderPattern` stops the sequence before rendering the tail, so the file ends
+with the last note's release and the reverb rather than being chopped mid-decay
+or looping into one more step. Both are asserted.
 
 ## Testing a worklet
 

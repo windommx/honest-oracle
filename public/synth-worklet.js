@@ -531,6 +531,124 @@
     }
   };
 
+  // lib/synth-engine/sequencer.ts
+  var MAX_STEPS = 64;
+  function emptyStep() {
+    return { notes: [], drums: [], velocity: 0.9, gate: 0.6 };
+  }
+  function emptyPattern(length = 16) {
+    return {
+      steps: Array.from({ length: Math.min(MAX_STEPS, Math.max(1, length)) }, emptyStep),
+      stepsPerBeat: 4,
+      bpm: 110,
+      swing: 0
+    };
+  }
+  var Sequencer = class {
+    constructor(sampleRate2) {
+      __publicField(this, "pattern", emptyPattern());
+      __publicField(this, "sampleRate");
+      __publicField(this, "running", false);
+      /** Index of the step that will fire next. */
+      __publicField(this, "step", 0);
+      /** Index of the step currently sounding; -1 before the first one fires. */
+      __publicField(this, "playing", -1);
+      /** Samples until the next step fires. */
+      __publicField(this, "countdown", 0);
+      __publicField(this, "pending", []);
+      /** Notes this sequencer started, so stop() releases exactly those. */
+      __publicField(this, "sounding", /* @__PURE__ */ new Set());
+      this.sampleRate = sampleRate2;
+    }
+    setPattern(pattern) {
+      this.pattern = { ...this.pattern, ...pattern };
+    }
+    getPattern() {
+      return this.pattern;
+    }
+    get isRunning() {
+      return this.running;
+    }
+    /** The step a UI should highlight.
+     *
+     *  Deliberately NOT `step`: that one already points at what fires NEXT, so a
+     *  playhead drawn from it lights the wrong square for the whole duration of
+     *  every step. -1 means nothing has fired yet. */
+    get currentStep() {
+      return this.playing;
+    }
+    /** Start from the top. */
+    start() {
+      this.running = true;
+      this.step = 0;
+      this.playing = -1;
+      this.countdown = 0;
+    }
+    /** Stop, returning the note-offs needed to leave nothing hanging. */
+    stop() {
+      this.running = false;
+      this.playing = -1;
+      this.pending = [];
+      const offs = Array.from(this.sounding).map((note) => ({ type: "noteOff", note }));
+      this.sounding.clear();
+      return offs;
+    }
+    /**
+     * Length of a step in samples.
+     *
+     * Swing lengthens even steps and shortens odd ones by the same amount, so a
+     * PAIR always takes exactly two straight steps — the groove shuffles without
+     * the tempo changing, which is what swing means.
+     */
+    stepSamples(index) {
+      const beats = 60 / Math.max(20, Math.min(300, this.pattern.bpm));
+      const straight = beats / Math.max(1, this.pattern.stepsPerBeat) * this.sampleRate;
+      const swing = Math.min(Math.max(this.pattern.swing, 0), 0.9);
+      const shift = straight * swing * 0.5;
+      return Math.max(1, Math.round(index % 2 === 0 ? straight + shift : straight - shift));
+    }
+    /**
+     * Advance one sample.
+     *
+     * Returns the events due at this exact sample — usually none, which is why it
+     * returns a shared empty array rather than allocating one per sample.
+     */
+    tick() {
+      let events = null;
+      for (let i = this.pending.length - 1; i >= 0; i--) {
+        if (--this.pending[i].countdown <= 0) {
+          const { note } = this.pending[i];
+          this.pending.splice(i, 1);
+          this.sounding.delete(note);
+          (events ?? (events = [])).push({ type: "noteOff", note });
+        }
+      }
+      if (!this.running) return events ?? EMPTY;
+      if (--this.countdown > 0) return events ?? EMPTY;
+      const index = this.step % this.pattern.steps.length;
+      const length = this.stepSamples(index);
+      this.countdown = length;
+      this.step = (this.step + 1) % this.pattern.steps.length;
+      this.playing = index;
+      const step = this.pattern.steps[index];
+      if (!step) return events ?? EMPTY;
+      const gate = Math.min(Math.max(step.gate, 0.05), 1);
+      const holdFor = Math.max(1, Math.round(length * gate));
+      for (const note of step.notes) {
+        (events ?? (events = [])).push({ type: "noteOn", note, velocity: step.velocity });
+        this.sounding.add(note);
+        const existing = this.pending.findIndex((p) => p.note === note);
+        if (existing >= 0) this.pending[existing].countdown = holdFor;
+        else this.pending.push({ note, countdown: holdFor });
+      }
+      for (const id of step.drums) {
+        (events ?? (events = [])).push({ type: "drum", id, velocity: step.velocity });
+      }
+      return events ?? EMPTY;
+    }
+  };
+  var EMPTY = [];
+
   // lib/synth-engine/presets.ts
   var DEFAULT_PATCH = {
     oscSource: "classic",
@@ -1497,6 +1615,7 @@
       __publicField(this, "flanger");
       __publicField(this, "crusher");
       __publicField(this, "drums");
+      __publicField(this, "sequencer");
       __publicField(this, "lfo1Phase", 0);
       __publicField(this, "lfo2Phase", 0);
       __publicField(this, "ageCounter", 0);
@@ -1520,6 +1639,7 @@
       this.flanger = new Flanger(sampleRate2);
       this.crusher = new BitCrusher();
       this.drums = new DrumKit(sampleRate2, new Rng(860165));
+      this.sequencer = new Sequencer(sampleRate2);
     }
     /** Hit a drum pad. Independent of the keyboard: pads do not consume voices
      *  and are not affected by note-off. */
@@ -1552,6 +1672,7 @@
       for (const v of this.voices) v.steal();
       this.pending = [];
       this.pulseGate = -1;
+      this.sequencer.stop();
       this.saturator.reset();
       this.chorus.reset();
       this.phaser.reset();
@@ -1583,6 +1704,46 @@
     }
     get pulseSettings() {
       return this.pulse;
+    }
+    /** Load or edit the step pattern.
+     *
+     *  Edits apply from the next step; the playing position is kept, so changing
+     *  a note while the sequence runs does not jump it back to the top. */
+    setPattern(pattern) {
+      this.sequencer.setPattern(pattern);
+    }
+    getPattern() {
+      return this.sequencer.getPattern();
+    }
+    startSequencer() {
+      this.sequencer.start();
+    }
+    /** Stop and release whatever the sequence was holding — without this the
+     *  last step's notes sustain forever. */
+    stopSequencer() {
+      for (const e of this.sequencer.stop()) {
+        if (e.type === "noteOff") this.noteOff(e.note);
+      }
+    }
+    get sequencerRunning() {
+      return this.sequencer.isRunning;
+    }
+    /** Step currently sounding, or -1. What a playhead should highlight. */
+    get sequencerStep() {
+      return this.sequencer.currentStep;
+    }
+    /** Advance the sequence one sample and act on whatever it emits.
+     *
+     *  This runs INSIDE the render loop, so a step boundary lands on an exact
+     *  sample rather than on whenever a main-thread timer happened to wake. */
+    tickSequencer() {
+      const events = this.sequencer.tick();
+      for (let i = 0; i < events.length; i++) {
+        const e = events[i];
+        if (e.type === "noteOn") this.applyNoteOn(e.note, e.velocity);
+        else if (e.type === "noteOff") this.applyNoteOff(e.note);
+        else this.drums.trigger(e.id, e.velocity);
+      }
     }
     /** Advance the pulse by one sample, triggering and releasing as due. */
     tickPulse() {
@@ -1639,6 +1800,7 @@
       const lfo2Inc = p.lfo2Rate / this.sampleRate;
       for (let i = 0; i < n; i++) {
         this.tickPulse();
+        this.tickSequencer();
         this.lfo1Phase += lfo1Inc;
         if (this.lfo1Phase >= 1) this.lfo1Phase -= 1;
         this.lfo2Phase += lfo2Inc;
@@ -1716,6 +1878,13 @@
           case "userTable":
             this.synth.setUserTable(msg.samples);
             break;
+          case "pattern":
+            this.synth.setPattern(msg.pattern);
+            break;
+          case "sequencer":
+            if (msg.running) this.synth.startSequencer();
+            else this.synth.stopSequencer();
+            break;
           case "panic":
             this.synth.panic();
             break;
@@ -1737,7 +1906,8 @@
         const status = {
           type: "status",
           activeVoices: this.synth.activeVoiceCount,
-          peak: this.peak
+          peak: this.peak,
+          step: this.synth.sequencerStep
         };
         this.port.postMessage(status);
         this.peak = 0;

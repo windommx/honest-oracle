@@ -6,11 +6,15 @@ import { Play, Square, Volume2 } from "lucide-react";
 import { DEFAULT_PATCH, PRESETS } from "@/lib/synth-engine/presets";
 import { LFO_TARGETS, OSC_SOURCES, type LfoTarget, type OscSource, type SynthPatch } from "@/lib/synth-engine/types";
 import { DRUM_IDS, type DrumId } from "@/lib/synth-engine/drums";
+import type { SequencerPattern } from "@/lib/synth-engine/sequencer";
 import { toast } from "../rush/_toast";
 import { Knob } from "./_knob";
 import { Keyboard } from "./_keyboard";
 import { Spectrum } from "./_spectrum";
 import { PANELS } from "./_panels";
+import { SequencerPanel } from "./_sequencer-ui";
+import { demoPattern } from "./_pattern";
+import { exportPatternToWav } from "./_export";
 import { SynthClient, audioWorkletSupported } from "./_engine-client";
 import { GROUP_COLOR, TEXT_FAINT } from "./_tokens";
 
@@ -30,7 +34,10 @@ export default function SynthPage() {
   const [supported, setSupported] = useState(true);
   const [octave, setOctave] = useState(4);
   const [held, setHeld] = useState<Set<number>>(new Set());
-  const [status, setStatus] = useState({ activeVoices: 0, peak: 0 });
+  const [status, setStatus] = useState({ activeVoices: 0, peak: 0, step: -1 });
+  const [pattern, setPattern] = useState<SequencerPattern>(demoPattern);
+  const [looping, setLooping] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   const client = useRef<SynthClient | null>(null);
   if (client.current === null && typeof window !== "undefined") client.current = new SynthClient();
@@ -56,6 +63,9 @@ export default function SynthPage() {
     const state = await c.start(patch);
     setStarting(false);
     if (state === "running") {
+      // The worklet is constructed fresh on every start, so it knows nothing
+      // about a pattern written before the first press of Start.
+      c.setPattern(pattern);
       setRunning(true);
       return;
     }
@@ -66,14 +76,54 @@ export default function SynthPage() {
         : "เริ่มเสียงไม่สำเร็จ — ลองโหลดหน้าใหม่อีกครั้ง",
       { variant: "error" }
     );
-  }, [patch, running, starting]);
+  }, [patch, pattern, running, starting]);
 
   const stop = useCallback(async () => {
     await client.current?.stop();
     setRunning(false);
+    setLooping(false);
     setHeld(new Set());
-    setStatus({ activeVoices: 0, peak: 0 });
+    setStatus({ activeVoices: 0, peak: 0, step: -1 });
   }, []);
+
+  /** Every pattern edit goes straight to the audio thread, which is why an edit
+   *  made while the loop plays is heard on the next step rather than after a
+   *  restart. */
+  const changePattern = useCallback((next: SequencerPattern) => {
+    setPattern(next);
+    client.current?.setPattern(next);
+  }, []);
+
+  const toggleLoop = useCallback((play: boolean) => {
+    if (!client.current?.running) return;
+    client.current.setSequencerRunning(play);
+    setLooping(play);
+  }, []);
+
+  const exportWav = useCallback(() => {
+    setExporting(true);
+    // A frame before the render starts, so the button actually repaints into
+    // its loading state — the render blocks the main thread.
+    requestAnimationFrame(() => {
+      try {
+        const result = exportPatternToWav({
+          pattern,
+          patch,
+          presetName: presetId || "patch",
+          sampleRate: client.current?.sampleRate || 48000,
+        });
+        toast(
+          `บันทึกแล้ว ${result.filename} — ${result.seconds.toFixed(1)} วินาที · ` +
+            `${(result.byteLength / 1024 / 1024).toFixed(1)} MB`,
+          { variant: "success" }
+        );
+      } catch (err) {
+        toast(err instanceof Error ? err.message : "เรนเดอร์ไฟล์ไม่สำเร็จ", { variant: "error" });
+      } finally {
+        setExporting(false);
+      }
+    });
+  }, [pattern, patch, presetId]);
 
   const update = useCallback((key: keyof SynthPatch, value: number | LfoTarget | OscSource) => {
     setPatch((prev) => {
@@ -113,6 +163,15 @@ export default function SynthPage() {
 
   const hitDrum = useCallback((id: DrumId) => {
     client.current?.triggerDrum(id, 1);
+  }, []);
+
+  /** Audition a cell as it is switched on. A main-thread timer is fine here and
+   *  nowhere else: this is one audible click, not a tempo. */
+  const previewNote = useCallback((note: number) => {
+    const c = client.current;
+    if (!c?.running) return;
+    c.noteOn(note, 0.85);
+    window.setTimeout(() => c.noteOff(note), 180);
   }, []);
 
   const readSpectrum = useCallback(() => client.current?.readSpectrum() ?? new Float32Array(0), []);
@@ -244,6 +303,30 @@ export default function SynthPage() {
       {/* spectrum */}
       <section className="mt-5">
         <Spectrum read={readSpectrum} sampleRate={sampleRate} active={running} />
+      </section>
+
+      {/* sequencer */}
+      <section className="mt-5">
+        <SequencerPanel
+          pattern={pattern}
+          onPatternChange={changePattern}
+          octave={octave}
+          onOctaveChange={setOctave}
+          playing={looping}
+          onPlayingChange={toggleLoop}
+          playhead={looping ? status.step : -1}
+          onPreviewNote={previewNote}
+          onPreviewDrum={hitDrum}
+          onExport={exportWav}
+          exporting={exporting}
+          canPlay={running}
+        />
+        {!running && (
+          <p className="mt-2 text-[0.72rem]" style={{ color: TEXT_FAINT }}>
+            เขียนแพตเทิร์นได้เลยแม้ยังไม่เปิดเสียง — และบันทึกเป็นไฟล์ .wav ได้โดยไม่ต้องเปิดเสียงด้วย
+            เพราะการเรนเดอร์ไม่ได้ใช้อุปกรณ์เสียงเลย
+          </p>
+        )}
       </section>
 
       {/* control surface */}

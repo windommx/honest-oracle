@@ -22,6 +22,7 @@
 import { BitCrusher, Chorus, Compressor, Flanger, Phaser, PlateReverb, Saturator, StereoDelay } from "./effects";
 import { DrumKit, type DrumId } from "./drums";
 import { Rng } from "./rng";
+import { Sequencer, type SequencerPattern } from "./sequencer";
 import { DEFAULT_PATCH } from "./presets";
 import { Voice } from "./voice";
 import type { LfoTarget, PatchUpdate, SynthPatch } from "./types";
@@ -76,6 +77,7 @@ export class Synth {
   private readonly flanger: Flanger;
   private readonly crusher: BitCrusher;
   private readonly drums: DrumKit;
+  private readonly sequencer: Sequencer;
 
   private lfo1Phase = 0;
   private lfo2Phase = 0;
@@ -106,6 +108,7 @@ export class Synth {
     // held note's noise oscillator produces — which would make the engine
     // non-reproducible in exactly the way the seeded Rng exists to prevent.
     this.drums = new DrumKit(sampleRate, new Rng(0xd2005));
+    this.sequencer = new Sequencer(sampleRate);
   }
 
   /** Hit a drum pad. Independent of the keyboard: pads do not consume voices
@@ -146,6 +149,9 @@ export class Synth {
     for (const v of this.voices) v.steal();
     this.pending = [];
     this.pulseGate = -1;
+    // Panic means silence. Leaving the sequencer running would re-fill the
+    // voices a few milliseconds later, which reads as the button not working.
+    this.sequencer.stop();
     this.saturator.reset();
     this.chorus.reset();
     this.phaser.reset();
@@ -181,6 +187,53 @@ export class Synth {
 
   get pulseSettings(): Readonly<PulseSettings> {
     return this.pulse;
+  }
+
+  /** Load or edit the step pattern.
+   *
+   *  Edits apply from the next step; the playing position is kept, so changing
+   *  a note while the sequence runs does not jump it back to the top. */
+  setPattern(pattern: Partial<SequencerPattern>): void {
+    this.sequencer.setPattern(pattern);
+  }
+
+  getPattern(): SequencerPattern {
+    return this.sequencer.getPattern();
+  }
+
+  startSequencer(): void {
+    this.sequencer.start();
+  }
+
+  /** Stop and release whatever the sequence was holding — without this the
+   *  last step's notes sustain forever. */
+  stopSequencer(): void {
+    for (const e of this.sequencer.stop()) {
+      if (e.type === "noteOff") this.noteOff(e.note);
+    }
+  }
+
+  get sequencerRunning(): boolean {
+    return this.sequencer.isRunning;
+  }
+
+  /** Step currently sounding, or -1. What a playhead should highlight. */
+  get sequencerStep(): number {
+    return this.sequencer.currentStep;
+  }
+
+  /** Advance the sequence one sample and act on whatever it emits.
+   *
+   *  This runs INSIDE the render loop, so a step boundary lands on an exact
+   *  sample rather than on whenever a main-thread timer happened to wake. */
+  private tickSequencer(): void {
+    const events = this.sequencer.tick();
+    for (let i = 0; i < events.length; i++) {
+      const e = events[i];
+      if (e.type === "noteOn") this.applyNoteOn(e.note, e.velocity);
+      else if (e.type === "noteOff") this.applyNoteOff(e.note);
+      else this.drums.trigger(e.id, e.velocity);
+    }
   }
 
   /** Advance the pulse by one sample, triggering and releasing as due. */
@@ -251,6 +304,7 @@ export class Synth {
 
     for (let i = 0; i < n; i++) {
       this.tickPulse();
+      this.tickSequencer();
 
       this.lfo1Phase += lfo1Inc;
       if (this.lfo1Phase >= 1) this.lfo1Phase -= 1;

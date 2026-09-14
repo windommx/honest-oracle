@@ -13,6 +13,7 @@
 import type { PatchUpdate, SynthPatch } from "@/lib/synth-engine/types";
 import type { DrumId } from "@/lib/synth-engine/drums";
 import type { PulseSettings } from "@/lib/synth-engine/synth";
+import type { SequencerPattern } from "@/lib/synth-engine/sequencer";
 import type { WorkletCommand, WorkletStatus } from "@/lib/synth-engine/worklet-processor";
 
 /** Where scripts/build-worklet.ts writes the bundle. */
@@ -23,6 +24,9 @@ export type EngineState = "idle" | "starting" | "running" | "unsupported" | "fai
 export interface EngineStatus {
   activeVoices: number;
   peak: number;
+  /** Sequencer step currently sounding, or -1. Comes from the audio thread, so
+   *  the playhead follows the sound instead of a separate main-thread timer. */
+  step: number;
 }
 
 export function audioWorkletSupported(): boolean {
@@ -97,7 +101,11 @@ export class SynthClient {
 
       node.port.onmessage = (event: MessageEvent<WorkletStatus>) => {
         if (event.data?.type === "status") {
-          this.onStatus?.({ activeVoices: event.data.activeVoices, peak: event.data.peak });
+          this.onStatus?.({
+            activeVoices: event.data.activeVoices,
+            peak: event.data.peak,
+            step: event.data.step,
+          });
         }
       };
 
@@ -149,6 +157,16 @@ export class SynthClient {
 
   setUserTable(samples: number[]): void {
     this.send({ type: "userTable", samples });
+  }
+
+  /** Send the pattern to the audio thread. Edits take effect at the next step;
+   *  the sequence does not restart. */
+  setPattern(pattern: Partial<SequencerPattern>): void {
+    this.send({ type: "pattern", pattern });
+  }
+
+  setSequencerRunning(running: boolean): void {
+    this.send({ type: "sequencer", running });
   }
 
   /** Magnitudes in dB, one per FFT bin. The array is reused between calls, so

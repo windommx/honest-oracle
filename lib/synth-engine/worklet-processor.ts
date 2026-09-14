@@ -17,6 +17,7 @@
 import { Synth, type PulseSettings } from "./synth";
 import type { DrumId } from "./drums";
 import type { PatchUpdate } from "./types";
+import type { SequencerPattern } from "./sequencer";
 
 /** Messages the UI thread sends in. */
 export type WorkletCommand =
@@ -27,6 +28,8 @@ export type WorkletCommand =
   | { type: "pulse"; pulse: Partial<PulseSettings> }
   | { type: "drum"; id: DrumId; velocity: number }
   | { type: "userTable"; samples: number[] }
+  | { type: "pattern"; pattern: Partial<SequencerPattern> }
+  | { type: "sequencer"; running: boolean }
   | { type: "panic" };
 
 /** Messages the worklet sends back. */
@@ -35,6 +38,10 @@ export interface WorkletStatus {
   activeVoices: number;
   /** Peak absolute sample in the last block, for a meter. */
   peak: number;
+  /** Sequencer step currently sounding, or -1. Reported from the audio thread
+   *  because that is the only place that knows where the sequence actually is;
+   *  a playhead animated by a main-thread timer drifts away from the sound. */
+  step: number;
 }
 
 // `registerProcessor`, `AudioWorkletProcessor` and `sampleRate` are globals that
@@ -81,6 +88,13 @@ class SynthProcessor extends AudioWorkletProcessor {
         case "userTable":
           this.synth.setUserTable(msg.samples);
           break;
+        case "pattern":
+          this.synth.setPattern(msg.pattern);
+          break;
+        case "sequencer":
+          if (msg.running) this.synth.startSequencer();
+          else this.synth.stopSequencer();
+          break;
         case "panic":
           this.synth.panic();
           break;
@@ -109,6 +123,7 @@ class SynthProcessor extends AudioWorkletProcessor {
         type: "status",
         activeVoices: this.synth.activeVoiceCount,
         peak: this.peak,
+        step: this.synth.sequencerStep,
       };
       this.port.postMessage(status);
       this.peak = 0;
