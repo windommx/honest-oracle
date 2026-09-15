@@ -8,7 +8,10 @@ export default defineConfig({
     alias: { "@": path.resolve(__dirname) },
   },
   test: {
-    include: ["lib/**/*.test.{ts,tsx}", "app/**/*.test.{ts,tsx}"],
+    include: ["*.test.{ts,tsx}", "lib/**/*.test.{ts,tsx}", "app/**/*.test.{ts,tsx}"],
+    // "*.test.ts" (root only, non-recursive) covers middleware.test.ts — middleware.ts must
+    // live at the repo root per Next.js convention, and its test caught a real deploy-
+    // blocking regression (see middleware.ts) that nothing had run in CI before.
     environment: "node",
   },
 });

@@ -2,8 +2,19 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
 
+// 2026-09 rebrand moved Honest Oracle's authenticated pages from /oracle/* to /lifemap/*
+// (next.config.js 308-redirects the old paths). This list was NOT updated at the time —
+// found by live-probing /lifemap/admin and /lifemap/api-keys before deploy: both returned
+// 200 with NO session, meaning the admin panel and API-key management were reachable by
+// anyone once the rename shipped, while the old /oracle/admin link still worked (redirect
+// only, no gate of its own). Kept both prefixes: a legacy /oracle/* request is gated HERE
+// before next.config.js's redirect even matters, so there is no in-between unprotected hop.
 const protectedPrefixes = [
   "/history",
+  "/lifemap/app",
+  "/lifemap/history",
+  "/lifemap/api-keys",
+  "/lifemap/admin",
   "/oracle/app",
   "/oracle/history",
   "/oracle/api-keys",
@@ -30,10 +41,10 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  if (pathname.startsWith("/oracle/admin")) {
+  if (pathname.startsWith("/lifemap/admin") || pathname.startsWith("/oracle/admin")) {
     if ((token as { role?: string }).role !== "admin") {
       const url = req.nextUrl.clone();
-      url.pathname = "/oracle";
+      url.pathname = "/lifemap";
       url.search = "";
       return NextResponse.redirect(url);
     }
@@ -45,4 +56,3 @@ export async function middleware(req: NextRequest) {
 export const config = {
   matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
 };
-
