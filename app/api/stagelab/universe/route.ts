@@ -17,7 +17,7 @@ export const dynamic = 'force-dynamic'
  * so the enriched shape is tenant-specific even though the stock rows are not.
  */
 export const GET = guarded('universe.GET', async (req: Request) => {
-  const g = await gate('screener')
+  const g = await gate('screener', req)
   if (!g.ok) return g.response
 
   const enrich = new URL(req.url).searchParams.get('enrich') === '1'

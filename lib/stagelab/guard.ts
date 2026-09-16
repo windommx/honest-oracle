@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { fail } from './problem'
+import { crossOriginWrite, fail, isWrite } from './problem'
+import { READ_BUDGET, WRITE_BUDGET, rateLimit } from './rate-limit'
 import { requireUser } from '@/lib/server/session'
 import { utcDay } from '@/lib/server/usage'
 import {
@@ -47,13 +48,42 @@ export async function stageContext(): Promise<StageContext | null> {
 export type Gate = { ok: true; ctx: StageContext } | { ok: false; response: NextResponse }
 
 /**
- * Gate a route on a feature. Returns the context on success, or a ready-made
- * response carrying `code: 'upgrade_required'` so the client can show the
- * pricing link instead of a generic failure.
+ * Gate a route on a feature.
+ *
+ * Checks run in this order and the order matters: authentication first (an
+ * anonymous caller must not be able to probe anything, including the rate
+ * limiter's state), then origin, then rate, then plan. A signed-out request
+ * therefore costs one session lookup and nothing else.
+ *
+ * `req` is optional only so a handler with no request in hand still compiles;
+ * pass it wherever you have it, because without it there is no origin check
+ * and no rate limit.
  */
-export async function gate(feature: StageFeature | null): Promise<Gate> {
+export async function gate(feature: StageFeature | null, req?: Request): Promise<Gate> {
   const ctx = await stageContext()
   if (!ctx) return { ok: false, response: unauthorized() }
+
+  if (req) {
+    const foreign = crossOriginWrite(req)
+    if (foreign) return { ok: false, response: foreign }
+
+    // Keyed per user and per direction, so a burst of saves cannot starve the
+    // reads that render the result of those saves.
+    const write = isWrite(req)
+    const budget = write ? WRITE_BUDGET : READ_BUDGET
+    const verdict = rateLimit(`${ctx.user.id}:${write ? 'w' : 'r'}`, budget)
+    if (!verdict.ok) {
+      return {
+        ok: false,
+        response: fail(
+          'quota_exhausted',
+          'ส่งคำขอถี่เกินไป — รอสักครู่แล้วลองใหม่',
+          { retryAfterMs: verdict.retryAfterMs },
+        ),
+      }
+    }
+  }
+
   if (feature && !ctx.plan.features.includes(feature)) {
     return {
       ok: false,

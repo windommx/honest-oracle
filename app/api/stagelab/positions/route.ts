@@ -21,8 +21,8 @@ export const dynamic = 'force-dynamic'
  * expressible as a single Prisma orderBy, and doing it in JS meant loading a
  * customer's entire trade history to render five open rows.
  */
-export const GET = guarded('positions.GET', async () => {
-  const g = await gate('portfolio')
+export const GET = guarded('positions.GET', async (req: Request) => {
+  const g = await gate('portfolio', req)
   if (!g.ok) return g.response
   const userId = g.ctx.user.id
   const cap = Math.min(MAX_PAGE_SIZE, g.ctx.plan.limits.positions)
@@ -50,7 +50,7 @@ export const GET = guarded('positions.GET', async () => {
 })
 
 export const POST = guarded('positions.POST', async (req: Request) => {
-  const g = await gate('portfolio')
+  const g = await gate('portfolio', req)
   if (!g.ok) return g.response
   const userId = g.ctx.user.id
 
@@ -74,7 +74,7 @@ export const POST = guarded('positions.POST', async (req: Request) => {
 })
 
 export const PUT = guarded('positions.PUT', async (req: Request) => {
-  const g = await gate('portfolio')
+  const g = await gate('portfolio', req)
   if (!g.ok) return g.response
   const userId = g.ctx.user.id
 
@@ -121,7 +121,7 @@ export const PUT = guarded('positions.PUT', async (req: Request) => {
 })
 
 export const DELETE = guarded('positions.DELETE', async (req: Request) => {
-  const g = await gate('portfolio')
+  const g = await gate('portfolio', req)
   if (!g.ok) return g.response
 
   const id = idParam(req)

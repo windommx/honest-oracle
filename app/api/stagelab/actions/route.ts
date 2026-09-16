@@ -8,7 +8,7 @@ import { guarded, tooLargeIfDeclared } from '@/lib/stagelab/problem'
 export const dynamic = 'force-dynamic'
 
 export const GET = guarded('actions.GET', async (req: Request) => {
-  const g = await gate('weekly')
+  const g = await gate('weekly', req)
   if (!g.ok) return g.response
 
   const week = new URL(req.url).searchParams.get('weekOf')
@@ -28,7 +28,7 @@ export const GET = guarded('actions.GET', async (req: Request) => {
 })
 
 export const POST = guarded('actions.POST', async (req: Request) => {
-  const g = await gate('weekly')
+  const g = await gate('weekly', req)
   if (!g.ok) return g.response
   const userId = g.ctx.user.id
 
@@ -50,7 +50,7 @@ export const POST = guarded('actions.POST', async (req: Request) => {
 })
 
 export const PUT = guarded('actions.PUT', async (req: Request) => {
-  const g = await gate('weekly')
+  const g = await gate('weekly', req)
   if (!g.ok) return g.response
   const userId = g.ctx.user.id
 
@@ -69,7 +69,7 @@ export const PUT = guarded('actions.PUT', async (req: Request) => {
 })
 
 export const DELETE = guarded('actions.DELETE', async (req: Request) => {
-  const g = await gate('weekly')
+  const g = await gate('weekly', req)
   if (!g.ok) return g.response
 
   const id = idParam(req)

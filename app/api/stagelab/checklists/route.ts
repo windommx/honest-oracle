@@ -17,8 +17,8 @@ function byRoutineOrder(a: Row, b: Row) {
   return a.sortOrder - b.sortOrder
 }
 
-export const GET = guarded('checklists.GET', async () => {
-  const g = await gate('tools')
+export const GET = guarded('checklists.GET', async (req: Request) => {
+  const g = await gate('tools', req)
   if (!g.ok) return g.response
 
   await ensureTenant(g.ctx.user.id)
@@ -28,7 +28,7 @@ export const GET = guarded('checklists.GET', async () => {
 })
 
 export const PATCH = guarded('checklists.PATCH', async (req: Request) => {
-  const g = await gate('tools')
+  const g = await gate('tools', req)
   if (!g.ok) return g.response
   const userId = g.ctx.user.id
 
@@ -50,7 +50,7 @@ export const PATCH = guarded('checklists.PATCH', async (req: Request) => {
 
 /** POST — start the next cycle: clear every tick in one category. */
 export const POST = guarded('checklists.POST', async (req: Request) => {
-  const g = await gate('tools')
+  const g = await gate('tools', req)
   if (!g.ok) return g.response
   const userId = g.ctx.user.id
 

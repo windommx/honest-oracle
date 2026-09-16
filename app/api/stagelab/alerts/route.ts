@@ -14,8 +14,8 @@ export const dynamic = 'force-dynamic'
  * current review, open positions and watchlist each time, so a stale alert can
  * never outlive the condition that produced it.
  */
-export const GET = guarded('alerts.GET', async () => {
-  const g = await gate('alerts')
+export const GET = guarded('alerts.GET', async (req: Request) => {
+  const g = await gate('alerts', req)
   if (!g.ok) return g.response
   const userId = g.ctx.user.id
 

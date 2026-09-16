@@ -42,7 +42,7 @@ const th = (code: string) => STATUS_TH[code] ?? code
 const r2 = (n: number) => Math.round(n * 100) / 100
 
 export const GET = guarded('export.GET', async (req: Request) => {
-  const g = await gate('export')
+  const g = await gate('export', req)
   if (!g.ok) return g.response
   const userId = g.ctx.user.id
 

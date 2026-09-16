@@ -17,7 +17,7 @@ export const maxDuration = 60
  * margin the heaviest thing a customer can ask for.
  */
 export const POST = guarded('backtest.POST', async (req: Request) => {
-  const g = await gate('backtest')
+  const g = await gate('backtest', req)
   if (!g.ok) return g.response
 
   const tooLarge = tooLargeIfDeclared(req)

@@ -15,7 +15,15 @@ import {
   TextInput,
   ViewHeader,
 } from "../_ui";
-import { del, patch, post, useAction, useResource, type StageSession } from "../_api";
+import {
+  del,
+  patch,
+  post,
+  useAction,
+  useOptimisticFlags,
+  useResource,
+  type StageSession,
+} from "../_api";
 import { ConfirmDelete } from "./watchlist";
 import { fmt, fmtPct } from "@/lib/stagelab/utils";
 import type { ChecklistItem, JournalEntry } from "@/lib/stagelab/types";
@@ -61,6 +69,7 @@ export default function JournalView({
   const journal = useResource<JournalResponse>("/journal");
   const checklists = useResource<ChecklistResponse>("/checklists");
   const { busy, run } = useAction();
+  const flags = useOptimisticFlags();
   const [confirmId, setConfirmId] = useState<number | null>(null);
   const [category, setCategory] = useState<"DAILY" | "WEEKLY" | "MONTHLY" | "QUARTERLY">("WEEKLY");
   const [form, setForm] = useState({
@@ -225,18 +234,23 @@ export default function JournalView({
                 <li key={c.id} className="flex items-center gap-2.5 py-1">
                   <input
                     type="checkbox"
-                    checked={c.done}
-                    disabled={busy}
-                    onChange={() =>
-                      void run(async () => {
-                        await patch("/checklists", { id: c.id, done: !c.done });
+                    checked={flags.valueOf(c.id, c.done)}
+                    onChange={(e) =>
+                      void flags.toggle(c.id, e.target.checked, async () => {
+                        await patch("/checklists", { id: c.id, done: e.target.checked });
                         await checklists.reload();
                       })
                     }
                     aria-label={c.label}
                     className="h-5 w-5 shrink-0 accent-emerald-500"
                   />
-                  <span className={`text-sm ${c.done ? "text-zinc-400 line-through" : "text-zinc-200"}`}>{c.label}</span>
+                  <span
+                    className={`text-sm ${
+                      flags.valueOf(c.id, c.done) ? "text-zinc-400 line-through" : "text-zinc-200"
+                    }`}
+                  >
+                    {c.label}
+                  </span>
                 </li>
               ))}
             </ul>

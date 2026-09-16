@@ -12,8 +12,8 @@ export const dynamic = 'force-dynamic'
 // report 0 for "not yours" and "does not exist" alike, which is the answer a
 // caller should get in both cases.
 
-export const GET = guarded('sectors.GET', async () => {
-  const g = await gate('weekly')
+export const GET = guarded('sectors.GET', async (req: Request) => {
+  const g = await gate('weekly', req)
   if (!g.ok) return g.response
   const sectors = await prisma.stageSector.findMany({
     where: { userId: g.ctx.user.id },
@@ -23,7 +23,7 @@ export const GET = guarded('sectors.GET', async () => {
 })
 
 export const POST = guarded('sectors.POST', async (req: Request) => {
-  const g = await gate('weekly')
+  const g = await gate('weekly', req)
   if (!g.ok) return g.response
   const userId = g.ctx.user.id
 
@@ -44,7 +44,7 @@ export const POST = guarded('sectors.POST', async (req: Request) => {
 })
 
 export const PUT = guarded('sectors.PUT', async (req: Request) => {
-  const g = await gate('weekly')
+  const g = await gate('weekly', req)
   if (!g.ok) return g.response
   const userId = g.ctx.user.id
 
@@ -63,7 +63,7 @@ export const PUT = guarded('sectors.PUT', async (req: Request) => {
 })
 
 export const DELETE = guarded('sectors.DELETE', async (req: Request) => {
-  const g = await gate('weekly')
+  const g = await gate('weekly', req)
   if (!g.ok) return g.response
 
   const id = idParam(req)

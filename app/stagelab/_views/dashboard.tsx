@@ -18,7 +18,15 @@ import {
   toneOfSign,
   type Tone,
 } from "../_ui";
-import { patch, post, put, useAction, useResource, type StageSession } from "../_api";
+import {
+  patch,
+  post,
+  put,
+  useAction,
+  useOptimisticFlags,
+  useResource,
+  type StageSession,
+} from "../_api";
 import { ACTION_TYPE_META, fmt, fmtBaht, fmtPct } from "@/lib/stagelab/utils";
 import type { ViewKey } from "../_nav";
 
@@ -62,6 +70,7 @@ export default function DashboardView({
 }) {
   const { data, loading, error, reload } = useResource<Overview>("/overview");
   const { busy, run } = useAction();
+  const flags = useOptimisticFlags();
 
   const dailyDone = useMemo(
     () => (data ? data.checklist.filter((c) => c.done).length : 0),
@@ -282,11 +291,10 @@ export default function DashboardView({
                   <li key={a.id} className="flex items-center gap-2.5 rounded-lg px-1 py-1.5">
                     <input
                       type="checkbox"
-                      checked={a.done}
-                      disabled={busy}
-                      onChange={() =>
-                        void run(async () => {
-                          await put("/actions", { id: a.id, done: !a.done });
+                      checked={flags.valueOf(`action-${a.id}`, a.done)}
+                      onChange={(e) =>
+                        void flags.toggle(`action-${a.id}`, e.target.checked, async () => {
+                          await put("/actions", { id: a.id, done: e.target.checked });
                           await reload();
                         })
                       }
@@ -296,7 +304,11 @@ export default function DashboardView({
                     <span className={`inline-flex items-center rounded-md border px-1.5 py-0.5 text-[0.7rem] ${meta.badge}`}>
                       {meta.label}
                     </span>
-                    <span className={`flex-1 text-sm ${a.done ? "text-zinc-400 line-through" : "text-zinc-200"}`}>
+                    <span
+                      className={`flex-1 text-sm ${
+                        flags.valueOf(`action-${a.id}`, a.done) ? "text-zinc-400 line-through" : "text-zinc-200"
+                      }`}
+                    >
                       {a.content}
                     </span>
                   </li>
@@ -333,18 +345,21 @@ export default function DashboardView({
               <li key={c.id} className="flex items-center gap-2.5 py-1">
                 <input
                   type="checkbox"
-                  checked={c.done}
-                  disabled={busy}
-                  onChange={() =>
-                    void run(async () => {
-                      await patch("/checklists", { id: c.id, done: !c.done });
+                  checked={flags.valueOf(`check-${c.id}`, c.done)}
+                  onChange={(e) =>
+                    void flags.toggle(`check-${c.id}`, e.target.checked, async () => {
+                      await patch("/checklists", { id: c.id, done: e.target.checked });
                       await reload();
                     })
                   }
                   aria-label={c.label}
                   className="h-5 w-5 shrink-0 accent-emerald-500"
                 />
-                <span className={`text-sm ${c.done ? "text-zinc-400 line-through" : "text-zinc-200"}`}>
+                <span
+                  className={`text-sm ${
+                    flags.valueOf(`check-${c.id}`, c.done) ? "text-zinc-400 line-through" : "text-zinc-200"
+                  }`}
+                >
                   {c.label}
                 </span>
               </li>

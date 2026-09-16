@@ -293,6 +293,73 @@ list — would grow with how often someone pressed the button. A second call on
 the same day returns the block already written, because "today is already
 recorded" is the correct answer to "record today", not an error.
 
+### Request rate, and what the limit is honestly worth
+
+`lib/stagelab/rate-limit.ts` is a sliding window, per user, per direction —
+reads generous (a dashboard legitimately fires several on mount), writes tight
+(no human saves sixty times a minute, and the thing that does is a bug).
+
+**It is per process.** On serverless each warm instance keeps its own counters,
+so N instances allow roughly N × the limit. That is stated in the module rather
+than glossed, because a limiter presented as a guarantee it cannot make is
+worse than none — it invites someone to rely on it. What it reliably catches is
+the realistic failure: one misbehaving client, one instance, no database round
+trip. A distributed limit belongs in Redis or at the edge; when that exists,
+this becomes the second line rather than the only one.
+
+Heavy compute is metered separately in the database, and *that* meter is
+authoritative.
+
+### Cross-origin writes
+
+The session cookie is `SameSite=Lax`, which already stops a browser attaching it
+to a cross-site POST. That is the real defence and it has not been replaced.
+`crossOriginWrite` is the second line, for what the cookie policy cannot cover
+alone: embedded webviews and older engines that treat an unspecified SameSite as
+`None`, and any future change to the cookie config made without remembering why
+it was Lax.
+
+It is permissive where the signal is absent. A request carrying neither
+`Sec-Fetch-Site` nor `Origin` is not a browser — curl, a server, a test — and
+those were never the threat, because CSRF is an attack on a browser's
+willingness to attach a cookie it already holds.
+
+Checks run in a fixed order: authentication, then origin, then rate, then plan.
+A signed-out request therefore costs one session lookup and cannot probe the
+limiter's state.
+
+---
+
+## Client behaviour
+
+### Caching
+
+Every view used to fetch on mount and discard on unmount, so dashboard →
+watchlist → dashboard was three round trips and two skeleton flashes for data
+that had not changed. `useResource` now keeps a small stale-while-revalidate
+cache: a cached path paints on the first frame and refetches behind the paint,
+two components mounting on the same path share one request, and a write
+invalidates so the sidebar counts and the table on screen cannot disagree about
+what was just saved.
+
+Invalidation is deliberately broad. Adding a position changes the portfolio, the
+overview, the alerts and the session counts; clearing everything and letting the
+two or three mounted readers refetch is cheaper than maintaining a dependency
+graph that would be wrong the first time someone adds an endpoint.
+
+It is ~60 lines rather than a dependency, because what this app needs is those
+three behaviours and nothing else.
+
+### Optimistic toggles
+
+A checkbox that waits for a round trip before moving reads as a broken checkbox,
+and on a slow connection people click it again — which is how one intended
+toggle becomes three requests and an ambiguous final state. `useOptimisticFlags`
+flips locally first and reverts if the server refuses. The override is dropped
+once the write settles either way: on success the refetched data already carries
+that value, and on failure the server's value is the one to show. A predicted
+value must never outlive the truth it was predicting.
+
 ---
 
 ## Tests
@@ -314,7 +381,9 @@ recorded" is the correct answer to "record today", not an error.
 | `app/stagelab/_chart.test.tsx` | Chart structure, the data-table fallback, hover readout |
 | `app/stagelab/_error-boundary.test.tsx` | Catch, recover-on-navigate, retry, structured logging |
 | `lib/stagelab/csv.test.ts` | RFC 4180 escaping, formula-injection guard, the BOM |
-| `app/api/stagelab/routes.test.ts` | Handlers end to end: auth, scoping, caps, quotas, conflicts |
+| `app/api/stagelab/routes.test.ts` | Handlers end to end: auth, scoping, caps, quotas, conflicts, origin |
+| `lib/stagelab/rate-limit.test.ts` | Window behaviour, per-key isolation, bounded memory |
+| `app/stagelab/_api.test.tsx` | Cache hits, request dedupe, invalidation, optimistic revert |
 
 These keep finding real bugs, which is the point of writing them first:
 

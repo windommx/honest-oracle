@@ -10,7 +10,7 @@ export const maxDuration = 60
 
 /** POST — bootstrap the customer's own trade returns into an equity fan. */
 export const POST = guarded('quant.monteCarlo.POST', async (req: Request) => {
-  const g = await gate('quant')
+  const g = await gate('quant', req)
   if (!g.ok) return g.response
 
   const tooLarge = tooLargeIfDeclared(req)

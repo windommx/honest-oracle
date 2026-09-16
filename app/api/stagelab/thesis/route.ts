@@ -21,8 +21,8 @@ function scoresFor(input: Body) {
   return { fundScore: fund.score, combinedScore: combined.score, tier: combined.tier }
 }
 
-export const GET = guarded('thesis.GET', async () => {
-  const g = await gate('thesis')
+export const GET = guarded('thesis.GET', async (req: Request) => {
+  const g = await gate('thesis', req)
   if (!g.ok) return g.response
 
   const theses = await prisma.stageThesis.findMany({
@@ -34,7 +34,7 @@ export const GET = guarded('thesis.GET', async () => {
 })
 
 export const POST = guarded('thesis.POST', async (req: Request) => {
-  const g = await gate('thesis')
+  const g = await gate('thesis', req)
   if (!g.ok) return g.response
   const userId = g.ctx.user.id
 
@@ -63,7 +63,7 @@ export const POST = guarded('thesis.POST', async (req: Request) => {
 
 /** PUT — full replace of one thesis, quarters included. */
 export const PUT = guarded('thesis.PUT', async (req: Request) => {
-  const g = await gate('thesis')
+  const g = await gate('thesis', req)
   if (!g.ok) return g.response
   const userId = g.ctx.user.id
 
@@ -107,7 +107,7 @@ export const PUT = guarded('thesis.PUT', async (req: Request) => {
 })
 
 export const DELETE = guarded('thesis.DELETE', async (req: Request) => {
-  const g = await gate('thesis')
+  const g = await gate('thesis', req)
   if (!g.ok) return g.response
 
   const id = idParam(req)

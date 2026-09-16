@@ -16,8 +16,8 @@ export const dynamic = 'force-dynamic'
  * one screen. The aggregation below is the same data, computed where the rows
  * already are.
  */
-export const GET = guarded('overview.GET', async () => {
-  const g = await gate('dashboard')
+export const GET = guarded('overview.GET', async (req: Request) => {
+  const g = await gate('dashboard', req)
   if (!g.ok) return g.response
   const userId = g.ctx.user.id
 

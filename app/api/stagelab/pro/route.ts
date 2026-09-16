@@ -15,7 +15,7 @@ export const dynamic = 'force-dynamic'
  * pass, and splitting them across three files meant three copies of it.
  */
 export const GET = guarded('pro.GET', async (req: Request) => {
-  const g = await gate('pro')
+  const g = await gate('pro', req)
   if (!g.ok) return g.response
   const userId = g.ctx.user.id
 

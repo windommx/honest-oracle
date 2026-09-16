@@ -17,7 +17,7 @@ export const dynamic = 'force-dynamic'
  *   reset — delete everything this tenant owns, then re-seed the framework
  */
 export const POST = guarded('bootstrap.POST', async (req: Request) => {
-  const g = await gate(null)
+  const g = await gate(null, req)
   if (!g.ok) return g.response
   const { user, plan } = g.ctx
 

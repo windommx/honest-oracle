@@ -51,6 +51,7 @@ vi.mock("@/lib/server/session", () => ({
 }));
 
 import { requireUser } from "@/lib/server/session";
+import { _resetRateLimits } from "@/lib/stagelab/rate-limit";
 import {
   GET as watchlistGET,
   POST as watchlistPOST,
@@ -96,6 +97,9 @@ const ROW = {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  // The limiter keeps counters in module scope; without this the later suites
+  // inherit whatever the earlier ones spent.
+  _resetRateLimits();
   session.mockResolvedValue(PRO);
 });
 
@@ -104,7 +108,7 @@ beforeEach(() => {
 describe("authentication", () => {
   it("answers 401 before touching the database", async () => {
     session.mockResolvedValue(null);
-    expect((await watchlistGET()).status).toBe(401);
+    expect((await watchlistGET(get())).status).toBe(401);
     expect(db.stageWatchlistItem.findMany).not.toHaveBeenCalled();
   });
 
@@ -121,7 +125,7 @@ describe("authentication", () => {
 describe("tenant scoping", () => {
   it("filters reads by the caller's own id", async () => {
     db.stageWatchlistItem.findMany.mockResolvedValue([]);
-    await watchlistGET();
+    await watchlistGET(get());
     expect(db.stageWatchlistItem.findMany.mock.calls[0][0].where).toEqual({ userId: "u1" });
   });
 
@@ -279,7 +283,7 @@ describe("feature gates", () => {
 
   it("refuses heavy compute to a free plan without spending a quota row", async () => {
     session.mockResolvedValue(FREE);
-    const res = await trapsGET();
+    const res = await trapsGET(get());
     expect(res.status).toBe(402);
     expect(db.usageDay.upsert).not.toHaveBeenCalled();
   });
@@ -289,14 +293,14 @@ describe("feature gates", () => {
     db.usageDay.upsert.mockResolvedValue({ stageRuns: 5 });
     db.stageStock.findMany.mockResolvedValue([]);
     db.stageThesis.findMany.mockResolvedValue([]);
-    await trapsGET();
+    await trapsGET(get());
     expect(db.usageDay.upsert).toHaveBeenCalled();
   });
 
   it("answers 429 once the daily budget is gone", async () => {
     db.stageStock.count.mockResolvedValue(61);
     db.usageDay.upsert.mockResolvedValue({ stageRuns: 10_000 });
-    const res = await trapsGET();
+    const res = await trapsGET(get());
     expect(res.status).toBe(429);
     expect((await res.json()).code).toBe("quota_exhausted");
   });
@@ -367,7 +371,7 @@ describe("unexpected failures", () => {
     db.stageWatchlistItem.findMany.mockRejectedValue(
       new Error('relation "stage_watchlist_item" does not exist on host db-prod-7'),
     );
-    const res = await watchlistGET();
+    const res = await watchlistGET(get());
     expect(res.status).toBe(500);
     const body = await res.json();
     expect(JSON.stringify(body)).not.toContain("db-prod-7");
@@ -407,14 +411,14 @@ describe("audit chain", () => {
 
   it("reads without appending — looking at evidence must not create any", async () => {
     db.stageNightlySnapshot.findMany.mockResolvedValue([]);
-    const res = await chainGET();
+    const res = await chainGET(get());
     expect(res.status).toBe(200);
     expect(db.stageNightlySnapshot.create).not.toHaveBeenCalled();
   });
 
   it("bounds how far back it verifies", async () => {
     db.stageNightlySnapshot.findMany.mockResolvedValue([]);
-    await chainGET();
+    await chainGET(get());
     // Verification recomputes every block, so the read has to be bounded or the
     // cost of looking grows with how long the account has existed.
     expect(db.stageNightlySnapshot.findMany.mock.calls[0][0].take).toBeGreaterThan(0);
@@ -424,7 +428,7 @@ describe("audit chain", () => {
     db.stageNightlySnapshot.findFirst.mockResolvedValue(null);
     db.stageNightlySnapshot.create.mockResolvedValue({});
     db.stageNightlySnapshot.findMany.mockResolvedValue([]);
-    await chainPOST();
+    await chainPOST(send("POST", {}));
     expect(db.stageNightlySnapshot.create).toHaveBeenCalledTimes(1);
     expect(db.stageNightlySnapshot.create.mock.calls[0][0].data.night).toBe(1);
   });
@@ -436,7 +440,7 @@ describe("audit chain", () => {
     const today = block(7, new Date());
     db.stageNightlySnapshot.findFirst.mockResolvedValue(today);
     db.stageNightlySnapshot.findMany.mockResolvedValue([today]);
-    const res = await chainPOST();
+    const res = await chainPOST(send("POST", {}));
     expect(res.status).toBe(200);
     expect(db.stageNightlySnapshot.create).not.toHaveBeenCalled();
     expect((await res.json()).entry.night).toBe(7);
@@ -447,7 +451,7 @@ describe("audit chain", () => {
     db.stageNightlySnapshot.findFirst.mockResolvedValue(block(7, yesterday));
     db.stageNightlySnapshot.create.mockResolvedValue({});
     db.stageNightlySnapshot.findMany.mockResolvedValue([]);
-    await chainPOST();
+    await chainPOST(send("POST", {}));
     expect(db.stageNightlySnapshot.create.mock.calls[0][0].data.night).toBe(8);
   });
 
@@ -455,10 +459,106 @@ describe("audit chain", () => {
     db.stageNightlySnapshot.findFirst.mockResolvedValue(null);
     db.stageNightlySnapshot.create.mockResolvedValue({});
     db.stageNightlySnapshot.findMany.mockResolvedValue([]);
-    const res = await chainPOST();
+    const res = await chainPOST(send("POST", {}));
     const written = db.stageNightlySnapshot.create.mock.calls[0][0].data;
     // Prisma's default(now()) would drift a few milliseconds from the value
     // that went into the hash, and every block would then read as tampered.
     expect(written.timestamp.toISOString()).toBe((await res.json()).entry.timestamp);
+  });
+});
+
+// ─── Cross-origin writes and request rate ────────────────────────────────────
+
+describe("cross-origin writes", () => {
+  const post = (headers: Record<string, string>) =>
+    new Request("https://app.test/api/stagelab/watchlist", {
+      method: "POST",
+      headers: { "content-type": "application/json", ...headers },
+      body: JSON.stringify({ symbol: "X", entryPrice: 1, stopLoss: 1, targetPrice: 2 }),
+    });
+
+  it("refuses a write a browser reports as cross-site", async () => {
+    const res = await watchlistPOST(post({ "sec-fetch-site": "cross-site" }));
+    expect(res.status).toBe(403);
+    expect(db.stageWatchlistItem.create).not.toHaveBeenCalled();
+  });
+
+  it("refuses a write whose Origin is a different host", async () => {
+    const res = await watchlistPOST(post({ origin: "https://evil.test" }));
+    expect(res.status).toBe(403);
+  });
+
+  it("allows a same-origin write", async () => {
+    db.stageWatchlistItem.count.mockResolvedValue(0);
+    db.stageWatchlistItem.create.mockResolvedValue(ROW);
+    expect((await watchlistPOST(post({ "sec-fetch-site": "same-origin" }))).status).toBe(200);
+  });
+
+  it("allows a write whose Origin matches the request host", async () => {
+    db.stageWatchlistItem.count.mockResolvedValue(0);
+    db.stageWatchlistItem.create.mockResolvedValue(ROW);
+    expect((await watchlistPOST(post({ origin: "https://app.test" }))).status).toBe(200);
+  });
+
+  it("does not block a caller that sends neither header", async () => {
+    // CSRF is an attack on a browser's willingness to attach a cookie it
+    // holds. Something sending no browser fetch metadata is curl or a server,
+    // and was never the threat.
+    db.stageWatchlistItem.count.mockResolvedValue(0);
+    db.stageWatchlistItem.create.mockResolvedValue(ROW);
+    expect((await watchlistPOST(post({}))).status).toBe(200);
+  });
+
+  it("never blocks a read, whatever its origin", async () => {
+    db.stageWatchlistItem.findMany.mockResolvedValue([]);
+    const res = await watchlistGET(
+      new Request("https://app.test/api", { headers: { "sec-fetch-site": "cross-site" } }),
+    );
+    expect(res.status).toBe(200);
+  });
+});
+
+describe("request rate", () => {
+  it("cuts off a client that floods the write path", async () => {
+    db.stageWatchlistItem.count.mockResolvedValue(0);
+    db.stageWatchlistItem.create.mockResolvedValue(ROW);
+    const body = { symbol: "X", entryPrice: 1, stopLoss: 1, targetPrice: 2 };
+
+    let limited = 0;
+    for (let i = 0; i < 80; i++) {
+      const res = await watchlistPOST(send("POST", body));
+      if (res.status === 429) limited++;
+    }
+    expect(limited).toBeGreaterThan(0);
+  });
+
+  it("tells the client how long to wait", async () => {
+    db.stageWatchlistItem.findMany.mockResolvedValue([]);
+    let denied: Response | null = null;
+    for (let i = 0; i < 400 && !denied; i++) {
+      const res = await watchlistGET(get());
+      if (res.status === 429) denied = res;
+    }
+    expect(denied).not.toBeNull();
+    const body = await denied!.json();
+    expect(body.code).toBe("quota_exhausted");
+    expect(body.retryAfterMs).toBeGreaterThan(0);
+  });
+
+  it("limits per user, so one noisy account cannot starve another", async () => {
+    db.stageWatchlistItem.findMany.mockResolvedValue([]);
+    for (let i = 0; i < 400; i++) await watchlistGET(get());
+
+    session.mockResolvedValue({ ...PRO, id: "u2" });
+    expect((await watchlistGET(get())).status).toBe(200);
+  });
+
+  it("checks authentication before the limiter, so signed-out traffic cannot probe it", async () => {
+    session.mockResolvedValue(null);
+    for (let i = 0; i < 400; i++) await watchlistGET(get());
+    // A real session is still served: the anonymous flood consumed no budget.
+    session.mockResolvedValue(PRO);
+    db.stageWatchlistItem.findMany.mockResolvedValue([]);
+    expect((await watchlistGET(get())).status).toBe(200);
   });
 });

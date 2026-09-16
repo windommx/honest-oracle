@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic'
 
 /** GET ?symbol= — the 360° score: technical, fundamental, macro, risk, execution. */
 export const GET = guarded('quant.unified.GET', async (req: Request) => {
-  const g = await gate('quant')
+  const g = await gate('quant', req)
   if (!g.ok) return g.response
 
   const symbol = (new URL(req.url).searchParams.get('symbol') ?? '').trim().toUpperCase()

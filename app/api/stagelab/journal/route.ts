@@ -15,7 +15,7 @@ export const dynamic = 'force-dynamic'
  * client had no way to know it was looking at a truncated record.
  */
 export const GET = guarded('journal.GET', async (req: Request) => {
-  const g = await gate('journal')
+  const g = await gate('journal', req)
   if (!g.ok) return g.response
   const userId = g.ctx.user.id
   const range = pageParams(req)
@@ -36,7 +36,7 @@ export const GET = guarded('journal.GET', async (req: Request) => {
 })
 
 export const POST = guarded('journal.POST', async (req: Request) => {
-  const g = await gate('journal')
+  const g = await gate('journal', req)
   if (!g.ok) return g.response
   const userId = g.ctx.user.id
 
@@ -58,7 +58,7 @@ export const POST = guarded('journal.POST', async (req: Request) => {
 })
 
 export const DELETE = guarded('journal.DELETE', async (req: Request) => {
-  const g = await gate('journal')
+  const g = await gate('journal', req)
   if (!g.ok) return g.response
 
   const id = idParam(req)

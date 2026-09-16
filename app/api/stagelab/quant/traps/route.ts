@@ -8,8 +8,8 @@ export const dynamic = 'force-dynamic'
 export const maxDuration = 60
 
 /** GET — dividend-trap scan across the universe, graded against the caller's theses. */
-export const GET = guarded('quant.traps.GET', async () => {
-  const g = await gate('quant')
+export const GET = guarded('quant.traps.GET', async (req: Request) => {
+  const g = await gate('quant', req)
   if (!g.ok) return g.response
 
   await ensureUniverse()

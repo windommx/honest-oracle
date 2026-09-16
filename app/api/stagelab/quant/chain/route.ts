@@ -14,14 +14,14 @@ export const maxDuration = 60
  * and a chain that grows when you look at it is not evidence of anything.
  * Appending is an explicit POST.
  */
-export const GET = guarded('quant.chain.GET', async () => {
-  const g = await gate('audit')
+export const GET = guarded('quant.chain.GET', async (req: Request) => {
+  const g = await gate('audit', req)
   if (!g.ok) return g.response
   return NextResponse.json(await readChain(g.ctx.user.id))
 })
 
-export const POST = guarded('quant.chain.POST', async () => {
-  const g = await gate('audit')
+export const POST = guarded('quant.chain.POST', async (req: Request) => {
+  const g = await gate('audit', req)
   if (!g.ok) return g.response
 
   const denied = await spendCompute(g.ctx, 2)

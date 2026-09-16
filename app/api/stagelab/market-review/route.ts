@@ -9,8 +9,8 @@ import { guarded, tooLargeIfDeclared } from '@/lib/stagelab/problem'
 export const dynamic = 'force-dynamic'
 
 /** GET — the caller's latest weekly market review, created on demand. */
-export const GET = guarded('marketReview.GET', async () => {
-  const g = await gate('weekly')
+export const GET = guarded('marketReview.GET', async (req: Request) => {
+  const g = await gate('weekly', req)
   if (!g.ok) return g.response
   const userId = g.ctx.user.id
 
@@ -23,7 +23,7 @@ export const GET = guarded('marketReview.GET', async () => {
 
 /** POST — upsert on (user, week). Only the fields sent are written. */
 export const POST = guarded('marketReview.POST', async (req: Request) => {
-  const g = await gate('weekly')
+  const g = await gate('weekly', req)
   if (!g.ok) return g.response
   const userId = g.ctx.user.id
 

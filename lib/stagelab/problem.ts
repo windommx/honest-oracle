@@ -111,6 +111,49 @@ export function guarded<T extends unknown[]>(
   }
 }
 
+const WRITE_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE'])
+
+export function isWrite(req: Request): boolean {
+  return WRITE_METHODS.has(req.method.toUpperCase())
+}
+
+/**
+ * Reject a state-changing request that did not originate from this site.
+ *
+ * The session cookie is SameSite=Lax, which already stops a browser attaching
+ * it to a cross-site POST — that is the real defence and it is not being
+ * replaced here. This is the second line, for the cases the cookie policy
+ * cannot cover on its own: embedded webviews and older engines that treat an
+ * unspecified SameSite as None, and any future change to the cookie config
+ * made without remembering why it was Lax.
+ *
+ * Deliberately permissive where the signal is absent. `Sec-Fetch-Site` is sent
+ * by every current browser; a request carrying neither it nor `Origin` is not
+ * a browser — curl, a server-side caller, a test — and those were never the
+ * threat, because CSRF is an attack on a browser's willingness to attach a
+ * cookie it holds.
+ */
+export function crossOriginWrite(req: Request): NextResponse | null {
+  if (!isWrite(req)) return null
+
+  const site = req.headers.get('sec-fetch-site')
+  if (site) {
+    // `none` is a direct navigation or a tool; `same-site` covers subdomains.
+    if (site === 'same-origin' || site === 'none' || site === 'same-site') return null
+    return fail('forbidden', 'คำขอนี้ถูกส่งมาจากภายนอกระบบ จึงถูกปฏิเสธ')
+  }
+
+  const origin = req.headers.get('origin')
+  if (!origin) return null
+
+  try {
+    if (new URL(origin).host === new URL(req.url).host) return null
+  } catch {
+    // An Origin that will not parse is not one we can trust.
+  }
+  return fail('forbidden', 'คำขอนี้ถูกส่งมาจากภายนอกระบบ จึงถูกปฏิเสธ')
+}
+
 /**
  * Reject a body before parsing it. Next buffers the whole request, so an
  * unbounded JSON body is an unbounded allocation on a serverless function with

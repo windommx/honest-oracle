@@ -23,8 +23,8 @@ const PRIORITY_ORDER: Record<string, number> = { A: 0, B: 1, C: 2 }
  * JS — but over a set the plan cap already bounds, and with an explicit take so
  * the query cost never depends on how long the account has existed.
  */
-export const GET = guarded('watchlist.GET', async () => {
-  const g = await gate('watchlist')
+export const GET = guarded('watchlist.GET', async (req: Request) => {
+  const g = await gate('watchlist', req)
   if (!g.ok) return g.response
 
   const cap = Math.min(MAX_PAGE_SIZE, g.ctx.plan.limits.watchlist)
@@ -45,7 +45,7 @@ export const GET = guarded('watchlist.GET', async () => {
 })
 
 export const POST = guarded('watchlist.POST', async (req: Request) => {
-  const g = await gate('watchlist')
+  const g = await gate('watchlist', req)
   if (!g.ok) return g.response
   const userId = g.ctx.user.id
 
@@ -64,7 +64,7 @@ export const POST = guarded('watchlist.POST', async (req: Request) => {
 })
 
 export const PUT = guarded('watchlist.PUT', async (req: Request) => {
-  const g = await gate('watchlist')
+  const g = await gate('watchlist', req)
   if (!g.ok) return g.response
   const userId = g.ctx.user.id
 
@@ -95,7 +95,7 @@ export const PUT = guarded('watchlist.PUT', async (req: Request) => {
 })
 
 export const DELETE = guarded('watchlist.DELETE', async (req: Request) => {
-  const g = await gate('watchlist')
+  const g = await gate('watchlist', req)
   if (!g.ok) return g.response
 
   const id = idParam(req)

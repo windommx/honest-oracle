@@ -15,7 +15,7 @@ export const dynamic = 'force-dynamic'
  * whatever the generator happened to drift to.
  */
 export const GET = guarded('series.GET', async (req: Request) => {
-  const g = await gate('screener')
+  const g = await gate('screener', req)
   if (!g.ok) return g.response
 
   const symbol = (new URL(req.url).searchParams.get('symbol') ?? '').trim().toUpperCase()
