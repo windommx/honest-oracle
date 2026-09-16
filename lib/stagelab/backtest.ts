@@ -36,6 +36,8 @@ export interface BacktestTrade {
   pnlPct: number
   holdWeeks: number
   exitReason: 'Stage Exit' | 'Stop Loss' | 'Trailing Stop' | 'End of Test'
+  /** Bar index the trade closed on — used to assign it to a period. */
+  exitIdx: number
 }
 
 export interface EquityPoint {
@@ -66,6 +68,67 @@ export interface BacktestStats {
   totalTrades: number
   bestPct: number
   worstPct: number
+  /** Annualised return per unit of DOWNSIDE deviation. Sharpe punishes upside
+   *  volatility, which no one has ever complained about. */
+  sortino: number
+  /** CAGR per unit of worst drawdown — return measured against the pain. */
+  calmar: number
+  /** Share of weeks holding at least one position. A strategy that returns 8%
+   *  while invested a third of the time is not the same as one that returns 8%
+   *  fully invested, and the equity curve alone will not tell you which. */
+  exposurePct: number
+  /** Average % outcome per trade, wins and losses together. */
+  expectancyPct: number
+  /** Longest run of consecutive weeks below a prior equity peak. */
+  longestDdWeeks: number
+  /** Weeks from the deepest trough back to that peak; null if never recovered. */
+  recoveryWeeks: number | null
+}
+
+/** Stats for one slice of the test window. */
+export interface PeriodStats {
+  label: string
+  fromDate: string
+  toDate: string
+  weeks: number
+  startValue: number
+  endValue: number
+  returnPct: number
+  cagrPct: number
+  maxDdPct: number
+  trades: number
+  winRatePct: number
+  profitFactor: number
+}
+
+/** Buy-and-hold the index over the same window, same capital, same costs. */
+export interface Benchmark {
+  label: string
+  finalValue: number
+  totalReturnPct: number
+  cagrPct: number
+  maxDdPct: number
+  equity: number[]
+  /** Strategy return minus benchmark return, in points. */
+  excessReturnPct: number
+}
+
+export type RobustnessVerdict = 'consistent' | 'degraded' | 'reversed' | 'insufficient'
+
+/**
+ * A plain reading of the in-sample / out-of-sample gap.
+ *
+ * The strategy rules are fixed, but the knobs above them are not — and a user
+ * who turns seven dials until the number goes up has fitted the config to the
+ * series whether they meant to or not. Splitting the window is the cheapest
+ * honest check there is, so the result carries it whether it flatters the run
+ * or not.
+ */
+export interface Robustness {
+  verdict: RobustnessVerdict
+  /** Out-of-sample CAGR minus in-sample CAGR, in points. */
+  cagrGapPct: number
+  note: string
 }
 
 export interface BacktestResult {
@@ -76,6 +139,9 @@ export interface BacktestResult {
   exitBreakdown: ExitBreakdownRow[]
   topTrades: BacktestTrade[]
   worstTrades: BacktestTrade[]
+  benchmark: Benchmark
+  splits: { inSample: PeriodStats; outOfSample: PeriodStats }
+  robustness: Robustness
 }
 
 interface OpenPos {
@@ -87,6 +153,15 @@ interface OpenPos {
   stop: number
   highest: number
   entryIdx: number
+  /**
+   * The symbol's series, carried on the position itself.
+   *
+   * This used to be a linear scan of the universe by symbol, run four times
+   * per open position per week. At 61 symbols, 8 positions and 252 active
+   * weeks that is roughly half a million string comparisons spent re-finding
+   * something the caller already had in hand.
+   */
+  d: SymbolData
 }
 
 interface SymbolData {
@@ -160,6 +235,198 @@ function indexStages(weeks: number): number[] {
   return stages
 }
 
+// ─── Risk analytics ──────────────────────────────────────────────────────────
+
+/** Compound growth rate from a start/end pair over a number of years. */
+function cagrOf(start: number, end: number, years: number): number {
+  if (years <= 0 || start <= 0 || end <= 0) return 0
+  return (Math.pow(end / start, 1 / years) - 1) * 100
+}
+
+/**
+ * Sortino, annualised from weekly returns.
+ *
+ * Sharpe divides by total volatility, which counts a +12% week as risk. For a
+ * trend strategy — whose whole design is to have a few very large up weeks —
+ * that systematically understates the result. Sortino divides by downside
+ * deviation only, which is the thing a customer actually minds.
+ */
+function sortinoOf(weekly: number[]): number {
+  if (weekly.length < 2) return 0
+  const mean = weekly.reduce((a, b) => a + b, 0) / weekly.length
+  let downSq = 0
+  let downN = 0
+  for (const r of weekly) {
+    if (r < 0) {
+      downSq += r * r
+      downN++
+    }
+  }
+  if (downN === 0) return mean > 0 ? 99 : 0
+  const downDev = Math.sqrt(downSq / downN)
+  if (downDev === 0) return 0
+  return (mean / downDev) * Math.sqrt(52)
+}
+
+/**
+ * Longest stretch under water, and how long the deepest hole took to climb out
+ * of. A 40% drawdown that recovers in eight weeks and one that takes three
+ * years are the same number on a stats card and completely different to live
+ * through.
+ */
+function drawdownDuration(values: number[]): { longest: number; recovery: number | null } {
+  let peak = values[0] ?? 0
+  let peakIdx = 0
+  let longest = 0
+  let runStart = -1
+  let deepest = 0
+  let deepestPeakIdx = 0
+  let deepestTroughIdx = 0
+
+  for (let i = 0; i < values.length; i++) {
+    const v = values[i]
+    if (v >= peak) {
+      if (runStart >= 0) longest = Math.max(longest, i - runStart)
+      peak = v
+      peakIdx = i
+      runStart = -1
+      continue
+    }
+    if (runStart < 0) runStart = peakIdx
+    const dd = (v - peak) / peak
+    if (dd < deepest) {
+      deepest = dd
+      deepestPeakIdx = peakIdx
+      deepestTroughIdx = i
+    }
+  }
+  if (runStart >= 0) longest = Math.max(longest, values.length - runStart)
+
+  // Recovery: first bar after the trough that regains the pre-drawdown peak.
+  let recovery: number | null = null
+  if (deepest < 0) {
+    const target = values[deepestPeakIdx]
+    for (let i = deepestTroughIdx; i < values.length; i++) {
+      if (values[i] >= target) {
+        recovery = i - deepestTroughIdx
+        break
+      }
+    }
+  }
+  return { longest, recovery }
+}
+
+/** Max drawdown (negative %) of a raw value series. */
+function maxDrawdownOf(values: number[]): number {
+  let peak = values[0] ?? 0
+  let worst = 0
+  for (const v of values) {
+    if (v > peak) peak = v
+    if (peak > 0) worst = Math.min(worst, ((v - peak) / peak) * 100)
+  }
+  return worst
+}
+
+function periodStats(
+  label: string,
+  values: number[],
+  dates: string[],
+  periodTrades: BacktestTrade[],
+): PeriodStats {
+  const start = values[0] ?? 0
+  const end = values[values.length - 1] ?? start
+  const weeks = values.length
+  const wins = periodTrades.filter((t) => t.pnl > 0)
+  const grossWin = wins.reduce((a, t) => a + t.pnl, 0)
+  const grossLoss = Math.abs(
+    periodTrades.filter((t) => t.pnl <= 0).reduce((a, t) => a + t.pnl, 0),
+  )
+  return {
+    label,
+    fromDate: dates[0] ?? '',
+    toDate: dates[dates.length - 1] ?? '',
+    weeks,
+    startValue: Math.round(start),
+    endValue: Math.round(end),
+    returnPct: start > 0 ? r2((end / start - 1) * 100) : 0,
+    cagrPct: r2(cagrOf(start, end, weeks / 52)),
+    maxDdPct: r2(maxDrawdownOf(values)),
+    trades: periodTrades.length,
+    winRatePct: periodTrades.length ? r2((wins.length / periodTrades.length) * 100) : 0,
+    profitFactor: grossLoss > 0 ? r2(grossWin / grossLoss) : grossWin > 0 ? 99 : 0,
+  }
+}
+
+/**
+ * Buy and hold the index over the same window.
+ *
+ * A backtest with no benchmark answers "did this make money", which in a rising
+ * market is close to meaningless. The question worth asking is whether all the
+ * screening, sizing and stop discipline beat doing nothing — and often enough
+ * it does not, which the customer is entitled to see.
+ */
+function buildBenchmark(
+  cfg: BacktestConfig,
+  warmup: number,
+  weeks: number,
+  strategyReturnPct: number,
+): Benchmark {
+  const closes = setIndexCloses(weeks)
+  const entry = closes[warmup]
+  const commission = cfg.commissionPct / 100
+  // Same costs as the strategy: one round trip on the whole book.
+  const invested = cfg.capital * (1 - commission)
+  const units = entry > 0 ? invested / entry : 0
+
+  const equity: number[] = []
+  for (let i = warmup; i < weeks; i++) equity.push(Math.round(units * closes[i]))
+  const finalValue = Math.round((equity[equity.length - 1] ?? cfg.capital) * (1 - commission))
+  const years = (weeks - warmup) / 52
+
+  const totalReturnPct = r2((finalValue / cfg.capital - 1) * 100)
+  return {
+    label: 'ซื้อดัชนีแล้วถือ',
+    finalValue,
+    totalReturnPct,
+    cagrPct: r2(cagrOf(cfg.capital, finalValue, years)),
+    maxDdPct: r2(maxDrawdownOf(equity)),
+    equity,
+    excessReturnPct: r2(strategyReturnPct - totalReturnPct),
+  }
+}
+
+/** Read the in-sample / out-of-sample gap without softening it. */
+function assessRobustness(inSample: PeriodStats, outOfSample: PeriodStats): Robustness {
+  const gap = r2(outOfSample.cagrPct - inSample.cagrPct)
+
+  if (inSample.trades < 10 || outOfSample.trades < 10) {
+    return {
+      verdict: 'insufficient',
+      cagrGapPct: gap,
+      note: `เทรดน้อยเกินไปในบางช่วง (${inSample.trades} / ${outOfSample.trades} ไม้) — ยังสรุปเรื่องความทนทานไม่ได้ ต้องมีอย่างน้อยช่วงละ 10 ไม้`,
+    }
+  }
+  if (outOfSample.cagrPct < 0 && inSample.cagrPct > 0) {
+    return {
+      verdict: 'reversed',
+      cagrGapPct: gap,
+      note: 'ช่วงแรกกำไร ช่วงหลังขาดทุน — เป็นลายเซ็นของการปรับค่าจนเข้ากับข้อมูลชุดที่ใช้ทดสอบ อย่าเชื่อผลรวม',
+    }
+  }
+  if (gap < -5) {
+    return {
+      verdict: 'degraded',
+      cagrGapPct: gap,
+      note: `ผลช่วงหลังแย่กว่าช่วงแรก ${Math.abs(gap).toFixed(1)} จุด — ค่าที่ตั้งไว้อาจเข้ากับช่วงแรกมากเป็นพิเศษ ลองผ่อนค่าที่ปรับละเอียดที่สุดลง`,
+    }
+  }
+  return {
+    verdict: 'consistent',
+    cagrGapPct: gap,
+    note: 'ผลสองช่วงใกล้เคียงกัน — ยังไม่เห็นสัญญาณว่าค่าที่ตั้งไว้เข้ากับข้อมูลชุดนี้เป็นพิเศษ',
+  }
+}
+
 export function runBacktest(
   universe: { symbol: string; sector: string }[],
   cfg: BacktestConfig,
@@ -173,6 +440,7 @@ export function runBacktest(
   let cash = cfg.capital
   let peak = cfg.capital
   let maxDd = 0
+  let exposedWeeks = 0
   const positions = new Map<string, OpenPos>()
   const trades: BacktestTrade[] = []
   const equity: EquityPoint[] = []
@@ -204,6 +472,7 @@ export function runBacktest(
       pnlPct: r2((exitPrice / pos.entryPrice - 1) * 100),
       holdWeeks: i - pos.entryIdx,
       exitReason: reason,
+      exitIdx: i,
     })
     positions.delete(pos.symbol)
   }
@@ -211,7 +480,7 @@ export function runBacktest(
   for (let i = WARMUP; i < WEEKS; i++) {
     // ── 1. Manage exits ─────────────────────────────────────────────────
     for (const pos of Array.from(positions.values())) {
-      const d = data.find((x) => x.symbol === pos.symbol)!
+      const d = pos.d
       const px = priceOf(d, i)
       if (px <= 0) continue
 
@@ -262,10 +531,9 @@ export function runBacktest(
 
           const stopDist = d.atr10[i] * 2
           if (stopDist <= 0) continue
-          const equityNow = cash + Array.from(positions.values()).reduce((a, p) => {
-            const pd = data.find((x) => x.symbol === p.symbol)!
-            return a + p.shares * priceOf(pd, i)
-          }, 0)
+          const equityNow =
+            cash +
+            Array.from(positions.values()).reduce((a, p) => a + p.shares * priceOf(p.d, i), 0)
           const riskAmount = equityNow * (cfg.riskPct / 100)
           const shares = Math.floor(riskAmount / stopDist)
           if (shares <= 0) continue
@@ -282,6 +550,7 @@ export function runBacktest(
             stop: px - stopDist,
             highest: px,
             entryIdx: i,
+            d,
           })
         }
       }
@@ -289,10 +558,8 @@ export function runBacktest(
 
     // ── 3. Record equity ────────────────────────────────────────────────
     let invested = 0
-    for (const p of Array.from(positions.values())) {
-      const pd = data.find((x) => x.symbol === p.symbol)!
-      invested += p.shares * priceOf(pd, i)
-    }
+    for (const p of Array.from(positions.values())) invested += p.shares * priceOf(p.d, i)
+    if (positions.size > 0) exposedWeeks++
     const value = cash + invested
     if (value > peak) peak = value
     const dd = ((value - peak) / peak) * 100
@@ -303,8 +570,7 @@ export function runBacktest(
   // Close remaining at end
   const lastIdx = WEEKS - 1
   for (const pos of Array.from(positions.values())) {
-    const d = data.find((x) => x.symbol === pos.symbol)!
-    closePosition(pos, d, lastIdx, 'End of Test')
+    closePosition(pos, pos.d, lastIdx, 'End of Test')
   }
 
   // ── Stats ─────────────────────────────────────────────────────────────
@@ -333,14 +599,52 @@ export function runBacktest(
 
   const sorted = [...trades].sort((a, b) => b.pnlPct - a.pnlPct)
 
+  // ── Risk, measured on the weekly equity series ────────────────────────
+  const values = equity.map((e) => e.value)
+  const weeklyReturns: number[] = []
+  for (let i = 1; i < values.length; i++) {
+    if (values[i - 1] > 0) weeklyReturns.push((values[i] - values[i - 1]) / values[i - 1])
+  }
+  const { longest: longestDdWeeks, recovery: recoveryWeeks } = drawdownDuration(values)
+  const activeWeeks = WEEKS - WARMUP
+  const expectancyPct = trades.length
+    ? trades.reduce((a, t) => a + t.pnlPct, 0) / trades.length
+    : 0
+
+  // ── In-sample / out-of-sample split ───────────────────────────────────
+  // 70/30 by time. The split point is fixed rather than configurable on
+  // purpose: a movable boundary is one more knob to tune until the answer
+  // is the one you wanted.
+  const splitOffset = Math.floor(values.length * 0.7)
+  const splitIdx = WARMUP + splitOffset
+  const periodDates = equity.map((e) => e.t)
+  const inSample = periodStats(
+    'ช่วงแรก (70%)',
+    values.slice(0, splitOffset),
+    periodDates.slice(0, splitOffset),
+    trades.filter((t) => t.exitIdx < splitIdx),
+  )
+  const outOfSample = periodStats(
+    'ช่วงหลัง (30%)',
+    values.slice(splitOffset),
+    periodDates.slice(splitOffset),
+    trades.filter((t) => t.exitIdx >= splitIdx),
+  )
+
+  const totalReturnPct = r2((finalValue / cfg.capital - 1) * 100)
+  const benchmark = buildBenchmark(cfg, WARMUP, WEEKS, totalReturnPct)
+
   return {
     config: cfg,
     trades,
     equity,
+    benchmark,
+    splits: { inSample, outOfSample },
+    robustness: assessRobustness(inSample, outOfSample),
     stats: {
       initialCapital: cfg.capital,
       finalValue,
-      totalReturnPct: r2((finalValue / cfg.capital - 1) * 100),
+      totalReturnPct,
       cagrPct: r2(cagr),
       maxDdPct: r2(maxDd),
       winRatePct: r2(winRate),
@@ -351,6 +655,12 @@ export function runBacktest(
       totalTrades: trades.length,
       bestPct: sorted.length ? sorted[0].pnlPct : 0,
       worstPct: sorted.length ? sorted[sorted.length - 1].pnlPct : 0,
+      sortino: r2(sortinoOf(weeklyReturns)),
+      calmar: maxDd < 0 ? r2(cagr / Math.abs(maxDd)) : 0,
+      exposurePct: activeWeeks > 0 ? r2((exposedWeeks / activeWeeks) * 100) : 0,
+      expectancyPct: r2(expectancyPct),
+      longestDdWeeks,
+      recoveryWeeks,
     },
     exitBreakdown,
     topTrades: sorted.slice(0, 5),

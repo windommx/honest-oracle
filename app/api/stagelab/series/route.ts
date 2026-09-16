@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { badRequest, gate, notFound } from '@/lib/stagelab/guard'
 import { genSeries } from '@/lib/stagelab/market-sim'
 import { ensureUniverse } from '@/lib/stagelab/bootstrap'
+import { guarded } from '@/lib/stagelab/problem'
 
 export const dynamic = 'force-dynamic'
 
@@ -13,7 +14,7 @@ export const dynamic = 'force-dynamic'
  * stored price; without that the chart and the price tag beside it disagree by
  * whatever the generator happened to drift to.
  */
-export async function GET(req: Request) {
+export const GET = guarded('series.GET', async (req: Request) => {
   const g = await gate('screener')
   if (!g.ok) return g.response
 
@@ -42,4 +43,4 @@ export async function GET(req: Request) {
       ma30: b.ma30 * scale,
     })),
   })
-}
+})

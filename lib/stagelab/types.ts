@@ -77,6 +77,8 @@ export interface Position {
   closedPrice: number | null
   closedAt: string | null
   notes: string | null
+  /** Optimistic-lock token, echoed back on update. */
+  updatedAt: string
 }
 
 export interface ActionItem {
@@ -301,10 +303,27 @@ export interface OptionStats {
 }
 
 // ─── Quant Lab: Monte Carlo risk engine ─────────────────────────────────────
+/**
+ * How the resampler treats the ORDER of your trades.
+ *
+ *  'iid'   — every draw is independent. Assumes your results have no memory:
+ *            that a loss tells you nothing about the next trade. For a trend
+ *            strategy that is false, and the falsehood flatters you, because
+ *            shuffling losses apart is what removes the deep drawdowns.
+ *
+ *  'block' — stationary bootstrap (Politis & Romano). Draws runs of
+ *            consecutive trades, so streaks survive resampling. Produces
+ *            wider, deeper and more honest drawdown estimates. The default.
+ */
+export type BootstrapMethod = 'iid' | 'block'
+
 export interface MonteCarloRequest {
   returns: number[] // per-trade % returns (e.g. +25, -7)
   sims?: number // number of simulations (default 2000, max 10000)
   capital?: number // initial capital (default 1,000,000)
+  method?: BootstrapMethod // default 'block'
+  blockSize?: number // expected run length; default ~n^(1/3)
+  avgHoldWeeks?: number // for annualising; default 2
 }
 
 export interface McBandPoint {
@@ -330,6 +349,12 @@ export interface McStats {
   medianSharpe: number // annualized (weekly, ×√52)
   medianCagr: number // %
   medianMultiple: number // median final equity / capital
+  /** Which resampler produced these numbers — shown in the UI, not hidden. */
+  method: BootstrapMethod
+  /** Expected run length used by the block bootstrap (1 when method is iid). */
+  blockSize: number
+  /** Weeks-per-trade assumed when annualising. CAGR means nothing without it. */
+  avgHoldWeeks: number
 }
 
 export interface MonteCarloResult {

@@ -17,7 +17,7 @@ import {
   ViewHeader,
   toneOfSign,
 } from "../_ui";
-import { EquityChart } from "../_chart";
+import { CHART_COLORS, LineChart } from "../_chart";
 import { post, reportError } from "../_api";
 import { fmt, fmtBaht, fmtPct } from "@/lib/stagelab/utils";
 import type { BacktestConfig, BacktestResult } from "@/lib/stagelab/backtest";
@@ -107,18 +107,127 @@ export default function BacktestView({ onSessionChange }: { onSessionChange: () 
                 <StatCard label="Win Rate" value={`${fmt(stats!.winRatePct, 0)}%`} sub={`${stats!.totalTrades} ไม้ · PF ${fmt(stats!.profitFactor, 2)}`} tone={stats!.winRatePct >= 50 ? "good" : "warn"} />
               </div>
 
-              <Card title="เส้นมูลค่าพอร์ต" subtitle={`${result.equity.length} สัปดาห์ · เส้นประคือเงินทุนตั้งต้น`}>
-                <EquityChart
-                  values={result.equity.map((e) => e.value)}
-                  baseline={stats!.initialCapital}
-                  label={`เส้นมูลค่าพอร์ตจาก ${fmtBaht(stats!.initialCapital)} ไปสิ้นสุดที่ ${fmtBaht(stats!.finalValue)}`}
+              <Card
+                title="เส้นมูลค่าพอร์ต เทียบกับการซื้อดัชนีแล้วถือ"
+                subtitle={`${result.equity.length} สัปดาห์ · ส่วนต่างจากการถือเฉย ๆ ${fmtPct(result.benchmark.excessReturnPct)}`}
+              >
+                <LineChart
+                  height={230}
+                  caption={`มูลค่าพอร์ตจากกลยุทธ์ เทียบกับการซื้อดัชนีแล้วถือ ตลอด ${result.equity.length} สัปดาห์`}
+                  xLabels={result.equity.map((e) => e.t)}
+                  series={[
+                    { label: "กลยุทธ์", values: result.equity.map((e) => e.value), color: CHART_COLORS.strategy },
+                    { label: result.benchmark.label, values: result.benchmark.equity, color: CHART_COLORS.benchmark, dashed: true },
+                  ]}
                 />
-                <div className="mt-2 grid gap-2 grid-cols-2 sm:grid-cols-4 text-center">
+                <p className="mt-2 text-xs leading-relaxed text-zinc-300">
+                  {result.benchmark.excessReturnPct >= 0
+                    ? `กลยุทธ์ชนะการถือเฉย ๆ อยู่ ${fmtPct(result.benchmark.excessReturnPct)} — โดยมี Drawdown ${fmtPct(stats!.maxDdPct)} เทียบกับ ${fmtPct(result.benchmark.maxDdPct)} ของดัชนี`
+                    : `กลยุทธ์แพ้การถือดัชนีเฉย ๆ อยู่ ${fmtPct(Math.abs(result.benchmark.excessReturnPct))} — การคัดกรอง ตั้ง Stop และจัดขนาดไม้ทั้งหมดในรอบนี้ ยังไม่ชดเชยต้นทุนของมันเอง`}
+                </p>
+                <div className="mt-3 grid gap-2 grid-cols-2 sm:grid-cols-4 text-center">
                   <MiniStat label="กำไรเฉลี่ย" value={fmtPct(stats!.avgWinPct)} tone="good" />
                   <MiniStat label="ขาดทุนเฉลี่ย" value={fmtPct(stats!.avgLossPct)} tone="bad" />
                   <MiniStat label="ถือเฉลี่ย" value={`${fmt(stats!.avgHoldWeeks, 1)} สัปดาห์`} />
                   <MiniStat label="ดีสุด / แย่สุด" value={`${fmtPct(stats!.bestPct, 0)} / ${fmtPct(stats!.worstPct, 0)}`} />
                 </div>
+              </Card>
+
+              <Card
+                title="ความทนทาน — ช่วงแรกเทียบช่วงหลัง"
+                subtitle="แบ่งช่วงเวลา 70/30 แล้ววัดแยกกัน จุดแบ่งตายตัว ปรับไม่ได้"
+              >
+                <div
+                  className={`rounded-lg border px-3 py-2.5 text-xs leading-relaxed ${
+                    result.robustness.verdict === "consistent"
+                      ? "border-emerald-500/30 bg-emerald-500/5 text-emerald-100"
+                      : result.robustness.verdict === "insufficient"
+                        ? "border-zinc-700 bg-zinc-800/40 text-zinc-300"
+                        : "border-red-500/30 bg-red-500/5 text-red-100"
+                  }`}
+                >
+                  {result.robustness.note}
+                </div>
+                <div className="mt-3">
+                  <TableWrap minWidth={520}>
+                    <thead>
+                      <tr>
+                        <Th>ช่วง</Th>
+                        <Th align="right">ผลตอบแทน</Th>
+                        <Th align="right">CAGR</Th>
+                        <Th align="right">Max DD</Th>
+                        <Th align="right">ไม้</Th>
+                        <Th align="right">Win Rate</Th>
+                        <Th align="right">Profit Factor</Th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {[result.splits.inSample, result.splits.outOfSample].map((period) => (
+                        <tr key={period.label}>
+                          <Td className="text-xs text-zinc-200">
+                            {period.label}
+                            <span className="ml-1.5 text-[0.65rem] text-zinc-400">
+                              {period.fromDate} → {period.toDate}
+                            </span>
+                          </Td>
+                          <Td align="right" mono className={period.returnPct >= 0 ? "text-emerald-400" : "text-red-400"}>
+                            {fmtPct(period.returnPct)}
+                          </Td>
+                          <Td align="right" mono className={period.cagrPct >= 0 ? "text-emerald-400" : "text-red-400"}>
+                            {fmtPct(period.cagrPct)}
+                          </Td>
+                          <Td align="right" mono className="text-red-400">{fmtPct(period.maxDdPct)}</Td>
+                          <Td align="right" mono>{period.trades}</Td>
+                          <Td align="right" mono>{fmt(period.winRatePct, 0)}%</Td>
+                          <Td align="right" mono>{fmt(period.profitFactor, 2)}</Td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </TableWrap>
+                </div>
+              </Card>
+
+              <Card title="ความเสี่ยงที่ตัวเลขรวมไม่ได้บอก">
+                <div className="grid gap-3 grid-cols-2 lg:grid-cols-3">
+                  <StatCard
+                    label="Sortino"
+                    value={fmt(stats!.sortino, 2)}
+                    sub="ผลตอบแทนต่อความผันผวนขาลง"
+                    tone={stats!.sortino >= 1 ? "good" : stats!.sortino >= 0.5 ? "warn" : "bad"}
+                  />
+                  <StatCard
+                    label="Calmar"
+                    value={fmt(stats!.calmar, 2)}
+                    sub="CAGR ต่อ Drawdown ที่ลึกที่สุด"
+                    tone={stats!.calmar >= 0.5 ? "good" : stats!.calmar >= 0.25 ? "warn" : "bad"}
+                  />
+                  <StatCard
+                    label="เวลาที่ถือหุ้นจริง"
+                    value={`${fmt(stats!.exposurePct, 0)}%`}
+                    sub="ของสัปดาห์ทั้งหมดที่มีไม้อยู่"
+                  />
+                  <StatCard
+                    label="คาดหวังต่อไม้"
+                    value={fmtPct(stats!.expectancyPct)}
+                    sub="เฉลี่ยรวมทั้งไม้ที่ได้และเสีย"
+                    tone={toneOfSign(stats!.expectancyPct)}
+                  />
+                  <StatCard
+                    label="ติดใต้ยอดนานสุด"
+                    value={`${stats!.longestDdWeeks} สัปดาห์`}
+                    sub="ช่วงที่พอร์ตยังไม่กลับไปจุดสูงสุดเดิม"
+                    tone={stats!.longestDdWeeks > 52 ? "bad" : stats!.longestDdWeeks > 26 ? "warn" : "neutral"}
+                  />
+                  <StatCard
+                    label="ฟื้นจากหลุมลึกสุด"
+                    value={stats!.recoveryWeeks === null ? "ยังไม่ฟื้น" : `${stats!.recoveryWeeks} สัปดาห์`}
+                    tone={stats!.recoveryWeeks === null ? "bad" : "neutral"}
+                  />
+                </div>
+                <p className="mt-3 text-xs leading-relaxed text-zinc-400">
+                  ตัวเลขสองแถวล่างสำคัญกว่าที่หน้าตามันบ่งบอก — Drawdown 30% ที่ฟื้นใน 8 สัปดาห์
+                  กับ 30% ที่ใช้เวลาสองปี เป็นตัวเลขเดียวกันบนการ์ดสถิติ แต่คนละเรื่องกันโดยสิ้นเชิงเวลาต้องนั่งถือจริง
+                </p>
               </Card>
 
               <div className="grid gap-4 lg:grid-cols-2">

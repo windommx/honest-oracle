@@ -56,6 +56,7 @@ const TEXT_COLORS: Record<string, string> = {
   "zinc-400": "#a1a1aa",
   "zinc-500": "#71717a",
   "zinc-600": "#52525b",
+  "emerald-100": "#d1fae5",
   "emerald-200": "#a7f3d0",
   "emerald-300": "#6ee7b7",
   "emerald-400": "#34d399",

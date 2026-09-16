@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { signOut } from "next-auth/react";
 import { Badge, Button, LockedPanel, Skeleton } from "../_ui";
 import { GROUP_LABELS, NAV, navItem, type ViewKey } from "../_nav";
+import { CommandPalette, useCommandPalette } from "../_command-palette";
 import { api, post, reportError, type StageSession } from "../_api";
 import { FEATURE_LABELS } from "@/lib/stagelab/plans";
 
@@ -35,6 +36,7 @@ export default function StageLabApp() {
   const [failed, setFailed] = useState<string | null>(null);
   const [view, setView] = useState<ViewKey>("dashboard");
   const [navOpen, setNavOpen] = useState(false);
+  const [paletteOpen, setPaletteOpen] = useCommandPalette();
 
   const refreshSession = useCallback(async () => {
     try {
@@ -179,6 +181,14 @@ export default function StageLabApp() {
             </span>
           )}
           <button
+            onClick={() => setPaletteOpen(true)}
+            aria-keyshortcuts="Meta+K Control+K"
+            className="hidden min-h-10 items-center gap-1.5 rounded-lg border border-zinc-700 px-2.5 text-xs text-zinc-400 hover:border-zinc-600 hover:text-zinc-200 sm:inline-flex"
+          >
+            ค้นหา
+            <kbd className="rounded border border-zinc-700 px-1 font-mono text-[0.6rem]">⌘K</kbd>
+          </button>
+          <button
             onClick={() => void signOut({ callbackUrl: "/stagelab" })}
             className="min-h-10 rounded-lg px-2 text-xs text-zinc-400 hover:text-zinc-100"
           >
@@ -193,6 +203,13 @@ export default function StageLabApp() {
             <LockedPanel feature={FEATURE_LABELS[current.feature]} reason={current.hint} />
           )}
         </main>
+
+        <CommandPalette
+          open={paletteOpen}
+          onClose={() => setPaletteOpen(false)}
+          onNavigate={navigate}
+          features={session.features}
+        />
 
         <footer className="border-t border-zinc-800 px-4 py-4 text-[0.7rem] leading-relaxed text-zinc-400">
           StageLab เป็นเครื่องมือช่วยจัดระเบียบการตัดสินใจ ไม่ใช่คำแนะนำการลงทุน

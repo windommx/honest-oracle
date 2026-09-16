@@ -8,6 +8,7 @@ import {
   EmptyState,
   NumberField,
   ProgressBar,
+  SelectField,
   Skeleton,
   Slider,
   Spinner,
@@ -20,7 +21,7 @@ import {
   Th,
   ViewHeader,
 } from "../_ui";
-import { FanChart } from "../_chart";
+import { CHART_COLORS, LineChart } from "../_chart";
 import { api, post, reportError, useResource, type StageSession } from "../_api";
 import { fmt, fmtBaht, fmtPct, pnlPct } from "@/lib/stagelab/utils";
 import type {
@@ -70,6 +71,7 @@ function MonteCarloTab({ onSpend }: { onSpend: () => void }) {
   const positions = useResource<{ positions: Position[] }>("/positions");
   const [capital, setCapital] = useState(1_000_000);
   const [sims, setSims] = useState(2000);
+  const [method, setMethod] = useState<"block" | "iid">("block");
   const [manual, setManual] = useState("");
   const [result, setResult] = useState<MonteCarloResult | null>(null);
   const [running, setRunning] = useState(false);
@@ -97,10 +99,34 @@ function MonteCarloTab({ onSpend }: { onSpend: () => void }) {
   const returns = manualReturns.length >= 5 ? manualReturns : closedReturns;
   const enough = returns.length >= 5;
 
+  // Annualising needs a holding period. Taking it from the customer's own
+  // closed trades beats the engine's old hardcoded "about two weeks", which
+  // silently set every CAGR it ever reported.
+  const avgHoldWeeks = useMemo(() => {
+    const closed = (positions.data?.positions ?? []).filter(
+      (p) => p.status === "CLOSED" && p.closedAt,
+    );
+    if (closed.length === 0) return 2;
+    const weeks = closed.map((p) => {
+      const opened = new Date(p.openedAt).getTime();
+      const shut = new Date(p.closedAt as string).getTime();
+      return Math.max(0.5, (shut - opened) / (7 * 24 * 3600 * 1000));
+    });
+    return Math.round((weeks.reduce((a, b) => a + b, 0) / weeks.length) * 10) / 10;
+  }, [positions.data]);
+
   async function run() {
     setRunning(true);
     try {
-      setResult(await post<MonteCarloResult>("/quant/monte-carlo", { returns, sims, capital }));
+      setResult(
+        await post<MonteCarloResult>("/quant/monte-carlo", {
+          returns,
+          sims,
+          capital,
+          method,
+          avgHoldWeeks,
+        }),
+      );
     } catch (err) {
       reportError(err, "จำลองไม่สำเร็จ");
     } finally {
@@ -144,6 +170,24 @@ function MonteCarloTab({ onSpend }: { onSpend: () => void }) {
         <div className="mt-3 space-y-3">
           <NumberField label="เงินทุนตั้งต้น" value={capital} onChange={setCapital} step={100_000} min={10_000} />
           <Slider label="จำนวนรอบจำลอง" value={sims} onChange={setSims} min={100} max={10_000} step={100} format={(n) => n.toLocaleString()} />
+          <SelectField
+            label="วิธีสุ่มลำดับ"
+            value={method}
+            onChange={setMethod}
+            options={[
+              { value: "block", label: "แบบบล็อก — รักษาการเรียงตัวของผลลัพธ์" },
+              { value: "iid", label: "แบบอิสระ — สลับทุกไม้แยกกัน" },
+            ]}
+          />
+          <p className="text-[0.7rem] leading-relaxed text-zinc-400">
+            {method === "block"
+              ? "สุ่มเป็นช่วงต่อเนื่อง ทำให้ “ชนะติดกัน” และ “แพ้ติดกัน” ยังอยู่ — Drawdown ที่ได้จะลึกกว่าและตรงกับความเป็นจริงมากกว่า"
+              : "สุ่มทีละไม้แบบไม่สนลำดับ ซึ่งแปลว่าสมมติว่าผลไม้ก่อนหน้าไม่บอกอะไรเลยเกี่ยวกับไม้ถัดไป — สำหรับระบบตามเทรนด์ ข้อสมมตินี้ไม่จริง และมันเข้าข้างคุณ"}
+          </p>
+          <p className="text-[0.7rem] text-zinc-400">
+            ระยะถือเฉลี่ยที่ใช้คำนวณต่อปี: <span className="font-mono text-zinc-300">{avgHoldWeeks} สัปดาห์</span>
+            {closedReturns.length > 0 ? " (จากไม้ที่คุณปิดจริง)" : " (ค่าตั้งต้น — ยังไม่มีไม้ที่ปิดแล้ว)"}
+          </p>
         </div>
 
         <Button
@@ -183,16 +227,34 @@ function MonteCarloTab({ onSpend }: { onSpend: () => void }) {
               <StatCard label="โอกาสกำไร" value={`${fmt(result.stats.probProfit, 1)}%`} tone={result.stats.probProfit >= 60 ? "good" : "warn"} />
             </div>
 
-            <Card title="ช่วงผลลัพธ์ที่เป็นไปได้" subtitle="แถบคือ P5–P95 · เส้นขาวคือค่ากลาง">
-              <FanChart
-                lo={result.bands.map((b) => b.lo)}
-                med={result.bands.map((b) => b.med)}
-                hi={result.bands.map((b) => b.hi)}
-                label={`ช่วงผลลัพธ์จาก ${result.stats.sims} รอบจำลอง`}
+            <Card
+              title="ช่วงผลลัพธ์ที่เป็นไปได้"
+              subtitle={`แถบคือ P5–P95 · เส้นขาวคือค่ากลาง · ${result.stats.sims.toLocaleString()} รอบ`}
+            >
+              <LineChart
+                height={230}
+                caption={`ช่วงผลลัพธ์จาก ${result.stats.sims} รอบจำลอง ตลอด ${result.stats.trades} ไม้`}
+                xLabels={result.bands.map((b) => `ไม้ที่ ${b.t}`)}
+                band={{
+                  lo: result.bands.map((b) => b.lo),
+                  hi: result.bands.map((b) => b.hi),
+                  color: CHART_COLORS.band,
+                }}
+                series={[
+                  { label: "ค่ากลาง", values: result.bands.map((b) => b.med), color: CHART_COLORS.median },
+                  { label: "แย่ 5%", values: result.bands.map((b) => b.lo), color: CHART_COLORS.loss, dashed: true },
+                ]}
               />
             </Card>
 
-            <Card title="ความเสี่ยงที่ตัวเลขนี้บอก">
+            <Card
+              title="ความเสี่ยงที่ตัวเลขนี้บอก"
+              subtitle={
+                result.stats.method === "block"
+                  ? `สุ่มแบบบล็อก ความยาวเฉลี่ย ${result.stats.blockSize} ไม้ · คิดเป็นปีที่ ${result.stats.avgHoldWeeks} สัปดาห์/ไม้`
+                  : `สุ่มแบบอิสระ · คิดเป็นปีที่ ${result.stats.avgHoldWeeks} สัปดาห์/ไม้`
+              }
+            >
               <TableWrap minWidth={420}>
                 <tbody>
                   <Row label="Drawdown กลาง" value={fmtPct(-Math.abs(result.stats.medianDd))} tone="warn" />

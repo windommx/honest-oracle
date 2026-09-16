@@ -41,6 +41,7 @@ interface Response {
 
 interface Draft {
   id?: number;
+  expectedUpdatedAt?: string;
   symbol: string;
   sector: string;
   stockStage: number;
@@ -184,6 +185,7 @@ export default function ThesisView({
 function toDraft(t: ThesisDTO): Draft {
   return {
     ...t,
+    expectedUpdatedAt: t.updatedAt,
     earningsDate: t.earningsDate ?? "",
     riskNote: t.riskNote ?? "",
     foreignFlow: t.foreignFlow as FlowLevel,

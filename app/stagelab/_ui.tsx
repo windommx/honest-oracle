@@ -455,9 +455,31 @@ export function Chip({
 
 // ─── Table ───────────────────────────────────────────────────────────────────
 
-export function TableWrap({ children, minWidth = 720 }: { children: ReactNode; minWidth?: number }) {
+/**
+ * A horizontally scrollable table.
+ *
+ * Dense financial data belongs in a table — ten columns of prices reflowed
+ * into cards reads worse, not better, and traders scan down columns. But a
+ * scroll container that only responds to a pointer is unreachable by keyboard,
+ * so this one is a focusable labelled region: WCAG 2.1.1, and the reason for
+ * the tabIndex on a div that would otherwise not want one.
+ */
+export function TableWrap({
+  children,
+  minWidth = 720,
+  label = "ตารางข้อมูล เลื่อนแนวนอนได้",
+}: {
+  children: ReactNode;
+  minWidth?: number;
+  label?: string;
+}) {
   return (
-    <div className="-mx-4 overflow-x-auto px-4">
+    <div
+      className="-mx-4 overflow-x-auto px-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-400"
+      role="region"
+      aria-label={label}
+      tabIndex={0}
+    >
       <table className="w-full text-sm" style={{ minWidth }}>
         {children}
       </table>

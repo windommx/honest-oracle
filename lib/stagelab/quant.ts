@@ -12,7 +12,10 @@ import { prisma } from '@/lib/prisma'
 import { genSeries, simContext } from './market-sim'
 import { enrichStock } from './scoring'
 import { calcMarketScore } from './utils'
+import { StageInputError } from './domain-error'
+import { percentileOf, percentileSorted as percentile } from './stats'
 import type {
+  BootstrapMethod,
   CalibrationRow,
   ChainEntry,
   ChainResponse,
@@ -61,16 +64,6 @@ function mulberry32(seed: number): () => number {
   }
 }
 
-// percentile จาก array ที่ sort แล้ว (p = 0..100) — linear interpolation
-function percentile(sorted: number[], p: number): number {
-  if (sorted.length === 0) return 0
-  if (sorted.length === 1) return sorted[0]
-  const idx = (p / 100) * (sorted.length - 1)
-  const lo = Math.floor(idx)
-  const hi = Math.ceil(idx)
-  if (lo === hi) return sorted[lo]
-  return sorted[lo] + (sorted[hi] - sorted[lo]) * (idx - lo)
-}
 
 // ═════════════════════════════════════════════════════════════════════════════
 // A. MONTE CARLO — bootstrap resample per-trade % returns (with replacement)
@@ -80,7 +73,7 @@ export function runMonteCarlo(req: MonteCarloRequest): MonteCarloResult {
   const clean = (Array.isArray(req.returns) ? req.returns : []).filter(
     (x): x is number => typeof x === 'number' && Number.isFinite(x),
   )
-  if (clean.length < 5) throw new Error('ต้องมีอย่างน้อย 5 เทรด')
+  if (clean.length < 5) throw new StageInputError('ต้องมีอย่างน้อย 5 เทรด')
 
   const trades = clean.slice(0, 400) // cap 400 trades
   const n = trades.length
@@ -90,31 +83,69 @@ export function runMonteCarlo(req: MonteCarloRequest): MonteCarloResult {
     typeof req.capital === 'number' && Number.isFinite(req.capital) ? req.capital : 1_000_000
   const capital = capRaw > 0 ? capRaw : 1_000_000
 
-  // Deterministic PRNG — seed จาก hash ของ returns array (input เดิม → ผลลัพธ์เดิม)
-  const rnd = mulberry32(stableHash(trades.join(',')))
+  // Block is the default because it is the less flattering of the two and the
+  // closer to how trading results actually arrive: strategies win in runs and
+  // lose in runs. Shuffling every trade independently is what makes a Monte
+  // Carlo report a drawdown the strategy could never have had.
+  const method: BootstrapMethod = req.method === 'iid' ? 'iid' : 'block'
+  const autoBlock = Math.max(2, Math.round(Math.cbrt(n)))
+  const blockSize =
+    method === 'iid'
+      ? 1
+      : typeof req.blockSize === 'number' && Number.isFinite(req.blockSize)
+        ? Math.min(n, Math.max(2, Math.round(req.blockSize)))
+        : autoBlock
+  const avgHoldWeeks =
+    typeof req.avgHoldWeeks === 'number' && Number.isFinite(req.avgHoldWeeks) && req.avgHoldWeeks > 0
+      ? req.avgHoldWeeks
+      : 2
+
+  // Deterministic PRNG — the seed covers the method too, so switching
+  // resamplers gives a different but equally reproducible answer.
+  const rnd = mulberry32(stableHash(`${trades.join(',')}|${method}|${blockSize}`))
+
+  // Stationary bootstrap (Politis & Romano 1994): continue the current run with
+  // probability 1 - 1/L, otherwise jump to a fresh random start. Geometric run
+  // lengths keep the resampled series stationary, which a fixed block length
+  // does not.
+  const continueProb = method === 'block' ? 1 - 1 / blockSize : 0
+  let cursor = 0
 
   const finalEquities: number[] = []
   const maxDds: number[] = []
   const sharpes: number[] = []
   const cagrs: number[] = []
 
-  // เก็บ equity curve ต่อ sim ไว้คำนวณ percentile fan (จำกัดไม่เกิน ~2M ตัวเลข)
+  // Percentile bands need each STEP's distribution across sims, so the curves
+  // are stored column-major from the start. Row-major storage meant rebuilding
+  // a fresh column array for every one of up to 400 steps.
   const bandSims = sims * (n + 1) > 2_000_000 ? Math.min(sims, 2000) : sims
-  const matrix: number[][] = []
+  const columns: Float64Array[] = []
+  for (let t = 0; t <= n; t++) columns.push(new Float64Array(bandSims))
+  const samplePaths: number[][] = []
 
-  const years = (n * 2) / 52 // ~2 สัปดาห์ต่อเทรดโดยเฉลี่ย
+  const years = (n * avgHoldWeeks) / 52
   const sqrt52 = Math.sqrt(52)
 
   for (let s = 0; s < sims; s++) {
-    const curve: number[] = [capital]
+    const keepCurve = s < bandSims
+    const curve: number[] | null = s < 8 ? [capital] : null
+    if (keepCurve) columns[0][s] = capital
     let equity = capital
     let peak = capital
     let maxDd = 0
     let sum = 0
     let sumSq = 0
+    cursor = Math.floor(rnd() * n)
 
     for (let t = 0; t < n; t++) {
-      const step = Math.max(-1, trades[Math.floor(rnd() * n)] / 100) // clamp ที่ -100%
+      if (t > 0) {
+        // Continue the run, or jump. Wrapping makes it the *circular*
+        // stationary bootstrap, so every trade is equally likely to appear
+        // regardless of where it sat in the original sequence.
+        cursor = rnd() < continueProb ? (cursor + 1) % n : Math.floor(rnd() * n)
+      }
+      const step = Math.max(-1, trades[cursor] / 100) // clamp ที่ -100%
       equity *= 1 + step
       if (equity < 0) equity = 0
       peak = Math.max(peak, equity)
@@ -122,7 +153,8 @@ export function runMonteCarlo(req: MonteCarloRequest): MonteCarloResult {
       if (dd > maxDd) maxDd = dd
       sum += step
       sumSq += step * step
-      curve.push(equity)
+      if (keepCurve) columns[t + 1][s] = equity
+      curve?.push(equity)
     }
 
     const mean = sum / n
@@ -136,24 +168,23 @@ export function runMonteCarlo(req: MonteCarloRequest): MonteCarloResult {
     maxDds.push(maxDd)
     sharpes.push(sharpe)
     cagrs.push(cagr)
-    if (s < bandSims) matrix.push(curve)
+    if (curve) samplePaths.push(curve)
   }
 
-  // Percentile fan bands: t = 0..n_trades
+  // Percentile fan bands: t = 0..n_trades. selectKth reorders each column in
+  // place, which is fine — the column is not read again afterwards.
   const bands: McBandPoint[] = []
   for (let t = 0; t <= n; t++) {
-    const col = matrix.map((row) => row[t]).sort((a, b) => a - b)
+    const col = columns[t]
     bands.push({
       t,
-      lo: Math.round(percentile(col, 5)),
-      med: Math.round(percentile(col, 50)),
-      hi: Math.round(percentile(col, 95)),
+      lo: Math.round(percentileOf(col, 5)),
+      med: Math.round(percentileOf(col, 50)),
+      hi: Math.round(percentileOf(col, 95)),
     })
   }
 
-  const paths = matrix.slice(0, 8).map((curve) =>
-    curve.map((v, t) => ({ t, v: Math.round(v) })),
-  )
+  const paths = samplePaths.map((curve) => curve.map((v, t) => ({ t, v: Math.round(v) })))
 
   const sortedFinal = [...finalEquities].sort((a, b) => a - b)
   const sortedDd = [...maxDds].sort((a, b) => a - b)
@@ -177,6 +208,9 @@ export function runMonteCarlo(req: MonteCarloRequest): MonteCarloResult {
     medianSharpe: r2(percentile(sortedSharpe, 50)),
     medianCagr: r1(percentile(sortedCagr, 50)),
     medianMultiple: r2(medianFinal / capital),
+    method,
+    blockSize,
+    avgHoldWeeks,
   }
 
   return { stats, bands, paths }

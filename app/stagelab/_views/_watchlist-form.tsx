@@ -7,6 +7,8 @@ import { fmt, rrRatio } from "@/lib/stagelab/utils";
 
 export interface WatchlistDraft {
   id?: number;
+  /** Version token for the row being edited; absent when creating. */
+  expectedUpdatedAt?: string;
   symbol: string;
   sector: string;
   stage: number;

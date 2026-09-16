@@ -4,6 +4,7 @@ import { ensureUniverse } from '@/lib/stagelab/bootstrap'
 import { badRequest, gate, notFound } from '@/lib/stagelab/guard'
 import { mtfAnalysis, rotationPhase, shortCandidates } from '@/lib/stagelab/pro'
 import { tenantMarketView } from '@/lib/stagelab/tenant-data'
+import { guarded } from '@/lib/stagelab/problem'
 
 export const dynamic = 'force-dynamic'
 
@@ -13,7 +14,7 @@ export const dynamic = 'force-dynamic'
  * One route for the three Pro Desk panels — they share the same enrichment
  * pass, and splitting them across three files meant three copies of it.
  */
-export async function GET(req: Request) {
+export const GET = guarded('pro.GET', async (req: Request) => {
   const g = await gate('pro')
   if (!g.ok) return g.response
   const userId = g.ctx.user.id
@@ -48,4 +49,4 @@ export async function GET(req: Request) {
   }
 
   return badRequest('view ต้องเป็น shorts | rotation | mtf')
-}
+})

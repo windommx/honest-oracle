@@ -34,6 +34,15 @@ export class ApiError extends Error {
   get isUpgrade(): boolean {
     return this.code === "upgrade_required" || this.code === "quota_exhausted";
   }
+
+  /**
+   * True when someone else's write landed first. The fix is to reload and
+   * look at what changed — never to retry the same payload, which is exactly
+   * the overwrite the version check just prevented.
+   */
+  get isConflict(): boolean {
+    return this.status === 409;
+  }
 }
 
 const BASE = "/api/stagelab";
@@ -69,8 +78,10 @@ export const del = <T,>(path: string) => api<T>(path, { method: "DELETE" });
 /** Report a failure once, in the right register. Returns the message shown. */
 export function reportError(err: unknown, fallback = "ทำรายการไม่สำเร็จ"): string {
   const message = err instanceof Error ? err.message : fallback;
-  const upgrade = err instanceof ApiError && err.isUpgrade;
-  toast(message, { variant: upgrade ? "info" : "error" });
+  // An upgrade prompt and a stale-tab notice are not errors; colouring them red
+  // trains people to ignore the colour that does mean something is broken.
+  const informational = err instanceof ApiError && (err.isUpgrade || err.isConflict);
+  toast(message, { variant: informational ? "info" : "error" });
   return message;
 }
 
@@ -144,8 +155,13 @@ export function useResource<T>(path: string | null): Resource<T> {
   return { data, error, loading, reload };
 }
 
-/** Run a mutation with a busy flag, a success toast and uniform error reporting. */
-export function useAction() {
+/**
+ * Run a mutation with a busy flag, a success toast and uniform error reporting.
+ *
+ * `onConflict` is called when the server rejects a write as stale, so the
+ * caller can refresh before the customer edits the same wrong numbers again.
+ */
+export function useAction(onConflict?: () => Promise<void> | void) {
   const [busy, setBusy] = useState(false);
   const run = useCallback(
     async (fn: () => Promise<unknown>, successMessage?: string): Promise<boolean> => {
@@ -156,12 +172,15 @@ export function useAction() {
         return true;
       } catch (err) {
         reportError(err);
+        // A conflict means our copy is stale, so pull the fresh one rather than
+        // leaving the screen showing values the server has already rejected.
+        if (err instanceof ApiError && err.isConflict && onConflict) await onConflict();
         return false;
       } finally {
         setBusy(false);
       }
     },
-    [],
+    [onConflict],
   );
   return { busy, run };
 }

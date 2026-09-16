@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { gate } from '@/lib/stagelab/guard'
 import { buildAlerts } from '@/lib/stagelab/alerts'
 import { ensureMarketReview } from '@/lib/stagelab/bootstrap'
+import { guarded } from '@/lib/stagelab/problem'
 
 export const dynamic = 'force-dynamic'
 
@@ -13,7 +14,7 @@ export const dynamic = 'force-dynamic'
  * current review, open positions and watchlist each time, so a stale alert can
  * never outlive the condition that produced it.
  */
-export async function GET() {
+export const GET = guarded('alerts.GET', async () => {
   const g = await gate('alerts')
   if (!g.ok) return g.response
   const userId = g.ctx.user.id
@@ -32,4 +33,4 @@ export async function GET() {
   return NextResponse.json(
     buildAlerts({ review: review.scoredAt === null ? null : review, positions, watchlist }),
   )
-}
+})

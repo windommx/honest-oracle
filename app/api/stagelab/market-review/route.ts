@@ -4,11 +4,12 @@ import { gate } from '@/lib/stagelab/guard'
 import { marketReviewBody, readJson } from '@/lib/stagelab/http'
 import { ensureMarketReview } from '@/lib/stagelab/bootstrap'
 import { weekKey } from '@/lib/stagelab/utils'
+import { guarded, tooLargeIfDeclared } from '@/lib/stagelab/problem'
 
 export const dynamic = 'force-dynamic'
 
 /** GET — the caller's latest weekly market review, created on demand. */
-export async function GET() {
+export const GET = guarded('marketReview.GET', async () => {
   const g = await gate('weekly')
   if (!g.ok) return g.response
   const userId = g.ctx.user.id
@@ -18,13 +19,16 @@ export async function GET() {
     orderBy: { id: 'desc' },
   })
   return NextResponse.json(latest ?? (await ensureMarketReview(userId)))
-}
+})
 
 /** POST — upsert on (user, week). Only the fields sent are written. */
-export async function POST(req: Request) {
+export const POST = guarded('marketReview.POST', async (req: Request) => {
   const g = await gate('weekly')
   if (!g.ok) return g.response
   const userId = g.ctx.user.id
+
+  const tooLarge = tooLargeIfDeclared(req)
+  if (tooLarge) return tooLarge
 
   const parsed = await readJson(req, marketReviewBody)
   if (!parsed.ok) return parsed.response
@@ -38,4 +42,4 @@ export async function POST(req: Request) {
     update: { ...fields, scoredAt: new Date() },
   })
   return NextResponse.json(review)
-}
+})

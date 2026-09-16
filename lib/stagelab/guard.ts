@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { fail } from './problem'
 import { requireUser } from '@/lib/server/session'
 import { utcDay } from '@/lib/server/usage'
 import {
@@ -29,22 +30,12 @@ export interface StageContext {
   plan: StagePlan
 }
 
-/** 401 body shape shared by every StageLab route. */
-export function unauthorized() {
-  return NextResponse.json({ error: 'ต้องเข้าสู่ระบบก่อนใช้งาน StageLab' }, { status: 401 })
-}
-
-export function badRequest(message: string) {
-  return NextResponse.json({ error: message }, { status: 400 })
-}
-
-export function notFound(message = 'ไม่พบข้อมูล') {
-  return NextResponse.json({ error: message }, { status: 404 })
-}
-
-export function serverError(message = 'เกิดข้อผิดพลาดภายในระบบ') {
-  return NextResponse.json({ error: message }, { status: 500 })
-}
+// Thin wrappers over the shared envelope so route code reads as intent.
+export const unauthorized = () => fail('unauthenticated', 'ต้องเข้าสู่ระบบก่อนใช้งาน StageLab')
+export const badRequest = (message: string) => fail('invalid_request', message)
+export const notFound = (message = 'ไม่พบข้อมูล') => fail('not_found', message)
+export const conflict = (message: string, detail?: Record<string, unknown>) =>
+  fail('conflict', message, detail)
 
 /** Resolve the signed-in customer and their plan, or `null` when signed out. */
 export async function stageContext(): Promise<StageContext | null> {
@@ -66,14 +57,10 @@ export async function gate(feature: StageFeature | null): Promise<Gate> {
   if (feature && !ctx.plan.features.includes(feature)) {
     return {
       ok: false,
-      response: NextResponse.json(
-        {
-          error: `${FEATURE_LABELS[feature]} เปิดให้ใช้งานในแผน Pro — อัปเกรดเพื่อปลดล็อก`,
-          code: 'upgrade_required',
-          feature,
-          plan: ctx.plan.key,
-        },
-        { status: 402 },
+      response: fail(
+        'upgrade_required',
+        `${FEATURE_LABELS[feature]} เปิดให้ใช้งานในแผน Pro — อัปเกรดเพื่อปลดล็อก`,
+        { feature, plan: ctx.plan.key },
       ),
     }
   }
@@ -91,18 +78,15 @@ export function overRowCap(
 ): NextResponse | null {
   const max = limitFor(plan.key, key)
   if (current < max) return null
-  return NextResponse.json(
-    {
-      error:
-        plan.key === 'free'
-          ? `แผน Free เก็บได้ ${max} รายการ — อัปเกรด Pro เพื่อเพิ่มเพดาน`
-          : `ถึงเพดาน ${max} รายการ — ลบรายการเก่าก่อนเพิ่มใหม่`,
-      code: plan.key === 'free' ? 'upgrade_required' : 'limit_reached',
-      limit: max,
-      plan: plan.key,
-    },
-    { status: 402 },
-  )
+  return plan.key === 'free'
+    ? fail('upgrade_required', `แผน Free เก็บได้ ${max} รายการ — อัปเกรด Pro เพื่อเพิ่มเพดาน`, {
+        limit: max,
+        plan: plan.key,
+      })
+    : fail('limit_reached', `ถึงเพดาน ${max} รายการ — ลบรายการเก่าก่อนเพิ่มใหม่`, {
+        limit: max,
+        plan: plan.key,
+      })
 }
 
 /**
@@ -118,13 +102,10 @@ export async function spendCompute(
 ): Promise<NextResponse | null> {
   const budget = ctx.plan.limits.computePerDay
   if (budget <= 0) {
-    return NextResponse.json(
-      {
-        error: 'การประมวลผลหนัก (Backtest / Quant Lab) เปิดให้ใช้งานในแผน Pro',
-        code: 'upgrade_required',
-        plan: ctx.plan.key,
-      },
-      { status: 402 },
+    return fail(
+      'upgrade_required',
+      'การประมวลผลหนัก (Backtest / Quant Lab) เปิดให้ใช้งานในแผน Pro',
+      { plan: ctx.plan.key },
     )
   }
 
@@ -137,15 +118,10 @@ export async function spendCompute(
   })
 
   if (row.stageRuns > budget) {
-    return NextResponse.json(
-      {
-        error: `ใช้โควตาประมวลผลครบ ${budget} ครั้งของวันนี้แล้ว — รีเซ็ตเวลาเที่ยงคืน UTC`,
-        code: 'quota_exhausted',
-        limit: budget,
-        used: row.stageRuns,
-        plan: ctx.plan.key,
-      },
-      { status: 429 },
+    return fail(
+      'quota_exhausted',
+      `ใช้โควตาประมวลผลครบ ${budget} ครั้งของวันนี้แล้ว — รีเซ็ตเวลาเที่ยงคืน UTC`,
+      { limit: budget, used: row.stageRuns, plan: ctx.plan.key },
     )
   }
   return null

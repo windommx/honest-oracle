@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { gate, spendCompute } from '@/lib/stagelab/guard'
 import { appendNight, readChain } from '@/lib/stagelab/quant'
+import { guarded } from '@/lib/stagelab/problem'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
@@ -13,13 +14,13 @@ export const maxDuration = 60
  * and a chain that grows when you look at it is not evidence of anything.
  * Appending is an explicit POST.
  */
-export async function GET() {
+export const GET = guarded('quant.chain.GET', async () => {
   const g = await gate('audit')
   if (!g.ok) return g.response
   return NextResponse.json(await readChain(g.ctx.user.id))
-}
+})
 
-export async function POST() {
+export const POST = guarded('quant.chain.POST', async () => {
   const g = await gate('audit')
   if (!g.ok) return g.response
 
@@ -29,4 +30,4 @@ export async function POST() {
   const entry = await appendNight(g.ctx.user.id)
   const chain = await readChain(g.ctx.user.id)
   return NextResponse.json({ entry, chain })
-}
+})

@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { badRequest, gate, notFound, overRowCap } from '@/lib/stagelab/guard'
 import { idParam, readJson, sectorCreate, sectorUpdate } from '@/lib/stagelab/http'
 import { weekKey } from '@/lib/stagelab/utils'
+import { guarded, tooLargeIfDeclared } from '@/lib/stagelab/problem'
 
 export const dynamic = 'force-dynamic'
 
@@ -11,7 +12,7 @@ export const dynamic = 'force-dynamic'
 // report 0 for "not yours" and "does not exist" alike, which is the answer a
 // caller should get in both cases.
 
-export async function GET() {
+export const GET = guarded('sectors.GET', async () => {
   const g = await gate('weekly')
   if (!g.ok) return g.response
   const sectors = await prisma.stageSector.findMany({
@@ -19,12 +20,15 @@ export async function GET() {
     orderBy: [{ score: 'desc' }, { id: 'asc' }],
   })
   return NextResponse.json({ sectors })
-}
+})
 
-export async function POST(req: Request) {
+export const POST = guarded('sectors.POST', async (req: Request) => {
   const g = await gate('weekly')
   if (!g.ok) return g.response
   const userId = g.ctx.user.id
+
+  const tooLarge = tooLargeIfDeclared(req)
+  if (tooLarge) return tooLarge
 
   const parsed = await readJson(req, sectorCreate)
   if (!parsed.ok) return parsed.response
@@ -37,12 +41,15 @@ export async function POST(req: Request) {
     data: { ...parsed.data, userId, weekOf: weekKey() },
   })
   return NextResponse.json({ sector })
-}
+})
 
-export async function PUT(req: Request) {
+export const PUT = guarded('sectors.PUT', async (req: Request) => {
   const g = await gate('weekly')
   if (!g.ok) return g.response
   const userId = g.ctx.user.id
+
+  const tooLarge = tooLargeIfDeclared(req)
+  if (tooLarge) return tooLarge
 
   const parsed = await readJson(req, sectorUpdate)
   if (!parsed.ok) return parsed.response
@@ -53,9 +60,9 @@ export async function PUT(req: Request) {
 
   const sector = await prisma.stageSector.findFirst({ where: { id, userId } })
   return NextResponse.json({ sector })
-}
+})
 
-export async function DELETE(req: Request) {
+export const DELETE = guarded('sectors.DELETE', async (req: Request) => {
   const g = await gate('weekly')
   if (!g.ok) return g.response
 
@@ -65,4 +72,4 @@ export async function DELETE(req: Request) {
   const { count } = await prisma.stageSector.deleteMany({ where: { id, userId: g.ctx.user.id } })
   if (count === 0) return notFound('ไม่พบกลุ่มอุตสาหกรรมนี้')
   return NextResponse.json({ ok: true })
-}
+})

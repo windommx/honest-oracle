@@ -4,6 +4,7 @@ import { badRequest, gate, spendCompute } from '@/lib/stagelab/guard'
 import { backtestBody, readJson } from '@/lib/stagelab/http'
 import { runBacktest } from '@/lib/stagelab/backtest'
 import { ensureUniverse } from '@/lib/stagelab/bootstrap'
+import { guarded, tooLargeIfDeclared } from '@/lib/stagelab/problem'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
@@ -15,9 +16,12 @@ export const maxDuration = 60
  * Costs 2 compute units: it walks 312 weeks × 61 symbols and is by a wide
  * margin the heaviest thing a customer can ask for.
  */
-export async function POST(req: Request) {
+export const POST = guarded('backtest.POST', async (req: Request) => {
   const g = await gate('backtest')
   if (!g.ok) return g.response
+
+  const tooLarge = tooLargeIfDeclared(req)
+  if (tooLarge) return tooLarge
 
   const parsed = await readJson(req, backtestBody)
   if (!parsed.ok) return parsed.response
@@ -33,4 +37,4 @@ export async function POST(req: Request) {
   if (denied) return denied
 
   return NextResponse.json(runBacktest(universe, parsed.data))
-}
+})

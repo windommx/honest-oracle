@@ -4,6 +4,7 @@ import { gate } from '@/lib/stagelab/guard'
 import { ensureMarketReview, ensureTenant } from '@/lib/stagelab/bootstrap'
 import { calcMarketScore, pnlPct, positionValue, weekKey } from '@/lib/stagelab/utils'
 import { CHECKLIST_CATEGORIES } from '@/lib/stagelab/seed-data'
+import { guarded } from '@/lib/stagelab/problem'
 
 export const dynamic = 'force-dynamic'
 
@@ -15,7 +16,7 @@ export const dynamic = 'force-dynamic'
  * one screen. The aggregation below is the same data, computed where the rows
  * already are.
  */
-export async function GET() {
+export const GET = guarded('overview.GET', async () => {
   const g = await gate('dashboard')
   if (!g.ok) return g.response
   const userId = g.ctx.user.id
@@ -82,7 +83,7 @@ export async function GET() {
       .sort((a, b) => a.sortOrder - b.sortOrder)
       .filter((c) => CHECKLIST_CATEGORIES.includes(c.category as 'DAILY')),
   })
-}
+})
 
 /** Prisma rows carry Date objects; the shared helpers expect the DTO shape. */
 function toDto(p: {
@@ -101,10 +102,12 @@ function toDto(p: {
   closedPrice: number | null
   closedAt: Date | null
   notes: string | null
+  updatedAt: Date
 }) {
   return {
     ...p,
     openedAt: p.openedAt.toISOString(),
     closedAt: p.closedAt ? p.closedAt.toISOString() : null,
+    updatedAt: p.updatedAt.toISOString(),
   }
 }

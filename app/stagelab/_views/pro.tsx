@@ -18,7 +18,7 @@ import {
   Th,
   ViewHeader,
 } from "../_ui";
-import { EquityChart } from "../_chart";
+import { CHART_COLORS, LineChart } from "../_chart";
 import { useResource } from "../_api";
 import {
   OPTION_STRATEGIES,
@@ -343,13 +343,18 @@ function OptionsTab() {
       {strategy && stats && (
         <div className="grid gap-4 lg:grid-cols-3">
           <Card title={strategy.th} subtitle={strategy.name} className="lg:col-span-2">
-            <EquityChart
-              values={payoff.map((p) => p.pnl)}
-              baseline={0}
-              label={`กราฟกำไร/ขาดทุนของ ${strategy.name} ที่ราคาอ้างอิง ${spot}`}
+            <LineChart
+              height={220}
+              valueKind="plain"
+              caption={`กำไร/ขาดทุนของ ${strategy.name} ตามราคาหุ้นตอนหมดอายุ`}
+              xLabels={payoff.map((p) => fmt(p.spot, 0))}
+              series={[
+                { label: "กำไร/ขาดทุนต่อหุ้น", values: payoff.map((p) => p.pnl), color: CHART_COLORS.strategy },
+                { label: "จุดคุ้มทุน", values: payoff.map(() => 0), color: CHART_COLORS.benchmark, dashed: true },
+              ]}
             />
-            <p className="mt-2 text-center text-[0.7rem] text-zinc-400">
-              แกนนอน: ราคาหุ้น {fmt(spot * 0.7, 0)} → {fmt(spot * 1.3, 0)} · เส้นประคือจุดคุ้มทุน
+            <p className="mt-1 text-center text-[0.7rem] text-zinc-400">
+              แกนนอนคือราคาหุ้นตอนหมดอายุ ({fmt(spot * 0.7, 0)} → {fmt(spot * 1.3, 0)})
             </p>
             <div className="mt-3">
               <TableWrap minWidth={360}>

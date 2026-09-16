@@ -46,7 +46,9 @@ export default function PortfolioView({
   onSessionChange: () => void;
 }) {
   const { data, loading, error, reload } = useResource<Response>("/positions");
-  const { busy, run } = useAction();
+  const { busy, run } = useAction(async () => {
+    await reload();
+  });
   const [adding, setAdding] = useState(false);
   const [closing, setClosing] = useState<Position | null>(null);
   const [confirmId, setConfirmId] = useState<number | null>(null);
@@ -169,7 +171,11 @@ export default function PortfolioView({
                           const next = Number(e.target.value);
                           if (!Number.isFinite(next) || next === p.currentPrice) return;
                           void run(async () => {
-                            await put("/positions", { id: p.id, currentPrice: next });
+                            await put("/positions", {
+                              id: p.id,
+                              currentPrice: next,
+                              expectedUpdatedAt: p.updatedAt,
+                            });
                             await refresh();
                           });
                         }}
@@ -188,7 +194,11 @@ export default function PortfolioView({
                           value={String(p.currentStage)}
                           onChange={(v) =>
                             void run(async () => {
-                              await put("/positions", { id: p.id, currentStage: Number(v) });
+                              await put("/positions", {
+                                id: p.id,
+                                currentStage: Number(v),
+                                expectedUpdatedAt: p.updatedAt,
+                              });
                               await refresh();
                             })
                           }
@@ -410,6 +420,7 @@ function ClosePositionModal({
                   status: "CLOSED",
                   closedPrice: price > 0 ? price : position.currentPrice,
                   closedAt: new Date().toISOString(),
+                  expectedUpdatedAt: position.updatedAt,
                 });
                 await onSaved();
                 onClose();

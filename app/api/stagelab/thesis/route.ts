@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { badRequest, gate, notFound, overRowCap } from '@/lib/stagelab/guard'
+import { badRequest, conflict, gate, notFound, overRowCap } from '@/lib/stagelab/guard'
 import { idParam, readJson, thesisBody } from '@/lib/stagelab/http'
 import { combinedScore, fundScore } from '@/lib/stagelab/scoring'
+import { guarded, tooLargeIfDeclared } from '@/lib/stagelab/problem'
 
 export const dynamic = 'force-dynamic'
 
@@ -20,7 +21,7 @@ function scoresFor(input: Body) {
   return { fundScore: fund.score, combinedScore: combined.score, tier: combined.tier }
 }
 
-export async function GET() {
+export const GET = guarded('thesis.GET', async () => {
   const g = await gate('thesis')
   if (!g.ok) return g.response
 
@@ -30,12 +31,15 @@ export async function GET() {
     orderBy: { id: 'desc' },
   })
   return NextResponse.json({ theses, limit: g.ctx.plan.limits.theses })
-}
+})
 
-export async function POST(req: Request) {
+export const POST = guarded('thesis.POST', async (req: Request) => {
   const g = await gate('thesis')
   if (!g.ok) return g.response
   const userId = g.ctx.user.id
+
+  const tooLarge = tooLargeIfDeclared(req)
+  if (tooLarge) return tooLarge
 
   const parsed = await readJson(req, thesisBody)
   if (!parsed.ok) return parsed.response
@@ -44,7 +48,7 @@ export async function POST(req: Request) {
   const capped = overRowCap(g.ctx.plan, 'theses', count)
   if (capped) return capped
 
-  const { quarters, id: _ignored, ...fields } = parsed.data
+  const { quarters, id: _ignored, expectedUpdatedAt: _unused, ...fields } = parsed.data
   const thesis = await prisma.stageThesis.create({
     data: {
       ...fields,
@@ -55,21 +59,34 @@ export async function POST(req: Request) {
     include: { quarters: { orderBy: { sortOrder: 'asc' } } },
   })
   return NextResponse.json({ thesis })
-}
+})
 
 /** PUT — full replace of one thesis, quarters included. */
-export async function PUT(req: Request) {
+export const PUT = guarded('thesis.PUT', async (req: Request) => {
   const g = await gate('thesis')
   if (!g.ok) return g.response
   const userId = g.ctx.user.id
 
+  const tooLarge = tooLargeIfDeclared(req)
+  if (tooLarge) return tooLarge
+
   const parsed = await readJson(req, thesisBody)
   if (!parsed.ok) return parsed.response
-  const { quarters, id, ...fields } = parsed.data
+  const { quarters, id, expectedUpdatedAt, ...fields } = parsed.data
   if (!id) return badRequest('ต้องระบุ id')
 
-  const owned = await prisma.stageThesis.findFirst({ where: { id, userId }, select: { id: true } })
+  const owned = await prisma.stageThesis.findFirst({
+    where: { id, userId },
+    select: { id: true, updatedAt: true },
+  })
   if (!owned) return notFound('ไม่พบ Thesis นี้')
+  // A thesis is long-form and slow to write; clobbering someone's other tab
+  // loses real work rather than a number.
+  if (expectedUpdatedAt && owned.updatedAt.toISOString() !== expectedUpdatedAt) {
+    return conflict('Thesis นี้ถูกแก้ไขจากที่อื่น — โหลดใหม่แล้วลองอีกครั้ง', {
+      currentUpdatedAt: owned.updatedAt.toISOString(),
+    })
+  }
 
   // Quarters are positional, so a replace is the honest update: reconciling by
   // index would silently re-label a customer's EPS history when they delete a
@@ -87,9 +104,9 @@ export async function PUT(req: Request) {
     })
   })
   return NextResponse.json({ thesis })
-}
+})
 
-export async function DELETE(req: Request) {
+export const DELETE = guarded('thesis.DELETE', async (req: Request) => {
   const g = await gate('thesis')
   if (!g.ok) return g.response
 
@@ -101,4 +118,4 @@ export async function DELETE(req: Request) {
   })
   if (count === 0) return notFound('ไม่พบ Thesis นี้')
   return NextResponse.json({ ok: true })
-}
+})

@@ -42,7 +42,9 @@ export default function WatchlistView({
   onSessionChange: () => void;
 }) {
   const { data, loading, error, reload } = useResource<Response>("/watchlist");
-  const { busy, run } = useAction();
+  const { busy, run } = useAction(async () => {
+    await reload();
+  });
   const [filter, setFilter] = useState<(typeof FILTERS)[number]["key"]>("ALL");
   const [draft, setDraft] = useState<WatchlistDraft | null>(null);
   const [confirmId, setConfirmId] = useState<number | null>(null);
@@ -177,7 +179,11 @@ export default function WatchlistView({
                         value={w.status as "WATCHING" | "BOUGHT" | "DROPPED"}
                         onChange={(v) =>
                           void run(async () => {
-                            await put("/watchlist", { id: w.id, status: v });
+                            await put("/watchlist", {
+                              id: w.id,
+                              status: v,
+                              expectedUpdatedAt: w.updatedAt,
+                            });
                             await refresh();
                           })
                         }
@@ -195,6 +201,7 @@ export default function WatchlistView({
                           onClick={() =>
                             setDraft({
                               id: w.id,
+                              expectedUpdatedAt: w.updatedAt,
                               symbol: w.symbol,
                               sector: w.sector,
                               stage: w.stage,

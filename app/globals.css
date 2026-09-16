@@ -102,3 +102,34 @@ a {
 .input::placeholder { color: #6b7280; }
 .input:hover { border-color: rgba(255, 255, 255, 0.20); }
 .input:focus { border-color: var(--gold); }
+
+/* ── Motion ────────────────────────────────────────────────────────────────
+   Someone who has asked their OS to reduce motion has usually asked for a
+   reason — vestibular disorders, migraine, or simply preference. Honouring it
+   globally is one rule; remembering it at every animation site is not
+   something a codebase reliably does. Transforms and opacity still settle, at
+   a duration short enough to read as "instant" without the jump. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Screen-reader-only content that still reaches assistive tech. Used by the
+   charts, which keep their numbers as a real table behind the picture. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}

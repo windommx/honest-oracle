@@ -1,18 +1,37 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { badRequest, gate, notFound, overRowCap } from '@/lib/stagelab/guard'
-import { idParam, readJson, watchlistCreate, watchlistUpdate } from '@/lib/stagelab/http'
+import { badRequest, conflict, gate, notFound, overRowCap } from '@/lib/stagelab/guard'
+import { guarded, tooLargeIfDeclared } from '@/lib/stagelab/problem'
+import {
+  MAX_PAGE_SIZE,
+  idParam,
+  readJson,
+  versionWhere,
+  watchlistCreate,
+  watchlistUpdate,
+} from '@/lib/stagelab/http'
 
 export const dynamic = 'force-dynamic'
 
 const PRIORITY_ORDER: Record<string, number> = { A: 0, B: 1, C: 2 }
 
-/** GET — WATCHING first, then priority A→C, then RS strength. */
-export async function GET() {
+/**
+ * GET — WATCHING first, then priority A→C, then RS strength.
+ *
+ * The ordering is a three-key comparison Prisma cannot express (WATCHING must
+ * come before BOUGHT and DROPPED, which is not alphabetical), so it is done in
+ * JS — but over a set the plan cap already bounds, and with an explicit take so
+ * the query cost never depends on how long the account has existed.
+ */
+export const GET = guarded('watchlist.GET', async () => {
   const g = await gate('watchlist')
   if (!g.ok) return g.response
 
-  const items = await prisma.stageWatchlistItem.findMany({ where: { userId: g.ctx.user.id } })
+  const cap = Math.min(MAX_PAGE_SIZE, g.ctx.plan.limits.watchlist)
+  const items = await prisma.stageWatchlistItem.findMany({
+    where: { userId: g.ctx.user.id },
+    take: cap,
+  })
   items.sort((a, b) => {
     const aw = a.status === 'WATCHING' ? 0 : 1
     const bw = b.status === 'WATCHING' ? 0 : 1
@@ -23,12 +42,15 @@ export async function GET() {
     return b.rsScore - a.rsScore
   })
   return NextResponse.json({ items, limit: g.ctx.plan.limits.watchlist })
-}
+})
 
-export async function POST(req: Request) {
+export const POST = guarded('watchlist.POST', async (req: Request) => {
   const g = await gate('watchlist')
   if (!g.ok) return g.response
   const userId = g.ctx.user.id
+
+  const tooLarge = tooLargeIfDeclared(req)
+  if (tooLarge) return tooLarge
 
   const parsed = await readJson(req, watchlistCreate)
   if (!parsed.ok) return parsed.response
@@ -39,28 +61,40 @@ export async function POST(req: Request) {
 
   const item = await prisma.stageWatchlistItem.create({ data: { ...parsed.data, userId } })
   return NextResponse.json({ item })
-}
+})
 
-export async function PUT(req: Request) {
+export const PUT = guarded('watchlist.PUT', async (req: Request) => {
   const g = await gate('watchlist')
   if (!g.ok) return g.response
   const userId = g.ctx.user.id
 
+  const tooLarge = tooLargeIfDeclared(req)
+  if (tooLarge) return tooLarge
+
   const parsed = await readJson(req, watchlistUpdate)
   if (!parsed.ok) return parsed.response
-  const { id, ...fields } = parsed.data
+  const { id, expectedUpdatedAt, ...fields } = parsed.data
 
   const { count } = await prisma.stageWatchlistItem.updateMany({
-    where: { id, userId },
+    where: { id, userId, ...versionWhere(expectedUpdatedAt) },
     data: fields,
   })
-  if (count === 0) return notFound('ไม่พบรายการใน Watchlist')
+  if (count === 0) {
+    const current = await prisma.stageWatchlistItem.findFirst({
+      where: { id, userId },
+      select: { updatedAt: true },
+    })
+    if (!current) return notFound('ไม่พบรายการใน Watchlist')
+    return conflict('รายการนี้ถูกแก้ไขจากที่อื่น — โหลดใหม่แล้วลองอีกครั้ง', {
+      currentUpdatedAt: current.updatedAt.toISOString(),
+    })
+  }
 
   const item = await prisma.stageWatchlistItem.findFirst({ where: { id, userId } })
   return NextResponse.json({ item })
-}
+})
 
-export async function DELETE(req: Request) {
+export const DELETE = guarded('watchlist.DELETE', async (req: Request) => {
   const g = await gate('watchlist')
   if (!g.ok) return g.response
 
@@ -72,4 +106,4 @@ export async function DELETE(req: Request) {
   })
   if (count === 0) return notFound('ไม่พบรายการใน Watchlist')
   return NextResponse.json({ ok: true })
-}
+})

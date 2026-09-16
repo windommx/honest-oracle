@@ -64,7 +64,9 @@ export const watchlistCreate = z.object({
   status: z.enum(['WATCHING', 'BOUGHT', 'DROPPED']).default('WATCHING'),
   notes: z.string().nullable().default(null),
 })
-export const watchlistUpdate = watchlistCreate.partial().extend({ id: posInt })
+export const watchlistUpdate = watchlistCreate
+  .partial()
+  .extend({ id: posInt, expectedUpdatedAt: z.string().datetime().optional() })
 
 export const positionCreate = z.object({
   symbol,
@@ -94,6 +96,7 @@ export const positionUpdate = z
     status: z.enum(['OPEN', 'CLOSED']).optional(),
     closedPrice: finite.nullable().optional(),
     closedAt: z.string().datetime().nullable().optional(),
+    expectedUpdatedAt: z.string().datetime().optional(),
   })
   .refine((v) => v.status !== 'CLOSED' || typeof v.closedPrice === 'number', {
     message: 'ต้องระบุราคาปิดเมื่อปิดสถานะ',
@@ -150,6 +153,7 @@ export const checklistReset = z.object({
 
 export const thesisBody = z.object({
   id: posInt.optional(),
+  expectedUpdatedAt: z.string().datetime().optional(),
   symbol,
   sector: z.string().trim().default(''),
   stockStage: stage.default(2),
@@ -198,8 +202,66 @@ export const monteCarloBody = z.object({
   returns: z.array(z.number()).min(1).max(400),
   sims: z.number().int().min(100).max(10_000).default(2000),
   capital: z.number().min(10_000).max(100_000_000).default(1_000_000),
+  // Block is the default in the engine and here, so a client that says nothing
+  // gets the less flattering answer rather than the nicer one.
+  method: z.enum(['iid', 'block']).default('block'),
+  blockSize: z.number().int().min(2).max(400).optional(),
+  avgHoldWeeks: z.number().min(0.25).max(260).optional(),
 })
 
 export const bootstrapBody = z.object({
   action: z.enum(['init', 'demo', 'reset']),
 })
+
+// ─── Optimistic concurrency ──────────────────────────────────────────────────
+
+/**
+ * Rows a customer edits from more than one place carry a version token. The
+ * client echoes the `updatedAt` it rendered; the route puts it in the WHERE
+ * clause, so a write based on a stale read updates zero rows instead of
+ * silently overwriting whatever happened in between.
+ *
+ * Optional on purpose: a caller that genuinely wants last-write-wins (a status
+ * dropdown, say) simply omits it, and the behaviour is then explicit rather
+ * than accidental.
+ */
+export const versioned = z.object({ expectedUpdatedAt: z.string().datetime().optional() })
+
+/** Turn the token into a Prisma predicate fragment. */
+export function versionWhere(expectedUpdatedAt: string | undefined) {
+  return expectedUpdatedAt ? { updatedAt: new Date(expectedUpdatedAt) } : {}
+}
+
+// ─── Pagination ──────────────────────────────────────────────────────────────
+
+/**
+ * Every list endpoint is bounded. An unbounded findMany is a query whose cost
+ * is set by the customer's own history — it works for a year and then one
+ * account with four thousand journal entries times out the dashboard.
+ */
+export const DEFAULT_PAGE_SIZE = 100
+export const MAX_PAGE_SIZE = 500
+
+export function pageParams(req: Request): { take: number; skip: number } {
+  const params = new URL(req.url).searchParams
+  const rawLimit = Number(params.get('limit') ?? DEFAULT_PAGE_SIZE)
+  const rawOffset = Number(params.get('offset') ?? 0)
+  const take = Number.isFinite(rawLimit)
+    ? Math.min(MAX_PAGE_SIZE, Math.max(1, Math.floor(rawLimit)))
+    : DEFAULT_PAGE_SIZE
+  const skip = Number.isFinite(rawOffset) ? Math.max(0, Math.floor(rawOffset)) : 0
+  return { take, skip }
+}
+
+/** The envelope every paged list returns, so the client can page uniformly. */
+export interface Page<T> {
+  items: T[]
+  total: number
+  limit: number
+  offset: number
+  hasMore: boolean
+}
+
+export function page<T>(items: T[], total: number, { take, skip }: { take: number; skip: number }): Page<T> {
+  return { items, total, limit: take, offset: skip, hasMore: skip + items.length < total }
+}

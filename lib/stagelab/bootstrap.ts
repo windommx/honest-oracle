@@ -103,9 +103,22 @@ export async function resetTenant(userId: string): Promise<void> {
  * without an out-of-band seed step, and the count check makes it a single
  * cheap query on every call after the first.
  */
+// Once the universe exists it cannot become empty except by an admin action in
+// this same process, so the check is worth remembering. Without this, every
+// screener, backtest and scan paid for a COUNT(*) round-trip to prove something
+// that had already been true for the life of the deployment.
+let universeReady = false
+
 export async function ensureUniverse(): Promise<void> {
+  if (universeReady) return
   const count = await prisma.stageStock.count()
   if (count === 0) await syncUniverse()
+  universeReady = true
+}
+
+/** Drop the memo — called by the admin sync so a republish is observable. */
+export function invalidateUniverseCache(): void {
+  universeReady = false
 }
 
 /**

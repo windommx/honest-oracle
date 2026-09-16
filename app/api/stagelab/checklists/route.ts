@@ -4,6 +4,7 @@ import { gate, notFound } from '@/lib/stagelab/guard'
 import { checklistPatch, checklistReset, readJson } from '@/lib/stagelab/http'
 import { ensureTenant } from '@/lib/stagelab/bootstrap'
 import { CHECKLIST_CATEGORIES } from '@/lib/stagelab/seed-data'
+import { guarded, tooLargeIfDeclared } from '@/lib/stagelab/problem'
 
 export const dynamic = 'force-dynamic'
 
@@ -16,7 +17,7 @@ function byRoutineOrder(a: Row, b: Row) {
   return a.sortOrder - b.sortOrder
 }
 
-export async function GET() {
+export const GET = guarded('checklists.GET', async () => {
   const g = await gate('tools')
   if (!g.ok) return g.response
 
@@ -24,12 +25,15 @@ export async function GET() {
   const items = await prisma.stageChecklistItem.findMany({ where: { userId: g.ctx.user.id } })
   items.sort(byRoutineOrder)
   return NextResponse.json({ items })
-}
+})
 
-export async function PATCH(req: Request) {
+export const PATCH = guarded('checklists.PATCH', async (req: Request) => {
   const g = await gate('tools')
   if (!g.ok) return g.response
   const userId = g.ctx.user.id
+
+  const tooLarge = tooLargeIfDeclared(req)
+  if (tooLarge) return tooLarge
 
   const parsed = await readJson(req, checklistPatch)
   if (!parsed.ok) return parsed.response
@@ -42,13 +46,16 @@ export async function PATCH(req: Request) {
 
   const item = await prisma.stageChecklistItem.findFirst({ where: { id: parsed.data.id, userId } })
   return NextResponse.json({ item })
-}
+})
 
 /** POST — start the next cycle: clear every tick in one category. */
-export async function POST(req: Request) {
+export const POST = guarded('checklists.POST', async (req: Request) => {
   const g = await gate('tools')
   if (!g.ok) return g.response
   const userId = g.ctx.user.id
+
+  const tooLarge = tooLargeIfDeclared(req)
+  if (tooLarge) return tooLarge
 
   const parsed = await readJson(req, checklistReset)
   if (!parsed.ok) return parsed.response
@@ -61,4 +68,4 @@ export async function POST(req: Request) {
   const items = await prisma.stageChecklistItem.findMany({ where: { userId } })
   items.sort(byRoutineOrder)
   return NextResponse.json({ ok: true, items })
-}
+})

@@ -59,6 +59,7 @@ function position(over: Partial<Position> = {}): Position {
     closedPrice: null,
     closedAt: null,
     notes: null,
+    updatedAt: "2026-01-01T00:00:00.000Z",
     ...over,
   };
 }
@@ -422,5 +423,173 @@ describe("risk radar", () => {
 describe("week key", () => {
   it("returns an ISO date", () => {
     expect(weekKey()).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  The analytical upgrades: benchmark, out-of-sample split, block bootstrap.
+//  These exist because the earlier versions of both engines flattered the
+//  result, so the tests assert the corrections actually bite.
+// ═══════════════════════════════════════════════════════════════════════════
+
+describe("backtest benchmark", () => {
+  const universe = STAGE_UNIVERSE.slice(0, 20).map((r) => ({ symbol: r.symbol, sector: r.sector }));
+  const result = runBacktest(universe, DEFAULT_BACKTEST_CONFIG);
+
+  it("measures the strategy against buying the index and doing nothing", () => {
+    expect(result.benchmark.equity.length).toBe(result.equity.length);
+    expect(result.benchmark.finalValue).toBeGreaterThan(0);
+    expect(result.benchmark.maxDdPct).toBeLessThanOrEqual(0);
+  });
+
+  it("reports excess return as the actual difference, not a spin on it", () => {
+    expect(result.benchmark.excessReturnPct).toBeCloseTo(
+      result.stats.totalReturnPct - result.benchmark.totalReturnPct,
+      1,
+    );
+  });
+
+  it("charges the benchmark the same commission the strategy pays", () => {
+    const free = runBacktest(universe, { ...DEFAULT_BACKTEST_CONFIG, commissionPct: 0 });
+    const costly = runBacktest(universe, { ...DEFAULT_BACKTEST_CONFIG, commissionPct: 1 });
+    // A benchmark that trades for free would make every strategy look worse
+    // than it is; costs have to apply to both sides of the comparison.
+    expect(costly.benchmark.finalValue).toBeLessThan(free.benchmark.finalValue);
+  });
+});
+
+describe("backtest out-of-sample split", () => {
+  const universe = STAGE_UNIVERSE.slice(0, 25).map((r) => ({ symbol: r.symbol, sector: r.sector }));
+  const result = runBacktest(universe, DEFAULT_BACKTEST_CONFIG);
+
+  it("splits the window 70/30 with no overlap and no gap", () => {
+    const { inSample, outOfSample } = result.splits;
+    expect(inSample.weeks + outOfSample.weeks).toBe(result.equity.length);
+    expect(inSample.weeks).toBeGreaterThan(outOfSample.weeks);
+  });
+
+  it("assigns every trade to exactly one period", () => {
+    const { inSample, outOfSample } = result.splits;
+    expect(inSample.trades + outOfSample.trades).toBe(result.trades.length);
+  });
+
+  it("delivers a verdict that matches the gap it reports", () => {
+    const { verdict, cagrGapPct } = result.robustness;
+    expect(["consistent", "degraded", "reversed", "insufficient"]).toContain(verdict);
+    if (verdict === "consistent") expect(cagrGapPct).toBeGreaterThanOrEqual(-5);
+    if (verdict === "degraded") expect(cagrGapPct).toBeLessThan(-5);
+    expect(result.robustness.note.length).toBeGreaterThan(10);
+  });
+
+  it("refuses to judge robustness on too few trades", () => {
+    // One symbol produces a handful of trades at most; claiming a strategy is
+    // "consistent" on four of them would be the exact overreach this guards.
+    const tiny = runBacktest(
+      [{ symbol: STAGE_UNIVERSE[0].symbol, sector: STAGE_UNIVERSE[0].sector }],
+      DEFAULT_BACKTEST_CONFIG,
+    );
+    if (tiny.splits.inSample.trades < 10 || tiny.splits.outOfSample.trades < 10) {
+      expect(tiny.robustness.verdict).toBe("insufficient");
+    }
+  });
+});
+
+describe("backtest risk metrics", () => {
+  const universe = STAGE_UNIVERSE.slice(0, 20).map((r) => ({ symbol: r.symbol, sector: r.sector }));
+  const { stats, equity } = runBacktest(universe, DEFAULT_BACKTEST_CONFIG);
+
+  it("reports exposure as a real share of the test window", () => {
+    expect(stats.exposurePct).toBeGreaterThanOrEqual(0);
+    expect(stats.exposurePct).toBeLessThanOrEqual(100);
+    // The weeks with a position open must match what the equity curve shows.
+    const weeksHolding = equity.filter((e) => e.positions > 0).length;
+    expect(stats.exposurePct).toBeCloseTo((weeksHolding / equity.length) * 100, 1);
+  });
+
+  it("derives Calmar from the CAGR and drawdown it also reports", () => {
+    if (stats.maxDdPct < 0) {
+      expect(stats.calmar).toBeCloseTo(stats.cagrPct / Math.abs(stats.maxDdPct), 1);
+    }
+  });
+
+  it("keeps drawdown duration within the test window", () => {
+    expect(stats.longestDdWeeks).toBeGreaterThanOrEqual(0);
+    expect(stats.longestDdWeeks).toBeLessThanOrEqual(equity.length);
+    if (stats.recoveryWeeks !== null) {
+      expect(stats.recoveryWeeks).toBeGreaterThanOrEqual(0);
+      expect(stats.recoveryWeeks).toBeLessThanOrEqual(equity.length);
+    }
+  });
+
+  it("expectancy matches the average of the trades listed", () => {
+    const { trades } = runBacktest(universe, DEFAULT_BACKTEST_CONFIG);
+    if (trades.length === 0) return;
+    const avg = trades.reduce((a, t) => a + t.pnlPct, 0) / trades.length;
+    expect(stats.expectancyPct).toBeCloseTo(avg, 1);
+  });
+});
+
+describe("monte carlo bootstrap methods", () => {
+  // Four wins, then four losses, repeated: results that arrive in runs, which
+  // is what a trend strategy actually produces.
+  const STREAKY = [18, 22, 15, 20, -9, -11, -8, -10, 16, 19, 21, 17, -12, -9, -10, -8];
+
+  it("block resampling reports deeper drawdowns than iid on streaky returns", () => {
+    // This is the whole reason block is the default. Drawing trades
+    // independently breaks the losing runs apart, and it is precisely those
+    // runs that produce the drawdown a customer would actually have lived
+    // through. iid is the flattering answer, so it is not the default one.
+    const iid = runMonteCarlo({ returns: STREAKY, sims: 4000, method: "iid" });
+    const block = runMonteCarlo({ returns: STREAKY, sims: 4000, method: "block" });
+    expect(block.stats.medianDd).toBeGreaterThan(iid.stats.medianDd);
+    expect(block.stats.p95Dd).toBeGreaterThan(iid.stats.p95Dd);
+  });
+
+  it("defaults to block, and says which method produced the numbers", () => {
+    const result = runMonteCarlo({ returns: STREAKY, sims: 500 });
+    expect(result.stats.method).toBe("block");
+    expect(result.stats.blockSize).toBeGreaterThanOrEqual(2);
+    expect(runMonteCarlo({ returns: STREAKY, sims: 500, method: "iid" }).stats.blockSize).toBe(1);
+  });
+
+  it("stays deterministic per method, and differs between them", () => {
+    const a = runMonteCarlo({ returns: STREAKY, sims: 500, method: "block" });
+    const b = runMonteCarlo({ returns: STREAKY, sims: 500, method: "block" });
+    const c = runMonteCarlo({ returns: STREAKY, sims: 500, method: "iid" });
+    expect(JSON.stringify(a.stats)).toBe(JSON.stringify(b.stats));
+    expect(JSON.stringify(a.stats)).not.toBe(JSON.stringify(c.stats));
+  });
+
+  it("annualises against the holding period it was given, and reports it", () => {
+    // CAGR from a trade list is meaningless without knowing how long a trade
+    // takes. The engine used to assume two weeks silently.
+    const fast = runMonteCarlo({ returns: STREAKY, sims: 500, avgHoldWeeks: 1 });
+    const slow = runMonteCarlo({ returns: STREAKY, sims: 500, avgHoldWeeks: 8 });
+    expect(fast.stats.avgHoldWeeks).toBe(1);
+    expect(slow.stats.avgHoldWeeks).toBe(8);
+    // The same total growth spread over eight times as long is a lower CAGR.
+    expect(slow.stats.medianCagr).toBeLessThan(fast.stats.medianCagr);
+  });
+
+  it("clamps an absurd block size to the sample it has", () => {
+    const result = runMonteCarlo({ returns: STREAKY, sims: 300, blockSize: 9999 });
+    expect(result.stats.blockSize).toBeLessThanOrEqual(STREAKY.length);
+  });
+
+  it("keeps the fan ordered under both methods", () => {
+    for (const method of ["iid", "block"] as const) {
+      const { bands } = runMonteCarlo({ returns: STREAKY, sims: 800, method });
+      for (const b of bands) {
+        expect(b.lo, method).toBeLessThanOrEqual(b.med);
+        expect(b.med, method).toBeLessThanOrEqual(b.hi);
+      }
+    }
+  });
+
+  it("starts every simulation at the initial capital", () => {
+    const { bands } = runMonteCarlo({ returns: STREAKY, sims: 400, capital: 500_000 });
+    expect(bands[0].lo).toBe(500_000);
+    expect(bands[0].med).toBe(500_000);
+    expect(bands[0].hi).toBe(500_000);
   });
 });

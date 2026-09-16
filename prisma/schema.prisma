@@ -211,6 +211,11 @@ model RushProjectVersion {
 //      without an owner is a bug, so userId is non-null throughout.
 // ═══════════════════════════════════════════════════════════════════════════
 
+// Composite indexes below are not decoration: every list endpoint filters on
+// userId AND a second column (status, weekOf, category, symbol). With only
+// @@index([userId]) Postgres finds the tenant's rows by index and then filters
+// the rest in memory — fine at ten rows, not at a team plan's two thousand.
+
 model StageStock {
   id            Int      @id @default(autoincrement())
   symbol        String   @unique
@@ -271,6 +276,7 @@ model StageSector {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+  @@index([userId, score])
 }
 
 /// Step 3 output: candidates that survived the funnel.
@@ -295,6 +301,8 @@ model StageWatchlistItem {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+  @@index([userId, status])
+  @@index([userId, symbol])
 }
 
 /// Step 4: money actually at risk.
@@ -315,10 +323,15 @@ model StagePosition {
   closedPrice  Float?
   closedAt     DateTime?
   notes        String?
+  /// Carries the optimistic-lock token. A position is the row two browser tabs
+  /// are most likely to edit at once (mark the price here, move the stop
+  /// there), and last-write-wins on a stop loss is not an acceptable outcome.
+  updatedAt    DateTime  @default(now()) @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+  @@index([userId, status])
 }
 
 /// Step 5: the week's action plan.
@@ -334,6 +347,7 @@ model StageActionItem {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+  @@index([userId, weekOf])
 }
 
 /// Trade journal — the psychology half of the system.
@@ -350,6 +364,7 @@ model StageJournalEntry {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+  @@index([userId, createdAt])
 }
 
 /// Recurring discipline checklists, seeded per user on first visit.
@@ -364,6 +379,7 @@ model StageChecklistItem {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+  @@index([userId, category, sortOrder])
 }
 
 /// Techno-fundamental thesis: one page per idea.
@@ -408,6 +424,7 @@ model StageThesis {
   quarters StageEarningsQuarter[]
 
   @@index([userId])
+  @@index([userId, symbol])
 }
 
 model StageEarningsQuarter {

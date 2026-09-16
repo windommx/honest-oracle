@@ -4,6 +4,7 @@ import { badRequest, gate, overRowCap } from '@/lib/stagelab/guard'
 import { bootstrapBody, readJson } from '@/lib/stagelab/http'
 import { ensureTenant, loadDemoBook, resetTenant } from '@/lib/stagelab/bootstrap'
 import { DEMO_POSITIONS, DEMO_WATCHLIST } from '@/lib/stagelab/seed-data'
+import { guarded, tooLargeIfDeclared } from '@/lib/stagelab/problem'
 
 export const dynamic = 'force-dynamic'
 
@@ -15,10 +16,13 @@ export const dynamic = 'force-dynamic'
  *           mis-click cannot mix invented trades into a real record
  *   reset — delete everything this tenant owns, then re-seed the framework
  */
-export async function POST(req: Request) {
+export const POST = guarded('bootstrap.POST', async (req: Request) => {
   const g = await gate(null)
   if (!g.ok) return g.response
   const { user, plan } = g.ctx
+
+  const tooLarge = tooLargeIfDeclared(req)
+  if (tooLarge) return tooLarge
 
   const parsed = await readJson(req, bootstrapBody)
   if (!parsed.ok) return parsed.response
@@ -50,4 +54,4 @@ export async function POST(req: Request) {
   await ensureTenant(user.id)
   await loadDemoBook(user.id)
   return NextResponse.json({ ok: true })
-}
+})

@@ -1,27 +1,39 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { badRequest, gate, notFound, overRowCap } from '@/lib/stagelab/guard'
-import { actionCreate, actionUpdate, idParam, readJson } from '@/lib/stagelab/http'
+import { actionCreate, actionUpdate, idParam, page, pageParams, readJson } from '@/lib/stagelab/http'
 import { weekKey } from '@/lib/stagelab/utils'
+import { guarded, tooLargeIfDeclared } from '@/lib/stagelab/problem'
 
 export const dynamic = 'force-dynamic'
 
-export async function GET(req: Request) {
+export const GET = guarded('actions.GET', async (req: Request) => {
   const g = await gate('weekly')
   if (!g.ok) return g.response
 
   const week = new URL(req.url).searchParams.get('weekOf')
-  const actions = await prisma.stageActionItem.findMany({
-    where: { userId: g.ctx.user.id, ...(week ? { weekOf: week } : {}) },
-    orderBy: [{ done: 'asc' }, { createdAt: 'desc' }],
-  })
-  return NextResponse.json({ actions })
-}
+  const where = { userId: g.ctx.user.id, ...(week ? { weekOf: week } : {}) }
+  const range = pageParams(req)
 
-export async function POST(req: Request) {
+  const [actions, total] = await Promise.all([
+    prisma.stageActionItem.findMany({
+      where,
+      orderBy: [{ done: 'asc' }, { createdAt: 'desc' }],
+      take: range.take,
+      skip: range.skip,
+    }),
+    prisma.stageActionItem.count({ where }),
+  ])
+  return NextResponse.json({ actions, ...page(actions, total, range) })
+})
+
+export const POST = guarded('actions.POST', async (req: Request) => {
   const g = await gate('weekly')
   if (!g.ok) return g.response
   const userId = g.ctx.user.id
+
+  const tooLarge = tooLargeIfDeclared(req)
+  if (tooLarge) return tooLarge
 
   const parsed = await readJson(req, actionCreate)
   if (!parsed.ok) return parsed.response
@@ -35,12 +47,15 @@ export async function POST(req: Request) {
     data: { ...rest, userId, weekOf: weekOf ?? weekKey() },
   })
   return NextResponse.json({ action })
-}
+})
 
-export async function PUT(req: Request) {
+export const PUT = guarded('actions.PUT', async (req: Request) => {
   const g = await gate('weekly')
   if (!g.ok) return g.response
   const userId = g.ctx.user.id
+
+  const tooLarge = tooLargeIfDeclared(req)
+  if (tooLarge) return tooLarge
 
   const parsed = await readJson(req, actionUpdate)
   if (!parsed.ok) return parsed.response
@@ -51,9 +66,9 @@ export async function PUT(req: Request) {
 
   const action = await prisma.stageActionItem.findFirst({ where: { id, userId } })
   return NextResponse.json({ action })
-}
+})
 
-export async function DELETE(req: Request) {
+export const DELETE = guarded('actions.DELETE', async (req: Request) => {
   const g = await gate('weekly')
   if (!g.ok) return g.response
 
@@ -65,4 +80,4 @@ export async function DELETE(req: Request) {
   })
   if (count === 0) return notFound('ไม่พบรายการในแผน')
   return NextResponse.json({ ok: true })
-}
+})

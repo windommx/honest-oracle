@@ -1,5 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
+  DEFAULT_PAGE_SIZE,
+  MAX_PAGE_SIZE,
   actionCreate,
   backtestBody,
   checklistReset,
@@ -7,8 +9,11 @@ import {
   monteCarloBody,
   positionCreate,
   positionUpdate,
+  page,
+  pageParams,
   sectorCreate,
   thesisBody,
+  versionWhere,
   watchlistCreate,
   watchlistUpdate,
 } from "./http";
@@ -190,5 +195,87 @@ describe("thesis schema", () => {
     expect(parsed.status).toBe("ACTIVE");
     expect(parsed.quarters).toEqual([]);
     expect(parsed.foreignFlow).toBe("FLAT");
+  });
+});
+
+describe("pagination", () => {
+  const req = (qs: string) => new Request(`https://example.test/api${qs}`);
+
+  it("defaults to a bounded page rather than everything", () => {
+    expect(pageParams(req(""))).toEqual({ take: DEFAULT_PAGE_SIZE, skip: 0 });
+  });
+
+  it("clamps a limit a client could otherwise use to pull the whole table", () => {
+    expect(pageParams(req("?limit=100000")).take).toBe(MAX_PAGE_SIZE);
+    expect(pageParams(req("?limit=0")).take).toBe(1);
+    expect(pageParams(req("?limit=-5")).take).toBe(1);
+  });
+
+  it("ignores garbage instead of producing NaN in a SQL query", () => {
+    expect(pageParams(req("?limit=abc&offset=xyz"))).toEqual({
+      take: DEFAULT_PAGE_SIZE,
+      skip: 0,
+    });
+  });
+
+  it("refuses a negative offset", () => {
+    expect(pageParams(req("?offset=-40")).skip).toBe(0);
+  });
+
+  it("floors fractional input", () => {
+    expect(pageParams(req("?limit=10.9&offset=3.7"))).toEqual({ take: 10, skip: 3 });
+  });
+
+  it("reports hasMore only when rows remain", () => {
+    const range = { take: 10, skip: 0 };
+    expect(page(new Array(10).fill(0), 25, range).hasMore).toBe(true);
+    expect(page(new Array(10).fill(0), 10, range).hasMore).toBe(false);
+    expect(page(new Array(5).fill(0), 25, { take: 10, skip: 20 }).hasMore).toBe(false);
+  });
+});
+
+describe("optimistic concurrency", () => {
+  it("turns a version token into a WHERE fragment", () => {
+    const at = "2026-09-16T10:00:00.000Z";
+    expect(versionWhere(at)).toEqual({ updatedAt: new Date(at) });
+  });
+
+  it("omits the predicate entirely when the caller sends no token", () => {
+    // Absent means "I accept last-write-wins", which has to be explicit rather
+    // than a match against undefined that would silently find nothing.
+    expect(versionWhere(undefined)).toEqual({});
+  });
+
+  it("accepts a token on the shapes that carry one", () => {
+    const at = "2026-09-16T10:00:00.000Z";
+    expect(positionUpdate.safeParse({ id: 1, currentPrice: 10, expectedUpdatedAt: at }).success).toBe(true);
+    expect(watchlistUpdate.safeParse({ id: 1, priority: "A", expectedUpdatedAt: at }).success).toBe(true);
+    expect(thesisBody.safeParse({ symbol: "X", id: 1, expectedUpdatedAt: at }).success).toBe(true);
+  });
+
+  it("rejects a token that is not a timestamp", () => {
+    expect(positionUpdate.safeParse({ id: 1, expectedUpdatedAt: "lunchtime" }).success).toBe(false);
+  });
+});
+
+describe("monte carlo request", () => {
+  it("accepts the resampler controls", () => {
+    const parsed = monteCarloBody.parse({
+      returns: [1, 2, 3, 4, 5],
+      method: "iid",
+      blockSize: 4,
+      avgHoldWeeks: 3,
+    });
+    expect(parsed.method).toBe("iid");
+    expect(parsed.blockSize).toBe(4);
+    expect(parsed.avgHoldWeeks).toBe(3);
+  });
+
+  it("defaults to the honest resampler", () => {
+    expect(monteCarloBody.parse({ returns: [1, 2, 3, 4, 5] }).method).toBe("block");
+  });
+
+  it("rejects a method it does not implement", () => {
+    expect(monteCarloBody.safeParse({ returns: [1, 2, 3, 4, 5], method: "garch" }).success).toBe(false);
   });
 });

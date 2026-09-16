@@ -1,33 +1,61 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { badRequest, gate, notFound, overRowCap } from '@/lib/stagelab/guard'
-import { idParam, positionCreate, positionUpdate, readJson } from '@/lib/stagelab/http'
+import { badRequest, conflict, gate, notFound, overRowCap } from '@/lib/stagelab/guard'
+import { guarded, tooLargeIfDeclared } from '@/lib/stagelab/problem'
+import {
+  MAX_PAGE_SIZE,
+  idParam,
+  positionCreate,
+  positionUpdate,
+  readJson,
+  versionWhere,
+} from '@/lib/stagelab/http'
 
 export const dynamic = 'force-dynamic'
 
-/** GET — open positions newest-first, then the closed ones. */
-export async function GET() {
+/**
+ * GET — open positions newest-first, then the closed ones.
+ *
+ * Two bounded queries rather than one unbounded fetch-and-sort: the ordering
+ * the portfolio wants (open before closed, each by its own date) is not
+ * expressible as a single Prisma orderBy, and doing it in JS meant loading a
+ * customer's entire trade history to render five open rows.
+ */
+export const GET = guarded('positions.GET', async () => {
   const g = await gate('portfolio')
   if (!g.ok) return g.response
+  const userId = g.ctx.user.id
+  const cap = Math.min(MAX_PAGE_SIZE, g.ctx.plan.limits.positions)
 
-  const rows = await prisma.stagePosition.findMany({ where: { userId: g.ctx.user.id } })
-  const open = rows
-    .filter((p) => p.status === 'OPEN')
-    .sort((a, b) => b.openedAt.getTime() - a.openedAt.getTime())
-  const closed = rows
-    .filter((p) => p.status !== 'OPEN')
-    .sort((a, b) => (b.closedAt?.getTime() ?? 0) - (a.closedAt?.getTime() ?? 0))
+  const [open, closed, closedTotal] = await Promise.all([
+    prisma.stagePosition.findMany({
+      where: { userId, status: 'OPEN' },
+      orderBy: { openedAt: 'desc' },
+      take: cap,
+    }),
+    prisma.stagePosition.findMany({
+      where: { userId, status: { not: 'OPEN' } },
+      orderBy: { closedAt: 'desc' },
+      take: cap,
+    }),
+    prisma.stagePosition.count({ where: { userId, status: { not: 'OPEN' } } }),
+  ])
 
   return NextResponse.json({
     positions: [...open, ...closed],
     limit: g.ctx.plan.limits.positions,
+    closedTotal,
+    closedTruncated: closedTotal > closed.length,
   })
-}
+})
 
-export async function POST(req: Request) {
+export const POST = guarded('positions.POST', async (req: Request) => {
   const g = await gate('portfolio')
   if (!g.ok) return g.response
   const userId = g.ctx.user.id
+
+  const tooLarge = tooLargeIfDeclared(req)
+  if (tooLarge) return tooLarge
 
   const parsed = await readJson(req, positionCreate)
   if (!parsed.ok) return parsed.response
@@ -43,16 +71,19 @@ export async function POST(req: Request) {
     data: { ...rest, userId, currentPrice: currentPrice ?? rest.entryPrice },
   })
   return NextResponse.json({ position })
-}
+})
 
-export async function PUT(req: Request) {
+export const PUT = guarded('positions.PUT', async (req: Request) => {
   const g = await gate('portfolio')
   if (!g.ok) return g.response
   const userId = g.ctx.user.id
 
+  const tooLarge = tooLargeIfDeclared(req)
+  if (tooLarge) return tooLarge
+
   const parsed = await readJson(req, positionUpdate)
   if (!parsed.ok) return parsed.response
-  const { id, closedAt, ...fields } = parsed.data
+  const { id, closedAt, expectedUpdatedAt, ...fields } = parsed.data
 
   const data: Record<string, unknown> = { ...fields }
   if (fields.status === 'CLOSED') {
@@ -67,14 +98,29 @@ export async function PUT(req: Request) {
     data.closedPrice = null
   }
 
-  const { count } = await prisma.stagePosition.updateMany({ where: { id, userId }, data })
-  if (count === 0) return notFound('ไม่พบสถานะนี้ในพอร์ต')
+  const { count } = await prisma.stagePosition.updateMany({
+    where: { id, userId, ...versionWhere(expectedUpdatedAt) },
+    data,
+  })
+
+  if (count === 0) {
+    // Zero rows means one of two very different things. Tell them apart, so a
+    // stale tab is told to reload rather than told the position vanished.
+    const current = await prisma.stagePosition.findFirst({
+      where: { id, userId },
+      select: { updatedAt: true },
+    })
+    if (!current) return notFound('ไม่พบสถานะนี้ในพอร์ต')
+    return conflict('สถานะนี้ถูกแก้ไขจากที่อื่นหลังจากคุณเปิดหน้านี้ — โหลดใหม่แล้วลองอีกครั้ง', {
+      currentUpdatedAt: current.updatedAt.toISOString(),
+    })
+  }
 
   const position = await prisma.stagePosition.findFirst({ where: { id, userId } })
   return NextResponse.json({ position })
-}
+})
 
-export async function DELETE(req: Request) {
+export const DELETE = guarded('positions.DELETE', async (req: Request) => {
   const g = await gate('portfolio')
   if (!g.ok) return g.response
 
@@ -86,4 +132,4 @@ export async function DELETE(req: Request) {
   })
   if (count === 0) return notFound('ไม่พบสถานะนี้ในพอร์ต')
   return NextResponse.json({ ok: true })
-}
+})

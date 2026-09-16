@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { computeRemaining, stageContext, unauthorized } from '@/lib/stagelab/guard'
 import { ensureTenant } from '@/lib/stagelab/bootstrap'
+import { guarded } from '@/lib/stagelab/problem'
 
 export const dynamic = 'force-dynamic'
 
@@ -13,7 +14,7 @@ export const dynamic = 'force-dynamic'
  * The client gates navigation on `features`, but every route re-checks — this
  * payload is for rendering locks, not for authorization.
  */
-export async function GET() {
+export const GET = guarded('session.GET', async () => {
   const ctx = await stageContext()
   if (!ctx) return unauthorized()
 
@@ -37,4 +38,4 @@ export async function GET() {
     usage: { watchlist, positions, theses, journal, computeRemaining: remaining },
     isEmpty: watchlist === 0 && positions === 0 && journal === 0,
   })
-}
+})
