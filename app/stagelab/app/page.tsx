@@ -6,6 +6,7 @@ import { signOut } from "next-auth/react";
 import { Badge, Button, LockedPanel, Skeleton } from "../_ui";
 import { GROUP_LABELS, NAV, navItem, type ViewKey } from "../_nav";
 import { CommandPalette, useCommandPalette } from "../_command-palette";
+import { ViewErrorBoundary } from "../_error-boundary";
 import { api, post, reportError, type StageSession } from "../_api";
 import { FEATURE_LABELS } from "@/lib/stagelab/plans";
 
@@ -197,11 +198,13 @@ export default function StageLabApp() {
         </header>
 
         <main className="px-4 py-5">
-          {unlocked ? (
-            renderView(view, session, navigate, refreshSession)
-          ) : (
-            <LockedPanel feature={FEATURE_LABELS[current.feature]} reason={current.hint} />
-          )}
+          <ViewErrorBoundary resetKey={view} label={current.label}>
+            {unlocked ? (
+              renderView(view, session, navigate, refreshSession)
+            ) : (
+              <LockedPanel feature={FEATURE_LABELS[current.feature]} reason={current.hint} />
+            )}
+          </ViewErrorBoundary>
         </main>
 
         <CommandPalette
@@ -243,7 +246,7 @@ function renderView(
     case "portfolio":
       return <VIEWS.portfolio session={session} onSessionChange={refresh} />;
     case "journal":
-      return <VIEWS.journal onSessionChange={refresh} />;
+      return <VIEWS.journal session={session} onSessionChange={refresh} />;
     case "thesis":
       return <VIEWS.thesis session={session} onSessionChange={refresh} />;
     case "backtest":

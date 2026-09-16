@@ -545,6 +545,20 @@ function ChainTab({ onSpend }: { onSpend: () => void }) {
   const { data, loading, reload } = useResource<ChainResponse>("/quant/chain");
   const [appending, setAppending] = useState(false);
 
+  // The engine accepts one block per UTC day. Saying so up front beats a button
+  // that looks like it worked and changed nothing.
+  const recordedToday = useMemo(() => {
+    const last = data?.entries[data.entries.length - 1];
+    if (!last) return false;
+    const at = new Date(last.timestamp);
+    const now = new Date();
+    return (
+      at.getUTCFullYear() === now.getUTCFullYear() &&
+      at.getUTCMonth() === now.getUTCMonth() &&
+      at.getUTCDate() === now.getUTCDate()
+    );
+  }, [data]);
+
   async function append() {
     setAppending(true);
     try {
@@ -564,10 +578,16 @@ function ChainTab({ onSpend }: { onSpend: () => void }) {
     <div className="space-y-4">
       <Card
         title="สมุดหลักฐาน"
-        subtitle="แต่ละคืนผูกกับคืนก่อนหน้าด้วย SHA-256 — แก้ตัวเลขย้อนหลังแล้วการตรวจสอบจะพัง ไม่ใช่ผ่านเงียบ ๆ"
+        subtitle="แต่ละคืนผูกกับคืนก่อนหน้าด้วย SHA-256 — แก้ตัวเลขย้อนหลังแล้วการตรวจสอบจะพัง ไม่ใช่ผ่านเงียบ ๆ · บันทึกได้วันละหนึ่งครั้ง"
         action={
-          <Button size="sm" variant="primary" disabled={appending} onClick={() => void append()}>
-            {appending ? "กำลังบันทึก…" : "บันทึกคืนนี้"}
+          <Button
+            size="sm"
+            variant="primary"
+            disabled={appending || recordedToday}
+            title={recordedToday ? "วันนี้บันทึกไปแล้ว — บันทึกได้วันละหนึ่งครั้ง" : undefined}
+            onClick={() => void append()}
+          >
+            {appending ? "กำลังบันทึก…" : recordedToday ? "บันทึกวันนี้แล้ว" : "บันทึกคืนนี้"}
           </Button>
         }
       >

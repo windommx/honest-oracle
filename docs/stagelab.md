@@ -253,6 +253,46 @@ prices read worse as cards, and traders scan down columns — but the scroll
 container is a focusable labelled region so it is reachable by keyboard.
 `prefers-reduced-motion` is honoured globally.
 
+### Export
+
+`GET /api/stagelab/export?dataset=watchlist|positions|journal|thesis` returns a
+CSV. Two details in `lib/stagelab/csv.ts` are not optional:
+
+**Formula injection.** A spreadsheet treats a cell beginning `=`, `+`, `-`, `@`,
+tab or CR as a formula. Every string in these exports — symbols, notes, journal
+lessons — is typed by a user, and the file is opened by that user or whoever
+they forward it to. `=HYPERLINK("http://evil","ดูรายงาน")` in a shared watchlist
+note is a working attack, so risky cells are prefixed with an apostrophe, which
+spreadsheets strip on display and treat as text.
+
+**The BOM.** Excel on Windows decodes a CSV as the system codepage unless the
+file opens with a UTF-8 byte-order mark. Without it every Thai character becomes
+mojibake — which, for a product whose entire UI is Thai, means the export is
+useless to most of the people paying for it.
+
+Derived columns (R:R, P/L, position value) come from the same helpers the tables
+use, so the spreadsheet and the screen cannot disagree.
+
+### Error boundaries
+
+The app is one client route swapping thirteen views in place, so a render error
+anywhere used to unmount the whole tree and leave a blank page with no
+navigation. `ViewErrorBoundary` scopes the failure to the view; the sidebar and
+every other view keep working, and switching views clears it — which is what
+someone tries first and is usually what works. `error.tsx` is the segment-level
+backstop for anything in the shell itself, so Next never renders its own
+English error page in the middle of a Thai product.
+
+### The audit chain is nightly
+
+`appendNight` accepts **one block per UTC day**. It previously accepted as many
+as you could click, which made two claims false at once: the chain is not a
+nightly record if it holds five hundred blocks from one afternoon, and
+verification — which must recompute every block to be evidence rather than a
+list — would grow with how often someone pressed the button. A second call on
+the same day returns the block already written, because "today is already
+recorded" is the correct answer to "record today", not an error.
+
 ---
 
 ## Tests
@@ -272,6 +312,9 @@ container is a focusable labelled region so it is reachable by keyboard.
 | `app/stagelab/_ui.test.tsx` | Primitives: modal focus trap, field parsing, locked panel |
 | `app/stagelab/_command-palette.test.tsx` | Matching, keyboard model, and locked-view handling |
 | `app/stagelab/_chart.test.tsx` | Chart structure, the data-table fallback, hover readout |
+| `app/stagelab/_error-boundary.test.tsx` | Catch, recover-on-navigate, retry, structured logging |
+| `lib/stagelab/csv.test.ts` | RFC 4180 escaping, formula-injection guard, the BOM |
+| `app/api/stagelab/routes.test.ts` | Handlers end to end: auth, scoping, caps, quotas, conflicts |
 
 These keep finding real bugs, which is the point of writing them first:
 
@@ -280,6 +323,8 @@ These keep finding real bugs, which is the point of writing them first:
   first field;
 - the palette test caught `scrollIntoView` — optional in the DOM spec — taking
   the whole component down where it is absent;
+- the contrast scan caught `red-200` the moment the error boundary introduced
+  it, before anyone had looked at it on a screen;
 - and the tenancy check caught *itself*: wrapping the handlers in `guarded()`
   stopped its `export async function` pattern matching anything, so it went
   green by examining zero files. It now asserts its own match count, because a

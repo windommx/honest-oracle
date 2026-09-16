@@ -6,6 +6,7 @@ import {
   Button,
   Card,
   EmptyState,
+  ExportButton,
   PriorityBadge,
   ScorePill,
   SelectField,
@@ -84,6 +85,7 @@ export default function WatchlistView({
               <Badge tone="warn">B {counts.B}</Badge>
               <Badge tone="late">C {counts.C}</Badge>
             </span>
+            <ExportButton dataset="watchlist" enabled={session.features.includes("export")} />
             <Button
               size="sm"
               variant="primary"

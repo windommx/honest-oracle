@@ -6,6 +6,7 @@ import {
   Button,
   Card,
   EmptyState,
+  ExportButton,
   Field,
   Modal,
   NumberField,
@@ -89,15 +90,18 @@ export default function PortfolioView({
         title="พอร์ต"
         subtitle={`เปิดอยู่ ${open.length} / ${data?.limit ?? session.limits.positions} · ปิดแล้ว ${closed.length}`}
         actions={
-          <Button
-            size="sm"
-            variant="primary"
-            disabled={atCap}
-            title={atCap ? "ถึงเพดานสถานะเปิดของแผนแล้ว" : undefined}
-            onClick={() => setAdding(true)}
-          >
-            เพิ่มสถานะ
-          </Button>
+          <>
+            <ExportButton dataset="positions" enabled={session.features.includes("export")} />
+            <Button
+              size="sm"
+              variant="primary"
+              disabled={atCap}
+              title={atCap ? "ถึงเพดานสถานะเปิดของแผนแล้ว" : undefined}
+              onClick={() => setAdding(true)}
+            >
+              เพิ่มสถานะ
+            </Button>
+          </>
         }
       />
 

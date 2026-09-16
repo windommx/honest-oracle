@@ -67,6 +67,7 @@ const TEXT_COLORS: Record<string, string> = {
   "orange-300": "#fdba74",
   "orange-400": "#fb923c",
   "red-100": "#fee2e2",
+  "red-200": "#fecaca",
   "red-300": "#fca5a5",
   "red-400": "#f87171",
   "yellow-400": "#facc15",

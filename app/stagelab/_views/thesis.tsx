@@ -6,6 +6,7 @@ import {
   Button,
   Card,
   EmptyState,
+  ExportButton,
   Field,
   Modal,
   NumberField,
@@ -133,9 +134,12 @@ export default function ThesisView({
         title="Stock Thesis"
         subtitle={`${theses.length} / ${data?.limit ?? session.limits.theses} — หน้าเดียวจบ: เทคนิค พื้นฐาน ตัวเร่ง และแผนเทรด`}
         actions={
-          <Button size="sm" variant="primary" disabled={atCap} onClick={() => setDraft(EMPTY)}>
-            เขียน Thesis ใหม่
-          </Button>
+          <>
+            <ExportButton dataset="thesis" enabled={session.features.includes("export")} />
+            <Button size="sm" variant="primary" disabled={atCap} onClick={() => setDraft(EMPTY)}>
+              เขียน Thesis ใหม่
+            </Button>
+          </>
         }
       />
 

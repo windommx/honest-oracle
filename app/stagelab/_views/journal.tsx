@@ -6,6 +6,7 @@ import {
   Button,
   Card,
   EmptyState,
+  ExportButton,
   Field,
   NumberField,
   ProgressBar,
@@ -14,7 +15,7 @@ import {
   TextInput,
   ViewHeader,
 } from "../_ui";
-import { del, patch, post, useAction, useResource } from "../_api";
+import { del, patch, post, useAction, useResource, type StageSession } from "../_api";
 import { ConfirmDelete } from "./watchlist";
 import { fmt, fmtPct } from "@/lib/stagelab/utils";
 import type { ChecklistItem, JournalEntry } from "@/lib/stagelab/types";
@@ -50,7 +51,13 @@ interface ChecklistResponse {
   items: ChecklistItem[];
 }
 
-export default function JournalView({ onSessionChange }: { onSessionChange: () => void }) {
+export default function JournalView({
+  session,
+  onSessionChange,
+}: {
+  session: StageSession;
+  onSessionChange: () => void;
+}) {
   const journal = useResource<JournalResponse>("/journal");
   const checklists = useResource<ChecklistResponse>("/checklists");
   const { busy, run } = useAction();
@@ -90,6 +97,7 @@ export default function JournalView({ onSessionChange }: { onSessionChange: () =
             ? `${stats.total} บันทึก`
             : `${stats.total} บันทึก · Win Rate ${fmt(stats.winRate, 0)}%${stats.topBias ? ` · อคติที่เจอบ่อย: ${stats.topBias}` : ""}`
         }
+        actions={<ExportButton dataset="journal" enabled={session.features.includes("export")} />}
       />
 
       <div className="grid gap-4 lg:grid-cols-3">

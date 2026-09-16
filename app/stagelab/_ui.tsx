@@ -628,6 +628,38 @@ export function Modal({
   );
 }
 
+/**
+ * Download one dataset as CSV.
+ *
+ * A plain anchor, not a fetch-and-blob: the browser already knows how to
+ * handle Content-Disposition, and doing it by hand means holding the whole
+ * file in memory and inventing a filename the server already chose.
+ *
+ * It renders only when the plan actually grants the feature. The route checks
+ * again — but a visible button that answers 402 teaches people the product is
+ * broken, not that it is paid. The pricing page is where the upsell belongs.
+ */
+export function ExportButton({
+  dataset,
+  enabled,
+  label = "ส่งออก CSV",
+}: {
+  dataset: "watchlist" | "positions" | "journal" | "thesis";
+  enabled: boolean;
+  label?: string;
+}) {
+  if (!enabled) return null;
+  return (
+    <a
+      href={`/api/stagelab/export?dataset=${dataset}`}
+      download
+      className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-zinc-700 px-2.5 text-xs text-zinc-200 transition-colors hover:border-zinc-600 hover:bg-zinc-800/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-400"
+    >
+      ↓ {label}
+    </a>
+  );
+}
+
 // ─── Plan gate ───────────────────────────────────────────────────────────────
 
 /** What a locked surface shows instead of the feature. */

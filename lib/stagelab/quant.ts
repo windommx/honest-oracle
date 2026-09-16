@@ -856,11 +856,33 @@ export async function collectNightlySummary(userId: string): Promise<ChainEntry[
 
 // ─── บันทึก snapshot คืนใหม่ ต่อท้าย chain ────────────────────────────────────
 
+/**
+ * Append tonight's block.
+ *
+ * ONE PER UTC DAY. The chain calls itself a nightly record and the UI presents
+ * it as evidence; accepting five hundred "nights" in an afternoon would make
+ * both claims false, and would let the chain grow without bound — which in
+ * turn makes verification, which must walk every block, grow without bound
+ * too. A second call on the same day returns the block already written rather
+ * than failing, because "today is already recorded" is the correct answer to
+ * "record today", not an error.
+ */
 export async function appendNight(userId: string): Promise<ChainEntry> {
   const prev = await prisma.stageNightlySnapshot.findFirst({
     where: { userId },
     orderBy: { night: 'desc' },
   })
+
+  if (prev && sameUtcDay(prev.timestamp, new Date())) {
+    return {
+      night: prev.night,
+      timestamp: prev.timestamp.toISOString(),
+      prevHash: prev.prevHash,
+      hash: prev.hash,
+      summary: JSON.parse(prev.summary) as ChainEntry['summary'],
+    }
+  }
+
   const night = prev ? prev.night + 1 : 1
   const prevHash = prev ? prev.hash : 'GENESIS'
   const timestamp = new Date().toISOString()
@@ -882,12 +904,31 @@ export async function appendNight(userId: string): Promise<ChainEntry> {
   return { night, timestamp, prevHash, hash, summary }
 }
 
+function sameUtcDay(a: Date, b: Date): boolean {
+  return (
+    a.getUTCFullYear() === b.getUTCFullYear() &&
+    a.getUTCMonth() === b.getUTCMonth() &&
+    a.getUTCDate() === b.getUTCDate()
+  )
+}
+
+/**
+ * The most nights a chain is ever read back over.
+ *
+ * Verification has to recompute every block — that is what makes the chain
+ * evidence rather than a list — so the work is linear in chain length. Capped
+ * at roughly a decade of daily entries, which at one block per day is a bound
+ * a real account reaches in 2036 and an abusive one cannot reach at all.
+ */
+export const MAX_CHAIN_READ = 4000
+
 // ─── อ่าน chain ทั้งหมด + ตรวจสอบความถูกต้อง (recompute hash ทุก block) ───────
 
 export async function readChain(userId: string): Promise<ChainResponse> {
   const rows = await prisma.stageNightlySnapshot.findMany({
     where: { userId },
     orderBy: { night: 'asc' },
+    take: MAX_CHAIN_READ,
   })
   const entries: ChainEntry[] = rows.map((row) => ({
     night: row.night,
