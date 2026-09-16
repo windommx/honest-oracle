@@ -46,6 +46,28 @@ Content-Type: application/json
 }
 ```
 
+## StageLab
+
+โมดูล SaaS สำหรับระบบ Stage Analysis (Weinstein) — ทำรอบทบทวนหุ้นรายสัปดาห์
+คัดหุ้นด้วย Funnel จัดพอร์ต และบันทึกวินัยการเทรด แยกข้อมูลรายผู้ใช้เต็มรูปแบบ
+
+- Landing: `/stagelab`
+- Pricing: `/stagelab/pricing`
+- App: `/stagelab/app` (ต้องเข้าสู่ระบบ)
+
+แผน Free ใช้รอบทบทวนได้ครบ 5 ขั้น ส่วนแผน Pro เปิดโต๊ะวิจัย (Thesis, Backtest,
+Risk Radar, Pro Desk, Quant Lab) ใช้ Stripe ตัวเดียวกับที่ตั้งค่าไว้ด้านล่าง
+
+จักรวาลหุ้นเป็นข้อมูลอ้างอิงร่วมที่ระบบสร้างให้อัตโนมัติเมื่อถูกอ่านครั้งแรก
+หรือจะสั่งล่วงหน้าก็ได้:
+
+```bash
+npm run db:seed:stagelab
+```
+
+รายละเอียดสถาปัตยกรรม การแยก tenant แผนการใช้งาน และชุดทดสอบ อ่านได้ที่
+[`docs/stagelab.md`](docs/stagelab.md)
+
 ## Billing (Stripe)
 
 ตั้งค่า env:

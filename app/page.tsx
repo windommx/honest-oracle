@@ -94,6 +94,9 @@ export default function HomePage() {
             <Link href="/oracle" className="text-gray-300 hover:text-[#c9a84c] transition-colors">
               Honest Oracle
             </Link>
+            <Link href="/stagelab" className="text-gray-300 hover:text-[#c9a84c] transition-colors">
+              StageLab
+            </Link>
             <Link
               href="/login"
               className="px-4 py-2 bg-[#c9a84c] text-black font-medium rounded-lg hover:bg-[#d4b55d] transition-colors"

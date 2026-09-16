@@ -8,61 +8,72 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  password  String
-  name      String?
-  plan      String   @default("free")
-  role      String   @default("user")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  analyses  Analysis[]
+  id                String              @id @default(cuid())
+  email             String              @unique
+  password          String
+  name              String?
+  plan              String              @default("free")
+  role              String              @default("user")
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  analyses          Analysis[]
   corporateAnalyses CorporateAnalysis[]
-  childAnalyses ChildAnalysis[]
-  renameAnalyses RenameAnalysis[]
-  oracleReadings OracleReading[]
-  apiKeys   ApiKey[]
-  usage     UsageDay[]
-  subscription Subscription?
-  rushProjects RushProject[]
+  childAnalyses     ChildAnalysis[]
+  renameAnalyses    RenameAnalysis[]
+  oracleReadings    OracleReading[]
+  apiKeys           ApiKey[]
+  usage             UsageDay[]
+  subscription      Subscription?
+  rushProjects      RushProject[]
+
+  // StageLab — every row of a customer's trading book hangs off the user.
+  stageMarketReviews StageMarketReview[]
+  stageSectors       StageSector[]
+  stageWatchlist     StageWatchlistItem[]
+  stagePositions     StagePosition[]
+  stageActions       StageActionItem[]
+  stageJournal       StageJournalEntry[]
+  stageChecklist     StageChecklistItem[]
+  stageTheses        StageThesis[]
+  stageSnapshots     StageNightlySnapshot[]
 }
 
 model Analysis {
-  id           String   @id @default(cuid())
-  userId       String?
-  firstName    String
-  lastName     String
-  birthday     String
-  totalScore   Float
-  kalaiganiScore Float
+  id              String   @id @default(cuid())
+  userId          String?
+  firstName       String
+  lastName        String
+  birthday        String
+  totalScore      Float
+  kalaiganiScore  Float
   numerologyScore Float
-  taksaScore   Float
-  phoneticScore Float
-  elementScore Float
-  details      String
-  createdAt    DateTime @default(now())
-  user         User?    @relation(fields: [userId], references: [id])
+  taksaScore      Float
+  phoneticScore   Float
+  elementScore    Float
+  details         String
+  createdAt       DateTime @default(now())
+  user            User?    @relation(fields: [userId], references: [id])
 }
 
 model CorporateAnalysis {
-  id              String   @id @default(cuid())
-  userId          String?
-  brandName       String
-  founderBirthday String
-  industryType    String
-  targetAudience  String
-  cai             Float
-  s1              Float
-  s2              Float
-  s3              Float
-  elementBalance  Float
-  phoneticPricing String
+  id                String   @id @default(cuid())
+  userId            String?
+  brandName         String
+  founderBirthday   String
+  industryType      String
+  targetAudience    String
+  cai               Float
+  s1                Float
+  s2                Float
+  s3                Float
+  elementBalance    Float
+  phoneticPricing   String
   memorabilityScore Float
   resonanceTriangle String
-  warnings        String
-  recommendations String
-  createdAt      DateTime @default(now())
-  user           User?    @relation(fields: [userId], references: [id])
+  warnings          String
+  recommendations   String
+  createdAt         DateTime @default(now())
+  user              User?    @relation(fields: [userId], references: [id])
 }
 
 model ChildAnalysis {
@@ -99,59 +110,60 @@ model RenameAnalysis {
 }
 
 model OracleReading {
-  id          String   @id @default(cuid())
-  userId      String?
-  inputName   String
-  birthDate   DateTime
-  birthTime   String?
-  birthPlace  String?
-  result      Json
-  visibility  String   @default("private")
-  shareToken  String   @unique
-  createdAt   DateTime @default(now())
+  id         String   @id @default(cuid())
+  userId     String?
+  inputName  String
+  birthDate  DateTime
+  birthTime  String?
+  birthPlace String?
+  result     Json
+  visibility String   @default("private")
+  shareToken String   @unique
+  createdAt  DateTime @default(now())
 
-  user        User?    @relation(fields: [userId], references: [id])
+  user User? @relation(fields: [userId], references: [id])
 }
 
 model ApiKey {
-  id         String   @id @default(cuid())
+  id         String    @id @default(cuid())
   userId     String
   label      String
   prefix     String
-  keyHash    String   @unique
-  createdAt  DateTime @default(now())
+  keyHash    String    @unique
+  createdAt  DateTime  @default(now())
   lastUsedAt DateTime?
   revokedAt  DateTime?
 
-  user       User     @relation(fields: [userId], references: [id])
+  user User @relation(fields: [userId], references: [id])
 }
 
 model Subscription {
-  id                   String   @id @default(cuid())
-  userId               String   @unique
+  id                   String    @id @default(cuid())
+  userId               String    @unique
   provider             String
   plan                 String
   status               String
   currentPeriodEnd     DateTime?
-  cancelAtPeriodEnd    Boolean  @default(false)
-  stripeCustomerId     String?  @unique
-  stripeSubscriptionId String?  @unique
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @updatedAt
+  cancelAtPeriodEnd    Boolean   @default(false)
+  stripeCustomerId     String?   @unique
+  stripeSubscriptionId String?   @unique
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
 
-  user                 User     @relation(fields: [userId], references: [id])
+  user User @relation(fields: [userId], references: [id])
 }
 
 model UsageDay {
-  id         String   @id @default(cuid())
-  userId     String
-  day        DateTime
-  oracleReads Int     @default(0)
-  apiCalls   Int      @default(0)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id          String   @id @default(cuid())
+  userId      String
+  day         DateTime
+  oracleReads Int      @default(0)
+  apiCalls    Int      @default(0)
+  stageRuns   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
-  user       User     @relation(fields: [userId], references: [id])
+  user User @relation(fields: [userId], references: [id])
 
   @@unique([userId, day])
 }
@@ -159,27 +171,272 @@ model UsageDay {
 // A saved Rush Engine project: the book configuration. Prompts are derived
 // deterministically from the config, so only the config is persisted.
 model RushProject {
-  id          String   @id @default(cuid())
-  userId      String
-  title       String
-  type        String
-  subGenre    String
-  config      Json
-  visibility  String   @default("private")
-  shareToken  String?  @unique
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id         String   @id @default(cuid())
+  userId     String
+  title      String
+  type       String
+  subGenre   String
+  config     Json
+  visibility String   @default("private")
+  shareToken String?  @unique
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
-  user        User                  @relation(fields: [userId], references: [id])
-  versions    RushProjectVersion[]
+  user     User                 @relation(fields: [userId], references: [id])
+  versions RushProjectVersion[]
 }
 
 // Immutable config snapshot taken on each save — version history / restore.
 model RushProjectVersion {
-  id         String   @id @default(cuid())
-  projectId  String
-  config     Json
-  createdAt  DateTime @default(now())
+  id        String   @id @default(cuid())
+  projectId String
+  config    Json
+  createdAt DateTime @default(now())
 
-  project    RushProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  project RushProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  StageLab — Weinstein Stage Analysis, as a tenant-isolated SaaS module.
+//
+//  Two tiers of data live here and they must not be confused:
+//
+//    • StageStock is SHARED market reference data. It is the SET universe the
+//      screener funnel runs over, it is identical for every customer, and only
+//      an admin writes it. It carries no userId on purpose.
+//
+//    • Everything else is a CUSTOMER'S OWN BOOK — their watchlist, their
+//      positions, their thesis notes, their journal. Every one of those models
+//      carries userId and every query that touches them filters on it. A row
+//      without an owner is a bug, so userId is non-null throughout.
+// ═══════════════════════════════════════════════════════════════════════════
+
+model StageStock {
+  id            Int      @id @default(autoincrement())
+  symbol        String   @unique
+  name          String
+  sector        String
+  price         Float
+  ma30w         Float
+  ma30wSlopePct Float
+  weeklyVolumeM Float
+  mansfieldRs   Float
+  epsGrowthPct  Float
+  rsScore       Int
+  fundScore     Int
+  stage         Int
+  updatedAt     DateTime @default(now()) @updatedAt
+}
+
+/// Step 1 of the weekly review: is the market itself worth trading?
+model StageMarketReview {
+  id         Int       @id @default(autoincrement())
+  userId     String
+  weekOf     String
+  setIndex   Float     @default(1300)
+  breadthPct Float     @default(50)
+  setAboveMa Boolean   @default(false)
+  maRising   Boolean   @default(false)
+  breadthOk  Boolean   @default(false)
+  adConfirm  Boolean   @default(false)
+  foreignBuy Boolean   @default(false)
+  notes      String?
+  /// Null until the customer actually scores the week. A row is created on
+  /// first visit so the form has something to bind to, and a zero score on an
+  /// untouched row means "not scored yet", not "the market is in Stage 4" —
+  /// the UI must be able to tell those apart.
+  scoredAt   DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, weekOf])
+  @@index([userId])
+}
+
+/// Step 2: which sectors are leading, ranked by the user each week.
+model StageSector {
+  id        Int      @id @default(autoincrement())
+  userId    String
+  name      String
+  stage     Int      @default(2)
+  rsVsSet   Float    @default(0)
+  trend     String   @default("RISING")
+  volume    String   @default("NORMAL")
+  score     Int      @default(3)
+  weekOf    String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+/// Step 3 output: candidates that survived the funnel.
+model StageWatchlistItem {
+  id          Int      @id @default(autoincrement())
+  userId      String
+  symbol      String
+  sector      String
+  stage       Int      @default(2)
+  setup       String   @default("Breakout")
+  entryPrice  Float
+  stopLoss    Float
+  targetPrice Float
+  rsScore     Int      @default(5)
+  fundScore   Int      @default(5)
+  priority    String   @default("B")
+  status      String   @default("WATCHING")
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+/// Step 4: money actually at risk.
+model StagePosition {
+  id           Int       @id @default(autoincrement())
+  userId       String
+  symbol       String
+  sector       String
+  quantity     Int
+  entryPrice   Float
+  currentPrice Float
+  entryStage   Int       @default(2)
+  currentStage Int       @default(2)
+  stopLoss     Float
+  confidence   String    @default("B")
+  status       String    @default("OPEN")
+  openedAt     DateTime  @default(now())
+  closedPrice  Float?
+  closedAt     DateTime?
+  notes        String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+/// Step 5: the week's action plan.
+model StageActionItem {
+  id        Int      @id @default(autoincrement())
+  userId    String
+  weekOf    String
+  type      String
+  content   String
+  done      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+/// Trade journal — the psychology half of the system.
+model StageJournalEntry {
+  id        Int      @id @default(autoincrement())
+  userId    String
+  symbol    String
+  bias      String
+  outcome   String
+  pnlPct    Float?
+  lesson    String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+/// Recurring discipline checklists, seeded per user on first visit.
+model StageChecklistItem {
+  id        Int     @id @default(autoincrement())
+  userId    String
+  category  String
+  label     String
+  done      Boolean @default(false)
+  sortOrder Int     @default(0)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+/// Techno-fundamental thesis: one page per idea.
+model StageThesis {
+  id               Int      @id @default(autoincrement())
+  userId           String
+  symbol           String
+  sector           String
+  stockStage       Int      @default(2)
+  tripleConfirm    Boolean  @default(false)
+  tech17           Int      @default(0)
+  epsGrowthPct     Float    @default(0)
+  epsAccelerating  Boolean  @default(false)
+  cfoGeNi          Boolean  @default(false)
+  revenueGrowthPct Float    @default(0)
+  recurringRev     Boolean  @default(false)
+  gmExpanding      Boolean  @default(false)
+  opMarginAboveInd Boolean  @default(false)
+  debtEquity       Float    @default(1)
+  currentRatio     Float    @default(1.5)
+  fcfYieldPct      Float    @default(0)
+  foreignNetBuy    Boolean  @default(false)
+  fundIncreasing   Boolean  @default(false)
+  insiderBuying    Boolean  @default(false)
+  fundScore        Int      @default(0)
+  catalyst         String   @default("")
+  earningsDate     String?
+  riskNote         String?
+  entryStrategy    String   @default("Breakout")
+  entryPrice       Float    @default(0)
+  stopLoss         Float    @default(0)
+  target1          Float    @default(0)
+  target2          Float    @default(0)
+  combinedScore    Int      @default(0)
+  tier             String   @default("D")
+  foreignFlow      String   @default("FLAT")
+  status           String   @default("ACTIVE")
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  user     User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  quarters StageEarningsQuarter[]
+
+  @@index([userId])
+}
+
+model StageEarningsQuarter {
+  id        Int    @id @default(autoincrement())
+  thesisId  Int
+  label     String
+  eps       Float
+  sortOrder Int    @default(0)
+
+  thesis StageThesis @relation(fields: [thesisId], references: [id], onDelete: Cascade)
+
+  @@index([thesisId])
+}
+
+/// Quant Lab audit chain. Each night links to the previous by SHA-256, so a
+/// back-dated edit to yesterday's numbers breaks verification instead of
+/// passing quietly. Chains are per-user: one customer's tampering cannot
+/// invalidate another's evidence.
+model StageNightlySnapshot {
+  id        Int      @id @default(autoincrement())
+  userId    String
+  night     Int
+  timestamp DateTime @default(now())
+  prevHash  String
+  hash      String
+  summary   String
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, night])
+  @@index([userId])
 }

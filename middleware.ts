@@ -8,6 +8,10 @@ const protectedPrefixes = [
   "/oracle/history",
   "/oracle/api-keys",
   "/oracle/admin",
+  // StageLab's marketing and pricing pages stay public on purpose; only the
+  // app itself needs a session. Plan gating happens per-route on the server —
+  // this redirect just saves a signed-out visitor from a blank shell.
+  "/stagelab/app",
 ];
 
 export async function middleware(req: NextRequest) {

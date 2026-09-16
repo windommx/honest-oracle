@@ -4,7 +4,11 @@ import { requireUser } from "@/lib/server/session";
 import { getEnv } from "@/lib/server/env";
 import { getStripe } from "@/lib/server/stripe";
 
-const RETURN_PATHS: Record<string, string> = { rush: "/rush/dashboard", oracle: "/oracle/pricing" };
+const RETURN_PATHS: Record<string, string> = {
+  rush: "/rush/dashboard",
+  oracle: "/oracle/pricing",
+  stagelab: "/stagelab/pricing",
+};
 
 export async function POST(request: NextRequest) {
   const user = await requireUser();
