@@ -101,7 +101,7 @@ export interface PeriodStats {
   profitFactor: number
 }
 
-/** Buy-and-hold the index over the same window, same capital, same costs. */
+/** Equal-weight buy-and-hold of the traded universe: same window, same costs. */
 export interface Benchmark {
   label: string
   finalValue: number
@@ -358,34 +358,63 @@ function periodStats(
 }
 
 /**
- * Buy and hold the index over the same window.
+ * Equal-weight buy-and-hold of the same universe the strategy trades.
  *
- * A backtest with no benchmark answers "did this make money", which in a rising
- * market is close to meaningless. The question worth asking is whether all the
- * screening, sizing and stop discipline beat doing nothing — and often enough
- * it does not, which the customer is entitled to see.
+ * THE BENCHMARK THIS REPLACED WAS WRONG, and the way it was wrong is worth
+ * recording. It bought the SET index series — but `genSeries` uses that index
+ * only to derive relative strength, never as a driver of price. The symbols
+ * and the index are statistically independent processes, so "the strategy beat
+ * the index by 139 points" was measuring the gap between two unrelated random
+ * walks and calling it skill. It was found by running the thing and disbelieving
+ * the number, which no unit test would have done for us.
+ *
+ * Equal weight over the traded universe is both coherent with the data and the
+ * better question anyway, for real data as much as synthetic: a stock-selection
+ * strategy should be measured against owning everything it could have picked
+ * from. That isolates what the system actually claims to add — the screening,
+ * the timing, the stops — from whatever the universe did on its own.
+ *
+ * Same costs as the strategy: commission in and out, on the whole book.
  */
 function buildBenchmark(
   cfg: BacktestConfig,
+  data: SymbolData[],
   warmup: number,
   weeks: number,
   strategyReturnPct: number,
 ): Benchmark {
-  const closes = setIndexCloses(weeks)
-  const entry = closes[warmup]
   const commission = cfg.commissionPct / 100
-  // Same costs as the strategy: one round trip on the whole book.
-  const invested = cfg.capital * (1 - commission)
-  const units = entry > 0 ? invested / entry : 0
+
+  // Only symbols with a real price at entry; a zero would swallow its slice.
+  const holdable = data.filter((d) => d.c[warmup] > 0)
+  if (holdable.length === 0) {
+    return {
+      label: 'ถือทั้งจักรวาลเท่า ๆ กัน',
+      finalValue: cfg.capital,
+      totalReturnPct: 0,
+      cagrPct: 0,
+      maxDdPct: 0,
+      equity: new Array(Math.max(0, weeks - warmup)).fill(cfg.capital),
+      excessReturnPct: r2(strategyReturnPct),
+    }
+  }
+
+  const slice = (cfg.capital * (1 - commission)) / holdable.length
+  const shares = holdable.map((d) => slice / d.c[warmup])
 
   const equity: number[] = []
-  for (let i = warmup; i < weeks; i++) equity.push(Math.round(units * closes[i]))
+  for (let i = warmup; i < weeks; i++) {
+    let value = 0
+    for (let k = 0; k < holdable.length; k++) value += shares[k] * holdable[k].c[i]
+    equity.push(Math.round(value))
+  }
+
   const finalValue = Math.round((equity[equity.length - 1] ?? cfg.capital) * (1 - commission))
   const years = (weeks - warmup) / 52
-
   const totalReturnPct = r2((finalValue / cfg.capital - 1) * 100)
+
   return {
-    label: 'ซื้อดัชนีแล้วถือ',
+    label: 'ถือทั้งจักรวาลเท่า ๆ กัน',
     finalValue,
     totalReturnPct,
     cagrPct: r2(cagrOf(cfg.capital, finalValue, years)),
@@ -632,7 +661,7 @@ export function runBacktest(
   )
 
   const totalReturnPct = r2((finalValue / cfg.capital - 1) * 100)
-  const benchmark = buildBenchmark(cfg, WARMUP, WEEKS, totalReturnPct)
+  const benchmark = buildBenchmark(cfg, data, WARMUP, WEEKS, totalReturnPct)
 
   return {
     config: cfg,

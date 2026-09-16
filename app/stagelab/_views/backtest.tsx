@@ -108,12 +108,12 @@ export default function BacktestView({ onSessionChange }: { onSessionChange: () 
               </div>
 
               <Card
-                title="เส้นมูลค่าพอร์ต เทียบกับการซื้อดัชนีแล้วถือ"
-                subtitle={`${result.equity.length} สัปดาห์ · ส่วนต่างจากการถือเฉย ๆ ${fmtPct(result.benchmark.excessReturnPct)}`}
+                title="เส้นมูลค่าพอร์ต เทียบกับการถือทั้งจักรวาลเท่า ๆ กัน"
+                subtitle={`${result.equity.length} สัปดาห์ · ส่วนต่างจากการถือทุกตัวเท่า ๆ กัน ${fmtPct(result.benchmark.excessReturnPct)}`}
               >
                 <LineChart
                   height={230}
-                  caption={`มูลค่าพอร์ตจากกลยุทธ์ เทียบกับการซื้อดัชนีแล้วถือ ตลอด ${result.equity.length} สัปดาห์`}
+                  caption={`มูลค่าพอร์ตจากกลยุทธ์ เทียบกับการถือหุ้นทุกตัวในจักรวาลเท่า ๆ กัน ตลอด ${result.equity.length} สัปดาห์`}
                   xLabels={result.equity.map((e) => e.t)}
                   series={[
                     { label: "กลยุทธ์", values: result.equity.map((e) => e.value), color: CHART_COLORS.strategy },
@@ -122,8 +122,12 @@ export default function BacktestView({ onSessionChange }: { onSessionChange: () 
                 />
                 <p className="mt-2 text-xs leading-relaxed text-zinc-300">
                   {result.benchmark.excessReturnPct >= 0
-                    ? `กลยุทธ์ชนะการถือเฉย ๆ อยู่ ${fmtPct(result.benchmark.excessReturnPct)} — โดยมี Drawdown ${fmtPct(stats!.maxDdPct)} เทียบกับ ${fmtPct(result.benchmark.maxDdPct)} ของดัชนี`
-                    : `กลยุทธ์แพ้การถือดัชนีเฉย ๆ อยู่ ${fmtPct(Math.abs(result.benchmark.excessReturnPct))} — การคัดกรอง ตั้ง Stop และจัดขนาดไม้ทั้งหมดในรอบนี้ ยังไม่ชดเชยต้นทุนของมันเอง`}
+                    ? `กลยุทธ์ชนะการถือทุกตัวเท่า ๆ กันอยู่ ${fmtPct(result.benchmark.excessReturnPct)} — โดยมี Drawdown ${fmtPct(stats!.maxDdPct)} เทียบกับ ${fmtPct(result.benchmark.maxDdPct)} ของการถือทั้งจักรวาล`
+                    : `กลยุทธ์แพ้การถือทุกตัวเท่า ๆ กันอยู่ ${fmtPct(Math.abs(result.benchmark.excessReturnPct))} — การคัดกรอง ตั้ง Stop และจัดขนาดไม้ทั้งหมดในรอบนี้ ยังไม่ชดเชยต้นทุนของมันเอง`}
+                </p>
+                <p className="mt-1.5 text-[0.7rem] leading-relaxed text-zinc-400">
+                  เกณฑ์เทียบคือการซื้อหุ้นทุกตัวในจักรวาลด้วยน้ำหนักเท่ากันตั้งแต่ต้นแล้วถือยาว
+                  เสียค่าคอมเท่ากัน — เพื่อแยกให้เห็นว่าการ “คัดและจับจังหวะ” เพิ่มอะไรจากการถือเฉย ๆ
                 </p>
                 <div className="mt-3 grid gap-2 grid-cols-2 sm:grid-cols-4 text-center">
                   <MiniStat label="กำไรเฉลี่ย" value={fmtPct(stats!.avgWinPct)} tone="good" />

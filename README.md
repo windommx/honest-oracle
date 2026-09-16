@@ -68,6 +68,19 @@ npm run db:seed:stagelab
 รายละเอียดสถาปัตยกรรม การแยก tenant แผนการใช้งาน และชุดทดสอบ อ่านได้ที่
 [`docs/stagelab.md`](docs/stagelab.md)
 
+## Production
+
+อ่าน [`docs/production.md`](docs/production.md) ก่อน deploy — ลำดับที่ถูกต้องคือ
+
+```bash
+npm run check:env          # ตรวจ env ก่อน แล้วบอกว่าตัวไหนผิด
+npm run db:migrate:deploy  # ใช้ migration เสมอ ห้ามใช้ db:push บน production
+npm run build
+npm run smoke              # ยิงจริงผ่าน HTTP หลัง deploy
+```
+
+ฐานข้อมูลที่มีตารางอยู่แล้วต้อง baseline ก่อนหนึ่งครั้ง — วิธีอยู่ในเอกสาร
+
 ## Billing (Stripe)
 
 ตั้งค่า env:

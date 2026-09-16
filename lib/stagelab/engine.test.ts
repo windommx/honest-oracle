@@ -436,10 +436,33 @@ describe("backtest benchmark", () => {
   const universe = STAGE_UNIVERSE.slice(0, 20).map((r) => ({ symbol: r.symbol, sector: r.sector }));
   const result = runBacktest(universe, DEFAULT_BACKTEST_CONFIG);
 
-  it("measures the strategy against buying the index and doing nothing", () => {
+  it("measures the strategy against owning the same universe, equally weighted", () => {
     expect(result.benchmark.equity.length).toBe(result.equity.length);
     expect(result.benchmark.finalValue).toBeGreaterThan(0);
     expect(result.benchmark.maxDdPct).toBeLessThanOrEqual(0);
+  });
+
+  it("benchmarks against the universe it was given, not an unrelated series", () => {
+    // The first version of this bought the SET index series — which genSeries
+    // uses only to derive relative strength, never as a price driver. The two
+    // were independent processes, so the 'excess return' was the gap between
+    // two unrelated random walks. Changing the universe must move the
+    // benchmark; if it does not, the benchmark is detached again.
+    const a = runBacktest(
+      STAGE_UNIVERSE.slice(0, 10).map((r) => ({ symbol: r.symbol, sector: r.sector })),
+      DEFAULT_BACKTEST_CONFIG,
+    );
+    const b = runBacktest(
+      STAGE_UNIVERSE.slice(30, 40).map((r) => ({ symbol: r.symbol, sector: r.sector })),
+      DEFAULT_BACKTEST_CONFIG,
+    );
+    expect(a.benchmark.totalReturnPct).not.toBe(b.benchmark.totalReturnPct);
+  });
+
+  it("survives a universe with no tradable price at entry", () => {
+    const empty = runBacktest([], DEFAULT_BACKTEST_CONFIG);
+    expect(Number.isFinite(empty.benchmark.totalReturnPct)).toBe(true);
+    expect(empty.benchmark.finalValue).toBeGreaterThan(0);
   });
 
   it("reports excess return as the actual difference, not a spin on it", () => {

@@ -187,10 +187,20 @@ last-write-wins — explicitly, rather than by accident.
 The engine walks 312 weekly bars across the universe. Three things were added
 because a backtest without them is marketing:
 
-**A benchmark.** Buy the index at the start of the window, hold, pay the same
-commission. "Did this make money" is close to meaningless in a rising market;
-"did all the screening, sizing and stop discipline beat doing nothing" is the
-question, and often enough the answer is no.
+**A benchmark — the second one.** The first bought the SET index series, and it
+was wrong: `genSeries` uses that index only to derive relative strength, never
+as a driver of price, so the symbols and the index are statistically
+independent processes. "The strategy beat the index by 139 points" was
+measuring the gap between two unrelated random walks and calling it skill. It
+was caught by running the deployment and disbelieving the number; no unit test
+would have found it, because every part was behaving exactly as written.
+
+The benchmark is now an equal-weight buy-and-hold of the same universe the
+strategy trades — coherent with the data, and the better question anyway: a
+stock-selection strategy should be measured against owning everything it could
+have picked from. On the bundled universe the honest answer is that the
+strategy **loses** by about 9 points while holding roughly a third of the
+drawdown. That is a real result and the product shows it.
 
 **An out-of-sample split.** The window is cut 70/30 by time and each half is
 measured separately. The strategy rules are fixed, but the seven knobs above
@@ -384,6 +394,12 @@ value must never outlive the truth it was predicting.
 | `app/api/stagelab/routes.test.ts` | Handlers end to end: auth, scoping, caps, quotas, conflicts, origin |
 | `lib/stagelab/rate-limit.test.ts` | Window behaviour, per-key isolation, bounded memory |
 | `app/stagelab/_api.test.tsx` | Cache hits, request dedupe, invalidation, optimistic revert |
+| `lib/server/env.test.ts` | Config validation names every fault; warns without failing |
+| `app/api/health/health.test.ts` | Dependency check, timeout, and that causes never leak |
+
+Beyond the suite, `scripts/smoke.sh` exercises a **running deployment** over
+HTTP — real session cookie, real database, real plan gates. See
+[`docs/production.md`](production.md) for where it fits in a deploy.
 
 These keep finding real bugs, which is the point of writing them first:
 
