@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { badRequest } from './guard'
+import { TECHNICAL_MAX } from './scoring'
 
 // ╔══════════════════════════════════════════════════════════════════════════╗
 // ║  Request parsing for the StageLab routes.                                ║
@@ -158,7 +159,10 @@ export const thesisBody = z.object({
   sector: z.string().trim().default(''),
   stockStage: stage.default(2),
   tripleConfirm: z.boolean().default(false),
-  tech17: z.number().int().min(0).max(17).default(0),
+  // Bound comes from the engine. It was hardcoded to 17 while the checklist
+  // could only produce 16, so the schema accepted a score the engine itself
+  // could never generate.
+  tech17: z.number().int().min(0).max(TECHNICAL_MAX).default(0),
   epsGrowthPct: finite.default(0),
   epsAccelerating: z.boolean().default(false),
   cfoGeNi: z.boolean().default(false),

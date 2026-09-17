@@ -47,6 +47,19 @@ export function pineTechScore(input: {
   return { score, parts }
 }
 
+/** The checklist's ceiling, computed once from the items themselves. */
+export const TECHNICAL_MAX = technicalScore({
+  stage: 2,
+  maSlopePct: Number.MAX_SAFE_INTEGER,
+  mansfieldRs: Number.MAX_SAFE_INTEGER,
+  rsRising: true,
+  volRatio: Number.MAX_SAFE_INTEGER,
+  sectorStage: 2,
+  marketStage: 2,
+  epsGrowthPct: Number.MAX_SAFE_INTEGER,
+  revenueGrowthPct: Number.MAX_SAFE_INTEGER,
+}).max
+
 // ─── 2. Technical Score 0-17 (Stage Quality Score) ───────────────────────────
 export interface Tech17Input {
   stage: number
@@ -60,10 +73,31 @@ export interface Tech17Input {
   revenueGrowthPct: number
 }
 
-export function tech17(i: Tech17Input): { score: number; parts: PinePart[] } {
+/**
+ * The technical checklist.
+ *
+ * It was called `tech17` and every surface rendered "x/17". Adding up the nine
+ * items gives 3+2+2+2+1+2+1+2+1 = **16**. The seventeenth point did not exist,
+ * so a perfect technical read displayed as 16/17 and a 94%-full progress bar,
+ * and the schema accepted a hand-typed 17 that the engine itself could never
+ * produce.
+ *
+ * Rather than inventing a point to justify the name, the ceiling is now
+ * COMPUTED from the items and returned. Nothing downstream hardcodes it, so
+ * adding or removing a check can no longer put the denominator out of step
+ * with the arithmetic.
+ */
+export function technicalScore(i: Tech17Input): {
+  score: number
+  max: number
+  parts: PinePart[]
+} {
   const parts: PinePart[] = []
-  const add = (label: string, pts: number, max: number) =>
-    parts.push({ label: `${label} (${pts}/${max})`, delta: pts })
+  let max = 0
+  const add = (label: string, pts: number, itemMax: number) => {
+    max += itemMax
+    parts.push({ label: `${label} (${pts}/${itemMax})`, delta: pts })
+  }
 
   add('Stage 2', i.stage === 2 ? 3 : 0, 3)
   add('MA slope แข็ง', i.maSlopePct > 0.5 ? 2 : 0, 2)
@@ -73,14 +107,18 @@ export function tech17(i: Tech17Input): { score: number; parts: PinePart[] } {
     2,
   )
   add('Volume ยืนยัน', i.volRatio > 1.5 ? 2 : 0, 2)
-  add('RS  rising', i.rsRising && i.mansfieldRs > 0 ? 1 : 0, 1)
+  // The label says "RS rising"; the condition also required RS to be positive,
+  // which line above already scores. A stock whose RS is rising hard but still
+  // negative — the textbook Stage 1→2 accumulation this engine exists to
+  // catch — scored zero here and was told its RS was not rising.
+  add('RS rising', i.rsRising ? 1 : 0, 1)
   add('Sector Stage 2', i.sectorStage === 2 ? 2 : 0, 2)
   add('Market Stage 2', i.marketStage === 2 ? 1 : 0, 1)
   add('EPS Growth', i.epsGrowthPct > 25 ? 2 : i.epsGrowthPct > 15 ? 1 : 0, 2)
   add('Revenue Growth', i.revenueGrowthPct > 15 ? 1 : 0, 1)
 
   const score = parts.reduce((a, p) => a + p.delta, 0)
-  return { score, parts }
+  return { score, max, parts }
 }
 
 // ─── 3. Fundamental Quality Score (0-20) ─────────────────────────────────────
@@ -102,14 +140,27 @@ export interface FundInput {
 
 export interface FundBreakdown {
   score: number
+  /** Computed from the items, never asserted. */
+  max: number
   grade: 'A+' | 'A' | 'B' | 'C' | 'D'
-  parts: { cat: string; label: string; pts: number; max: number }[]
+  parts: {
+    cat: string
+    label: string
+    pts: number
+    /** What THIS item is worth. Was previously the whole category's budget,
+     *  so a fully-earned 2-point item rendered as "2/6" and the UI's
+     *  "complete" colour — which tests pts === max — could never fire for any
+     *  row in the table. */
+    max: number
+    /** The category's total budget, for grouping. */
+    categoryMax: number
+  }[]
 }
 
 export function fundScore(f: FundInput): FundBreakdown {
   const parts: FundBreakdown['parts'] = []
-  const push = (cat: string, label: string, ok: boolean, pts: number, max: number) =>
-    parts.push({ cat, label, pts: ok ? pts : 0, max })
+  const push = (cat: string, label: string, ok: boolean, pts: number, categoryMax: number) =>
+    parts.push({ cat, label, pts: ok ? pts : 0, max: pts, categoryMax })
 
   // A. EARNINGS QUALITY (6)
   push('Earnings', 'EPS Growth YoY > 25%', f.epsGrowthPct > 25, 2, 6)
@@ -136,9 +187,10 @@ export function fundScore(f: FundInput): FundBreakdown {
   push('Institution', 'Insider Buying', f.insiderBuying, 1, 3)
 
   const score = parts.reduce((a, p) => a + p.pts, 0)
+  const max = parts.reduce((a, p) => a + p.max, 0)
   const grade: FundBreakdown['grade'] =
     score >= 16 ? 'A+' : score >= 12 ? 'A' : score >= 8 ? 'B' : score >= 4 ? 'C' : 'D'
-  return { score, grade, parts }
+  return { score, max, grade, parts }
 }
 
 // ─── 4. Combined Mastery Score (0-37) ────────────────────────────────────────
@@ -153,34 +205,67 @@ export interface Combined {
   advice: string
 }
 
+/** Highest fundamental score the checklist can produce, derived from its items. */
+export const FUNDAMENTAL_MAX = fundScore({
+  epsGrowthPct: Number.MAX_SAFE_INTEGER,
+  epsAccelerating: true,
+  cfoGeNi: true,
+  revenueGrowthPct: Number.MAX_SAFE_INTEGER,
+  recurringRev: true,
+  gmExpanding: true,
+  opMarginAboveInd: true,
+  debtEquity: 0,
+  currentRatio: Number.MAX_SAFE_INTEGER,
+  fcfYieldPct: Number.MAX_SAFE_INTEGER,
+  foreignNetBuy: true,
+  fundIncreasing: true,
+  insiderBuying: true,
+}).max
+
+/** Highest total the two checklists can actually produce, derived from both. */
+export const COMBINED_MAX = TECHNICAL_MAX + FUNDAMENTAL_MAX
+
+/**
+ * Combine the two checklists into a tier.
+ *
+ * The tier `text` used to name specifics this function cannot observe — it
+ * receives two integers, and the S-tier line asserted "Stage 2A + Triple
+ * Confirm + Earnings Acceleration + FCF แข็ง + สถาบันซื้อ" for ANY pair summing
+ * to 30, including a Stage 4 name. It was rendered as the card's subtitle,
+ * i.e. as a description of that specific idea. Each line now describes only
+ * the two numbers it was given.
+ *
+ * The ceiling is derived rather than the old hardcoded 37, which was one point
+ * above anything the engine could produce.
+ */
 export function combinedScore(tech: number, fund: number): Combined {
-  const score = Math.max(0, Math.min(37, tech + fund))
+  const score = Math.max(0, Math.min(COMBINED_MAX, tech + fund))
   if (score >= 30)
     return {
       score, tier: 'S', label: 'S-Tier', riskPct: 2, sizeLabel: 'Full Position',
       badge: 'bg-emerald-500/25 text-emerald-300 border-emerald-400/40',
-      text: 'Stage 2A + Triple Confirm + Earnings Acceleration + FCF แข็ง + สถาบันซื้อ',
+      text: 'คะแนนเทคนิคและพื้นฐานสูงทั้งคู่ — เต็มเพดานที่ระบบให้ได้',
       advice: 'เข้าไม้เต็มสูตรตามระบบ — Perfect Storm setup',
     }
   if (score >= 23)
     return {
       score, tier: 'A', label: 'A-Tier', riskPct: 1.5, sizeLabel: 'Standard Position',
       badge: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30',
-      text: 'Stage 2 + Fundamental ดี',
+      text: 'เทคนิคและพื้นฐานผ่านเกณฑ์ทั้งสองด้าน',
       advice: 'เข้าไม้ขนาดปกติ ยืนยัน Volume ตอนเข้า',
     }
   if (score >= 16)
     return {
       score, tier: 'B', label: 'B-Tier', riskPct: 1, sizeLabel: 'Half Position',
       badge: 'bg-yellow-500/15 text-yellow-400 border-yellow-500/30',
-      text: 'Stage 2 แต่ Fundamental ปานกลาง',
+      text: 'ด้านหนึ่งแข็ง อีกด้านปานกลาง',
       advice: 'ลดขนาดไม้ครึ่งหนึ่ง ตั้ง Stop เข้มงวด',
     }
   if (score >= 10)
     return {
       score, tier: 'C', label: 'C-Tier', riskPct: 0.5, sizeLabel: 'Quarter Position',
       badge: 'bg-orange-500/15 text-orange-400 border-orange-500/30',
-      text: 'Technical ดี แต่ Fundamental อ่อน — อาจเป็น False Breakout',
+      text: 'คะแนนรวมต่ำ — อย่างน้อยหนึ่งด้านอ่อนชัดเจน',
       advice: 'เข้าเฉพาะไม้ทดสอบขนาดเล็ก หรือเฝ้าดูก่อน',
     }
   return {
@@ -193,7 +278,14 @@ export function combinedScore(tech: number, fund: number): Combined {
 
 // ─── 5. Risk Matrix (Stage × Fundamental Quality) ────────────────────────────
 export type FundBand = 'APLUS' | 'A' | 'B' | 'CD'
-export type StageBand = 'S2A' | 'S2' | 'S2B' | 'S1' | 'S3' | 'S4'
+// S2B ("late Stage 2") was in this union and in the matrix, and `riskCell`
+// could never route to it: reaching that branch required a stage outside 1-4,
+// which the schema rejects. Four cells of the published matrix — including the
+// one that refuses a weak late-stage-2 name — silently never fired, and such
+// stocks were scored on the full S2 row instead. There is no late-stage-2
+// signal anywhere in the data, so the row is removed rather than left as a
+// feature that exists only in the type.
+export type StageBand = 'S2A' | 'S2' | 'S1' | 'S3' | 'S4'
 
 export interface RiskCell {
   risk: string
@@ -221,12 +313,6 @@ export const RISK_MATRIX: Record<StageBand, Record<FundBand, RiskCell>> = {
     B: { risk: '0.75%', size: 'Quarter', tone: 'med' },
     CD: { risk: '0.5%', size: 'Minimal', tone: 'high' },
   },
-  S2B: {
-    APLUS: { risk: '1%', size: 'Half', tone: 'med' },
-    A: { risk: '0.75%', size: 'Quarter', tone: 'med' },
-    B: { risk: '0.5%', size: 'Minimal', tone: 'high' },
-    CD: { risk: '0%', size: 'DO NOT BUY', tone: 'no' },
-  },
   S1: {
     APLUS: { risk: '0.5%', size: 'Speculative', tone: 'med' },
     A: { risk: '0.25%', size: 'Minimal', tone: 'high' },
@@ -252,8 +338,11 @@ export function riskCell(stage: number, fund: number, triple = false): RiskCell 
   let sb: StageBand
   if (stage === 4) sb = 'S4'
   else if (stage === 3) sb = 'S3'
-  else if (stage === 1) sb = 'S1'
-  else sb = triple ? 'S2A' : stage === 2 ? 'S2' : 'S2B'
+  else if (stage === 2) sb = triple ? 'S2A' : 'S2'
+  // Anything else — including a stage the schema should have rejected — is
+  // treated as Stage 1: not yet a buy. Falling through to a Stage 2 row on an
+  // unknown stage was the unsafe direction to guess in.
+  else sb = 'S1'
   return RISK_MATRIX[sb][band]
 }
 
@@ -278,11 +367,16 @@ export function earningsAnalysis(quarters: EarningsQ[]): {
   const rows: EarningsRow[] = quarters.map((q, i) => {
     const prevYear = i >= 4 ? quarters[i - 4].eps : null
     const prevQ = i > 0 ? quarters[i - 1].eps : null
-    const yoy = prevYear !== null && prevYear !== 0 ? ((q.eps - prevYear) / Math.abs(prevYear)) * 100 : null
-    const qoq = prevQ !== null && prevQ !== 0 ? ((q.eps - prevQ) / Math.abs(prevQ)) * 100 : null
+    // A percentage change is only a growth rate when the base is a profit.
+    // Off a loss the arithmetic still produces a number — -5 to -3 came out as
+    // "+40%" — but it describes a shrinking loss, not growth, and the table
+    // coloured it green. From a non-positive base there is no honest
+    // percentage to show, so the row says "—" instead of inventing one.
+    const yoy = prevYear !== null && prevYear > 0 ? ((q.eps - prevYear) / prevYear) * 100 : null
+    const qoq = prevQ !== null && prevQ > 0 ? ((q.eps - prevQ) / prevQ) * 100 : null
     const prevQoq =
-      i > 1 && quarters[i - 1].eps !== 0 && quarters[i - 2].eps !== 0
-        ? ((quarters[i - 1].eps - quarters[i - 2].eps) / Math.abs(quarters[i - 2].eps)) * 100
+      i > 1 && quarters[i - 2].eps > 0
+        ? ((quarters[i - 1].eps - quarters[i - 2].eps) / quarters[i - 2].eps) * 100
         : null
     const accelerating = qoq !== null && prevQoq !== null ? qoq > prevQoq : null
     return { ...q, yoy, qoq, accelerating }
@@ -290,9 +384,21 @@ export function earningsAnalysis(quarters: EarningsQ[]): {
 
   const last = rows[rows.length - 1]
   const prev = rows[rows.length - 2]
+
+  // Acceleration needs BOTH derivatives: growth that is itself speeding up.
+  //
+  // This was previously a second-derivative test alone — `thisQoQ > lastQoQ` —
+  // with no sign condition on growth itself. An EPS series of 100 → 10 → 2 →
+  // 1.5 satisfies it (the rate of collapse is easing) and the UI duly reported
+  // "กำไรกำลังเร่งตัว" for a company losing 90% of its earnings. The second
+  // clause of the old condition was also provably identical to the first, so
+  // it is gone rather than merely corrected.
+  //
+  // Requiring `qoq > 0` also disposes of the loss-making case, because a
+  // quarter-on-quarter figure now exists only when the base quarter was
+  // profitable: 2 → -5 → -3 → -1 has no growth rate to compare.
   const accelerating =
-    last?.accelerating === true ||
-    (last?.qoq !== null && prev?.qoq !== null && last?.qoq !== undefined && prev?.qoq !== undefined && (last?.qoq ?? 0) > (prev?.qoq ?? 0))
+    last?.qoq != null && prev?.qoq != null && last.qoq > 0 && last.qoq > prev.qoq
   const decelerating =
     last?.qoq != null && prev?.qoq != null && last.qoq < prev.qoq
 
@@ -324,9 +430,28 @@ export function flowSignal(flow: FlowLevel, stage: number): FlowSignal {
       ? { label: 'เตือน', tone: 'exit', action: 'EXIT', note: 'Distribution ชัดเจน — สถาบันเริ่มขาย' }
       : { label: 'เตือน', tone: 'high', action: 'REDUCE', note: 'Stage 3 เริ่มกระจาย — ลดพอร์ตทยอย' }
   if (stage === 2 && flow === 'BUY_HEAVY')
-    return { label: 'Best Case', tone: 'low', action: 'Strong Buy', note: 'Foreign ซื้อหนัก + Stage 2A = สถาบันสะสม — เข้าเต็มสูตรได้' }
+    return { label: 'Best Case', tone: 'low', action: 'Strong Buy', note: 'Foreign ซื้อหนัก + Stage 2 = สถาบันสะสม — เข้าเต็มสูตรได้' }
   if (stage === 2 && flow === 'BUY')
     return { label: 'Good Case', tone: 'low', action: 'Buy', note: 'Foreign ซื้อเล็กน้อย + Stage 2 = ยืนยันแนวโน้ม' }
+  // Selling in Stage 2 used to fall through to the FLAT branch below, so a
+  // stock institutions were dumping was reported as "flow is flat, you may
+  // enter". The function was handed the opposite of what it said. Price rising
+  // while institutions leave is the distribution pattern this whole module
+  // exists to catch — it cannot be the one case it stays silent about.
+  if (stage === 2 && flow === 'SELL_HEAVY')
+    return {
+      label: 'ขัดแย้ง',
+      tone: 'exit',
+      action: 'ห้ามเข้าเพิ่ม',
+      note: 'ราคายังอยู่ Stage 2 แต่ต่างชาติขายหนัก — รูปแบบการกระจายของ ไม่ใช่การสะสม',
+    }
+  if (stage === 2 && flow === 'SELL')
+    return {
+      label: 'ระวัง',
+      tone: 'high',
+      action: 'Reduce',
+      note: 'Stage 2 แต่ต่างชาติขายสุทธิ — ลดขนาดไม้ และรอให้ flow กลับก่อนเพิ่ม',
+    }
   if (stage === 2)
     return { label: 'Neutral', tone: 'med', action: 'Cautious Buy', note: 'Flow ทรงตัว — เข้าได้แต่ลดขนาด' }
   // Stage 1
@@ -366,7 +491,7 @@ export function enrichStock(
     volRatio: ctx.volRatio,
     candleUp: ctx.candleUp,
   })
-  const t17 = tech17({
+  const t17 = technicalScore({
     stage: s.stage,
     maSlopePct: s.ma30wSlopePct,
     mansfieldRs: s.mansfieldRs,

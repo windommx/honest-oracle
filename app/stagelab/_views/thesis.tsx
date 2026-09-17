@@ -25,6 +25,8 @@ import { del, post, put, useAction, useResource, type StageSession } from "../_a
 import { ConfirmDelete } from "./watchlist";
 import {
   FLOW_OPTIONS,
+  FUNDAMENTAL_MAX,
+  TECHNICAL_MAX,
   combinedScore,
   earningsAnalysis,
   flowSignal,
@@ -239,7 +241,11 @@ function ThesisCard({
             <span className="text-zinc-400">พื้นฐาน (20)</span>
             <span className="font-mono tabular-nums text-zinc-200">{thesis.fundScore}/20</span>
           </div>
-          <ProgressBar value={thesis.fundScore} max={20} tone={thesis.fundScore >= 14 ? "good" : thesis.fundScore >= 9 ? "warn" : "bad"} />
+          <ProgressBar
+            value={thesis.fundScore}
+            max={FUNDAMENTAL_MAX}
+            tone={thesis.fundScore >= 14 ? "good" : thesis.fundScore >= 9 ? "warn" : "bad"}
+          />
         </div>
       </div>
 
@@ -258,7 +264,11 @@ function ThesisCard({
       </div>
 
       <dl className="mt-3 space-y-1.5 text-xs">
-        <Line label="ขนาดไม้ที่ระบบแนะนำ" value={`${risk.size} · เสี่ยง ${combined.riskPct}%`} />
+        {/* The matrix's own risk figure, not the tier's. These are computed
+            from different inputs and disagreed: a Stage 4 name with strong
+            fundamentals rendered "EXIT ALL · เสี่ยง 2%". RiskCell.risk was
+            already correct and was being thrown away. */}
+        <Line label="ขนาดไม้ที่ระบบแนะนำ" value={`${risk.size} · เสี่ยง ${risk.risk}`} />
         <Line label="แผนเข้า" value={`${thesis.entryStrategy} @ ${fmt(thesis.entryPrice)} · Stop ${fmt(thesis.stopLoss)} · เป้า ${fmt(thesis.target1)} / ${fmt(thesis.target2)}`} />
         {thesis.catalyst && <Line label="ตัวเร่ง" value={thesis.catalyst} />}
         {thesis.earningsDate && <Line label="วันประกาศงบ" value={thesis.earningsDate} />}
@@ -356,10 +366,14 @@ function ThesisFormModal({
       <div key={key} className="space-y-4">
         <div className="rounded-lg border border-zinc-800 bg-zinc-950/60 px-3 py-2">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <span className="text-xs text-zinc-400">คะแนนที่คำนวณสด (เซิร์ฟเวอร์จะคำนวณซ้ำตอนบันทึก)</span>
+            <span className="text-xs text-zinc-400">พื้นฐานคำนวณสด — เซิร์ฟเวอร์คำนวณซ้ำตอนบันทึก · คะแนนเทคนิคคือค่าที่คุณกรอกเอง</span>
             <span className="flex items-center gap-2">
-              <span className="font-mono text-xs text-zinc-300">เทคนิค {form.tech17}/17</span>
-              <span className="font-mono text-xs text-zinc-300">พื้นฐาน {fund.score}/20</span>
+              <span className="font-mono text-xs text-zinc-300">
+                เทคนิค {form.tech17}/{TECHNICAL_MAX}
+              </span>
+              <span className="font-mono text-xs text-zinc-300">
+                พื้นฐาน {fund.score}/{fund.max}
+              </span>
               <span className={`inline-flex items-center rounded-md border px-1.5 py-0.5 text-[0.7rem] font-semibold ${combined.badge}`}>
                 {combined.label}
               </span>
@@ -381,7 +395,13 @@ function ThesisFormModal({
               onChange={(v) => set("stockStage", Number(v))}
               options={[1, 2, 3, 4].map((n) => ({ value: String(n), label: `Stage ${n}` }))}
             />
-            <NumberField label="คะแนนเทคนิค (0-17)" value={form.tech17} onChange={(n) => set("tech17", n)} min={0} max={17} />
+            <NumberField
+              label={`คะแนนเทคนิค (0-${TECHNICAL_MAX})`}
+              value={form.tech17}
+              onChange={(n) => set("tech17", n)}
+              min={0}
+              max={TECHNICAL_MAX}
+            />
             <div className="sm:col-span-2">
               <Toggle
                 label="Triple Confirm"

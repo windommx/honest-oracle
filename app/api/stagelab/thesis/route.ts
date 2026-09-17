@@ -10,10 +10,21 @@ export const dynamic = 'force-dynamic'
 type Body = Awaited<ReturnType<typeof thesisBody.parse>>
 
 /**
- * Scores are ALWAYS recomputed here from the raw inputs and never read from
- * the request. A client that could post its own `tier` could mark every idea
- * S+, and the whole point of the thesis page is that the grade follows the
- * evidence.
+ * What is recomputed here, and what is not.
+ *
+ * `fundScore`, `combinedScore` and `tier` are ALWAYS derived server-side from
+ * the raw fundamental inputs. A client that could post its own `tier` would
+ * mark every idea S+, and the point of the thesis page is that the grade
+ * follows the evidence.
+ *
+ * `tech17` is DIFFERENT and the previous version of this comment was wrong to
+ * imply otherwise: it is the customer's own reading of the chart, typed in by
+ * hand, because the server has no technical observation of its own to check it
+ * against. It is validated to the engine's real range and nothing more. It
+ * feeds the tier, so a customer can move their own grade by overstating their
+ * own chart read — which is a self-assessment tool working as intended, not a
+ * hole, but it is not the same guarantee as the fundamentals and should not be
+ * described as one.
  */
 function scoresFor(input: Body) {
   const fund = fundScore(input)

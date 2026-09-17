@@ -21,7 +21,11 @@ import {
   flowSignal,
   fundScore,
   riskCell,
-  tech17,
+  technicalScore,
+  COMBINED_MAX,
+  FUNDAMENTAL_MAX,
+  RISK_MATRIX,
+  TECHNICAL_MAX,
 } from "./scoring";
 import { buildAlerts } from "./alerts";
 import { STAGE_UNIVERSE } from "./seed-data";
@@ -294,22 +298,42 @@ describe("audit hash chain", () => {
 });
 
 describe("techno-fundamental scoring", () => {
-  it("caps the technical checklist at 17", () => {
-    const perfect = tech17({
+  it("reports a ceiling that equals the sum of its own items", () => {
+    // The old assertion was `expect(perfect.score).toBe(16)` under the title
+    // "caps the technical checklist at 17" — it documented the bug instead of
+    // catching it. The ceiling is now derived, so the test cannot drift from
+    // the arithmetic no matter how many checks are added or removed.
+    const perfect = technicalScore({
       stage: 2, maSlopePct: 2, mansfieldRs: 9, rsRising: true, volRatio: 3,
       sectorStage: 2, marketStage: 2, epsGrowthPct: 40, revenueGrowthPct: 30,
     });
-    expect(perfect.score).toBe(16);
-    expect(perfect.score).toBeLessThanOrEqual(17);
-    expect(perfect.parts.length).toBeGreaterThan(5);
+    expect(perfect.score).toBe(perfect.max);
+    expect(perfect.max).toBe(TECHNICAL_MAX);
+
+    const itemTotal = perfect.parts.reduce((sum, part) => {
+      const declared = /\((\d+)\/(\d+)\)$/.exec(part.label);
+      return sum + Number(declared?.[2] ?? 0);
+    }, 0);
+    expect(itemTotal).toBe(perfect.max);
   });
 
   it("gives a Stage 4 name with no confirmation close to nothing", () => {
-    const worst = tech17({
+    const worst = technicalScore({
       stage: 4, maSlopePct: -2, mansfieldRs: -3, rsRising: false, volRatio: 0.5,
       sectorStage: 4, marketStage: 4, epsGrowthPct: -10, revenueGrowthPct: -10,
     });
     expect(worst.score).toBe(0);
+  });
+
+  it("credits rising relative strength even while it is still negative", () => {
+    // Stage 1 → 2 accumulation: RS improving from a deep hole is the signal
+    // this engine exists to catch, and the condition used to also demand RS
+    // already be positive, so it scored zero and told the user RS was flat.
+    const recovering = technicalScore({
+      stage: 1, maSlopePct: 0, mansfieldRs: -2, rsRising: true, volRatio: 1,
+      sectorStage: 0, marketStage: 0, epsGrowthPct: 0, revenueGrowthPct: 0,
+    });
+    expect(recovering.score).toBeGreaterThan(0);
   });
 
   it("refuses to buy a D-tier however good the chart is", () => {
@@ -614,5 +638,159 @@ describe("monte carlo bootstrap methods", () => {
     expect(bands[0].lo).toBe(500_000);
     expect(bands[0].med).toBe(500_000);
     expect(bands[0].hi).toBe(500_000);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  Regressions from the truthfulness audit.
+//
+//  Each of these is a case where the engine told the user something the engine
+//  itself had been handed evidence against. Every test below fails on the code
+//  as it stood before the audit.
+// ═══════════════════════════════════════════════════════════════════════════
+
+describe("the engine never contradicts its own input", () => {
+  it("never reports institutional selling as flat flow", () => {
+    // SELL and SELL_HEAVY in Stage 2 fell through to the FLAT branch and
+    // returned "Flow ทรงตัว — เข้าได้แต่ลดขนาด": the function was told
+    // institutions were dumping and said flow was flat, with a buy action.
+    for (const stage of [1, 2, 3, 4]) {
+      for (const flow of ["SELL", "SELL_HEAVY"] as const) {
+        const signal = flowSignal(flow, stage);
+        expect(signal.note, `${flow} @ stage ${stage}`).not.toContain("ทรงตัว");
+        expect(signal.action.toLowerCase(), `${flow} @ stage ${stage}`).not.toContain("buy");
+      }
+    }
+  });
+
+  it("never reports collapsing earnings as accelerating", () => {
+    // The old test was a second-derivative check with no sign condition, so a
+    // series easing its way down counted as acceleration.
+    const collapsing = [
+      [10, 5, 3, 2.5],
+      [100, 10, 2, 1.5],
+      [2, -5, -3, -1],
+      [8, 4, 2, 1],
+    ];
+    for (const series of collapsing) {
+      const result = earningsAnalysis(series.map((eps, i) => ({ label: `Q${i}`, eps })));
+      expect(result.accelerating, JSON.stringify(series)).toBe(false);
+    }
+  });
+
+  it("still recognises genuine acceleration", () => {
+    const result = earningsAnalysis([
+      { label: "Q1", eps: 1 },
+      { label: "Q2", eps: 1.1 },
+      { label: "Q3", eps: 1.35 },
+      { label: "Q4", eps: 1.8 },
+    ]);
+    expect(result.accelerating).toBe(true);
+  });
+
+  it("shows no growth rate off a loss-making base", () => {
+    // ((-3) - (-5)) / |-5| = +40%, rendered green as if earnings had grown.
+    // The loss shrank; nothing grew. There is no percentage to report.
+    const result = earningsAnalysis([
+      { label: "Q1", eps: 2 },
+      { label: "Q2", eps: -5 },
+      { label: "Q3", eps: -3 },
+      { label: "Q4", eps: -1 },
+    ]);
+    expect(result.rows[2].qoq).toBeNull();
+    expect(result.rows[3].qoq).toBeNull();
+    expect(result.latestYoY).toBeNull();
+
+    // A profitable base still reports normally, and without the abs() that
+    // used to flip the sign of a decline measured from a negative quarter.
+    const healthy = earningsAnalysis([
+      { label: "Q1", eps: 4 },
+      { label: "Q2", eps: 5 },
+    ]);
+    expect(healthy.rows[1].qoq).toBeCloseTo(25, 6);
+  });
+
+  it("gives the same risk figure from the matrix that the matrix computed", () => {
+    // The thesis card rendered `risk.size` beside `combined.riskPct`, which
+    // come from different inputs: stage 4 + strong fundamentals produced
+    // "EXIT ALL · เสี่ยง 2%". The matrix's own `risk` field was never read.
+    const cell = riskCell(4, 20, false);
+    expect(cell.size).toBe("EXIT ALL");
+    expect(cell.risk).not.toMatch(/^[1-9]/);
+  });
+});
+
+describe("declared ranges match what the engine can produce", () => {
+  it("the technical ceiling equals the sum of its items", () => {
+    expect(TECHNICAL_MAX).toBe(16);
+  });
+
+  it("the fundamental ceiling equals the sum of its items", () => {
+    const perfect = fundScore({
+      epsGrowthPct: 99, epsAccelerating: true, cfoGeNi: true, revenueGrowthPct: 99,
+      recurringRev: true, gmExpanding: true, opMarginAboveInd: true, debtEquity: 0,
+      currentRatio: 99, fcfYieldPct: 99, foreignNetBuy: true, fundIncreasing: true,
+      insiderBuying: true,
+    });
+    expect(perfect.score).toBe(perfect.max);
+    expect(perfect.max).toBe(FUNDAMENTAL_MAX);
+  });
+
+  it("every fundamental row can render as complete", () => {
+    // `max` was the CATEGORY budget, so a fully-earned 2-point item showed as
+    // "2/6" and the UI's complete-colour (pts === max) never fired for any row.
+    const perfect = fundScore({
+      epsGrowthPct: 99, epsAccelerating: true, cfoGeNi: true, revenueGrowthPct: 99,
+      recurringRev: true, gmExpanding: true, opMarginAboveInd: true, debtEquity: 0,
+      currentRatio: 99, fcfYieldPct: 99, foreignNetBuy: true, fundIncreasing: true,
+      insiderBuying: true,
+    });
+    for (const part of perfect.parts) {
+      expect(part.pts, part.label).toBe(part.max);
+    }
+  });
+
+  it("the combined ceiling is reachable, and the clamp is not below it", () => {
+    expect(COMBINED_MAX).toBe(TECHNICAL_MAX + FUNDAMENTAL_MAX);
+    expect(combinedScore(TECHNICAL_MAX, FUNDAMENTAL_MAX).score).toBe(COMBINED_MAX);
+    expect(combinedScore(TECHNICAL_MAX, FUNDAMENTAL_MAX).tier).toBe("S");
+  });
+
+  it("every row of the risk matrix is reachable", () => {
+    // S2B existed in the matrix and in the type, and `riskCell` could never
+    // route to it — four published cells, including the one that refuses a
+    // weak late-Stage-2 name, silently never fired.
+    const produced = new Set<string>();
+    for (const stage of [1, 2, 3, 4]) {
+      for (const triple of [true, false]) {
+        for (const fund of [0, 4, 8, 12, 16, 20]) {
+          produced.add(JSON.stringify(riskCell(stage, fund, triple)));
+        }
+      }
+    }
+    const declared = new Set<string>();
+    for (const row of Object.values(RISK_MATRIX)) {
+      for (const cell of Object.values(row)) declared.add(JSON.stringify(cell));
+    }
+    const unreachable = Array.from(declared).filter((c) => !produced.has(c));
+    expect(unreachable).toEqual([]);
+  });
+});
+
+describe("tier text describes only what the tier was given", () => {
+  it("never asserts a stage or a confirmation it cannot observe", () => {
+    // combinedScore receives two integers. The S-tier line claimed
+    // "Stage 2A + Triple Confirm + Earnings Acceleration + FCF แข็ง + สถาบันซื้อ"
+    // for ANY pair summing to 30 — rendered as the subtitle of that specific
+    // thesis, including Stage 4 names.
+    const forbidden = ["Stage 2A", "Stage 2", "Triple Confirm", "FCF", "สถาบันซื้อ"];
+    for (let tech = 0; tech <= TECHNICAL_MAX; tech++) {
+      for (let fund = 0; fund <= FUNDAMENTAL_MAX; fund++) {
+        const { text } = combinedScore(tech, fund);
+        for (const phrase of forbidden) {
+          expect(text, `tech=${tech} fund=${fund}`).not.toContain(phrase);
+        }
+      }
+    }
   });
 });
