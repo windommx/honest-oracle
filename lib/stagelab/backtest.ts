@@ -2,7 +2,7 @@
 // Runs the Weinstein Stage 2 strategy over deterministic synthetic weekly
 // series for the whole stock universe. Pure functions — no I/O.
 
-import { genSeries, setIndexCloses } from './market-sim'
+import { genSeries, setIndexCloses, type WeeklyBar } from './market-sim'
 
 export interface BacktestConfig {
   capital: number
@@ -184,6 +184,13 @@ export interface Robustness {
 }
 
 export interface BacktestResult {
+  /**
+   * Where the prices came from. A result computed on the simulator and one
+   * computed on observed prices look identical on the card, and they mean
+   * completely different things — so the result carries its provenance and
+   * the UI shows it.
+   */
+  dataSource: string
   config: BacktestConfig
   trades: BacktestTrade[]
   equity: EquityPoint[]
@@ -231,8 +238,8 @@ interface SymbolData {
   hh10: number[] // highest high of prior 10 bars
 }
 
-function buildData(symbol: string, sector: string): SymbolData {
-  const { bars } = genSeries(symbol)
+function buildData(symbol: string, sector: string, supplied?: WeeklyBar[]): SymbolData {
+  const bars = supplied ?? genSeries(symbol).bars
   const n = bars.length
   const c = bars.map((b) => b.c)
   const h = bars.map((b) => b.h)
@@ -263,6 +270,27 @@ function buildData(symbol: string, sector: string): SymbolData {
     }
   }
   return { symbol, sector, bars, c, h, vol, volAvg10, stage, rs, atr10, hh10 }
+}
+
+/** Stage of the benchmark itself, from supplied closes. Same rule as the simulator's. */
+function indexStagesFrom(closes: number[]): number[] {
+  const out: number[] = []
+  const ma: number[] = []
+  for (let i = 0; i < closes.length; i++) {
+    const from = Math.max(0, i - 29)
+    let s = 0
+    for (let j = from; j <= i; j++) s += closes[j]
+    ma.push(s / (i - from + 1))
+  }
+  for (let i = 0; i < closes.length; i++) {
+    if (i < 35) { out.push(1); continue }
+    const slope = ma[i - 5] > 0 ? (ma[i] - ma[i - 5]) / ma[i - 5] : 0
+    if (closes[i] > ma[i] && slope > 0.005) out.push(2)
+    else if (closes[i] < ma[i] && slope < -0.005) out.push(4)
+    else if (closes[i] > ma[i]) out.push(3)
+    else out.push(1)
+  }
+  return out
 }
 
 function indexStages(weeks: number): number[] {
@@ -541,14 +569,38 @@ function assessRobustness(inSample: PeriodStats, outOfSample: PeriodStats): Robu
   }
 }
 
+/**
+ * Real price history, when there is any.
+ *
+ * `bars` are weekly bars with the indicator columns already derived (see
+ * lib/stagelab/feed/resample.ts), and `benchmarkCloses` is the index series
+ * those bars were measured against. Supplying these makes the run use
+ * observed prices instead of the simulator — which is the only way the
+ * result answers "would this have worked" rather than "does this work on my
+ * own generator". Every symbol must share one calendar; the importer aligns
+ * them before they get here.
+ */
+export interface MarketData {
+  bars: Map<string, WeeklyBar[]>
+  benchmarkCloses: number[]
+  /** For the result to carry, so a number can be traced to its input. */
+  source: string
+}
+
 export function runBacktest(
   universe: { symbol: string; sector: string }[],
   cfg: BacktestConfig,
+  market?: MarketData,
 ): BacktestResult {
-  const WEEKS = 312
+  // Observed data sets its own length; the simulator's is fixed.
+  const WEEKS = market
+    ? Math.min(...universe.map((u) => market.bars.get(u.symbol)?.length ?? 0).filter((n) => n > 0))
+    : 312
   const WARMUP = 60 // skip first 60 weeks
-  const data = universe.map((u) => buildData(u.symbol, u.sector))
-  const idxStages = indexStages(WEEKS)
+  const data = universe
+    .filter((u) => !market || (market.bars.get(u.symbol)?.length ?? 0) >= WEEKS)
+    .map((u) => buildData(u.symbol, u.sector, market?.bars.get(u.symbol)?.slice(0, WEEKS)))
+  const idxStages = market ? indexStagesFrom(market.benchmarkCloses.slice(0, WEEKS)) : indexStages(WEEKS)
   const dates = data[0]?.bars.map((b) => b.t) ?? []
 
   const slippage = Math.max(0, cfg.slippagePct) / 100
@@ -804,6 +856,7 @@ export function runBacktest(
   const benchmark = buildBenchmark(cfg, data, WARMUP, WEEKS, totalReturnPct)
 
   return {
+    dataSource: market?.source ?? 'simulated (StageLab synthetic universe)',
     config: cfg,
     trades,
     equity,

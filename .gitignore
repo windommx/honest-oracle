@@ -16,3 +16,6 @@ __pycache__/
 # build artifacts
 next-env.d.ts
 *.tsbuildinfo
+
+# Imported price caches: data, not source. Provenance lives in the file itself.
+data/prices.json

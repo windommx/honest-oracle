@@ -23,7 +23,8 @@
     "typecheck": "tsc --noEmit",
     "verify": "npm run typecheck && npm run lint && npm run test && npm run build",
     "check:env": "tsx scripts/check-env.ts",
-    "smoke": "bash scripts/smoke.sh"
+    "smoke": "bash scripts/smoke.sh",
+    "prices": "tsx scripts/prices.ts"
   },
   "dependencies": {
     "@prisma/client": "^5.14.0",
