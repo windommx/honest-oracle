@@ -272,8 +272,26 @@ export interface MtfResult {
 
 // ─── Pro desk: Options ───────────────────────────────────────────────────────
 export interface OptionLeg {
-  type: 'CALL' | 'PUT'
+  /**
+   * STOCK is not decoration. A Covered Call is long stock plus a short call,
+   * and a Protective Put is long stock plus a long put; modelling only the
+   * option leg draws a naked short call and a lone put — the wrong shape and
+   * the wrong risk. The share position has to be in the payoff.
+   */
+  type: 'CALL' | 'PUT' | 'STOCK'
   action: 'BUY' | 'SELL'
+  /**
+   * Strike as a percentage of the spot price: 0 is at-the-money, +10 is ten
+   * percent out of the money for a call. The catalog stores this rather than
+   * an absolute price because a strike is only meaningful next to a spot —
+   * every leg used to carry `strike: 0`, which made a Bull Call Spread's
+   * payoff a flat line and a Protective Put's breakeven a negative share
+   * price. For STOCK this is the entry, so it is always 0.
+   */
+  strikePct: number
+  /** Premium as a percentage of spot, for the same reason. */
+  premiumPct: number
+  /** Resolved against a spot price by resolveLegs(). */
   strike: number
   premium: number // per share (บาท/หุ้น)
 }
@@ -298,6 +316,7 @@ export interface OptionPoint {
 export interface OptionStats {
   netCredit: number // negative = net debit paid
   breakevens: number[]
+  /** null means genuinely unbounded, not "not computed". */
   maxProfit: number | null
   maxLoss: number | null
 }

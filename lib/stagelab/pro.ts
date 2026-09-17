@@ -283,12 +283,54 @@ function r2(x: number): number {
 // Premiums below are demo-scale (บาท/หุ้น) — the UI lets users edit them.
 export function optionStrategiesFor(stage: number, marketScore: number): OptionStrategy[] {
   const all = OPTION_STRATEGIES
+  // The stage is the requirement; the market score narrows it. This was an
+  // OR, and Long Call carries marketScore [6, 10], so a confirmed Stage 4
+  // downtrend at a neutral score of 6 was answered with "ซื้อ Call เดี่ยว".
   const fit = all.filter(
     (s) =>
-      s.stages.includes(stage) ||
-      (s.marketScore && marketScore >= s.marketScore[0] && marketScore <= s.marketScore[1]),
+      s.stages.includes(stage) &&
+      (!s.marketScore || (marketScore >= s.marketScore[0] && marketScore <= s.marketScore[1])),
   )
-  return fit.length > 0 ? fit : all.slice(0, 2)
+  if (fit.length > 0) return fit
+  // Nothing fits the score: fall back to what fits the stage, rather than to
+  // the first two entries in the catalog regardless of stage.
+  return all.filter((s) => s.stages.includes(stage))
+}
+
+
+/**
+ * A catalog leg. `strikePct` and `premiumPct` are percentages of the spot
+ * price, resolved by resolveLegs() once the customer types one in. The demo
+ * premiums are the same numbers as before, now read as "4% of spot" rather
+ * than "4 baht" — which is what they always meant against the 100-baht
+ * default, and which stops a 5-baht stock being quoted a 4-baht premium.
+ */
+function leg(
+  type: OptionLeg['type'],
+  action: OptionLeg['action'],
+  strikePct: number,
+  premiumPct: number,
+): OptionLeg {
+  return { type, action, strikePct, premiumPct, strike: 0, premium: 0 }
+}
+
+/**
+ * Price the catalog against a real spot.
+ *
+ * Every leg in the catalog used to ship `strike: 0`, and nothing ever set it:
+ * the comment claimed "the UI lets users edit them" and the Options tab has
+ * no strike input. With both legs struck at zero their intrinsics cancelled,
+ * so a Bull Call Spread's payoff was a flat line at -2.50 across the whole
+ * chart, and a Protective Put's breakeven printed as -3.00 — a negative
+ * share price — beside a 100-baht spot.
+ */
+export function resolveLegs(legs: OptionLeg[], spot: number): OptionLeg[] {
+  const s = spot > 0 ? spot : 1
+  return legs.map((l) => ({
+    ...l,
+    strike: r2(l.type === 'STOCK' ? s : s * (1 + l.strikePct / 100)),
+    premium: r2(l.type === 'STOCK' ? s : (s * l.premiumPct) / 100),
+  }))
 }
 
 export const OPTION_STRATEGIES: OptionStrategy[] = [
@@ -298,7 +340,7 @@ export const OPTION_STRATEGIES: OptionStrategy[] = [
     th: 'ซื้อ Call เดี่ยว — ไม้รุกทุนน้อย',
     stages: [2],
     marketScore: [6, 10],
-    legs: [{ type: 'CALL', action: 'BUY', strike: 0, premium: 4 }],
+    legs: [leg('CALL', 'BUY', 0, 4)],
     usage: 'Stage 2 ที่ Market Score แข็ง — ใช้แทนการซื้อหุ้นเมื่อทุนจำกัด แต่ต้องยอมรับ Time Decay',
     maxProfit: 'ไม่จำกัด',
     maxLoss: 'เท่ากับ Premium ที่จ่าย',
@@ -308,10 +350,7 @@ export const OPTION_STRATEGIES: OptionStrategy[] = [
     name: 'Bull Call Spread',
     th: 'ซื้อ Call ต่ำ / ขาย Call สูง — ลดต้นทุน จำกัดกำไร',
     stages: [1, 2],
-    legs: [
-      { type: 'CALL', action: 'BUY', strike: 0, premium: 4 },
-      { type: 'CALL', action: 'SELL', strike: 0, premium: 1.5 },
-    ],
+    legs: [leg('CALL', 'BUY', 0, 4), leg('CALL', 'SELL', 10, 1.5)],
     usage: 'มองขาขึ้นแบบมีเพดาน — เหมาะกับ Stage 1 ปลาย/Stage 2 ช่วงต้นที่ยังไม่ยืนยันเต็ม',
     maxProfit: 'Strike สองลบต้นทุนสุทธิ',
     maxLoss: 'ส่วนต่าง Premium ที่จ่าย',
@@ -321,7 +360,7 @@ export const OPTION_STRATEGIES: OptionStrategy[] = [
     name: 'Covered Call',
     th: 'ถือหุ้น + ขาย Call เก็บพรีเมียม',
     stages: [2, 3],
-    legs: [{ type: 'CALL', action: 'SELL', strike: 0, premium: 3.5 }],
+    legs: [leg('STOCK', 'BUY', 0, 0), leg('CALL', 'SELL', 8, 3.5)],
     usage: 'Stage 3 เริ่มอ่อนแรง — สร้างรายได้จากพอร์ตที่กำไรแล้ว และกำหนดราคาขายอัตโนมัติ',
     maxProfit: 'ราคาหุ้นถึง Strike + Premium',
     maxLoss: 'ขาดทุนจากหุ้นลบ Premium ที่ได้',
@@ -331,7 +370,7 @@ export const OPTION_STRATEGIES: OptionStrategy[] = [
     name: 'Protective Put',
     th: 'ถือหุ้น + ซื้อ Put ประกัน',
     stages: [2, 3],
-    legs: [{ type: 'PUT', action: 'BUY', strike: 0, premium: 3 }],
+    legs: [leg('STOCK', 'BUY', 0, 0), leg('PUT', 'BUY', -5, 3)],
     usage: 'ถือไม้ใหญ่ข้ามประกาศงบ/เลือกตั้ง — ประกันขาลงโดยไม่ต้องขายหุ้น (ไม่เสียภาษีกำไร)',
     maxProfit: 'ไม่จำกัด (หุ้นขาขึ้น)',
     maxLoss: 'จำกัดที่ Strike − ราคาซื้อ + Premium',
@@ -341,10 +380,7 @@ export const OPTION_STRATEGIES: OptionStrategy[] = [
     name: 'Collar',
     th: 'ซื้อ Put ประกัน + ขาย Call จ่ายค่าประกัน',
     stages: [3],
-    legs: [
-      { type: 'PUT', action: 'BUY', strike: 0, premium: 3 },
-      { type: 'CALL', action: 'SELL', strike: 0, premium: 2.5 },
-    ],
+    legs: [leg('STOCK', 'BUY', 0, 0), leg('PUT', 'BUY', -5, 3), leg('CALL', 'SELL', 10, 2.5)],
     usage: 'Stage 3 คือพิธีกรรม — ล็อกพื้นที่ขายและเพดานขึ้นพร้อมกัน ต้นทุนประกันเกือบศูนย์',
     maxProfit: 'จำกัดที่ Call Strike',
     maxLoss: 'จำกัดที่ Put Strike',
@@ -354,10 +390,7 @@ export const OPTION_STRATEGIES: OptionStrategy[] = [
     name: 'Bear Put Spread',
     th: 'ซื้อ Put สูง / ขาย Put ต่ำ — ไม้ลงจำกัดความเสี่ยง',
     stages: [4],
-    legs: [
-      { type: 'PUT', action: 'BUY', strike: 0, premium: 4 },
-      { type: 'PUT', action: 'SELL', strike: 0, premium: 1.5 },
-    ],
+    legs: [leg('PUT', 'BUY', 0, 4), leg('PUT', 'SELL', -10, 1.5)],
     usage: 'Stage 4 ยืนยันแล้ว — ได้ประโยชน์จากขาลงแทนการ Short หุ้นจริง (ความเสี่ยงจำกัด)',
     maxProfit: 'ส่วนต่าง Strike ลบต้นทุนสุทธิ',
     maxLoss: 'Premium สุทธิที่จ่าย',
@@ -367,7 +400,7 @@ export const OPTION_STRATEGIES: OptionStrategy[] = [
     name: 'Long Put',
     th: 'ซื้อ Put เดี่ยว — เก็งขาลงแรง',
     stages: [4],
-    legs: [{ type: 'PUT', action: 'BUY', strike: 0, premium: 4.5 }],
+    legs: [leg('PUT', 'BUY', 0, 4.5)],
     usage: 'Stage 4 พร้อม Market Score 0–3 — อาวุธป้องกัน/โจมตีช่วงตลาดหมี',
     maxProfit: 'ถึงศูนย์บวก Strike',
     maxLoss: 'Premium ที่จ่าย',
@@ -378,21 +411,32 @@ export const OPTION_STRATEGIES: OptionStrategy[] = [
 export function optionPayoff(legs: OptionLeg[], spot: number): number {
   let pnl = 0
   for (const l of legs) {
+    if (l.type === 'STOCK') {
+      // Shares bought at `strike` (the entry). No premium either way.
+      pnl += l.action === 'BUY' ? spot - l.strike : l.strike - spot
+      continue
+    }
     const intrinsic = l.type === 'CALL' ? Math.max(0, spot - l.strike) : Math.max(0, l.strike - spot)
     pnl += l.action === 'BUY' ? intrinsic - l.premium : l.premium - intrinsic
   }
   return pnl
 }
 
+/**
+ * Payoff between two explicit prices.
+ *
+ * The signature used to be (legs, spot, span, steps) while the only caller
+ * wrote `payoffSeries(legs, spot * 0.7, spot * 1.3, 60)` — so `spot * 1.3`
+ * was silently consumed as the span. At a spot of 100 the caption read
+ * "70 → 130" and the chart actually ran 1 → 200. Taking the endpoints the
+ * caller already computes removes the mismatch instead of documenting it.
+ */
 export function payoffSeries(
   legs: OptionLeg[],
-  spot: number,
-  span = 40,
+  lo: number,
+  hi: number,
   steps = 80,
 ): OptionPoint[] {
-  const base = legs[0]?.strike || spot
-  const lo = Math.max(1, Math.min(base, spot) - span)
-  const hi = Math.max(base, spot) + span
   const out: OptionPoint[] = []
   for (let i = 0; i <= steps; i++) {
     const s = lo + ((hi - lo) * i) / steps
@@ -401,25 +445,49 @@ export function payoffSeries(
   return out
 }
 
-export function optionStats(legs: OptionLeg[]): OptionStats {
-  const net = legs.reduce((a, l) => a + (l.action === 'BUY' ? -l.premium : l.premium), 0)
+export function optionStats(legs: OptionLeg[], spot: number): OptionStats {
+  const net = legs.reduce(
+    (a, l) => a + (l.type === 'STOCK' ? 0 : l.action === 'BUY' ? -l.premium : l.premium),
+    0,
+  )
+
+  // Piecewise-linear: every turn happens at a strike, so sampling the kinks
+  // plus both ends gives the exact extremes of the bounded part.
+  const kinks = legs.filter((l) => l.type !== 'STOCK').map((l) => l.strike)
+  const far = Math.max(spot, ...kinks, 1) * 3
+  const probes = [0, ...kinks, spot, far].filter((x) => Number.isFinite(x)).sort((a, b) => a - b)
+  const values = probes.map((x) => optionPayoff(legs, x))
+
+  // Slope as the share price runs away upward: each long call and each long
+  // share adds one, each short subtracts one. Positive means the profit has
+  // no ceiling; negative means the loss has no floor. Zero means both ends
+  // are capped, which is the whole point of a spread or a collar.
+  const upSlope = legs.reduce((a, l) => {
+    if (l.type === 'PUT') return a
+    return a + (l.action === 'BUY' ? 1 : -1)
+  }, 0)
+
+  const maxProfit = upSlope > 0 ? null : Math.max(...values)
+  // Downward the share price stops at zero, so that end is always finite
+  // unless something is short and unbounded on the way up.
+  const maxLoss = upSlope < 0 ? null : Math.min(...values)
+
+  // Breakevens: where the payoff crosses zero between two probe points.
   const breakevens: number[] = []
-  if (legs.length === 1) {
-    const l = legs[0]
-    breakevens.push(l.type === 'CALL' ? l.strike + l.premium : l.strike - l.premium)
+  for (let i = 1; i < probes.length; i++) {
+    const [x0, x1] = [probes[i - 1], probes[i]]
+    const [y0, y1] = [values[i - 1], values[i]]
+    if (y0 === 0) breakevens.push(x0)
+    else if ((y0 < 0 && y1 > 0) || (y0 > 0 && y1 < 0)) {
+      breakevens.push(x0 + ((x1 - x0) * (0 - y0)) / (y1 - y0))
+    }
   }
-  // verticals: breakeven between the two strikes = |net| adjusted
-  if (legs.length === 2) {
-    const strikes = legs.map((l) => l.strike).sort((a, b) => a - b)
-    const lo = strikes[0]
-    const hi = strikes[1]
-    if (legs.every((l) => l.type === 'CALL')) breakevens.push(lo + Math.abs(net))
-    else if (legs.every((l) => l.type === 'PUT')) breakevens.push(hi - Math.abs(net))
-  }
+  if (values[values.length - 1] === 0) breakevens.push(probes[probes.length - 1])
+
   return {
-    netCredit: Math.round(net * 100) / 100,
-    breakevens: breakevens.map((x) => Math.round(x * 100) / 100),
-    maxProfit: null,
-    maxLoss: null,
+    netCredit: r2(net),
+    breakevens: Array.from(new Set(breakevens.map(r2))).sort((a, b) => a - b),
+    maxProfit: maxProfit === null ? null : r2(maxProfit),
+    maxLoss: maxLoss === null ? null : r2(maxLoss),
   }
 }

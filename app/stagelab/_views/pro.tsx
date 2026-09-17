@@ -23,6 +23,7 @@ import { useResource } from "../_api";
 import {
   OPTION_STRATEGIES,
   optionStats,
+  resolveLegs,
   optionStrategiesFor,
   payoffSeries,
 } from "@/lib/stagelab/pro";
@@ -293,10 +294,13 @@ function OptionsTab() {
     () => OPTION_STRATEGIES.find((s) => s.id === selected) ?? OPTION_STRATEGIES[0],
     [selected],
   );
-  const stats = useMemo(() => (strategy ? optionStats(strategy.legs) : null), [strategy]);
+  // Strikes and premiums are percentages of spot in the catalog; they only
+  // become prices once the customer tells us what the share costs.
+  const legs = useMemo(() => (strategy ? resolveLegs(strategy.legs, spot) : []), [strategy, spot]);
+  const stats = useMemo(() => (legs.length ? optionStats(legs, spot) : null), [legs, spot]);
   const payoff = useMemo(
-    () => (strategy ? payoffSeries(strategy.legs, spot * 0.7, spot * 1.3, 60) : []),
-    [strategy, spot],
+    () => (legs.length ? payoffSeries(legs, spot * 0.7, spot * 1.3, 60) : []),
+    [legs, spot],
   );
 
   return (
@@ -367,7 +371,7 @@ function OptionsTab() {
                   </tr>
                 </thead>
                 <tbody>
-                  {strategy.legs.map((leg, i) => (
+                  {legs.map((leg, i) => (
                     <tr key={i}>
                       <Td><Badge tone={leg.action === "BUY" ? "good" : "bad"}>{leg.action}</Badge></Td>
                       <Td align="center" className="text-xs text-zinc-200">{leg.type}</Td>
