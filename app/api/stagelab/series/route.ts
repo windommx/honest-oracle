@@ -25,22 +25,16 @@ export const GET = guarded('series.GET', async (req: Request) => {
   const stock = await prisma.stageStock.findUnique({ where: { symbol } })
   if (!stock) return notFound('ไม่พบหุ้นนี้ในจักรวาลข้อมูล')
 
+  // genSeries anchors every series to the symbol's published price, so the
+  // rescale this route used to apply locally is now done once, for every
+  // consumer, instead of only for the chart.
   const { bars } = genSeries(symbol)
-  const last = bars[bars.length - 1]
-  const scale = last && last.c > 0 && stock.price > 0 ? stock.price / last.c : 1
 
   return NextResponse.json({
     symbol,
     name: stock.name,
     sector: stock.sector,
     stage: stock.stage,
-    bars: bars.slice(-156).map((b) => ({
-      ...b,
-      o: b.o * scale,
-      h: b.h * scale,
-      l: b.l * scale,
-      c: b.c * scale,
-      ma30: b.ma30 * scale,
-    })),
+    bars: bars.slice(-156),
   })
 })

@@ -9,6 +9,7 @@ import {
   STAGE_UNIVERSE,
 } from './seed-data'
 import { weekKey } from './utils'
+import { genSeries } from './market-sim'
 
 // ╔══════════════════════════════════════════════════════════════════════════╗
 // ║  First-run bootstrap.                                                    ║
@@ -128,11 +129,47 @@ export function invalidateUniverseCache(): void {
  */
 export async function syncUniverse(): Promise<number> {
   for (const row of STAGE_UNIVERSE) {
+    const published = { ...row, ...derivedTechnicals(row.symbol) }
     await prisma.stageStock.upsert({
       where: { symbol: row.symbol },
-      create: row,
-      update: row,
+      create: published,
+      update: published,
     })
   }
   return STAGE_UNIVERSE.length
+}
+
+/**
+ * The technical columns, read off the symbol's own price history.
+ *
+ * STAGE_UNIVERSE used to carry hand-written values for these beside the price.
+ * The chart, the alert engine and the backtester all read the generated
+ * series instead, so the same stock existed twice with two different stories:
+ * measured across the universe, the stage in the screener row disagreed with
+ * the stage on that symbol's own chart for 46 of 61 symbols. KCE was a
+ * Stage 2 buy candidate in the table and a Stage 3 top on its chart.
+ *
+ * One generator, one answer. The authored row still supplies the things a
+ * simulator cannot know — the company, its sector, its price level and its
+ * fundamentals — and everything derivable from price is derived from price.
+ */
+function derivedTechnicals(symbol: string) {
+  const { bars } = genSeries(symbol)
+  const n = bars.length
+  const last = bars[n - 1]
+  const fiveAgo = bars[n - 6]
+
+  // Weekly volume in millions of shares, averaged over the last 10 weeks so a
+  // single spike does not set the screener's volume filter.
+  let vSum = 0
+  for (let i = n - 10; i < n; i++) vSum += bars[i].v
+
+  return {
+    ma30w: last.ma30,
+    ma30wSlopePct:
+      fiveAgo && fiveAgo.ma30 > 0 ? Math.round(((last.ma30 / fiveAgo.ma30 - 1) * 100) * 100) / 100 : 0,
+    weeklyVolumeM: Math.round((vSum / 10 / 1_000_000) * 10) / 10,
+    mansfieldRs: last.rs,
+    stage: last.stage,
+  }
 }

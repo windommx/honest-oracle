@@ -1,6 +1,19 @@
 // ─── Deterministic synthetic weekly OHLCV series (Stage-based market sim) ───
 // Generates stable, reproducible price history per symbol so the Backtester,
 // Thesis chart and RS calculations always see the same data.
+//
+// Every series ends at the symbol's authored price. That is not cosmetic.
+// The generator used to start each walk at `12 + rnd()*120` and end wherever
+// it ended, while the screener showed the price from STAGE_UNIVERSE — two
+// independent inventions of the same stock. Measured across the 61-symbol
+// universe, 46 rows had the simulator's 10-week high more than 2x away from
+// the price on screen, and the enrichment code compares them directly:
+// `breakout = s.price > ctx.highestHigh10`. Symbol A was displayed at 5.20
+// with an ATR of 11.60 — 223% of its own price — and a 10-week high of
+// 194.94. Anchoring the walk puts every derived figure (ATR, 10-week high,
+// Chandelier stop, the chart itself) in the same units as the number the
+// customer is reading, so comparing them means something.
+import { STAGE_UNIVERSE } from './seed-data'
 
 export interface WeeklyBar {
   i: number // bar index
@@ -169,6 +182,22 @@ function smaLast(arr: number[], window: number): number {
   return s / n
 }
 
+
+// ─── Price anchor ────────────────────────────────────────────────────────────
+let anchorCache: Map<string, number> | null = null
+
+/**
+ * The authored price for a symbol, or null for one that is not in the
+ * universe. A symbol we do not publish has no canonical price to anchor to,
+ * so its series keeps the generator's own scale rather than inventing one.
+ */
+export function priceAnchor(symbol: string): number | null {
+  if (!anchorCache) {
+    anchorCache = new Map(STAGE_UNIVERSE.map((r) => [r.symbol, r.price]))
+  }
+  return anchorCache.get(symbol) ?? null
+}
+
 // ─── Main generator ──────────────────────────────────────────────────────────
 const seriesCache = new Map<string, SymbolSeries>()
 
@@ -259,17 +288,28 @@ export function genSeries(symbol: string, totalWeeks = 312): SymbolSeries {
     else stage.push(1)
   }
 
+  // Put the whole path on the symbol's published scale. A single multiplier
+  // leaves every shape — returns, stage detection, relative strength, the
+  // 30-week MA's position against price — exactly as generated, because all
+  // of those are ratios. What changes is that the numbers now mean the same
+  // thing as the price in the screener row. `/api/stagelab/series` used to do
+  // this rescale itself, for the chart alone; every other consumer
+  // (enrichment, the alert engine, the Chandelier stop) got raw values.
+  const anchor = priceAnchor(symbol)
+  const lastClose = c[totalWeeks - 1]
+  const scale = anchor !== null && lastClose > 0 ? anchor / lastClose : 1
+
   const bars: WeeklyBar[] = []
   for (let i = 0; i < totalWeeks; i++) {
     bars.push({
       i,
       t: dates[i],
-      o: r2(o[i]),
-      h: r2(h[i]),
-      l: r2(l[i]),
-      c: r2(c[i]),
+      o: r2(o[i] * scale),
+      h: r2(h[i] * scale),
+      l: r2(l[i] * scale),
+      c: r2(c[i] * scale),
       v: v[i],
-      ma30: r2(ma[i]),
+      ma30: r2(ma[i] * scale),
       stage: stage[i],
       rs: r2(rs[i]),
     })
