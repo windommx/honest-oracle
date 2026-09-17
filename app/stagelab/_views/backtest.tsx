@@ -24,13 +24,16 @@ import type { BacktestConfig, BacktestResult } from "@/lib/stagelab/backtest";
 
 const DEFAULTS: BacktestConfig = {
   capital: 1_000_000,
-  riskPct: 1,
+  riskPct: 2,
   maxPositions: 8,
   commissionPct: 0.25,
   requireVolume: true,
   requireRs: true,
   marketFilter: false,
   slippagePct: 0.3,
+  atrStopMult: 3,
+  trailGivebackPct: 15,
+  exitOnStageThree: false,
 };
 
 export default function BacktestView({ onSessionChange }: { onSessionChange: () => void }) {

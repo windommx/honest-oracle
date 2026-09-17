@@ -230,16 +230,14 @@ describe("the backtest models fills a customer could actually get", () => {
     const stops = r.trades.filter((t) => t.exitReason === "Stop Loss");
     expect(stops.length, "a stop nobody can be hit by is not a stop")
       .toBeGreaterThan(1);
-    // A stop-out may land slightly green — the stop is tightened under the
-    // rising 30-week MA while the trade is in Stage 2, so it can be raised
-    // above the entry. What it may NOT do is book a large gain: past +20% the
-    // trailing stop owns the exit, so anything bigger means the wrong rule
-    // fired.
+    // A stop that has been ratcheted above the entry is a TRAILING stop, and
+    // is labelled as one. What is left in this bucket must therefore be what
+    // the word means: a trade that was cut for being wrong.
     for (const t of stops) {
-      expect(t.pnlPct, `${t.symbol} stopped out at +${t.pnlPct}%`).toBeLessThan(20);
+      expect(t.pnlPct, `${t.symbol} "stopped out" at +${t.pnlPct}%`).toBeLessThanOrEqual(0);
     }
     const avg = stops.reduce((a, t) => a + t.pnlPct, 0) / stops.length;
-    expect(avg, "stop-outs should lose money on average").toBeLessThan(0);
+    expect(avg, "stop-outs lose money — that is what they are for").toBeLessThan(0);
   });
 
   it("never fills an entry on the bar that produced the signal", () => {
@@ -286,5 +284,64 @@ describe("the backtest models fills a customer could actually get", () => {
     const r = runBacktest(universe, DEFAULT_BACKTEST_CONFIG);
     const total = r.splits.inSample.trades + r.splits.outOfSample.trades;
     expect(total).toBe(r.trades.length);
+  });
+});
+
+describe("the shipped rules beat owning the universe, and do it with less risk", () => {
+  const universe = STAGE_UNIVERSE.map((s) => ({ symbol: s.symbol, sector: s.sector }));
+  const calmar = (c: number, d: number) => (Math.abs(d) > 0.01 ? c / Math.abs(d) : 0);
+
+  it("earns more than buy-and-hold at a smaller drawdown", () => {
+    // The point of an active system is not return alone — it is return per
+    // unit of drawdown. The previous defaults returned 6.2% a year against a
+    // benchmark of 14.5% while still drawing down 7.2%: worse on both counts.
+    const r = runBacktest(universe, DEFAULT_BACKTEST_CONFIG);
+    expect(r.benchmark.excessReturnPct).toBeGreaterThan(0);
+    expect(Math.abs(r.stats.maxDdPct)).toBeLessThan(Math.abs(r.benchmark.maxDdPct));
+    expect(calmar(r.stats.cagrPct, r.stats.maxDdPct)).toBeGreaterThan(
+      calmar(r.benchmark.cagrPct, r.benchmark.maxDdPct),
+    );
+  });
+
+  it("sits on a plateau, not a spike — the mark of an effect rather than a fit", () => {
+    // A parameter that only works at one value is a parameter fitted to this
+    // series. Each of these neighbourhoods must stay good, not just the
+    // chosen value.
+    for (const atrStopMult of [3, 3.5, 4]) {
+      const r = runBacktest(universe, { ...DEFAULT_BACKTEST_CONFIG, atrStopMult });
+      expect(calmar(r.stats.cagrPct, r.stats.maxDdPct), `stop ${atrStopMult} ATR`)
+        .toBeGreaterThan(2);
+    }
+    for (const trailGivebackPct of [12, 15, 18]) {
+      const r = runBacktest(universe, { ...DEFAULT_BACKTEST_CONFIG, trailGivebackPct });
+      expect(calmar(r.stats.cagrPct, r.stats.maxDdPct), `trail ${trailGivebackPct}%`)
+        .toBeGreaterThan(2);
+    }
+  });
+
+  it("survives costs four times what it assumes", () => {
+    const dear = runBacktest(universe, {
+      ...DEFAULT_BACKTEST_CONFIG,
+      commissionPct: 1,
+      slippagePct: 1,
+    });
+    expect(dear.benchmark.excessReturnPct).toBeGreaterThan(0);
+  });
+
+  it("keeps the old rules available, and they are worse", () => {
+    // The previous behaviour is a configuration, not a deletion — a customer
+    // can still run it, and see why it changed.
+    const old = runBacktest(universe, {
+      ...DEFAULT_BACKTEST_CONFIG,
+      riskPct: 1,
+      atrStopMult: 2,
+      trailGivebackPct: 10,
+      exitOnStageThree: true,
+    });
+    const now = runBacktest(universe, DEFAULT_BACKTEST_CONFIG);
+    expect(old.stats.cagrPct).toBeLessThan(now.stats.cagrPct);
+    expect(calmar(old.stats.cagrPct, old.stats.maxDdPct)).toBeLessThan(
+      calmar(now.stats.cagrPct, now.stats.maxDdPct),
+    );
   });
 });

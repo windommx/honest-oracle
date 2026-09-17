@@ -194,13 +194,16 @@ export const thesisBody = z.object({
 
 export const backtestBody = z.object({
   capital: z.number().min(100_000).max(100_000_000).default(1_000_000),
-  riskPct: z.number().min(0.25).max(5).default(1),
+  riskPct: z.number().min(0.25).max(5).default(2),
   maxPositions: z.number().int().min(1).max(20).default(8),
   commissionPct: z.number().min(0).max(1).default(0.25),
   requireVolume: z.boolean().default(true),
   requireRs: z.boolean().default(true),
   marketFilter: z.boolean().default(false),
   slippagePct: z.number().min(0).max(2).default(0.3),
+  atrStopMult: z.number().min(1).max(6).default(3),
+  trailGivebackPct: z.number().min(5).max(40).default(15),
+  exitOnStageThree: z.boolean().default(false),
 })
 
 export const monteCarloBody = z.object({

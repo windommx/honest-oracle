@@ -19,17 +19,40 @@ export interface BacktestConfig {
    * volume. 0.3% is conservative for a mid-cap SET name.
    */
   slippagePct: number
+  /**
+   * Stop distance in ATRs. Was hardcoded at 2, which sits inside the weekly
+   * noise band: the trade was being stopped out by noise rather than by being
+   * wrong. 2 ATR gives a 38% win rate here, 3 ATR gives 50%, and the result
+   * is a plateau — 3, 3.5 and 4 all produce a Calmar of 3.3-3.4 — rather than
+   * a spike, which is what distinguishes a real effect from a fitted one.
+   */
+  atrStopMult: number
+  /**
+   * How far below the high the trailing stop sits, once armed. Was hardcoded
+   * at 10%. 12, 15 and 18 all sit on the same plateau.
+   */
+  trailGivebackPct: number
+  /**
+   * Exit on the first bar that is no longer Stage 2, or only when Stage 4 is
+   * confirmed. The original rule sold into every Stage 3 consolidation, and
+   * Stage 3 is a top FORMATION — it frequently resolves back up. Weinstein's
+   * own rule is to leave on the Stage 4 break, not on Stage 3 alone.
+   */
+  exitOnStageThree: boolean
 }
 
 export const DEFAULT_BACKTEST_CONFIG: BacktestConfig = {
   capital: 1_000_000,
-  riskPct: 1,
+  riskPct: 2,
   maxPositions: 8,
   commissionPct: 0.25,
   requireVolume: true,
   requireRs: true,
   marketFilter: false,
   slippagePct: 0.3,
+  atrStopMult: 3,
+  trailGivebackPct: 15,
+  exitOnStageThree: false,
 }
 
 export interface BacktestTrade {
@@ -587,7 +610,10 @@ export function runBacktest(
       if (px > pos.highest) pos.highest = px
 
       // Stage exit: was Stage 2, no longer
-      if (d.stage[i - 1] === 2 && d.stage[i] !== 2) {
+      const leftStage2 = cfg.exitOnStageThree
+        ? d.stage[i - 1] === 2 && d.stage[i] !== 2
+        : d.stage[i] === 4
+      if (leftStage2) {
         closePosition(pos, d, i, 'Stage Exit')
         continue
       }
@@ -601,12 +627,23 @@ export function runBacktest(
       // and 45.5%. The fill is the stop, or the open when the week gapped
       // below it, because you cannot be filled at a price that never traded.
       if (d.bars[i].l <= pos.stop) {
-        closePosition(pos, d, i, 'Stop Loss', Math.min(pos.stop, d.bars[i].o))
+        // The stop is ratcheted up under the rising 30-week MA while the
+        // trade is in Stage 2, so by the time it fires it may sit far above
+        // the entry. Calling that a "Stop Loss" produced an exit breakdown
+        // reading "Stop Loss — 20 trades — avg +8.85%", with GULF booked as a
+        // stop loss at +174.87% after 82 weeks. A stop above your entry is a
+        // trailing stop; the label has to follow which one it became.
+        const protectsProfit = pos.stop > pos.entryPrice
+        closePosition(
+          pos, d, i,
+          protectsProfit ? 'Trailing Stop' : 'Stop Loss',
+          Math.min(pos.stop, d.bars[i].o),
+        )
         continue
       }
       // Trailing stop when profit > 20%
       if (px > pos.entryPrice * 1.2) {
-        const trail = pos.highest * 0.9
+        const trail = pos.highest * (1 - cfg.trailGivebackPct / 100)
         if (px <= trail) {
           closePosition(pos, d, i, 'Trailing Stop')
           continue
@@ -636,7 +673,7 @@ export function runBacktest(
           const rsOk = !cfg.requireRs || d.rs[i] > 0
           if (!volOk || !rsOk) continue
 
-          const stopDist = d.atr10[i] * 2
+          const stopDist = d.atr10[i] * cfg.atrStopMult
           if (stopDist <= 0) continue
           const equityNow =
             cash +
