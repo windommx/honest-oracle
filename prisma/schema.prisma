@@ -25,6 +25,7 @@ model User {
   usage     UsageDay[]
   subscription Subscription?
   rushProjects RushProject[]
+  competencyNurses CompetencyNurse[]
 }
 
 model Analysis {
@@ -182,4 +183,45 @@ model RushProjectVersion {
   createdAt  DateTime @default(now())
 
   project    RushProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+// ── HD Competency — hemodialysis-nurse competency assessment ────────────────
+// A nurse belongs to the account that created them (the unit head), so a unit's
+// roster is private to that login. Scores are the raw form: a JSON map
+// criterionId ("1".."10") → point (1-5). totalScore and level are DERIVED by
+// lib/competency/scoring.ts on every write and stored only so lists and stats can
+// query them without re-parsing JSON; they are never accepted from a client.
+model CompetencyNurse {
+  id          String   @id @default(cuid())
+  userId      String
+  fullName    String
+  nickname    String?
+  position    String   @default("พยาบาลวิชาชีพ")
+  // ระดับบริหาร from the OUTCOME sheet: 6 = หัวหน้าแผนก (Top Manager), 7 = ผู้จัดการศูนย์
+  // (Director). Assigned by role, never computed from a score.
+  mgmtLevel   Int?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user        User                   @relation(fields: [userId], references: [id])
+  assessments CompetencyAssessment[]
+
+  @@index([userId])
+}
+
+model CompetencyAssessment {
+  id         String   @id @default(cuid())
+  nurseId    String
+  assessDate DateTime @default(now())
+  assessor   String?
+  note       String?
+  scores     Json
+  totalScore Int
+  level      Int
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  nurse      CompetencyNurse @relation(fields: [nurseId], references: [id], onDelete: Cascade)
+
+  @@index([nurseId, assessDate])
 }
