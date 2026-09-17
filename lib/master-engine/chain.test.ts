@@ -372,3 +372,37 @@ describe("audit", () => {
     expect(auditMaster([bad, inverted], SR, target).severity).toBe("problem");
   });
 });
+
+describe("metering the raw side of an A/B", () => {
+  it("meterOnly fills the same meters process() does", () => {
+    // Pressing RAW is exactly when an operator wants to read the two loudness
+    // numbers against each other, so that is the worst possible moment for
+    // the meter to go blank.
+    const input = music(2, 0.4);
+    const chain = new MasterChain(SR, { ...NEUTRAL, eq: defaultEqBands() });
+    chain.meterOnly(input.l, input.r);
+    const m = chain.meters;
+    expect(m.peak).toBeGreaterThan(0);
+    expect(Number.isFinite(m.shortTermLufs)).toBe(true);
+  });
+
+  it("agrees with what process() would have measured on the same samples", () => {
+    const input = music(2, 0.4);
+    const processed = new MasterChain(SR, { ...NEUTRAL, eq: defaultEqBands() });
+    const out = { l: new Float32Array(input.l.length), r: new Float32Array(input.r.length) };
+    processed.process(input.l, input.r, out.l, out.r);
+
+    const metered = new MasterChain(SR, { ...NEUTRAL, eq: defaultEqBands() });
+    metered.meterOnly(out.l, out.r);
+
+    expect(metered.meters.shortTermLufs).toBeCloseTo(processed.meters.shortTermLufs, 6);
+    expect(metered.meters.peak).toBeCloseTo(processed.meters.peak, 6);
+  });
+
+  it("does not change the samples it is given", () => {
+    const input = music(0.5);
+    const before = Array.from(input.l);
+    new MasterChain(SR, DEFAULT_MASTER).meterOnly(input.l, input.r);
+    expect(Array.from(input.l)).toEqual(before);
+  });
+});

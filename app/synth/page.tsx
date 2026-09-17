@@ -411,7 +411,11 @@ export default function SynthPage() {
           <Link href="/therapy/session" className="text-gold">
             MindBridge
           </Link>{" "}
-          ด้วย
+          ด้วย — และไฟล์ที่บันทึกจากที่นี่เอาไปต่อที่{" "}
+          <Link href="/master" className="text-gold">
+            MasterPro
+          </Link>{" "}
+          ได้เลย
         </p>
       </footer>
     </main>

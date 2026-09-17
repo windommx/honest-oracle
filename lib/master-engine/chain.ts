@@ -202,13 +202,32 @@ export class MasterChain {
       const outL = this.limiter.outLeft;
       const outR = this.limiter.outRight;
 
-      this.meter.tick(outL, outR);
-      const magnitude = Math.max(Math.abs(outL), Math.abs(outR));
-      if (magnitude > this.peakSeen) this.peakSeen = magnitude;
+      this.meterSample(outL, outR);
 
       outLeft[i] = outL;
       outRight[i] = outR;
     }
+  }
+
+  private meterSample(left: number, right: number): void {
+    this.meter.tick(left, right);
+    const magnitude = Math.max(Math.abs(left), Math.abs(right));
+    if (magnitude > this.peakSeen) this.peakSeen = magnitude;
+  }
+
+  /**
+   * Meter a block that did NOT come through process().
+   *
+   * The RAW side of an A/B plays the file directly — deliberately, because a
+   * neutral pass through the chain still adds the limiter's lookahead and an
+   * A/B where one side is milliseconds late sounds different for that reason
+   * alone. But the meters live in here, so without this they went blank the
+   * moment the operator pressed RAW, which is exactly the moment they want to
+   * read the two loudness numbers against each other.
+   */
+  meterOnly(left: Float32Array, right: Float32Array): void {
+    const n = Math.min(left.length, right.length);
+    for (let i = 0; i < n; i++) this.meterSample(left[i], right[i]);
   }
 }
 

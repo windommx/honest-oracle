@@ -18,3 +18,4 @@ export * from "./chain";
 export * from "./presets";
 export * from "./quickfix";
 export * from "./audit";
+export * from "./offline";
