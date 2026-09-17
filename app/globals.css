@@ -102,3 +102,38 @@ a {
 .input::placeholder { color: #6b7280; }
 .input:hover { border-color: rgba(255, 255, 255, 0.20); }
 .input:focus { border-color: var(--gold); }
+
+/* ── HD Competency (/competency) — the suite's one LIGHT module ───────────────
+   The page body is dark by default; this module paints its own light surface
+   (app/competency/layout.tsx). The gold focus ring measures ~1.6:1 on white, so
+   the ring is re-coloured to the module accent here. */
+.competency {
+  color-scheme: light;
+}
+.competency :where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline-color: #0f766e;
+}
+
+@media print {
+  @page {
+    size: A4;
+    margin: 14mm;
+  }
+  body,
+  .competency {
+    background: #fff !important;
+    color: #0f172a !important;
+  }
+  .competency .no-print {
+    display: none !important;
+  }
+  .competency .print-doc {
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+  }
+  .competency main {
+    padding: 0 !important;
+    max-width: none !important;
+  }
+}
