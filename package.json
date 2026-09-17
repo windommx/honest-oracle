@@ -2,6 +2,9 @@
   "name": "naraname",
   "version": "1.0.0",
   "private": true,
+  "engines": {
+    "node": "20.x"
+  },
   "scripts": {
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
@@ -30,7 +33,7 @@
     "dexie": "^4.4.4",
     "lucide-react": "^0.378.0",
     "next": "14.2.35",
-    "next-auth": "^4.24.7",
+    "next-auth": "^4.24.15",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "stripe": "^16.0.0",

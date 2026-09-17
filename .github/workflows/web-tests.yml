@@ -14,6 +14,9 @@ on:
       - 'tsconfig.json'
       - 'vitest.config.ts'
       - '.eslintrc.json'
+      - 'postcss.config.js'
+      - 'tailwind.config.ts'
+      - 'scripts/**'
       - '.github/workflows/web-tests.yml'
   pull_request:
     paths:
@@ -28,6 +31,9 @@ on:
       - 'tsconfig.json'
       - 'vitest.config.ts'
       - '.eslintrc.json'
+      - 'postcss.config.js'
+      - 'tailwind.config.ts'
+      - 'scripts/**'
       - '.github/workflows/web-tests.yml'
 
 jobs:
@@ -105,3 +111,24 @@ jobs:
 
       - name: Migration status is clean
         run: npx prisma migrate status
+
+  audit:
+    runs-on: ubuntu-latest
+    name: dependency advisories (reporting only)
+    # Deliberately non-blocking, and labelled as such rather than pretending
+    # otherwise. The remaining production advisories are all in `next` and its
+    # transitives (nanoid, postcss) plus `qs` under `stripe`, and the
+    # vulnerable range covers every 14.x — there is no patch-level escape, only
+    # a major upgrade. A gate that fails on day one gets switched off in a
+    # week; this one surfaces the list on every run so the number is visible
+    # and a regression is obvious. Make it blocking once Next is upgraded.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - name: Production advisories
+        run: npm audit --omit=dev
