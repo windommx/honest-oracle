@@ -4,7 +4,11 @@ import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/server/session";
 
 const schema = z.object({
-  plan: z.enum(["free", "pro", "premium"]).optional(),
+  // "premium" unlocks the public Oracle API; "team" is the ฿1,890 StageLab
+  // tier. Both are sold, and neither could be assigned: the enum accepted
+  // "premium" (which stagePlan() did not recognise, so a premium customer
+  // silently got Free StageLab limits) and rejected "team" outright.
+  plan: z.enum(["free", "pro", "premium", "team"]).optional(),
   role: z.enum(["user", "admin"]).optional(),
 });
 

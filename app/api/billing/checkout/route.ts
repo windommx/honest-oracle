@@ -69,6 +69,11 @@ export async function POST(request: NextRequest) {
     cancel_url: `${env.NEXTAUTH_URL}${returnTo}?canceled=1`,
     client_reference_id: user.id,
     metadata: { userId: user.id, plan: "pro" },
+    // Stripe does NOT copy Checkout Session metadata onto the Subscription it
+    // creates. Without this, every customer.subscription.* event arrived with
+    // empty metadata, the webhook's `if (userId)` body never ran, and no
+    // cancellation, lapse or failed payment ever downgraded anybody.
+    subscription_data: { metadata: { userId: user.id, plan: "pro" } },
   });
 
   return NextResponse.json({ url: session.url });

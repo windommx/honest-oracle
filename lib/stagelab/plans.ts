@@ -144,6 +144,10 @@ export const STAGE_PLANS: Record<StagePlanKey, StagePlan> = {
 export function stagePlan(plan: string | null | undefined): StagePlan {
   if (plan === 'pro') return STAGE_PLANS.pro
   if (plan === 'team') return STAGE_PLANS.team
+  // "premium" is the Oracle product's paid tier. It is not a StageLab plan,
+  // but it is strictly more expensive than Pro, and dropping such a customer
+  // to Free limits was a billing bug wearing the clothes of a default.
+  if (plan === 'premium') return STAGE_PLANS.pro
   return STAGE_PLANS.free
 }
 
