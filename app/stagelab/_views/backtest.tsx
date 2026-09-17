@@ -147,7 +147,9 @@ export default function BacktestView({ onSessionChange }: { onSessionChange: () 
                       ? "border-emerald-500/30 bg-emerald-500/5 text-emerald-100"
                       : result.robustness.verdict === "insufficient"
                         ? "border-zinc-700 bg-zinc-800/40 text-zinc-300"
-                        : "border-red-500/30 bg-red-500/5 text-red-100"
+                        : result.robustness.verdict === "diverged"
+                          ? "border-amber-500/30 bg-amber-500/5 text-amber-100"
+                          : "border-red-500/30 bg-red-500/5 text-red-100"
                   }`}
                 >
                   {result.robustness.note}

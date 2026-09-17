@@ -159,3 +159,42 @@ describe("a rule the UI advertises is one the engine can reach", () => {
       .toBeGreaterThan(0);
   });
 });
+
+describe("the robustness verdict follows the gap it reports", () => {
+  const universe = STAGE_UNIVERSE.map((s) => ({ symbol: s.symbol, sector: s.sector }));
+
+  it("does not call a 25-point gap 'close'", () => {
+    // The test was one-sided — `gap < -5` meant degraded, everything else fell
+    // through to "consistent", whose note reads "ผลสองช่วงใกล้เคียงกัน".
+    // Sweeping 384 configurations: 348 had a gap above +5 and not one had a
+    // gap below -5, so "degraded" could not fire on this data while the
+    // reassuring line was printed over gaps of 25 and 53 points.
+    const r = runBacktest(universe, DEFAULT_BACKTEST_CONFIG);
+    expect(Math.abs(r.robustness.cagrGapPct)).toBeGreaterThan(5);
+    expect(r.robustness.verdict).not.toBe("consistent");
+    expect(r.robustness.note).not.toContain("ใกล้เคียงกัน — ");
+  });
+
+  it("flags a wide gap in either direction", () => {
+    // Whatever the configuration, a verdict of "consistent" must mean the two
+    // halves really are close.
+    const configs = [
+      { riskPct: 0.5, maxPositions: 4 },
+      { riskPct: 1, maxPositions: 8 },
+      { riskPct: 2, maxPositions: 12 },
+      { riskPct: 3, maxPositions: 6, requireVolume: false },
+    ];
+    let checked = 0;
+    for (const c of configs) {
+      const r = runBacktest(universe, { ...DEFAULT_BACKTEST_CONFIG, ...c });
+      if (r.robustness.verdict === "insufficient") continue;
+      checked++;
+      if (r.robustness.verdict === "consistent") {
+        expect(Math.abs(r.robustness.cagrGapPct), JSON.stringify(c)).toBeLessThanOrEqual(5);
+      } else {
+        expect(Math.abs(r.robustness.cagrGapPct), JSON.stringify(c)).toBeGreaterThan(5);
+      }
+    }
+    expect(checked, "no configuration produced a judgeable split").toBeGreaterThan(0);
+  });
+});

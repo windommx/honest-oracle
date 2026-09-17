@@ -116,7 +116,12 @@ export interface Benchmark {
   excessReturnPct: number
 }
 
-export type RobustnessVerdict = 'consistent' | 'degraded' | 'reversed' | 'insufficient'
+export type RobustnessVerdict =
+  | 'consistent'
+  | 'degraded'
+  | 'diverged'
+  | 'reversed'
+  | 'insufficient'
 
 /**
  * A plain reading of the in-sample / out-of-sample gap.
@@ -468,10 +473,27 @@ function assessRobustness(inSample: PeriodStats, outOfSample: PeriodStats): Robu
       note: `ผลช่วงหลังแย่กว่าช่วงแรก ${Math.abs(gap).toFixed(1)} จุด — ค่าที่ตั้งไว้อาจเข้ากับช่วงแรกมากเป็นพิเศษ ลองผ่อนค่าที่ปรับละเอียดที่สุดลง`,
     }
   }
+  // The test used to be one-sided: anything not below -5 fell through to
+  // "consistent", whose note reads "ผลสองช่วงใกล้เคียงกัน" — the two periods
+  // are close. The default configuration produces a gap of +25.4 points, and
+  // said that. Sweeping 384 configurations, 348 had a gap above +5 and not
+  // one had a gap below -5, so "degraded" could not fire on this data while
+  // the reassuring line was printed over gaps of 25 and 53 points.
+  //
+  // A large gap in either direction means the two halves are not the same
+  // regime. That is not proof of overfitting the way a collapse is, but it is
+  // the opposite of "close", and the card must not say close.
+  if (gap > 5) {
+    return {
+      verdict: 'diverged',
+      cagrGapPct: gap,
+      note: `ผลช่วงหลังดีกว่าช่วงแรก ${gap.toFixed(1)} จุด — สองช่วงไม่ใช่สภาพตลาดเดียวกัน ตัวเลขรวมจึงถูกดึงขึ้นด้วยช่วงหลังเป็นหลัก อย่าอ่านผลรวมเป็นสิ่งที่คาดหวังได้ในตลาดปกติ`,
+    }
+  }
   return {
     verdict: 'consistent',
     cagrGapPct: gap,
-    note: 'ผลสองช่วงใกล้เคียงกัน — ยังไม่เห็นสัญญาณว่าค่าที่ตั้งไว้เข้ากับข้อมูลชุดนี้เป็นพิเศษ',
+    note: `ผลสองช่วงต่างกัน ${Math.abs(gap).toFixed(1)} จุด — ใกล้เคียงกันพอที่จะยังไม่เห็นสัญญาณว่าค่าที่ตั้งไว้เข้ากับข้อมูลชุดนี้เป็นพิเศษ`,
   }
 }
 
