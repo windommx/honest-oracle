@@ -178,11 +178,14 @@ describe("the robustness verdict follows the gap it reports", () => {
   it("flags a wide gap in either direction", () => {
     // Whatever the configuration, a verdict of "consistent" must mean the two
     // halves really are close.
+    // Bucketing by ENTRY makes the split stricter — the default config only
+    // opens 22 positions in six years, so its out-of-sample side is honestly
+    // "insufficient". These configs relax the entry filters enough to clear
+    // the ten-trades-a-side bar.
     const configs = [
-      { riskPct: 0.5, maxPositions: 4 },
-      { riskPct: 1, maxPositions: 8 },
-      { riskPct: 2, maxPositions: 12 },
-      { riskPct: 3, maxPositions: 6, requireVolume: false },
+      { requireVolume: false, requireRs: false, maxPositions: 12, riskPct: 0.5 },
+      { requireVolume: false, requireRs: false, maxPositions: 20, riskPct: 1 },
+      { requireVolume: false, requireRs: true, maxPositions: 12, riskPct: 0.5 },
     ];
     let checked = 0;
     for (const c of configs) {
@@ -196,5 +199,66 @@ describe("the robustness verdict follows the gap it reports", () => {
       }
     }
     expect(checked, "no configuration produced a judgeable split").toBeGreaterThan(0);
+  });
+});
+
+describe("the backtest models fills a customer could actually get", () => {
+  const universe = STAGE_UNIVERSE.map((s) => ({ symbol: s.symbol, sector: s.sector }));
+
+  it("stops out on the week's low, not only on its close", () => {
+    // A week that traded straight through the stop and recovered by Friday
+    // used to stop nobody out. Across the default run that one assumption was
+    // the difference between 1 stop-out and 7.
+    const r = runBacktest(universe, DEFAULT_BACKTEST_CONFIG);
+    const stops = r.trades.filter((t) => t.exitReason === "Stop Loss");
+    expect(stops.length, "a stop nobody can be hit by is not a stop")
+      .toBeGreaterThan(1);
+    for (const t of stops) {
+      expect(t.pnlPct, `${t.symbol} stopped out at a profit?`).toBeLessThan(0);
+    }
+  });
+
+  it("never fills an entry on the bar that produced the signal", () => {
+    // Every entry condition needs bar i to have closed, so bar i's close is
+    // not a price the order could have been filled at.
+    const r = runBacktest(universe, DEFAULT_BACKTEST_CONFIG);
+    expect(r.trades.length).toBeGreaterThan(5);
+    for (const t of r.trades) {
+      expect(t.entryIdx, `${t.symbol}`).toBeGreaterThan(0);
+      expect(t.exitIdx).toBeGreaterThanOrEqual(t.entryIdx);
+    }
+  });
+
+  it("charges slippage, and charging more of it hurts", () => {
+    const none = runBacktest(universe, { ...DEFAULT_BACKTEST_CONFIG, slippagePct: 0 });
+    const some = runBacktest(universe, { ...DEFAULT_BACKTEST_CONFIG, slippagePct: 1 });
+    expect(some.stats.totalReturnPct).toBeLessThan(none.stats.totalReturnPct);
+  });
+
+  it("banks the headline: nothing is left open when the run ends", () => {
+    // The equity curve stopped at the last bar and the End-of-Test closes
+    // happened after it, so their costs hit the trade records and never the
+    // headline. 56% of the reported profit sat in positions never sold.
+    const r = runBacktest(universe, DEFAULT_BACKTEST_CONFIG);
+    const last = r.equity[r.equity.length - 1];
+    expect(last.positions, "the book must be flat at the end").toBe(0);
+    expect(r.stats.finalValue).toBe(last.value);
+  });
+
+  it("reports how much capital was working, not just how many weeks were busy", () => {
+    // 99.6% of weeks had a position open; 24.4% of equity was invested. The
+    // week count next to a -3% drawdown reads as "fully invested and barely
+    // fell". It was in cash.
+    const r = runBacktest(universe, DEFAULT_BACKTEST_CONFIG);
+    expect(r.stats.capitalDeployedPct).toBeGreaterThan(0);
+    expect(r.stats.capitalDeployedPct).toBeLessThan(r.stats.exposurePct);
+  });
+
+  it("credits a trade to the period it was chosen in", () => {
+    // Bucketing by exit date credited a position opened a year before the
+    // split entirely to the out-of-sample column.
+    const r = runBacktest(universe, DEFAULT_BACKTEST_CONFIG);
+    const total = r.splits.inSample.trades + r.splits.outOfSample.trades;
+    expect(total).toBe(r.trades.length);
   });
 });

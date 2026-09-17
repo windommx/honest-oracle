@@ -30,6 +30,7 @@ const DEFAULTS: BacktestConfig = {
   requireVolume: true,
   requireRs: true,
   marketFilter: false,
+  slippagePct: 0.3,
 };
 
 export default function BacktestView({ onSessionChange }: { onSessionChange: () => void }) {

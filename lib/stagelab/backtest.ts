@@ -12,6 +12,13 @@ export interface BacktestConfig {
   requireVolume: boolean
   requireRs: boolean
   marketFilter: boolean // only enter when SET index stage == 2
+  /**
+   * Per side, applied against the trade: a buy fills higher, a sale lower.
+   * Commission was the only cost modelled, which quietly assumed every order
+   * filled at the exact closing print of a week that traded 1.5x its average
+   * volume. 0.3% is conservative for a mid-cap SET name.
+   */
+  slippagePct: number
 }
 
 export const DEFAULT_BACKTEST_CONFIG: BacktestConfig = {
@@ -22,6 +29,7 @@ export const DEFAULT_BACKTEST_CONFIG: BacktestConfig = {
   requireVolume: true,
   requireRs: true,
   marketFilter: false,
+  slippagePct: 0.3,
 }
 
 export interface BacktestTrade {
@@ -38,6 +46,10 @@ export interface BacktestTrade {
   exitReason: 'Stage Exit' | 'Stop Loss' | 'Trailing Stop' | 'End of Test'
   /** Bar index the trade closed on — used to assign it to a period. */
   exitIdx: number
+  /** Bar the position was opened on. The split buckets by this: a trade
+   *  selected under in-sample conditions and merely CLOSED after the
+   *  boundary was being credited entirely to the out-of-sample column. */
+  entryIdx: number
 }
 
 export interface EquityPoint {
@@ -78,7 +90,16 @@ export interface BacktestStats {
   /** Share of weeks holding at least one position. A strategy that returns 8%
    *  while invested a third of the time is not the same as one that returns 8%
    *  fully invested, and the equity curve alone will not tell you which. */
+  /** Share of test weeks with at least one position open. */
   exposurePct: number
+  /**
+   * Average share of equity actually invested. The week count above says
+   * nothing about size: a book holding one position worth 3% of equity counts
+   * the same week as one fully deployed, and reading 99.2% next to a -3%
+   * drawdown invites the conclusion that the strategy was fully invested and
+   * barely fell. It was in cash.
+   */
+  capitalDeployedPct: number
   /** Average % outcome per trade, wins and losses together. */
   expectancyPct: number
   /** Longest run of consecutive weeks below a prior equity peak. */
@@ -507,10 +528,12 @@ export function runBacktest(
   const idxStages = indexStages(WEEKS)
   const dates = data[0]?.bars.map((b) => b.t) ?? []
 
+  const slippage = Math.max(0, cfg.slippagePct) / 100
   let cash = cfg.capital
   let peak = cfg.capital
   let maxDd = 0
   let exposedWeeks = 0
+  let deployedSum = 0
   const positions = new Map<string, OpenPos>()
   const trades: BacktestTrade[] = []
   const equity: EquityPoint[] = []
@@ -524,8 +547,9 @@ export function runBacktest(
     d: SymbolData,
     i: number,
     reason: BacktestTrade['exitReason'],
+    fillAt?: number,
   ) => {
-    const exitPrice = priceOf(d, i)
+    const exitPrice = (fillAt ?? priceOf(d, i)) * (1 - slippage)
     const proceeds = pos.shares * exitPrice
     const cost = proceeds * commission
     // Both legs. The entry commission was taken out of `cash` when the
@@ -547,6 +571,7 @@ export function runBacktest(
       holdWeeks: i - pos.entryIdx,
       exitReason: reason,
       exitIdx: i,
+      entryIdx: pos.entryIdx,
     })
     positions.delete(pos.symbol)
   }
@@ -566,9 +591,17 @@ export function runBacktest(
         closePosition(pos, d, i, 'Stage Exit')
         continue
       }
-      // Stop loss
-      if (px <= pos.stop) {
-        closePosition(pos, d, i, 'Stop Loss')
+      // Stop loss.
+      //
+      // Triggered by the week's LOW, not its close. Comparing the close alone
+      // meant a week that traded straight through the stop and recovered by
+      // Friday never stopped anyone out — a stop nobody can be hit by is not
+      // a stop. Across the default run that single assumption was the
+      // difference between 1 stop-out and 7, and between a 63.6% win rate
+      // and 45.5%. The fill is the stop, or the open when the week gapped
+      // below it, because you cannot be filled at a price that never traded.
+      if (d.bars[i].l <= pos.stop) {
+        closePosition(pos, d, i, 'Stop Loss', Math.min(pos.stop, d.bars[i].o))
         continue
       }
       // Trailing stop when profit > 20%
@@ -611,7 +644,15 @@ export function runBacktest(
           const riskAmount = equityNow * (cfg.riskPct / 100)
           const shares = Math.floor(riskAmount / stopDist)
           if (shares <= 0) continue
-          const cost = shares * px * (1 + commission)
+          // Every condition above — stage[i], the 10-week high, this week's
+          // volume, this week's RS — is only knowable once bar i has closed.
+          // Filling at that same close buys at the print the signal itself
+          // produced, on the week's own breakout volume, at zero spread.
+          const fillIdx = i + 1
+          if (fillIdx >= WEEKS) continue
+          const fill = priceOf(d, fillIdx) * (1 + slippage)
+          if (fill <= 0) continue
+          const cost = shares * fill * (1 + commission)
           if (cost > cash) continue
 
           cash -= cost
@@ -619,11 +660,11 @@ export function runBacktest(
             symbol: d.symbol,
             sector: d.sector,
             shares,
-            entryPrice: px,
-            entryDate: dates[i],
-            stop: px - stopDist,
-            highest: px,
-            entryIdx: i,
+            entryPrice: fill,
+            entryDate: dates[fillIdx],
+            stop: fill - stopDist,
+            highest: fill,
+            entryIdx: fillIdx,
             d,
           })
         }
@@ -635,16 +676,31 @@ export function runBacktest(
     for (const p of Array.from(positions.values())) invested += p.shares * priceOf(p.d, i)
     if (positions.size > 0) exposedWeeks++
     const value = cash + invested
+    if (value > 0) deployedSum += invested / value
     if (value > peak) peak = value
     const dd = ((value - peak) / peak) * 100
     if (dd < maxDd) maxDd = dd
     equity.push({ t: dates[i], value: Math.round(value), drawdown: r2(dd), positions: positions.size })
   }
 
-  // Close remaining at end
+  // Close remaining at end.
+  //
+  // The equity curve stopped at the last bar and these exits happened after
+  // it, so their commission and slippage were charged to the trade records
+  // but never to totalReturnPct, cagrPct or calmar. On the default run 56% of
+  // the reported profit sat in three positions that were never sold; the
+  // headline has to be a number the customer could actually have banked.
   const lastIdx = WEEKS - 1
   for (const pos of Array.from(positions.values())) {
     closePosition(pos, pos.d, lastIdx, 'End of Test')
+  }
+  if (equity.length) {
+    const last = equity[equity.length - 1]
+    last.value = Math.round(cash)
+    last.positions = 0
+    if (cash > peak) peak = cash
+    last.drawdown = r2(((cash - peak) / peak) * 100)
+    if (last.drawdown < maxDd) maxDd = last.drawdown
   }
 
   // ── Stats ─────────────────────────────────────────────────────────────
@@ -696,13 +752,13 @@ export function runBacktest(
     'ช่วงแรก (70%)',
     values.slice(0, splitOffset),
     periodDates.slice(0, splitOffset),
-    trades.filter((t) => t.exitIdx < splitIdx),
+    trades.filter((t) => t.entryIdx < splitIdx),
   )
   const outOfSample = periodStats(
     'ช่วงหลัง (30%)',
     values.slice(splitOffset),
     periodDates.slice(splitOffset),
-    trades.filter((t) => t.exitIdx >= splitIdx),
+    trades.filter((t) => t.entryIdx >= splitIdx),
   )
 
   const totalReturnPct = r2((finalValue / cfg.capital - 1) * 100)
@@ -732,6 +788,7 @@ export function runBacktest(
       sortino: (() => { const v = sortinoOf(weeklyReturns); return v === null ? null : r2(v) })(),
       calmar: maxDd < 0 ? r2(cagr / Math.abs(maxDd)) : 0,
       exposurePct: activeWeeks > 0 ? r2((exposedWeeks / activeWeeks) * 100) : 0,
+      capitalDeployedPct: activeWeeks > 0 ? r2((deployedSum / activeWeeks) * 100) : 0,
       expectancyPct: r2(expectancyPct),
       longestDdWeeks,
       recoveryWeeks,

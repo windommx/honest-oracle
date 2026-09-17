@@ -200,6 +200,7 @@ export const backtestBody = z.object({
   requireVolume: z.boolean().default(true),
   requireRs: z.boolean().default(true),
   marketFilter: z.boolean().default(false),
+  slippagePct: z.number().min(0).max(2).default(0.3),
 })
 
 export const monteCarloBody = z.object({
