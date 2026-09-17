@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
 import { Crown, Loader2, AlertCircle } from "lucide-react";
+import { safeCallbackUrl } from "@/lib/auth-redirect";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -28,7 +29,10 @@ export default function LoginPage() {
       if (result?.error) {
         setError("อีเมล หรือ รหัสผ่านไม่ถูกต้อง");
       } else {
-        router.push("/history");
+        // The middleware sends a signed-out visitor here with ?callbackUrl=<where they were>.
+        // Honour it only for a same-origin path, so the param can never bounce a user to
+        // another site. Read at submit time (no useSearchParams → no Suspense boundary needed).
+        router.push(safeCallbackUrl(window.location.search, window.location.origin));
       }
     } catch (err) {
       setError("เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง");

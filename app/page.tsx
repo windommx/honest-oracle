@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Sparkles, User, Building2, Baby, RefreshCw, Crown, ArrowRight, Shield, TrendingUp, Heart, Calculator } from "lucide-react";
+import { Sparkles, User, Building2, Baby, RefreshCw, Crown, ArrowRight, Shield, TrendingUp, Heart, Calculator, Droplets } from "lucide-react";
 
 const SERVICES = [
   {
@@ -43,6 +43,14 @@ const SERVICES = [
     href: "/oracle",
     color: "from-[#c9a84c] to-[#5a9e6a]",
     features: ["Life Graph", "Timeline", "Sharing", "Premium API"],
+  },
+  {
+    icon: Droplets,
+    title: "HD Competency",
+    description: "ประเมิน Competency Level พยาบาลไตเทียม",
+    href: "/competency",
+    color: "from-teal-500 to-emerald-700",
+    features: ["10 เกณฑ์ / 100 คะแนน", "แดชบอร์ดหน่วย", "แผนพัฒนารายบุคคล", "รายงาน + CSV"],
   },
 ];
 
@@ -94,6 +102,9 @@ export default function HomePage() {
             <Link href="/oracle" className="text-gray-300 hover:text-[#c9a84c] transition-colors">
               Honest Oracle
             </Link>
+            <Link href="/competency" className="text-gray-300 hover:text-[#c9a84c] transition-colors">
+              HD Competency
+            </Link>
             <Link
               href="/login"
               className="px-4 py-2 bg-[#c9a84c] text-black font-medium rounded-lg hover:bg-[#d4b55d] transition-colors"
@@ -138,7 +149,7 @@ export default function HomePage() {
 
       <section className="py-20 px-4">
         <div className="max-w-6xl mx-auto">
-          <h2 className="text-3xl font-bold text-center mb-4 gold-gradient">4 บริการครบวงจร</h2>
+          <h2 className="text-3xl font-bold text-center mb-4 gold-gradient">บริการครบวงจร</h2>
           <p className="text-gray-400 text-center mb-12">เลือกบริการที่เหมาะกับความต้องการของคุณ</p>
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
             {SERVICES.map(({ icon: Icon, title, description, href, color, features }) => (

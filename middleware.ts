@@ -8,6 +8,8 @@ const protectedPrefixes = [
   "/oracle/history",
   "/oracle/api-keys",
   "/oracle/admin",
+  // HD Competency — a unit's roster is private to the account that owns it.
+  "/competency",
 ];
 
 export async function middleware(req: NextRequest) {
