@@ -135,7 +135,7 @@ export function OverviewTab({ refreshKey, onDataChanged, onNavigate, onAssess }:
       unit: "%",
       icon: Award,
       tone: "bg-violet-50 text-violet-800",
-      sub: `LEVEL 3-5 จำนวน ${summary.competentCount} จาก ${summary.assessedCount} คนที่ประเมินแล้ว`,
+      sub: `${summary.competentCount} จาก ${summary.assessedCount} คน (LEVEL 3-5)`,
     },
   ];
 
@@ -208,18 +208,21 @@ export function OverviewTab({ refreshKey, onDataChanged, onNavigate, onAssess }:
         {assessedRanking.length === 0 ? (
           <p className="py-6 text-center text-sm text-slate-600">ยังไม่มีผลการประเมิน</p>
         ) : (
-          <HBarChart
-            ariaLabel="คะแนนรวมรายบุคคล (เต็ม 100)"
-            max={100}
-            labelWidth={170}
-            items={assessedRanking.map((r) => ({
-              key: r.nurseId,
-              label: r.nickname || r.fullName,
-              value: r.latest!.totalScore,
-              display: `${r.latest!.totalScore} · L${r.latest!.level}`,
-              color: levelInfo(r.latest!.level).color,
-            }))}
-          />
+          <div className="mx-auto max-w-3xl">
+            {/* viewBox-scaled SVG: uncapped, a 1100px card rendered the labels at ~28px. */}
+            <HBarChart
+              ariaLabel="คะแนนรวมรายบุคคล (เต็ม 100)"
+              max={100}
+              labelWidth={170}
+              items={assessedRanking.map((r) => ({
+                key: r.nurseId,
+                label: r.nickname || r.fullName,
+                value: r.latest!.totalScore,
+                display: `${r.latest!.totalScore} · L${r.latest!.level}`,
+                color: levelInfo(r.latest!.level).color,
+              }))}
+            />
+          </div>
         )}
       </Card>
 

@@ -93,11 +93,11 @@ export function HBarChart({ items, max, ariaLabel, labelWidth = 150 }: { items: 
         const w = Math.max(0, Math.min(1, it.value / max)) * plotW;
         return (
           <g key={it.key}>
-            <text x={labelWidth - 10} y={y + rowH / 2 + 4} textAnchor="end" fontSize={12} fill={TEXT_BODY}>
+            <text x={labelWidth - 10} y={y + rowH / 2 + 4} textAnchor="end" fontSize={13} fill={TEXT_BODY}>
               {it.label}
             </text>
             <rect x={labelWidth} y={y + 6} width={w} height={rowH - 12} rx={5} fill={it.color ?? ACCENT} />
-            <text x={labelWidth + w + 8} y={y + rowH / 2 + 4} fontSize={12} fontWeight={600} fill={TEXT_BODY}>
+            <text x={labelWidth + w + 8} y={y + rowH / 2 + 4} fontSize={13} fontWeight={600} fill={TEXT_BODY}>
               {it.display ?? it.value}
             </text>
           </g>
@@ -122,9 +122,12 @@ function polar(cx: number, cy: number, r: number, i: number, n: number): [number
 }
 
 export function RadarChart({ axes, series, max = 5 }: { axes: string[]; series: RadarSeries[]; max?: number }) {
-  const S = 420;
-  const cx = S / 2;
-  const cy = S / 2;
+  // Wider than tall: the axis labels sit R+26 out from the centre and the Thai ones run
+  // ~80px, so a square 420 box clipped "แนะนำคนไข้" and "ผู้นำ/coaching" at the left edge.
+  const W = 560;
+  const H = 420;
+  const cx = W / 2;
+  const cy = H / 2;
   const R = 140;
   const n = axes.length;
   const rings = Array.from({ length: max }, (_, i) => i + 1);
@@ -133,7 +136,7 @@ export function RadarChart({ axes, series, max = 5 }: { axes: string[]; series: 
     .join(" · ");
 
   return (
-    <svg viewBox={`0 0 ${S} ${S}`} className="mx-auto h-auto w-full max-w-md" role="img" aria-label={`โปรไฟล์สมรรถนะ (ระดับ 1-${max}) — ${summary}`}>
+    <svg viewBox={`0 0 ${W} ${H}`} className="mx-auto h-auto w-full max-w-lg" role="img" aria-label={`โปรไฟล์สมรรถนะ (ระดับ 1-${max}) — ${summary}`}>
       <title>โปรไฟล์สมรรถนะรายเกณฑ์</title>
       {rings.map((ring) => {
         const pts = axes.map((_, i) => polar(cx, cy, (R * ring) / max, i, n).join(",")).join(" ");
