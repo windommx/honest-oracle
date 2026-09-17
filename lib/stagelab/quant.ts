@@ -125,7 +125,14 @@ export function runMonteCarlo(req: MonteCarloRequest): MonteCarloResult {
   const samplePaths: number[][] = []
 
   const years = (n * avgHoldWeeks) / 52
-  const sqrt52 = Math.sqrt(52)
+  // Each step of this simulation is one TRADE, not one week. Annualising by
+  // sqrt(52) assumed a trade per week, so a strategy holding 26 weeks a trade
+  // — about two trades a year — had its Sharpe inflated by sqrt(26) ≈ 5.1x.
+  // The same avgHoldWeeks already drives `years` two lines up, so the code
+  // always knew the real period; only this factor ignored it.
+  const periodsPerYear = 52 / Math.max(0.25, avgHoldWeeks)
+  const annualise = Math.sqrt(periodsPerYear)
+  const steps = new Float64Array(n)
 
   for (let s = 0; s < sims; s++) {
     const keepCurve = s < bandSims
@@ -135,7 +142,6 @@ export function runMonteCarlo(req: MonteCarloRequest): MonteCarloResult {
     let peak = capital
     let maxDd = 0
     let sum = 0
-    let sumSq = 0
     cursor = Math.floor(rnd() * n)
 
     for (let t = 0; t < n; t++) {
@@ -152,15 +158,26 @@ export function runMonteCarlo(req: MonteCarloRequest): MonteCarloResult {
       const dd = peak > 0 ? ((peak - equity) / peak) * 100 : 0
       if (dd > maxDd) maxDd = dd
       sum += step
-      sumSq += step * step
+      steps[t] = step
       if (keepCurve) columns[t + 1][s] = equity
       curve?.push(equity)
     }
 
     const mean = sum / n
-    const variance = Math.max(0, sumSq / n - mean * mean)
-    const std = Math.sqrt(variance)
-    const sharpe = std > 1e-12 ? (mean / std) * sqrt52 : 0
+    // Two-pass. E[x^2] - E[x]^2 is algebraically right and numerically ruinous
+    // here: on a near-constant return series the two terms agree to ~16
+    // significant figures, so their difference is rounding error. A book of
+    // twenty +5% trades produced variance 4.3e-19, std 6.6e-10 — past the
+    // absolute 1e-12 guard — and a Sharpe of 547,503,051.31 on the stat card.
+    let sumSqDev = 0
+    for (let t = 0; t < n; t++) {
+      const d = steps[t] - mean
+      sumSqDev += d * d
+    }
+    const std = Math.sqrt(sumSqDev / n)
+    // Relative floor: "dispersion negligible against the mean" is the real
+    // condition, and it does not depend on the units the returns are in.
+    const sharpe = std > 1e-9 * Math.max(1e-9, Math.abs(mean)) ? (mean / std) * annualise : 0
     const cagr =
       equity > 0 && years > 0 ? (Math.pow(equity / capital, 1 / years) - 1) * 100 : -100
 
@@ -691,7 +708,7 @@ export async function unifiedScore(
     score: c1 + c2 + c3,
     max: 20,
     parts: [
-      { label: 'C1 Regime', note: 'HMM Regime (Market Score)', score: c1, max: 8 },
+      { label: 'C1 Regime', note: 'เช็กลิสต์สภาพตลาด (Market Score)', score: c1, max: 8 },
       { label: 'C2 Sector Momentum', note: 'Sector Stage + Rank', score: c2, max: 6 },
       { label: 'C3 Breadth & Flow', note: 'Breadth + Foreign Flow', score: c3, max: 6 },
     ],
@@ -714,7 +731,7 @@ export async function unifiedScore(
     parts: [
       { label: 'D1 Geopolitical', note: 'ความเสี่ยงภูมิรัฐศาสตร์ตามกลุ่ม', score: d1, max: 5 },
       { label: 'D2 Supply Chain', note: 'ความเสี่ยงห่วงโซ่อุปทานตามกลุ่ม', score: d2, max: 5 },
-      { label: 'D3 AI Confidence', note: 'Model confidence proxy (XGBoost)', score: d3, max: 5 },
+      { label: 'D3 AI Confidence', note: 'คะแนนกฎเทคนิค (Pine) + คะแนนพื้นฐาน', score: d3, max: 5 },
     ],
   }
 

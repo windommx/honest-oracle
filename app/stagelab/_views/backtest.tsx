@@ -197,7 +197,7 @@ export default function BacktestView({ onSessionChange }: { onSessionChange: () 
                     label="Sortino"
                     value={fmt(stats!.sortino, 2)}
                     sub="ผลตอบแทนต่อความผันผวนขาลง"
-                    tone={stats!.sortino >= 1 ? "good" : stats!.sortino >= 0.5 ? "warn" : "bad"}
+                    tone={stats!.sortino === null ? "warn" : stats!.sortino >= 1 ? "good" : stats!.sortino >= 0.5 ? "warn" : "bad"}
                   />
                   <StatCard
                     label="Calmar"

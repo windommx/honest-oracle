@@ -126,7 +126,11 @@ export function positionSize(capital: number, riskPct: number, entry: number, st
   if (perShareRisk <= 0) return { shares: 0, riskAmount, positionValue: 0, capitalPct: 0 }
   const shares = Math.floor(riskAmount / perShareRisk)
   const positionValue = shares * entry
-  return { shares, riskAmount, positionValue, capitalPct: (positionValue / capital) * 100 }
+  // Clearing the capital field sets it to 0, and 0/0 rendered as a green
+  // "NaN%" — green because NaN > 20 and NaN > 12 are both false, so the
+  // warning tones fell through to "good".
+  const capitalPct = capital > 0 ? (positionValue / capital) * 100 : 0
+  return { shares, riskAmount, positionValue, capitalPct }
 }
 
 export function kelly(winRatePct: number, avgWin: number, avgLoss: number) {
@@ -135,7 +139,10 @@ export function kelly(winRatePct: number, avgWin: number, avgLoss: number) {
   const q = 1 - p
   const b = avgWin / avgLoss
   const f = (p * b - q) / b
-  return { f: f * 100, half: (f / 2) * 100, edge: (p * avgWin - q * avgLoss) * 100 }
+  // avgWin and avgLoss are already percentages — the fields are labelled
+  // "กำไรเฉลี่ยต่อไม้ (%)". Multiplying by 100 again turned a 4.4% edge into
+  // a unit-less "440.00" printed beside a correctly scaled Kelly fraction.
+  return { f: f * 100, half: (f / 2) * 100, edge: p * avgWin - q * avgLoss }
 }
 
 export function chandelier(highestHigh: number, atr: number, mult = 3) {
@@ -143,10 +150,12 @@ export function chandelier(highestHigh: number, atr: number, mult = 3) {
 }
 
 export function rrRatio(entry: number, stop: number, target: number) {
-  const risk = Math.abs(entry - stop)
-  const reward = Math.abs(target - entry)
-  if (risk <= 0) return 0
-  return reward / risk
+  // Taking the absolute value of both legs hid the one thing this is for.
+  // entry 100 / stop 120 / target 80 is upside down — the stop is above the
+  // entry and the target below it — and it used to return a respectable 1.00,
+  // indistinguishable from a real 1:1. A long needs stop < entry < target.
+  if (stop >= entry || target <= entry) return 0
+  return (target - entry) / (entry - stop)
 }
 
 // ─── Screening funnel (client-side filter chain) ─────────────────────────────
@@ -216,7 +225,13 @@ export function runFunnel<T extends Stock>(stocks: T[], f: FunnelFilters) {
 }
 
 // ─── Formatting ──────────────────────────────────────────────────────────────
-export function fmt(n: number, digits = 2): string {
+/**
+ * `null` means the statistic has no value — no losing trade, so no profit
+ * factor; no downside, so no Sortino. It renders as a dash, because a
+ * placeholder number printed to two decimal places is read as a measurement.
+ */
+export function fmt(n: number | null | undefined, digits = 2): string {
+  if (n === null || n === undefined || !Number.isFinite(n)) return '—'
   return n.toLocaleString('en-US', { minimumFractionDigits: digits, maximumFractionDigits: digits })
 }
 

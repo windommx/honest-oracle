@@ -59,6 +59,13 @@ interface SeriesMetrics {
   extendedPct: number // % above 30W MA
   atr22: number
   hh22: number
+  /**
+   * Highest high of the 22 bars BEFORE the current one. `hh22` includes the
+   * current bar, which is right for a Chandelier stop and impossible for a
+   * breakout test: a bar's high is never below its own close, so
+   * `close > hh22` could not fire for any symbol, ever.
+   */
+  hh22Prior: number
   chandelier: number
   weeksSinceNewHigh10: number // bars since close made a fresh 10-week-high close
   volRatio: number
@@ -79,11 +86,13 @@ function seriesMetrics(symbol: string): SeriesMetrics {
   // ATR(22) + Highest High(22) over the last 22 bars (incl. current)
   let trSum = 0
   let hh = 0
+  let hhPrior = 0
   for (let i = n - 22; i < n; i++) {
     const b = bars[i]
     const prevC = bars[i - 1].c
     trSum += Math.max(b.h - b.l, Math.abs(b.h - prevC), Math.abs(b.l - prevC))
     hh = Math.max(hh, b.h)
+    if (i < n - 1) hhPrior = Math.max(hhPrior, b.h)
   }
   const atr22 = trSum / 22
   const chandelier = hh - 3 * atr22
@@ -112,6 +121,7 @@ function seriesMetrics(symbol: string): SeriesMetrics {
     extendedPct,
     atr22,
     hh22: hh,
+    hh22Prior: hhPrior,
     chandelier,
     weeksSinceNewHigh10: weeksSince,
     volRatio,
@@ -178,8 +188,13 @@ export function buildAlerts(input: {
         severity: 'warning',
         category: 'market',
         title: `Breadth อ่อน (${fmt(review.breadthPct, 0)}%)`,
-        detail: 'หุ้นน้อยกว่า 40% ยืนเหนือ 150DMA — การพลิกตัวของหุ้นรายตัวมักไร้แรงหนุนตลาด',
-        metric: 'เกณฑ์ผ่าน: > 60%',
+        // The old copy cited "150DMA" and a "> 60%" pass mark. Nothing in the
+        // app computes a 150-day moving average, and 60% matched none of the
+        // thresholds actually used — the weekly checklist asks for >50%, this
+        // alert fires under 40%, the unified score buckets at 70/50/30.
+        // breadthPct is a number the customer types in on the weekly review.
+        detail: 'ค่า Breadth ที่คุณบันทึกไว้ต่ำกว่า 40% — การพลิกตัวของหุ้นรายตัวมักไร้แรงหนุนตลาด',
+        metric: 'เกณฑ์เตือนของระบบ: ต่ำกว่า 40% (ค่าที่คุณกรอกเองในบทวิเคราะห์รายสัปดาห์)',
       })
     }
   }
@@ -300,7 +315,7 @@ export function buildAlerts(input: {
     const distEntry = ((w.entryPrice - m.close) / m.close) * 100
 
     // 3a. Breakout confirmed
-    if (m.close > m.hh22 && m.volRatio > 1.5 && m.stage === 2) {
+    if (m.close > m.hh22Prior && m.volRatio > 1.5 && m.stage === 2) {
       alerts.push({
         id: `wl-breakout-${w.id}`,
         severity: 'opportunity',

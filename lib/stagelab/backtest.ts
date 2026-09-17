@@ -61,7 +61,8 @@ export interface BacktestStats {
   cagrPct: number
   maxDdPct: number
   winRatePct: number
-  profitFactor: number
+  /** null when there is no losing trade: the ratio has no denominator. */
+  profitFactor: number | null
   avgWinPct: number
   avgLossPct: number
   avgHoldWeeks: number
@@ -70,7 +71,8 @@ export interface BacktestStats {
   worstPct: number
   /** Annualised return per unit of DOWNSIDE deviation. Sharpe punishes upside
    *  volatility, which no one has ever complained about. */
-  sortino: number
+  /** null when downside deviation is undefined or degenerate. */
+  sortino: number | null
   /** CAGR per unit of worst drawdown — return measured against the pain. */
   calmar: number
   /** Share of weeks holding at least one position. A strategy that returns 8%
@@ -98,7 +100,8 @@ export interface PeriodStats {
   maxDdPct: number
   trades: number
   winRatePct: number
-  profitFactor: number
+  /** null when there is no losing trade: the ratio has no denominator. */
+  profitFactor: number | null
 }
 
 /** Equal-weight buy-and-hold of the traded universe: same window, same costs. */
@@ -239,7 +242,11 @@ function indexStages(weeks: number): number[] {
 
 /** Compound growth rate from a start/end pair over a number of years. */
 function cagrOf(start: number, end: number, years: number): number {
-  if (years <= 0 || start <= 0 || end <= 0) return 0
+  if (years <= 0 || start <= 0) return 0
+  // A ruined account is not a flat one. `end <= 0` used to fall into the same
+  // `return 0` as "not computable", so a card could read Total Return -100.00%
+  // beside CAGR 0.00% — the identical figure an untouched account shows.
+  if (end <= 0) return -100
   return (Math.pow(end / start, 1 / years) - 1) * 100
 }
 
@@ -251,8 +258,8 @@ function cagrOf(start: number, end: number, years: number): number {
  * that systematically understates the result. Sortino divides by downside
  * deviation only, which is the thing a customer actually minds.
  */
-function sortinoOf(weekly: number[]): number {
-  if (weekly.length < 2) return 0
+function sortinoOf(weekly: number[]): number | null {
+  if (weekly.length < 2) return null
   const mean = weekly.reduce((a, b) => a + b, 0) / weekly.length
   let downSq = 0
   let downN = 0
@@ -262,10 +269,20 @@ function sortinoOf(weekly: number[]): number {
       downN++
     }
   }
-  if (downN === 0) return mean > 0 ? 99 : 0
-  const downDev = Math.sqrt(downSq / downN)
-  if (downDev === 0) return 0
-  return (mean / downDev) * Math.sqrt(52)
+  // No losing week at all: the ratio is undefined, not 99. A sentinel printed
+  // to two decimal places is indistinguishable from a measurement, and it
+  // sorted above a genuine 98.
+  if (downN === 0) return null
+  // Divide by the number of periods, not by the number of NEGATIVE periods.
+  // Dividing by downN inflates the denominator whenever losing weeks are rare
+  // — the exact case a trend strategy is built for — so the published figure
+  // moved with how many weeks happened to be red.
+  const downDev = Math.sqrt(downSq / weekly.length)
+  if (downDev <= 0) return null
+  const ratio = (mean / downDev) * Math.sqrt(52)
+  // One near-zero down week produced 7,072.29. Past this the number is an
+  // artefact of the denominator, not a property of the strategy.
+  return Number.isFinite(ratio) && Math.abs(ratio) < 1000 ? ratio : null
 }
 
 /**
@@ -353,7 +370,9 @@ function periodStats(
     maxDdPct: r2(maxDrawdownOf(values)),
     trades: periodTrades.length,
     winRatePct: periodTrades.length ? r2((wins.length / periodTrades.length) * 100) : 0,
-    profitFactor: grossLoss > 0 ? r2(grossWin / grossLoss) : grossWin > 0 ? 99 : 0,
+    // No losing trade means the ratio has no denominator. 99 read as a
+    // measurement and outranked a real 98.
+    profitFactor: grossLoss > 0 ? r2(grossWin / grossLoss) : null,
   }
 }
 
@@ -487,7 +506,11 @@ export function runBacktest(
     const exitPrice = priceOf(d, i)
     const proceeds = pos.shares * exitPrice
     const cost = proceeds * commission
-    const pnl = (exitPrice - pos.entryPrice) * pos.shares - cost
+    // Both legs. The entry commission was taken out of `cash` when the
+    // position opened and never reached the trade record, so every per-trade
+    // figure — and therefore expectancy, avgWin, avgLoss, best and worst —
+    // was reported gross while the headline return beside them was net.
+    const pnl = pos.shares * (exitPrice * (1 - commission) - pos.entryPrice * (1 + commission))
     cash += proceeds - cost
     trades.push({
       symbol: pos.symbol,
@@ -498,7 +521,7 @@ export function runBacktest(
       exitPrice: r2(exitPrice),
       shares: pos.shares,
       pnl: Math.round(pnl),
-      pnlPct: r2((exitPrice / pos.entryPrice - 1) * 100),
+      pnlPct: r2(((exitPrice * (1 - commission)) / (pos.entryPrice * (1 + commission)) - 1) * 100),
       holdWeeks: i - pos.entryIdx,
       exitReason: reason,
       exitIdx: i,
@@ -609,7 +632,7 @@ export function runBacktest(
   const winRate = trades.length ? (wins.length / trades.length) * 100 : 0
   const grossWin = wins.reduce((a, t) => a + t.pnl, 0)
   const grossLoss = Math.abs(losses.reduce((a, t) => a + t.pnl, 0))
-  const profitFactor = grossLoss > 0 ? grossWin / grossLoss : grossWin > 0 ? 99 : 0
+  const profitFactor = grossLoss > 0 ? grossWin / grossLoss : null
   const years = (WEEKS - WARMUP) / 52
   const cagr = years > 0 && finalValue > 0 ? (Math.pow(finalValue / cfg.capital, 1 / years) - 1) * 100 : 0
 
@@ -677,14 +700,14 @@ export function runBacktest(
       cagrPct: r2(cagr),
       maxDdPct: r2(maxDd),
       winRatePct: r2(winRate),
-      profitFactor: r2(profitFactor),
+      profitFactor: profitFactor === null ? null : r2(profitFactor),
       avgWinPct: wins.length ? r2(wins.reduce((a, t) => a + t.pnlPct, 0) / wins.length) : 0,
       avgLossPct: losses.length ? r2(losses.reduce((a, t) => a + t.pnlPct, 0) / losses.length) : 0,
       avgHoldWeeks: trades.length ? r2(trades.reduce((a, t) => a + t.holdWeeks, 0) / trades.length) : 0,
       totalTrades: trades.length,
       bestPct: sorted.length ? sorted[0].pnlPct : 0,
       worstPct: sorted.length ? sorted[sorted.length - 1].pnlPct : 0,
-      sortino: r2(sortinoOf(weeklyReturns)),
+      sortino: (() => { const v = sortinoOf(weeklyReturns); return v === null ? null : r2(v) })(),
       calmar: maxDd < 0 ? r2(cagr / Math.abs(maxDd)) : 0,
       exposurePct: activeWeeks > 0 ? r2((exposedWeeks / activeWeeks) * 100) : 0,
       expectancyPct: r2(expectancyPct),

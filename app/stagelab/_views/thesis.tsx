@@ -231,10 +231,10 @@ function ThesisCard({
       <div className="grid gap-3 sm:grid-cols-2">
         <div>
           <div className="mb-1 flex items-baseline justify-between text-xs">
-            <span className="text-zinc-400">เทคนิค (17)</span>
-            <span className="font-mono tabular-nums text-zinc-200">{thesis.tech17}/17</span>
+            <span className="text-zinc-400">เทคนิค ({TECHNICAL_MAX})</span>
+            <span className="font-mono tabular-nums text-zinc-200">{thesis.tech17}/{TECHNICAL_MAX}</span>
           </div>
-          <ProgressBar value={thesis.tech17} max={17} tone={thesis.tech17 >= 12 ? "good" : thesis.tech17 >= 8 ? "warn" : "bad"} />
+          <ProgressBar value={thesis.tech17} max={TECHNICAL_MAX} tone={thesis.tech17 >= 12 ? "good" : thesis.tech17 >= 8 ? "warn" : "bad"} />
         </div>
         <div>
           <div className="mb-1 flex items-baseline justify-between text-xs">
