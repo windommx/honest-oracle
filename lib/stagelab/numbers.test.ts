@@ -163,16 +163,33 @@ describe("a rule the UI advertises is one the engine can reach", () => {
 describe("the robustness verdict follows the gap it reports", () => {
   const universe = STAGE_UNIVERSE.map((s) => ({ symbol: s.symbol, sector: s.sector }));
 
-  it("does not call a 25-point gap 'close'", () => {
+  it("never calls a wide gap 'close', whatever produced it", () => {
     // The test was one-sided — `gap < -5` meant degraded, everything else fell
     // through to "consistent", whose note reads "ผลสองช่วงใกล้เคียงกัน".
-    // Sweeping 384 configurations: 348 had a gap above +5 and not one had a
-    // gap below -5, so "degraded" could not fire on this data while the
-    // reassuring line was printed over gaps of 25 and 53 points.
-    const r = runBacktest(universe, DEFAULT_BACKTEST_CONFIG);
-    expect(Math.abs(r.robustness.cagrGapPct)).toBeGreaterThan(5);
-    expect(r.robustness.verdict).not.toBe("consistent");
-    expect(r.robustness.note).not.toContain("ใกล้เคียงกัน — ");
+    // Sweeping 384 configurations then: 348 had a gap above +5 and not one had
+    // a gap below -5, so "degraded" could not fire at all while the reassuring
+    // line was printed over gaps of 25 and 53 points. Asserted over a spread
+    // of configurations rather than one, so it does not depend on what the
+    // default run happens to produce.
+    let wide = 0;
+    for (const requireVolume of [true, false]) {
+      for (const maxPositions of [8, 12, 20]) {
+        for (const riskPct of [0.5, 1, 2]) {
+          const r = runBacktest(universe, {
+            ...DEFAULT_BACKTEST_CONFIG,
+            requireVolume,
+            maxPositions,
+            riskPct,
+          });
+          if (r.robustness.verdict === "insufficient") continue;
+          if (Math.abs(r.robustness.cagrGapPct) > 5) {
+            wide++;
+            expect(r.robustness.verdict).not.toBe("consistent");
+          }
+        }
+      }
+    }
+    expect(wide, "no configuration produced a wide gap to check").toBeGreaterThan(0);
   });
 
   it("flags a wide gap in either direction", () => {
@@ -213,9 +230,16 @@ describe("the backtest models fills a customer could actually get", () => {
     const stops = r.trades.filter((t) => t.exitReason === "Stop Loss");
     expect(stops.length, "a stop nobody can be hit by is not a stop")
       .toBeGreaterThan(1);
+    // A stop-out may land slightly green — the stop is tightened under the
+    // rising 30-week MA while the trade is in Stage 2, so it can be raised
+    // above the entry. What it may NOT do is book a large gain: past +20% the
+    // trailing stop owns the exit, so anything bigger means the wrong rule
+    // fired.
     for (const t of stops) {
-      expect(t.pnlPct, `${t.symbol} stopped out at a profit?`).toBeLessThan(0);
+      expect(t.pnlPct, `${t.symbol} stopped out at +${t.pnlPct}%`).toBeLessThan(20);
     }
+    const avg = stops.reduce((a, t) => a + t.pnlPct, 0) / stops.length;
+    expect(avg, "stop-outs should lose money on average").toBeLessThan(0);
   });
 
   it("never fills an entry on the bar that produced the signal", () => {
@@ -235,14 +259,16 @@ describe("the backtest models fills a customer could actually get", () => {
     expect(some.stats.totalReturnPct).toBeLessThan(none.stats.totalReturnPct);
   });
 
-  it("banks the headline: nothing is left open when the run ends", () => {
+  it("banks the headline: it equals the cash left after selling everything", () => {
     // The equity curve stopped at the last bar and the End-of-Test closes
     // happened after it, so their costs hit the trade records and never the
     // headline. 56% of the reported profit sat in positions never sold.
+    // The invariant: starting capital plus the sum of every round trip IS
+    // the final value, to the rounding.
     const r = runBacktest(universe, DEFAULT_BACKTEST_CONFIG);
-    const last = r.equity[r.equity.length - 1];
-    expect(last.positions, "the book must be flat at the end").toBe(0);
-    expect(r.stats.finalValue).toBe(last.value);
+    const banked = r.trades.reduce((a, t) => a + t.pnl, 0);
+    expect(r.stats.finalValue).toBeCloseTo(DEFAULT_BACKTEST_CONFIG.capital + banked, -2);
+    expect(r.stats.finalValue).toBe(r.equity[r.equity.length - 1].value);
   });
 
   it("reports how much capital was working, not just how many weeks were busy", () => {

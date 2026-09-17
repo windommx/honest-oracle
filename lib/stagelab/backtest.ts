@@ -696,8 +696,10 @@ export function runBacktest(
   }
   if (equity.length) {
     const last = equity[equity.length - 1]
+    // Only the value changes. `positions` says how many were held THROUGH
+    // that week, which is true and is what exposure counts; zeroing it would
+    // silently drop the final week from the exposure figure.
     last.value = Math.round(cash)
-    last.positions = 0
     if (cash > peak) peak = cash
     last.drawdown = r2(((cash - peak) / peak) * 100)
     if (last.drawdown < maxDd) maxDd = last.drawdown

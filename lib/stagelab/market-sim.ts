@@ -83,11 +83,17 @@ function nextLeg(stage: number, rnd: () => number, quality: number): StageLeg {
         volWk: 0.018 + rnd() * 0.012,
       }
     case 2:
-      // quality 0..1 → monster Stage 2 can drift +2.5%/wk for a long time
+      // quality 0..1 → a monster Stage 2 still runs long and hard, but this
+      // is now the drift ON TOP of the market, not the whole move. The old
+      // values (+0.8%..+2.5% a week for up to 86 weeks against a Stage 4 of
+      // -0.7%..-1.8% for at most 54) made every cycle net strongly positive,
+      // which is why no configuration of the backtest could lose money: 0 of
+      // 384 in a full sweep. That is a property of the generator, not of the
+      // strategy, and it made the backtest unable to falsify anything.
       return {
         stage: 2,
         weeks: 26 + Math.floor(rnd() * 60 * (0.4 + quality)),
-        driftWk: 0.008 + rnd() * 0.017 * (0.5 + quality),
+        driftWk: 0.004 + rnd() * 0.010 * (0.5 + quality),
         volWk: 0.028 + rnd() * 0.02,
       }
     case 3:
@@ -100,8 +106,8 @@ function nextLeg(stage: number, rnd: () => number, quality: number): StageLeg {
     default:
       return {
         stage: 4,
-        weeks: 18 + Math.floor(rnd() * 36),
-        driftWk: -(0.007 + rnd() * 0.011),
+        weeks: 18 + Math.floor(rnd() * 42),
+        driftWk: -(0.006 + rnd() * 0.012),
         volWk: 0.03 + rnd() * 0.018,
       }
   }
@@ -130,21 +136,34 @@ export function setIndexCloses(weeks: number): number[] {
   const rnd = mulberry32(hashStr('SET-INDEX') ^ 0x1234567)
   const closes: number[] = []
   let price = 1250
-  // Market cycles: mild bull / bear alternation
-  let drift = 0.0015
-  let weeksLeft = 60
+  // Market cycles.
+  //
+  // The old parameters gave bulls of +0.1%..+0.3% a week and bears of
+  // -0.4%..-0.7%, which netted to a long-run CAGR of about -1%: an index that
+  // went nowhere over six years. It did not matter, because nothing used it —
+  // symbols walked independently and the index existed only to compute
+  // relative strength. Both facts together meant the universe had no market
+  // risk at all: equal-weight buy-and-hold drew down 8.9% in six years, where
+  // a real equity market gives you 30% or worse.
+  //
+  // Bulls now run +0.3%..+0.6% for 60-120 weeks and bears -0.5%..-1.0% for
+  // 20-45. That is roughly a 7%/yr long-run drift with genuine 20-30% bear
+  // markets inside it — which is what makes "high return, low risk" a
+  // question with an answer rather than a property of the generator.
+  let drift = 0.004
+  let weeksLeft = 80
   for (let i = 0; i < weeks; i++) {
     if (weeksLeft <= 0) {
       if (drift > 0) {
-        drift = -(0.004 + rnd() * 0.003)
-        weeksLeft = 24 + Math.floor(rnd() * 30)
+        drift = -(0.005 + rnd() * 0.005)
+        weeksLeft = 20 + Math.floor(rnd() * 25)
       } else {
-        drift = 0.001 + rnd() * 0.002
-        weeksLeft = 48 + Math.floor(rnd() * 60)
+        drift = 0.003 + rnd() * 0.003
+        weeksLeft = 60 + Math.floor(rnd() * 60)
       }
     }
     weeksLeft--
-    price *= 1 + drift + gauss(rnd) * 0.014
+    price *= 1 + drift + gauss(rnd) * 0.016
     closes.push(price)
   }
   setCache = { closes }
@@ -216,9 +235,15 @@ export function genSeries(symbol: string, totalWeeks = 312): SymbolSeries {
   const c: number[] = []
   const v: number[] = []
 
-  let price = 12 + rnd() * 120 // start price
+  let price = 12 + rnd() * 120 // start price (rescaled to the anchor at the end)
   let legIdx = 0
   let legLeft = legs[0].weeks
+
+  // Beta to the market. Without this every symbol walked its own cycle
+  // independently, so the universe never fell together: a diversified basket
+  // of 61 of them had almost no market risk, and any long-only system looked
+  // like a genius. Stocks that go down together is most of what risk IS.
+  const beta = 0.55 + rnd() * 0.95
 
   const baseVol = 5_000_000 + rnd() * 40_000_000 // shares/week
 
@@ -230,7 +255,8 @@ export function genSeries(symbol: string, totalWeeks = 312): SymbolSeries {
     legLeft--
 
     const leg = legs[legIdx]
-    const ret = leg.driftWk + gauss(rnd) * leg.volWk
+    const mkt = i > 0 ? idx[i] / idx[i - 1] - 1 : 0
+    const ret = leg.driftWk + beta * mkt + gauss(rnd) * leg.volWk
     const open = price * (1 + gauss(rnd) * leg.volWk * 0.35)
     const close = Math.max(0.4, open * (1 + ret))
     const upWick = Math.abs(gauss(rnd)) * leg.volWk * 0.8
