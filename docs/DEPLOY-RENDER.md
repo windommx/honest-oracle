@@ -6,13 +6,10 @@ sequence to go from "code in GitHub" to "live URL that works."
 
 ## 1. Apply the Blueprint
 
-1. Push the branch you want live to GitHub. `render.yaml` currently points
-   at `claude/rush-engine-book-generator-zq3c3e` (where the Writer Room, the
-   theme, and a middleware security fix all live) — `main` on this repo is
-   behind it and does not yet have the security fix. When you've merged this
-   branch into `main` and want Render to track `main` going forward, change
-   `branch:` in `render.yaml` accordingly; that merge is yours to do
-   deliberately, not something this file does for you.
+1. Push to `main` on GitHub — `render.yaml` tracks `main`. (This repo's
+   feature branch, `claude/rush-engine-book-generator-zq3c3e`, was merged
+   into `main` as part of setting this up; `main` now carries the Writer
+   Room, the theme, and the middleware security fix together.)
 2. In the Render dashboard: **New → Blueprint**, connect this GitHub repo,
    let Render read `render.yaml`.
 3. Review the proposed resources (one Postgres database, one web service) and

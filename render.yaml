@@ -22,13 +22,7 @@ services:
     runtime: node
     plan: starter # Free web services spin down on idle (cold-start delay); Starter stays up
     region: oregon
-    # Points at the branch this deploy setup was built and tested on. `main` on this repo
-    # is currently several commits BEHIND this branch (Writer Room, the theme, and the
-    # middleware security fix below all live here first) — deploying `main` as-is would
-    # ship an older, still-vulnerable build. Merge this branch into `main` and repoint this
-    # field there when you're ready to treat `main` as the deploy source; that merge is a
-    # deliberate step for you to take, not one this file takes for you.
-    branch: claude/rush-engine-book-generator-zq3c3e
+    branch: main
     # --include=dev: this repo's build needs devDependencies (typescript, tailwindcss,
     # the prisma CLI for `postinstall`/preDeployCommand, tsx for db:rename) present at
     # build time. Some hosts skip devDependencies when NODE_ENV=production is set; this
