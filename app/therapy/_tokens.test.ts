@@ -71,3 +71,17 @@ describe("semantic colours cover the engine's own vocabularies", () => {
     expect(CRISIS).not.toBe(GRADE_COLOR.emerging);
   });
 });
+
+describe("the crisis colour is the one the crisis banner uses", () => {
+  it("CrisisBanner renders CRISIS, not a lookalike", () => {
+    // The declaration test above passed for the whole life of the component
+    // while the banner rendered SEVERITY_COLOR.severe — which is the identical
+    // hex to GRADE_COLOR.emerging, the evidence table's weakest tier. A token
+    // nothing imports protects nothing, so this reads the component.
+    const src = readFileSync(join(process.cwd(), "app", "therapy", "_components.tsx"), "utf8");
+    const banner = src.slice(src.indexOf("export function CrisisBanner"));
+    const body = banner.slice(0, banner.indexOf("\n}"));
+    expect(body, "the crisis banner does not use the CRISIS token").toContain("CRISIS");
+    expect(body, "the crisis banner still uses the lookalike").not.toMatch(/isCrisis \? SEVERITY_COLOR\.severe/);
+  });
+});

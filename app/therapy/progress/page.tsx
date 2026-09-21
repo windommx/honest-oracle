@@ -9,6 +9,7 @@ import { buildSeries, describe, type SeriesPoint } from "@/lib/therapy-engine/tr
 import { summarise } from "@/lib/therapy-engine/sleep";
 import type { InstrumentId } from "@/lib/therapy-engine/types";
 import { toast } from "../../rush/_toast";
+import { downloadBlob } from "../../rush/_utils";
 import { Card, Chip, Disclaimer, PageHeader, PrimaryLink } from "../_components";
 import { SEVERITY_COLOR } from "../_tokens";
 import { browserStorage, clearAll, readAssessments, readNights, readSessions, totalMinutes } from "../_store";
@@ -143,26 +144,34 @@ export default function ProgressPage() {
   async function exportData() {
     // The server export is the complete one; this is the local half, so a user
     // who never signed in can still take their data with them.
+    //
+    // Through the shared helper, which revokes the object URL a turn later.
+    // The synchronous revoke this used to do races the browser's own handling
+    // of the click and cancels the download outright in some of them, with no
+    // error — and for a signed-out user this is the only route to their data.
     const store = browserStorage();
-    const blob = new Blob(
-      [
-        JSON.stringify(
-          { assessments: readAssessments(store), sessions: readSessions(store), sleepNights: readNights(store) },
-          null,
-          2
-        ),
-      ],
-      { type: "application/json" }
+    downloadBlob(
+      "mindbridge-local-export.json",
+      JSON.stringify(
+        { assessments: readAssessments(store), sessions: readSessions(store), sleepNights: readNights(store) },
+        null,
+        2
+      ),
+      "application/json"
     );
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "mindbridge-local-export.json";
-    a.click();
-    URL.revokeObjectURL(url);
   }
 
   function erase() {
+    // Confirmed, because for a signed-out user this browser holds the ONLY
+    // copy — the product's stated default is that nothing leaves the device
+    // until the user chooses to sync. The button sits next to the export one,
+    // and one mis-tap used to destroy months of answers with no undo.
+    const ok = window.confirm(
+      "ลบแบบประเมิน เซสชัน และบันทึกการนอนทั้งหมดในเบราว์เซอร์นี้?\n\n" +
+        "ถ้ายังไม่ได้ซิงก์ขึ้นเซิร์ฟเวอร์ ข้อมูลนี้คือสำเนาเดียวที่มี และกู้คืนไม่ได้\n" +
+        "แนะนำให้กด \"ดาวน์โหลดข้อมูลในเครื่อง\" ก่อน"
+    );
+    if (!ok) return;
     clearAll(browserStorage());
     load();
     toast("ลบข้อมูลในเบราว์เซอร์นี้แล้ว", { variant: "success" });

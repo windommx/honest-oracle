@@ -63,7 +63,12 @@ export default function TherapyLanding() {
           <Stat value={String(INSTRUMENT_LIST.length)} label="แบบคัดกรองมาตรฐาน" />
           <Stat value={String(totals.interventions)} label="intervention" />
           <Stat value={String(totals.citations)} label="งานวิจัยอ้างอิง" />
-          <Stat value={`${totals.trials.toLocaleString("en-US")}+`} label="RCTs ในงานที่อ้างอิง" />
+          {/* No "+". The number is a SUM across meta-analyses, and the note
+              printed directly under it says the same trial may be counted more
+              than once — so the count of distinct RCTs is below this figure,
+              not above it. A plus sign turned the one computed stat on the page
+              into the one unverifiable claim on it. */}
+          <Stat value={totals.trials.toLocaleString("en-US")} label="RCTs ในงานที่อ้างอิง (นับซ้ำได้)" />
         </div>
         <p className="mt-3 text-[0.65rem] text-faint max-w-xl mx-auto leading-relaxed">{totals.overlapNoteTh}</p>
 

@@ -6,7 +6,7 @@ import { EVIDENCE_GRADES } from "@/lib/therapy-engine/evidence";
 import { BANDS } from "@/lib/therapy-engine/scoring";
 import type { CrisisResource, SafetyResult } from "@/lib/therapy-engine/safety";
 import type { Citation, EvidenceGrade, InstrumentId, SeverityBand } from "@/lib/therapy-engine/types";
-import { GRADE_COLOR, SEVERITY_COLOR } from "./_tokens";
+import { CRISIS, GRADE_COLOR, SEVERITY_COLOR } from "./_tokens";
 
 // Presentational primitives for /therapy. Colours never appear as literals here —
 // they come from _tokens.ts through inline styles, which is what lets the guard
@@ -113,7 +113,13 @@ function ResourceRow({ r }: { r: CrisisResource }) {
 export function CrisisBanner({ safety }: { safety: SafetyResult }) {
   if (safety.level === "none") return null;
   const isCrisis = safety.level === "crisis";
-  const color = isCrisis ? SEVERITY_COLOR.severe : SEVERITY_COLOR.moderate;
+  // CRISIS, not SEVERITY_COLOR.severe. They look similar and are not the same
+  // value: severe is the identical hex to GRADE_COLOR.emerging, the rose the
+  // evidence table uses for its weakest tier. _tokens.ts says in as many words
+  // that a colour the eye has already learned to read as "minor footnote"
+  // would bury this banner — and the guard test that asserts CRISIS differs
+  // from emerging passed the whole time, because nothing rendered CRISIS.
+  const color = isCrisis ? CRISIS : SEVERITY_COLOR.moderate;
 
   return (
     <section

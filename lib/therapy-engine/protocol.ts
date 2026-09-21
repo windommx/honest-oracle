@@ -20,7 +20,7 @@
 
 import { INTERVENTIONS, getIntervention } from "./evidence";
 import { assessSafety, selfHelpIsSufficient, type SafetyResult } from "./safety";
-import type { Intervention, ScoreResult } from "./types";
+import type { Intervention, ScoreResult, SeverityBand } from "./types";
 
 /** How much of the plan a person can carry out alone. */
 export type CareTier = "self-help" | "guided" | "clinician-led";
@@ -67,14 +67,32 @@ const step = (i: Intervention): PlanStep => ({
   informationalOnly: !i.selfAdministered,
 });
 
+/** Evidence order — strongest grade first. Declared once because the plan is
+ *  sorted in more than one place, and two copies would drift. */
+const GRADE_ORDER = { strong: 0, good: 1, moderate: 2, emerging: 3 } as const;
+
+/**
+ * How far up the care ladder a severity band reaches.
+ *
+ * Keyed by the PUBLISHED band rather than by a raw total, because the same
+ * total is a different band in each instrument — GAD-7 15 is severe, PHQ-9 15
+ * is moderately severe — and the rule the plan prints names the band.
+ */
+const BAND_TIER: Record<SeverityBand["id"], number> = {
+  minimal: 0,
+  mild: 1,
+  moderate: 2,
+  moderatelySevere: 3,
+  severe: 3,
+};
+
 /** Self-administered interventions in evidence order — strongest grade first, and
  *  within a grade, the catalog's own order. The user's plan is not a ranking we
  *  tuned; it is the evidence table filtered. */
 function selfHelpSteps(): PlanStep[] {
-  const order = { strong: 0, good: 1, moderate: 2, emerging: 3 };
   return INTERVENTIONS.filter((i) => i.selfAdministered)
     .slice()
-    .sort((a, b) => order[a.grade] - order[b.grade])
+    .sort((a, b) => GRADE_ORDER[a.grade] - GRADE_ORDER[b.grade])
     .map(step);
 }
 
@@ -105,14 +123,29 @@ export function buildPlan({ scores, sleepDisturbed = false }: PlanInput): CarePl
   const safety = assessSafety(scores);
   const rulesTh: string[] = [];
 
-  const worst = scores.reduce((max, s) => Math.max(max, s.total >= 15 ? 3 : s.total >= 10 ? 2 : s.total >= 5 ? 1 : 0), 0);
+  // Derived from the published BAND, not from a magic total. The old form was
+  // `total >= 15 ? 3 : total >= 10 ? 2 : …`, and 15 is a different band in each
+  // instrument: GAD-7 15 is severe, PHQ-9 15 is moderately severe. The rule it
+  // printed therefore told a PHQ-9 of 15-19 that it was "in the severe range",
+  // which the assessment page beside it correctly labelled "ค่อนข้างรุนแรง".
+  // The thresholds are unchanged; naming them by band makes the sentence true
+  // and the next instrument added correct by construction.
+  const ranked = scores
+    .map((s) => ({ score: s, weight: BAND_TIER[s.band.id] ?? 0 }))
+    .sort((a, b) => b.weight - a.weight);
+  const leading = ranked[0];
+  const worst = leading?.weight ?? 0;
 
-  let tier: CareTier = worst >= 3 ? "clinician-led" : worst === 2 ? "guided" : "self-help";
+  const tierOf = (weight: number): CareTier =>
+    weight >= 3 ? "clinician-led" : weight === 2 ? "guided" : "self-help";
+  let tier: CareTier = tierOf(worst);
+
+  const bandName = leading ? `${leading.score.instrument.toUpperCase()} อยู่ในช่วง "${leading.score.band.th}"` : "";
   rulesTh.push(
     tier === "clinician-led"
-      ? "มีคะแนนอยู่ในช่วงรุนแรงอย่างน้อยหนึ่งแบบประเมิน → ให้ผู้ให้บริการสุขภาพนำการดูแล"
+      ? `คะแนน ${bandName} → ให้ผู้ให้บริการสุขภาพนำการดูแล`
       : tier === "guided"
-        ? "มีคะแนนถึงจุดตัดของการคัดกรอง (≥10) → ดูแลตัวเองควบคู่กับการปรึกษาผู้ให้บริการสุขภาพ"
+        ? `คะแนน ${bandName} ถึงจุดตัดของการคัดกรอง → ดูแลตัวเองควบคู่กับการปรึกษาผู้ให้บริการสุขภาพ`
         : "คะแนนต่ำกว่าจุดตัดของการคัดกรอง → เริ่มจาก intervention ที่ทำเองได้"
   );
 
@@ -129,7 +162,12 @@ export function buildPlan({ scores, sleepDisturbed = false }: PlanInput): CarePl
 
   if (sleepDisturbed && tier === "self-help") {
     rulesTh.push("บันทึกการนอนเข้าเกณฑ์เชิงปริมาณ → แนะนำให้ปรึกษาเรื่อง CBT-I");
+    // Inserted in evidence order, not appended. Pushing put a strong-grade,
+    // clinician-led step after an emerging-grade self-help one, under a
+    // heading that says the list is ordered by evidence and not by what this
+    // app can deliver.
     steps.push(step(getIntervention("cbti")!));
+    steps.sort((a, b) => GRADE_ORDER[a.intervention.grade] - GRADE_ORDER[b.intervention.grade]);
   }
 
   const disclaimersTh = [

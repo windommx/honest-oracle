@@ -123,3 +123,74 @@ describe("what the plan says about itself", () => {
     expect(buildPlan({ scores: calm() })).toEqual(buildPlan({ scores: calm() }));
   });
 });
+
+describe("the plan names the band it actually read", () => {
+  it("a PHQ-9 of 15 is called moderately severe, not severe", () => {
+    // The tier came from `total >= 15`, and 15 is a different band in each
+    // instrument: GAD-7 15 is severe, PHQ-9 15 is moderately severe. The rule
+    // told the user their score was "in the severe range" while the assessment
+    // page beside it correctly said "ค่อนข้างรุนแรง".
+    const phq = score("phq9", [3, 3, 3, 3, 2, 1, 0, 0, 0]);
+    expect(phq.total).toBe(15);
+    expect(phq.band.id).toBe("moderatelySevere");
+
+    const plan = buildPlan({ scores: [phq] });
+    expect(plan.tier).toBe("clinician-led");
+    expect(plan.rulesTh[0]).toContain(phq.band.th);
+    expect(plan.rulesTh[0], "still claims the severe band").not.toContain("ช่วงรุนแรง");
+  });
+
+  it("a GAD-7 of 15 IS severe, and says so", () => {
+    const gad = score("gad7", [3, 3, 3, 2, 2, 1, 1]);
+    expect(gad.total).toBe(15);
+    expect(gad.band.id).toBe("severe");
+    expect(buildPlan({ scores: [gad] }).rulesTh[0]).toContain(gad.band.th);
+  });
+
+  it("the tier thresholds are unchanged by the rewrite", () => {
+    // Filled from the front, three at a time — every item has a 0-3 scale, and
+    // spreading a remainder onto one item puts it out of range. Filling from
+    // the front also leaves PHQ-9 item 9 at zero for every total used here, so
+    // the safety override never confounds the threshold being measured.
+    const tierFor = (id: "phq9" | "gad7", total: number) => {
+      const items = id === "phq9" ? 9 : 7;
+      const responses = new Array(items).fill(0);
+      let left = total;
+      for (let i = 0; i < items && left > 0; i++) {
+        responses[i] = Math.min(3, left);
+        left -= responses[i];
+      }
+      const s = score(id, responses);
+      expect(s.total, `could not build a ${id} of ${total}`).toBe(total);
+      return buildPlan({ scores: [s] }).tier;
+    };
+    expect(tierFor("phq9", 4)).toBe("self-help");
+    expect(tierFor("phq9", 9)).toBe("self-help");
+    expect(tierFor("phq9", 10)).toBe("guided");
+    expect(tierFor("phq9", 14)).toBe("guided");
+    expect(tierFor("phq9", 15)).toBe("clinician-led");
+    expect(tierFor("gad7", 9)).toBe("self-help");
+    expect(tierFor("gad7", 10)).toBe("guided");
+    expect(tierFor("gad7", 15)).toBe("clinician-led");
+  });
+});
+
+describe("CBT-I joins the plan in evidence order", () => {
+  it("a strong-grade step does not end up behind an emerging-grade one", () => {
+    // It was pushed onto an already-sorted list, under a heading that says the
+    // order comes from the evidence table and not from what this app can
+    // deliver.
+    const calm = score("phq9", [0, 0, 0, 0, 0, 0, 0, 0, 0]);
+    const plan = buildPlan({ scores: [calm], sleepDisturbed: true });
+    const order = { strong: 0, good: 1, moderate: 2, emerging: 3 };
+    const grades = plan.steps.map((s) => order[s.intervention.grade]);
+    for (let i = 1; i < grades.length; i++) {
+      expect(
+        grades[i],
+        `${plan.steps[i].intervention.id} (${plan.steps[i].intervention.grade}) came after ` +
+          `${plan.steps[i - 1].intervention.id} (${plan.steps[i - 1].intervention.grade})`
+      ).toBeGreaterThanOrEqual(grades[i - 1]);
+    }
+    expect(plan.steps.some((s) => s.intervention.id === "cbti")).toBe(true);
+  });
+});

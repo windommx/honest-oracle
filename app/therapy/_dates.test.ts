@@ -8,7 +8,40 @@ describe("localDate — the bug this replaced", () => {
     // and, as the input's `max`, made the right one unselectable.
     const morningInBangkok = new Date("2026-09-08T06:00:00+07:00");
     expect(morningInBangkok.toISOString().slice(0, 10)).toBe("2026-09-07"); // the old behaviour
-    expect(localDate(morningInBangkok)).toBe(dayIn(morningInBangkok));
+
+    // Asserted against a value derived by Intl for a NAMED zone, not against a
+    // reimplementation of localDate. The previous form compared the module to
+    // a line-for-line copy of itself, so reverting _dates.ts to
+    // toISOString().slice(0,10) would have left both sides agreeing — the test
+    // read as a regression guard and could not fail.
+    const inBangkok = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Asia/Bangkok",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(morningInBangkok);
+    expect(inBangkok).toBe("2026-09-08");
+
+    // localDate reads the RUNTIME's zone by definition, so the straddle can
+    // only be exercised where the runtime is not UTC. Where it is, the correct
+    // answer happens to equal the UTC one, and that is what is checked.
+    const runtimeIsUtc = new Date().getTimezoneOffset() === 0;
+    expect(localDate(morningInBangkok)).toBe(runtimeIsUtc ? "2026-09-07" : dayIn(morningInBangkok));
+    if (!runtimeIsUtc) {
+      expect(localDate(morningInBangkok)).not.toBe(morningInBangkok.toISOString().slice(0, 10));
+    }
+  });
+
+  it("disagrees with toISOString wherever the local day can straddle UTC", () => {
+    // Constructed from LOCAL components, so this is local midnight in whatever
+    // zone the runner is in — which is a different UTC date unless the offset
+    // is exactly zero.
+    const localMidnight = new Date(2026, 8, 8, 0, 30, 0);
+    expect(localDate(localMidnight)).toBe("2026-09-08");
+    if (localMidnight.getTimezoneOffset() > 0) {
+      // East of Greenwich: UTC is still the previous day.
+      expect(localMidnight.toISOString().slice(0, 10)).toBe("2026-09-07");
+    }
   });
 
   it("pads month and day to two digits", () => {

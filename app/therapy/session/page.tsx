@@ -148,7 +148,23 @@ export default function SessionPage() {
     );
   }, [running, mode, elapsed, breath, breathNow.phase.kind, breathNow.phase.seconds]);
 
-  useEffect(() => () => audio.current?.stop(), []);
+  // Logging on unmount needs the CURRENT stop(), not the one captured when the
+  // effect first ran; a ref keeps the cleanup's dependency list empty without
+  // making it stale.
+  const stopRef = useRef(stop);
+  stopRef.current = stop;
+
+  useEffect(
+    () => () => {
+      audio.current?.stop();
+      // Navigating away mid-session used to drop the record silently. stop()'s
+      // own comment says a session is logged whatever happened, "and dropping
+      // it would make the progress page flatter than the truth" — leaving the
+      // page is one of the things that can happen.
+      if (clock.elapsedMs(session.current, Date.now()) > 0) void stopRef.current(false);
+    },
+    []
+  );
 
   async function play() {
     // The clock starts on the user's press, not after the audio engine has
@@ -182,19 +198,30 @@ export default function SessionPage() {
     setRunning(false);
   }
 
-  /** Switching mode or length starts a DIFFERENT session, so the clock goes back
-   *  to zero. Without this, pausing five minutes of music and switching to the
-   *  breathing pacer logged those five minutes as a breathing session — the
-   *  running guard alone does not cover a paused clock. */
-  function reconfigure(next: { mode?: Mode; minutes?: number }) {
+  /** Switching mode, length or breath pattern starts a DIFFERENT session, so
+   *  the clock goes back to zero. Without this, pausing five minutes of music
+   *  and switching to the breathing pacer logged those five minutes as a
+   *  breathing session — the running guard alone does not cover a paused clock.
+   *
+   *  Nothing is reset when the selection did not actually change. The reset
+   *  ran unconditionally, so tapping the chip that was already pressed threw
+   *  away a paused session's banked minutes and its chosen length, and the
+   *  next "จบและบันทึก" logged zero. */
+  function reconfigure(next: { mode?: Mode; minutes?: number; pattern?: BreathPatternId }) {
     if (running) return;
+    const changesMode = next.mode !== undefined && next.mode !== mode;
+    const changesMinutes = next.minutes !== undefined && next.minutes !== minutes;
+    const changesPattern = next.pattern !== undefined && next.pattern !== pattern;
+    if (!changesMode && !changesMinutes && !changesPattern) return;
+
     session.current = clock.reset();
     setElapsed(0);
-    if (next.mode !== undefined) {
+    if (changesMode && next.mode !== undefined) {
       setMode(next.mode);
       setMinutes(next.mode === "breath" ? 5 : 20);
     }
-    if (next.minutes !== undefined) setMinutes(next.minutes);
+    if (changesMinutes && next.minutes !== undefined) setMinutes(next.minutes);
+    if (changesPattern && next.pattern !== undefined) setPattern(next.pattern);
   }
 
   const music = getIntervention("music-listening")!;
@@ -352,7 +379,7 @@ export default function SessionPage() {
               {Object.values(BREATH_PATTERNS).map((p) => (
                 <button
                   key={p.id}
-                  onClick={() => setPattern(p.id)}
+                  onClick={() => reconfigure({ pattern: p.id })}
                   aria-pressed={pattern === p.id}
                   className={`text-left px-3.5 py-2.5 rounded-xl border transition disabled:opacity-40 ${
                     pattern === p.id ? "border-gold bg-gold/10" : "border-white/10 hover:border-gold/40"

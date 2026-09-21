@@ -99,9 +99,29 @@ export interface SleepSummary {
   /** True when the diary meets the conventional frequency criterion. Presented as
    *  "worth discussing with a clinician", never as a diagnosis of insomnia. */
   meetsFrequencyCriterion: boolean;
+  /** Nights the criterion was actually assessed over — the most recent week,
+   *  not the whole diary. */
+  criterionWindowNights: number;
+  /** Disturbed nights in that window. */
+  criterionDisturbedNights: number;
   /** Honest caveat when there is too little data to say anything. */
   noteTh: string;
 }
+
+/**
+ * How many recent nights the frequency criterion is judged on.
+ *
+ * The criterion is "at least three nights a WEEK", so it has to be assessed
+ * over a week. Counting disturbed nights across the whole diary and comparing
+ * that count to 3 — which is what this did — means any diary of seven or more
+ * nights containing three bad ones qualifies: three bad nights in ninety is a
+ * rate of 0.23 a week and used to come back as meeting a 3-a-week criterion,
+ * which put CBT-I into the care plan of someone whose diary does not support
+ * it. Averaging over the whole diary would be wrong in the other direction —
+ * a bad week after eighty good nights is current insomnia and would be missed.
+ * The most recent week is the window the criterion is about.
+ */
+export const CRITERION_WINDOW_NIGHTS = 7;
 
 /** Summarise a diary. Returns a zero-night summary rather than throwing on an
  *  empty diary — a new user has no nights yet, and that is not an error. */
@@ -115,6 +135,8 @@ export function summarise(entries: readonly SleepDiaryEntry[]): SleepSummary {
       nightsAboveLatencyThreshold: 0,
       nightsAboveWasoThreshold: 0,
       meetsFrequencyCriterion: false,
+      criterionWindowNights: 0,
+      criterionDisturbedNights: 0,
       noteTh: "ยังไม่มีบันทึกการนอน — บันทึกอย่างน้อย 7 คืนจึงจะเห็นแนวโน้มได้",
     };
   }
@@ -124,19 +146,32 @@ export function summarise(entries: readonly SleepDiaryEntry[]): SleepSummary {
   const overLatency = valid.filter((e) => e.sleepLatencyMin > SLEEP_REFERENCE.latencyMin).length;
   const overWaso = valid.filter((e) => e.wakeAfterSleepOnsetMin > SLEEP_REFERENCE.wasoMin).length;
 
+  // The criterion window is the most recent week of LOGGED nights, newest
+  // first. Diary entries arrive in whatever order the store returns them, so
+  // the sort is not optional.
+  const recent = valid
+    .slice()
+    .sort((a, b) => b.date.localeCompare(a.date))
+    .slice(0, CRITERION_WINDOW_NIGHTS);
+  const disturbedRecently = recent.filter(
+    (e) =>
+      e.sleepLatencyMin > SLEEP_REFERENCE.latencyMin ||
+      e.wakeAfterSleepOnsetMin > SLEEP_REFERENCE.wasoMin
+  ).length;
+
   return {
     nights: valid.length,
     meanEfficiencyPct: round1(mean(metrics.map((m) => m.efficiencyPct))),
     meanTotalSleepMin: Math.round(mean(metrics.map((m) => m.totalSleepMin))),
     nightsAboveLatencyThreshold: overLatency,
     nightsAboveWasoThreshold: overWaso,
-    // The frequency criterion is defined per week, so it only means anything once
-    // a week of nights exists.
+    criterionWindowNights: recent.length,
+    criterionDisturbedNights: disturbedRecently,
     meetsFrequencyCriterion:
-      valid.length >= 7 && Math.max(overLatency, overWaso) >= SLEEP_REFERENCE.nightsPerWeek,
+      recent.length >= CRITERION_WINDOW_NIGHTS && disturbedRecently >= SLEEP_REFERENCE.nightsPerWeek,
     noteTh:
-      valid.length < 7
-        ? `มี ${valid.length} คืน — เกณฑ์เชิงปริมาณนับเป็น "คืนต่อสัปดาห์" จึงยังสรุปไม่ได้จนกว่าจะครบ 7 คืน`
-        : SLEEP_REFERENCE.sourceTh,
+      valid.length < CRITERION_WINDOW_NIGHTS
+        ? `มี ${valid.length} คืน — เกณฑ์เชิงปริมาณนับเป็น "คืนต่อสัปดาห์" จึงยังสรุปไม่ได้จนกว่าจะครบ ${CRITERION_WINDOW_NIGHTS} คืน`
+        : `${SLEEP_REFERENCE.sourceTh} — ตัดสินจาก ${recent.length} คืนล่าสุด พบรบกวน ${disturbedRecently} คืน`,
   };
 }

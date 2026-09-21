@@ -11,6 +11,24 @@ import { browserStorage, readNights, upsertNight } from "../_store";
 import { localDate } from "../_dates";
 import { outcomeMessage, syncNight } from "../_sync";
 
+/**
+ * The server's own bounds, restated so the form cannot accept what the API
+ * will reject.
+ *
+ * app/api/therapy/sleep/route.ts requires integers, minutes at most 1440 and
+ * awakenings at most 100. The form clamped only to "finite and non-negative",
+ * so typing 7.5 minutes or 150 awakenings passed locally, was written to
+ * localStorage, and then 400'd on sync with the user told only "ซิงก์ไม่สำเร็จ"
+ * and no indication of which field was wrong.
+ */
+const LIMITS: Record<string, number> = {
+  timeInBedMin: 1440,
+  sleepLatencyMin: 1440,
+  wakeAfterSleepOnsetMin: 1440,
+  terminalWakefulnessMin: 1440,
+  awakenings: 100,
+};
+
 const FIELDS = [
   { key: "timeInBedMin", th: "อยู่บนเตียงรวม (นาที)", hint: "ตั้งแต่ปิดไฟจนลุกจากเตียง" },
   { key: "sleepLatencyMin", th: "ใช้เวลานานแค่ไหนกว่าจะหลับ (นาที)", hint: "" },
@@ -23,8 +41,17 @@ const FIELDS = [
 // wrong night before 07:00 in Bangkok, and blocked selecting the right one.
 const today = () => localDate();
 
+/**
+ * `date` is filled in on mount, not here.
+ *
+ * Evaluated at module load it is the date the bundle was first imported, so a
+ * tab left open across local midnight keeps offering yesterday. Evaluated
+ * during render it differs between the server (UTC on a host) and the browser
+ * (Bangkok), which is a hydration mismatch before 07:00 ICT — the same
+ * timezone edge _dates.ts exists for.
+ */
 const EMPTY: SleepDiaryEntry = {
-  date: today(),
+  date: "",
   timeInBedMin: 480,
   sleepLatencyMin: 20,
   wakeAfterSleepOnsetMin: 10,
@@ -36,10 +63,16 @@ export default function SleepPage() {
   const [nights, setNights] = useState<SleepDiaryEntry[]>([]);
   const [form, setForm] = useState<SleepDiaryEntry>(EMPTY);
   const [mounted, setMounted] = useState(false);
+  /** Filled in on mount. Computing it during render disagrees between the
+   *  server's timezone and the browser's, which is a hydration mismatch before
+   *  07:00 in Bangkok — the exact window a sleep diary is filled in. */
+  const [todayLocal, setTodayLocal] = useState("");
 
   useEffect(() => {
     setNights(readNights(browserStorage()));
-    setForm({ ...EMPTY, date: today() });
+    const now = today();
+    setTodayLocal(now);
+    setForm({ ...EMPTY, date: now });
     setMounted(true);
   }, []);
 
@@ -74,7 +107,7 @@ export default function SleepPage() {
             type="date"
             className="input mt-1"
             value={form.date}
-            max={today()}
+            max={todayLocal || undefined}
             onChange={(e) => setForm({ ...form, date: e.target.value })}
           />
         </label>
@@ -87,9 +120,21 @@ export default function SleepPage() {
                 type="number"
                 inputMode="numeric"
                 min={0}
+                max={LIMITS[f.key]}
+                step={1}
                 className="input mt-1 tabular-nums"
                 value={form[f.key]}
-                onChange={(e) => setForm({ ...form, [f.key]: Math.max(0, Number(e.target.value) || 0) })}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    // Rounded and capped to exactly what the API accepts —
+                    // integers, within the same bounds.
+                    [f.key]: Math.min(
+                      LIMITS[f.key],
+                      Math.max(0, Math.round(Number(e.target.value) || 0))
+                    ),
+                  })
+                }
               />
               {f.hint && <span className="block text-[0.65rem] text-faint mt-0.5">{f.hint}</span>}
             </label>

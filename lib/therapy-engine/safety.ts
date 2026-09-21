@@ -20,6 +20,7 @@
 // ║  flag, and `SafetyResult.note` says so in as many words.           ║
 // ╚══════════════════════════════════════════════════════════════════╝
 
+import { CUTPOINTS } from "./scoring";
 import type { ScoreResult } from "./types";
 
 /** How urgently the app should put a human in front of the user.
@@ -108,7 +109,11 @@ export function assessSafety(scores: readonly ScoreResult[]): SafetyResult {
   }
 
   // 3. At or above the screening cut-point.
-  if (level === "none" && scores.some((s) => s.total >= 10)) {
+  // The published cut-point, read from where it is published. A literal 10
+  // here meant the number existed in two places: /therapy/assess and
+  // /therapy/safety both print CUTPOINTS as "the published cut-point", and a
+  // correction to one would have left the routing using the other.
+  if (level === "none" && scores.some((s) => s.total >= CUTPOINTS[s.instrument].score)) {
     level = "advised";
     reasonsTh.push("มีคะแนนถึงจุดตัดของการคัดกรอง — แนะนำให้ปรึกษาผู้ให้บริการสุขภาพ");
   }
