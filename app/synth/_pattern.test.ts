@@ -17,6 +17,8 @@ import {
   toggleNote,
 } from "./_pattern";
 import { MAX_STEPS, emptyPattern } from "@/lib/synth-engine/sequencer";
+import { MAX_MIDI_NOTE, MAX_OCTAVE } from "./_notes";
+import { DRUM_IDS } from "@/lib/synth-engine/drums";
 
 describe("toggleNote", () => {
   it("adds then removes", () => {
@@ -173,15 +175,50 @@ describe("notesOutsideView", () => {
 });
 
 describe("octaveContaining", () => {
-  it("picks the octave that brings a note into view", () => {
-    const note = 31;
-    const oct = octaveContaining(note);
-    expect(notesOutsideView(toggleNote(emptyPattern(2), 0, note), oct)).toEqual([]);
+  it("brings EVERY note into view, not just the ones in the middle", () => {
+    // The old clamp stopped at octave 8, which draws [96, 108] — so notes 109
+    // to 127 could not be reached at all and the "press to jump" button did
+    // nothing while the off-screen warning stayed up. The old test asserted
+    // the clamp rather than the promise, so it passed throughout.
+    const unreachable: number[] = [];
+    for (let note = 0; note <= 127; note++) {
+      const p = toggleNote(emptyPattern(2), 0, note);
+      if (notesOutsideView(p, octaveContaining(note)).length > 0) unreachable.push(note);
+    }
+    expect(unreachable, `cannot reach: ${unreachable.join(", ")}`).toEqual([]);
   });
 
-  it("stays inside the keyboard's range", () => {
+  it("never scrolls past the top of MIDI", () => {
     expect(octaveContaining(0)).toBe(0);
-    expect(octaveContaining(127)).toBeLessThanOrEqual(8);
+    expect(octaveContaining(127)).toBeLessThanOrEqual(MAX_OCTAVE);
+  });
+});
+
+describe("toggleDrum ordering", () => {
+  it("keeps drums in kit order whatever order they were clicked", () => {
+    // toggleNote sorts for exactly this reason; drums appended, so two
+    // patterns that sound identical serialised differently.
+    let a = emptyPattern(2);
+    a = toggleDrum(a, 0, "snare");
+    a = toggleDrum(a, 0, "kick");
+    let b = emptyPattern(2);
+    b = toggleDrum(b, 0, "kick");
+    b = toggleDrum(b, 0, "snare");
+    expect(a.steps[0].drums).toEqual(b.steps[0].drums);
+    expect(a.steps[0].drums).toEqual(["kick", "snare"]);
+  });
+
+  it("orders by the kit, not alphabetically", () => {
+    let p = emptyPattern(2);
+    for (const id of [...DRUM_IDS].reverse()) p = toggleDrum(p, 0, id);
+    expect(p.steps[0].drums).toEqual([...DRUM_IDS]);
+  });
+});
+
+describe("the roll stays inside MIDI", () => {
+  it("the top octave's window still contains note 127", () => {
+    expect(rollBase(MAX_OCTAVE)).toBeLessThanOrEqual(MAX_MIDI_NOTE);
+    expect(rollBase(MAX_OCTAVE) + ROLL_ROWS - 1).toBeGreaterThanOrEqual(MAX_MIDI_NOTE);
   });
 });
 

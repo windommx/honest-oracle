@@ -18,6 +18,22 @@ import { exportPatternToWav } from "./_export";
 import { SynthClient, audioWorkletSupported } from "./_engine-client";
 import { GROUP_COLOR, TEXT_FAINT } from "./_tokens";
 
+/**
+ * Run `work` after the browser has painted.
+ *
+ * A single requestAnimationFrame does NOT do this: its callbacks run before
+ * style, layout and paint, so a long synchronous job started inside one
+ * blocks the very frame that was supposed to show the loading state, and the
+ * user sees the page freeze with the button still reading its idle label.
+ * One more turn — a timeout scheduled from inside the frame — lands after the
+ * paint. setTimeout rather than a nested rAF because rAF is suspended in a
+ * background tab, which would leave the button stuck disabled until the tab
+ * came back.
+ */
+function afterPaint(work: () => void): void {
+  requestAnimationFrame(() => setTimeout(work, 0));
+}
+
 /** Short labels for the voice architectures. */
 const SOURCE_LABEL: Record<OscSource, string> = {
   classic: "Classic",
@@ -102,9 +118,7 @@ export default function SynthPage() {
 
   const exportWav = useCallback(() => {
     setExporting(true);
-    // A frame before the render starts, so the button actually repaints into
-    // its loading state — the render blocks the main thread.
-    requestAnimationFrame(() => {
+    afterPaint(() => {
       try {
         const result = exportPatternToWav({
           pattern,
@@ -114,7 +128,8 @@ export default function SynthPage() {
         });
         toast(
           `บันทึกแล้ว ${result.filename} — ${result.seconds.toFixed(1)} วินาที · ` +
-            `${(result.byteLength / 1024 / 1024).toFixed(1)} MB`,
+            `${(result.byteLength / 1024 / 1024).toFixed(1)} MB · ` +
+            `ยอดสัญญาณ ${(20 * Math.log10(Math.max(result.peak, 1e-6))).toFixed(1)} dBFS`,
           { variant: "success" }
         );
       } catch (err) {
@@ -126,11 +141,12 @@ export default function SynthPage() {
   }, [pattern, patch, presetId]);
 
   const update = useCallback((key: keyof SynthPatch, value: number | LfoTarget | OscSource) => {
-    setPatch((prev) => {
-      const next = { ...prev, [key]: value } as SynthPatch;
-      client.current?.setPatch({ [key]: value });
-      return next;
-    });
+    // Outside the updater. React double-invokes updaters in StrictMode and may
+    // discard and replay one during concurrent rendering, so a postMessage in
+    // there posts twice for every knob move — doubling real-time-thread work
+    // on every drag. changePattern below already keeps its send outside.
+    client.current?.setPatch({ [key]: value });
+    setPatch((prev) => ({ ...prev, [key]: value }) as SynthPatch);
     setPresetId("");
   }, []);
 

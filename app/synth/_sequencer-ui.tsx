@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { memo, useEffect, useMemo, useState } from "react";
 import { Download, Eraser, Play, Square } from "lucide-react";
 import { DRUM_IDS, type DrumId } from "@/lib/synth-engine/drums";
 import type { SequencerPattern } from "@/lib/synth-engine/sequencer";
@@ -51,7 +51,7 @@ const DRUM_LABEL: Record<DrumId, string> = {
  *  after the row scrolls sideways. */
 const MIN_CELL_PX = 22;
 
-export function SequencerPanel({
+export const SequencerPanel = memo(function SequencerPanel({
   pattern,
   onPatternChange,
   octave,
@@ -66,6 +66,29 @@ export function SequencerPanel({
   canPlay,
 }: SequencerPanelProps) {
   const steps = pattern.steps.length;
+
+  /**
+   * The BPM field holds text while it is being typed.
+   *
+   * Clamping on every keystroke makes the field impossible to use: typing the
+   * "1" of 120 writes 1, which clamps to MIN_BPM and is rendered back under
+   * the cursor, and clearing the field gives Number("") === 0, which clamps
+   * too. Only the spinner arrows worked. The value is committed on blur and
+   * on Enter instead, which is when the user has finished saying it.
+   */
+  const [bpmText, setBpmText] = useState(String(pattern.bpm));
+  useEffect(() => setBpmText(String(pattern.bpm)), [pattern.bpm]);
+
+  const commitBpm = () => {
+    const parsed = Number(bpmText);
+    if (!Number.isFinite(parsed) || bpmText.trim() === "") {
+      setBpmText(String(pattern.bpm));
+      return;
+    }
+    const bpm = Math.round(Math.min(MAX_BPM, Math.max(MIN_BPM, parsed)));
+    setBpmText(String(bpm));
+    if (bpm !== pattern.bpm) onPatternChange({ ...pattern, bpm });
+  };
   const base = rollBase(octave);
   const rows = useMemo(
     // Top of the grid is the highest note, as on every piano roll ever drawn.
@@ -141,12 +164,11 @@ export function SequencerPanel({
             className="input w-20 tabular-nums"
             min={MIN_BPM}
             max={MAX_BPM}
-            value={pattern.bpm}
-            onChange={(e) => {
-              const bpm = Number(e.target.value);
-              if (Number.isFinite(bpm)) {
-                onPatternChange({ ...pattern, bpm: Math.min(MAX_BPM, Math.max(MIN_BPM, bpm)) });
-              }
+            value={bpmText}
+            onChange={(e) => setBpmText(e.target.value)}
+            onBlur={commitBpm}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") commitBpm();
             }}
           />
         </label>
@@ -319,4 +341,10 @@ export function SequencerPanel({
       </div>
     </section>
   );
-}
+});
+
+// Memoised: the audio thread posts a status roughly 47 times a second and
+// each one re-renders the page, but this grid only changes when the pattern
+// or the playhead does — and the playhead moves about 7 times a second at
+// 104bpm. Without this, React reconciled 272 buttons (544 at 32 steps) 47
+// times a second for nothing.

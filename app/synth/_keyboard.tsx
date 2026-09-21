@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { GOLD, KEY_BLACK, KEY_WHITE, TEXT_FAINT } from "./_tokens";
-import { isBlackKey, noteName } from "./_notes";
+import { MAX_MIDI_NOTE, MAX_OCTAVE, isBlackKey, noteName } from "./_notes";
 
 // A playable keyboard: mouse/touch on the keys, and the QWERTY row mapped the
 // way trackers and soft synths have mapped it for decades.
@@ -35,7 +35,9 @@ export function Keyboard({ octave, onOctaveChange, onNoteOn, onNoteOff, held, oc
 
   const first = octave * 12;
   const count = octaves * 12;
-  const notes = Array.from({ length: count }, (_, i) => first + i);
+  // Nothing above MIDI 127 is drawn: the top octave used to span 96..131, so
+  // four keys on screen named notes no pattern can hold.
+  const notes = Array.from({ length: count }, (_, i) => first + i).filter((n) => n <= MAX_MIDI_NOTE);
   const whiteNotes = notes.filter((n) => !isBlackKey(n));
 
   useEffect(() => {
@@ -54,7 +56,7 @@ export function Keyboard({ octave, onOctaveChange, onNoteOn, onNoteOff, held, oc
       }
       if (key === "x") {
         e.preventDefault();
-        onOctaveChange(Math.min(8, octave + 1));
+        onOctaveChange(Math.min(MAX_OCTAVE, octave + 1));
         return;
       }
       const offset = KEY_MAP[key];

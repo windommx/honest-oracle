@@ -24,7 +24,7 @@ import { DrumKit, type DrumId } from "./drums";
 import { Rng } from "./rng";
 import { Sequencer, type SequencerPattern } from "./sequencer";
 import { DEFAULT_PATCH } from "./presets";
-import { Voice } from "./voice";
+import { Voice, type NoteSource } from "./voice";
 import type { LfoTarget, PatchUpdate, SynthPatch } from "./types";
 
 /** Simultaneous notes. Above this the oldest is stolen. */
@@ -34,6 +34,7 @@ interface NoteEvent {
   type: "on" | "off";
   note: number;
   velocity: number;
+  owner: NoteSource;
 }
 
 /** A steady pulse generated ON THE AUDIO THREAD.
@@ -130,18 +131,23 @@ export class Synth {
     return this.drums.activeCount;
   }
 
-  noteOn(note: number, velocity = 1): void {
-    this.pending.push({ type: "on", note, velocity });
+  noteOn(note: number, velocity = 1, owner: NoteSource = "keyboard"): void {
+    this.pending.push({ type: "on", note, velocity, owner });
   }
 
-  noteOff(note: number): void {
-    this.pending.push({ type: "off", note, velocity: 0 });
+  noteOff(note: number, owner: NoteSource = "keyboard"): void {
+    this.pending.push({ type: "off", note, velocity: 0, owner });
   }
 
-  /** Release everything. */
+  /** Release everything, and stop the sequence.
+   *
+   *  The sequencer has to stop for the same reason panic() stops it: leaving
+   *  it running refills the voices within a step, so the call looks like it
+   *  did nothing. Silence commands mean silence. */
   allNotesOff(): void {
     for (const v of this.voices) if (v.active) v.noteOff(this.patch);
     this.pending = [];
+    this.sequencer.stop();
   }
 
   /** Silence everything at once, including tails. */
@@ -180,7 +186,7 @@ export class Synth {
       this.pulseCountdown = 0;
     }
     if (!this.pulse.enabled && wasEnabled && this.pulseGate >= 0) {
-      this.applyNoteOff(this.pulse.note);
+      this.applyNoteOff(this.pulse.note, "pulse");
       this.pulseGate = -1;
     }
   }
@@ -209,7 +215,7 @@ export class Synth {
    *  last step's notes sustain forever. */
   stopSequencer(): void {
     for (const e of this.sequencer.stop()) {
-      if (e.type === "noteOff") this.noteOff(e.note);
+      if (e.type === "noteOff") this.noteOff(e.note, "sequencer");
     }
   }
 
@@ -230,8 +236,8 @@ export class Synth {
     const events = this.sequencer.tick();
     for (let i = 0; i < events.length; i++) {
       const e = events[i];
-      if (e.type === "noteOn") this.applyNoteOn(e.note, e.velocity);
-      else if (e.type === "noteOff") this.applyNoteOff(e.note);
+      if (e.type === "noteOn") this.applyNoteOn(e.note, e.velocity, "sequencer");
+      else if (e.type === "noteOff") this.applyNoteOff(e.note, "sequencer");
       else this.drums.trigger(e.id, e.velocity);
     }
   }
@@ -239,7 +245,7 @@ export class Synth {
   /** Advance the pulse by one sample, triggering and releasing as due. */
   private tickPulse(): void {
     if (this.pulseGate >= 0 && --this.pulseGate <= 0) {
-      this.applyNoteOff(this.pulse.note);
+      this.applyNoteOff(this.pulse.note, "pulse");
       this.pulseGate = -1;
     }
     if (!this.pulse.enabled) return;
@@ -250,13 +256,16 @@ export class Synth {
     // A gate longer than the period would retrigger a note that is still
     // sounding, which on a fast tempo silently drops beats.
     this.pulseGate = Math.min(period - 1, Math.max(1, Math.round(this.pulse.gateSeconds * this.sampleRate)));
-    this.applyNoteOn(this.pulse.note, this.pulse.velocity);
+    this.applyNoteOn(this.pulse.note, this.pulse.velocity, "pulse");
   }
 
-  private applyNoteOn(note: number, velocity: number): void {
-    // Retrigger the same note if it is already sounding, rather than stacking
-    // a second voice on it — two voices on one pitch is 6dB louder and beats.
-    let voice = this.voices.find((v) => v.active && v.note === note);
+  private applyNoteOn(note: number, velocity: number, owner: NoteSource = "keyboard"): void {
+    // Retrigger the same note if THIS SOURCE is already sounding it, rather
+    // than stacking a second voice on it — two voices on one pitch is 6dB
+    // louder and beats. Matching on the source as well is what lets the
+    // player hold a key the sequence is also playing: those are two notes
+    // that happen to share a pitch, not one note.
+    let voice = this.voices.find((v) => v.active && v.note === note && v.owner === owner);
     if (!voice) voice = this.voices.find((v) => !v.active);
     if (!voice) {
       // All busy: steal the oldest. Stealing the newest would cut off the note
@@ -264,17 +273,20 @@ export class Synth {
       voice = this.voices.reduce((oldest, v) => (v.age < oldest.age ? v : oldest), this.voices[0]);
       voice.steal();
     }
-    voice.noteOn(note, velocity, this.patch, ++this.ageCounter);
+    voice.noteOn(note, velocity, this.patch, ++this.ageCounter, owner);
   }
 
-  private applyNoteOff(note: number): void {
-    for (const v of this.voices) if (v.active && v.note === note) v.noteOff(this.patch);
+  private applyNoteOff(note: number, owner: NoteSource = "keyboard"): void {
+    // Only this source's own note. Releasing every voice on the pitch let a
+    // key release cut the sequencer's note mid-step, and the sequencer's gate
+    // release silence a key the player was still holding.
+    for (const v of this.voices) if (v.active && v.note === note && v.owner === owner) v.noteOff(this.patch);
   }
 
   private drainEvents(): void {
     for (const e of this.pending) {
-      if (e.type === "on") this.applyNoteOn(e.note, e.velocity);
-      else this.applyNoteOff(e.note);
+      if (e.type === "on") this.applyNoteOn(e.note, e.velocity, e.owner);
+      else this.applyNoteOff(e.note, e.owner);
     }
     this.pending.length = 0;
   }

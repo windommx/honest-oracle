@@ -616,3 +616,86 @@ describe("sequencer inside the render loop", () => {
     expect(peak(s.renderSeconds(0.5).left)).toBe(0);
   });
 });
+
+describe("notes know who started them", () => {
+  const plucky = { ...clicky, ampDecay: 0.3, ampSustain: 0.7, ampRelease: 0.05 } as const;
+
+  it("the sequencer does not silence a key held on the same pitch", () => {
+    // Measured before notes had owners: the held note was silent for three
+    // quarters of every cycle — RMS exactly 0.0000 in six of eight windows —
+    // while the UI still showed the key pressed, and it stayed dead until
+    // released and re-pressed. Every source shared one pool and a note-off
+    // matched purely by pitch.
+    const s = new Synth(SR, plucky);
+    const p = emptyPattern(4);
+    p.bpm = 120;
+    p.steps[0] = { notes: [48], drums: [], velocity: 1, gate: 0.5 };
+    s.setPattern(p);
+    s.startSequencer();
+    s.noteOn(48, 1);
+    const { left } = s.renderSeconds(1);
+    for (let w = 0; w < 8; w++) {
+      const level = rms(left.subarray(w * 6000, (w + 1) * 6000));
+      expect(level, `window ${w} went silent`).toBeGreaterThan(1e-3);
+    }
+  });
+
+  it("a key release does not cut the sequencer's note", () => {
+    const s = new Synth(SR, plucky);
+    const p = emptyPattern(4);
+    p.bpm = 60;
+    p.steps[0] = { notes: [48], drums: [], velocity: 1, gate: 1 };
+    s.setPattern(p);
+    s.startSequencer();
+    s.renderSeconds(0.05);
+    expect(s.activeVoiceCount).toBe(1);
+    s.noteOff(48); // an unrelated key, same pitch
+    // Still inside step 0's gate — at 60bpm and 4 steps a beat that runs to
+    // 0.25s, so rendering past it would be measuring the gate, not the bug.
+    s.renderSeconds(0.1);
+    expect(s.activeVoiceCount, "the sequencer's note was cut").toBe(1);
+  });
+
+  it("the same pitch from two sources is two voices, not one", () => {
+    const s = new Synth(SR, plucky);
+    s.noteOn(60, 1, "keyboard");
+    s.noteOn(60, 1, "sequencer");
+    s.renderSeconds(0.02);
+    expect(s.activeVoiceCount).toBe(2);
+  });
+
+  it("the same pitch from one source still retriggers rather than stacking", () => {
+    const s = new Synth(SR, plucky);
+    s.noteOn(60, 1);
+    s.renderSeconds(0.02);
+    s.noteOn(60, 1);
+    s.renderSeconds(0.02);
+    expect(s.activeVoiceCount).toBe(1);
+  });
+
+  it("the pulse and the keyboard do not fight either", () => {
+    const s = new Synth(SR, plucky);
+    s.setPulse({ enabled: true, bpm: 120, note: 72, gateSeconds: 0.05 });
+    s.noteOn(72, 1);
+    s.renderSeconds(0.6);
+    expect(s.activeVoiceCount, "the pulse released the held key").toBeGreaterThanOrEqual(1);
+    const { left } = s.renderSeconds(0.3);
+    expect(rms(left)).toBeGreaterThan(1e-3);
+  });
+
+  it("allNotesOff stops the sequence too, like panic", () => {
+    // Otherwise the sequencer refills the voices within a step and the call
+    // looks like it did nothing — the exact reason panic() stops it.
+    const s = new Synth(SR);
+    const p = emptyPattern(4);
+    p.bpm = 240;
+    for (const step of p.steps) step.notes = [60];
+    s.setPattern(p);
+    s.startSequencer();
+    s.renderSeconds(0.1);
+    s.allNotesOff();
+    expect(s.sequencerRunning).toBe(false);
+    s.renderSeconds(0.5);
+    expect(s.activeVoiceCount).toBe(0);
+  });
+});

@@ -17,6 +17,7 @@
 
 import { renderPattern } from "@/lib/synth-engine/offline";
 import { encodeWav, wavFilename } from "@/lib/synth-engine/wav";
+import { downloadBlob } from "../rush/_utils";
 import type { SequencerPattern } from "@/lib/synth-engine/sequencer";
 import type { SynthPatch } from "@/lib/synth-engine/types";
 
@@ -53,14 +54,7 @@ export function exportPatternToWav(request: ExportRequest): ExportResult {
   const bytes = encodeWav([render.left, render.right], render.sampleRate);
   const filename = wavFilename(`synthpro-${request.presetName || "patch"}-${Math.round(request.pattern.bpm)}bpm`);
 
-  const url = URL.createObjectURL(new Blob([bytes], { type: "audio/wav" }));
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = filename;
-  link.click();
-  // Revoking immediately can cancel the download in some browsers; one turn of
-  // the event loop is enough for the click to have been handled.
-  setTimeout(() => URL.revokeObjectURL(url), 0);
+  downloadBlob(filename, bytes, "audio/wav");
 
   return { filename, seconds: render.seconds, peak: render.peak, byteLength: bytes.byteLength };
 }

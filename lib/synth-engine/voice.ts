@@ -15,12 +15,27 @@ import type { SynthPatch } from "./types";
  *  so 8 across 16 notes is already 256 oscillators. */
 export const MAX_UNISON = 8;
 
+/** Who asked for a note. The keyboard, the step sequencer, and the
+ *  audio-thread pulse each own their own notes. */
+export type NoteSource = "keyboard" | "sequencer" | "pulse";
+
 export function midiToFrequency(note: number): number {
   return 440 * Math.pow(2, (note - 69) / 12);
 }
 
 export class Voice {
   note = -1;
+  /**
+   * Which source started this note.
+   *
+   * Without it, a note-off matches purely by pitch and every source shares
+   * one pool: the sequencer's gate release silences a key the player is
+   * holding on the same pitch, and releasing that key cuts the sequencer's
+   * note mid-step. Measured before this field existed — with a key held on a
+   * pitch the loop also plays, the held note was silent for three quarters of
+   * every cycle while the UI still showed it pressed.
+   */
+  owner: NoteSource = "keyboard";
   /** Rising counter set on note-on, so the oldest voice can be identified. */
   age = 0;
 
@@ -66,8 +81,9 @@ export class Voice {
     return this.ampEnv.active;
   }
 
-  noteOn(note: number, velocity: number, patch: SynthPatch, age: number): void {
+  noteOn(note: number, velocity: number, patch: SynthPatch, age: number, owner: NoteSource = "keyboard"): void {
     this.note = note;
+    this.owner = owner;
     this.age = age;
     this.velocity = Math.min(Math.max(velocity, 0), 1);
     this.baseFrequency = midiToFrequency(note);

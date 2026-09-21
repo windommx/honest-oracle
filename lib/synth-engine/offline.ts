@@ -41,14 +41,6 @@ export interface OfflineRender {
   peak: number;
 }
 
-function concat(a: Float32Array, b: Float32Array): Float32Array {
-  if (b.length === 0) return a;
-  const out = new Float32Array(a.length + b.length);
-  out.set(a, 0);
-  out.set(b, a.length);
-  return out;
-}
-
 /**
  * Render a pattern to samples.
  *
@@ -66,15 +58,25 @@ export function renderPattern(options: OfflineRenderOptions): OfflineRender {
     throw new RangeError(`export would be ${Math.round(seconds)}s; the limit is ${MAX_EXPORT_SECONDS}s`);
   }
 
+  // Rendered straight into the final buffers. render() fills arrays the
+  // caller supplies, so a subarray view costs nothing — where rendering into
+  // two temporary pairs and concatenating allocated a third full-size pair
+  // and memcpy'd both into it, tripling peak memory on a long export for no
+  // reason.
+  const loopFrames = Math.round(loopSeconds * sampleRate);
+  const tailFrames = Math.round(tailSeconds * sampleRate);
+  const left = new Float32Array(loopFrames + tailFrames);
+  const right = new Float32Array(loopFrames + tailFrames);
+
   const synth = new Synth(sampleRate, options.patch ?? {});
   synth.setPattern(options.pattern);
   synth.startSequencer();
-  const loop = synth.renderSeconds(loopSeconds);
+  synth.render(left.subarray(0, loopFrames), right.subarray(0, loopFrames));
 
   synth.stopSequencer();
-  const tail = synth.renderSeconds(tailSeconds);
+  if (tailFrames > 0) {
+    synth.render(left.subarray(loopFrames), right.subarray(loopFrames));
+  }
 
-  const left = concat(loop.left, tail.left);
-  const right = concat(loop.right, tail.right);
   return { left, right, sampleRate, seconds, peak: Math.max(peak(left), peak(right)) };
 }

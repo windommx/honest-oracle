@@ -17,6 +17,7 @@ import { LOUDNESS_TARGETS, type LoudnessTargetId } from "@/lib/master-engine/lou
 import { encodeWav, wavFilename } from "@/lib/audio-io/wav";
 import { Knob } from "@/components/knob";
 import { toast } from "../rush/_toast";
+import { downloadBlob } from "../rush/_utils";
 import { ACCEPTED_FILES, UnsupportedAudioError, loadAudioFile, type LoadedAudio } from "./_loader";
 import { MasterClient, audioWorkletSupported } from "./_engine-client";
 import { Waveform } from "./_waveform";
@@ -35,6 +36,21 @@ const CONSOLE_LABEL: Record<ConsoleModel, string> = {
 };
 
 const EXPORT_DEPTHS = [16, 24] as const;
+
+/**
+ * Run `work` after the browser has painted.
+ *
+ * requestAnimationFrame callbacks run BEFORE style, layout and paint, so a
+ * long synchronous job started inside one blocks the very frame that was
+ * meant to show the loading state — the page freezes with the button still
+ * reading its idle label, which is the symptom the rAF was added to prevent.
+ * A timeout scheduled from inside the frame lands after the paint. Not a
+ * nested rAF: those are suspended in a background tab, so switching away
+ * mid-export would leave the button stuck disabled.
+ */
+function afterPaint(work: () => void): void {
+  requestAnimationFrame(() => setTimeout(work, 0));
+}
 
 export default function MasterPage() {
   const [settings, setSettings] = useState<MasterSettings>(DEFAULT_MASTER);
@@ -219,7 +235,7 @@ export default function MasterPage() {
   const measure = useCallback(() => {
     if (!audio) return;
     setBusy("rendering");
-    requestAnimationFrame(() => {
+    afterPaint(() => {
       try {
         const result = renderMaster({
           left: audio.left,
@@ -240,7 +256,7 @@ export default function MasterPage() {
   const exportFile = useCallback(() => {
     if (!audio) return;
     setBusy("exporting");
-    requestAnimationFrame(() => {
+    afterPaint(() => {
       try {
         const result = renderMaster({
           left: audio.left,
@@ -253,12 +269,7 @@ export default function MasterPage() {
         const bytes = encodeWav([result.left, result.right], result.sampleRate, depth);
         const base = audio.name.replace(/\.[^.]+$/, "");
         const filename = wavFilename(`${base}-mastered-${presetId || "custom"}`);
-        const url = URL.createObjectURL(new Blob([bytes], { type: "audio/wav" }));
-        const link = document.createElement("a");
-        link.href = url;
-        link.download = filename;
-        link.click();
-        setTimeout(() => URL.revokeObjectURL(url), 0);
+        downloadBlob(filename, bytes, "audio/wav");
         toast(
           `บันทึก ${filename} — ${result.integratedLufs.toFixed(1)} LUFS · ` +
             `${(bytes.byteLength / 1024 / 1024).toFixed(1)} MB · เรนเดอร์ ${(result.elapsedMs / 1000).toFixed(1)} วินาที`,

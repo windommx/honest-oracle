@@ -10,7 +10,8 @@
 // ╚══════════════════════════════════════════════════════════════════╝
 
 import { MAX_STEPS, emptyPattern, emptyStep, type SequencerPattern, type SequencerStep } from "@/lib/synth-engine/sequencer";
-import type { DrumId } from "@/lib/synth-engine/drums";
+import { DRUM_IDS, type DrumId } from "@/lib/synth-engine/drums";
+import { MAX_MIDI_NOTE, MAX_OCTAVE } from "./_notes";
 
 /** Semitone rows the roll shows: one octave, inclusive of the top C. */
 export const ROLL_ROWS = 13;
@@ -48,7 +49,13 @@ export function toggleNote(pattern: SequencerPattern, index: number, note: numbe
 export function toggleDrum(pattern: SequencerPattern, index: number, id: DrumId): SequencerPattern {
   return replaceStep(pattern, index, (step) => ({
     ...step,
-    drums: step.drums.includes(id) ? step.drums.filter((d) => d !== id) : [...step.drums, id],
+    // Sorted into kit order for the same reason toggleNote sorts: click order
+    // must not change what gets exported or compared. Without it, kick-then-
+    // snare and snare-then-kick produce two patterns that sound identical and
+    // serialise differently.
+    drums: step.drums.includes(id)
+      ? step.drums.filter((d) => d !== id)
+      : [...step.drums, id].sort((a, b) => DRUM_IDS.indexOf(a) - DRUM_IDS.indexOf(b)),
   }));
 }
 
@@ -105,9 +112,19 @@ export function notesOutsideView(pattern: SequencerPattern, octave: number): num
   return Array.from(found).sort((a, b) => a - b);
 }
 
-/** The octave that brings the lowest written note into view. */
+/**
+ * The octave that brings a note into view.
+ *
+ * The clamp used to stop at 8, which draws [96, 108] — so notes 109 to 127
+ * could not be reached at all, and the "N notes off-screen, press to jump"
+ * button did nothing for them while the warning stayed on screen. The top
+ * octave is the one whose window still contains the highest note, which is
+ * what the docstring claimed all along; the old test only asserted the clamp.
+ */
+export const MAX_ROLL_OCTAVE = MAX_OCTAVE;
+
 export function octaveContaining(note: number): number {
-  return Math.max(0, Math.min(8, Math.floor(note / 12)));
+  return Math.max(0, Math.min(MAX_ROLL_OCTAVE, Math.floor(note / 12)));
 }
 
 /**

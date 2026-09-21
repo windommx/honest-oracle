@@ -1406,6 +1406,17 @@
   var Voice = class {
     constructor(sampleRate2, seed) {
       __publicField(this, "note", -1);
+      /**
+       * Which source started this note.
+       *
+       * Without it, a note-off matches purely by pitch and every source shares
+       * one pool: the sequencer's gate release silences a key the player is
+       * holding on the same pitch, and releasing that key cuts the sequencer's
+       * note mid-step. Measured before this field existed — with a key held on a
+       * pitch the loop also plays, the held note was silent for three quarters of
+       * every cycle while the UI still showed it pressed.
+       */
+      __publicField(this, "owner", "keyboard");
       /** Rising counter set on note-on, so the oldest voice can be identified. */
       __publicField(this, "age", 0);
       __publicField(this, "osc1", []);
@@ -1442,8 +1453,9 @@
     get active() {
       return this.ampEnv.active;
     }
-    noteOn(note, velocity, patch, age) {
+    noteOn(note, velocity, patch, age, owner = "keyboard") {
       this.note = note;
+      this.owner = owner;
       this.age = age;
       this.velocity = Math.min(Math.max(velocity, 0), 1);
       this.baseFrequency = midiToFrequency(note);
@@ -1656,16 +1668,21 @@
     get activeDrumCount() {
       return this.drums.activeCount;
     }
-    noteOn(note, velocity = 1) {
-      this.pending.push({ type: "on", note, velocity });
+    noteOn(note, velocity = 1, owner = "keyboard") {
+      this.pending.push({ type: "on", note, velocity, owner });
     }
-    noteOff(note) {
-      this.pending.push({ type: "off", note, velocity: 0 });
+    noteOff(note, owner = "keyboard") {
+      this.pending.push({ type: "off", note, velocity: 0, owner });
     }
-    /** Release everything. */
+    /** Release everything, and stop the sequence.
+     *
+     *  The sequencer has to stop for the same reason panic() stops it: leaving
+     *  it running refills the voices within a step, so the call looks like it
+     *  did nothing. Silence commands mean silence. */
     allNotesOff() {
       for (const v of this.voices) if (v.active) v.noteOff(this.patch);
       this.pending = [];
+      this.sequencer.stop();
     }
     /** Silence everything at once, including tails. */
     panic() {
@@ -1698,7 +1715,7 @@
         this.pulseCountdown = 0;
       }
       if (!this.pulse.enabled && wasEnabled && this.pulseGate >= 0) {
-        this.applyNoteOff(this.pulse.note);
+        this.applyNoteOff(this.pulse.note, "pulse");
         this.pulseGate = -1;
       }
     }
@@ -1722,7 +1739,7 @@
      *  last step's notes sustain forever. */
     stopSequencer() {
       for (const e of this.sequencer.stop()) {
-        if (e.type === "noteOff") this.noteOff(e.note);
+        if (e.type === "noteOff") this.noteOff(e.note, "sequencer");
       }
     }
     get sequencerRunning() {
@@ -1740,15 +1757,15 @@
       const events = this.sequencer.tick();
       for (let i = 0; i < events.length; i++) {
         const e = events[i];
-        if (e.type === "noteOn") this.applyNoteOn(e.note, e.velocity);
-        else if (e.type === "noteOff") this.applyNoteOff(e.note);
+        if (e.type === "noteOn") this.applyNoteOn(e.note, e.velocity, "sequencer");
+        else if (e.type === "noteOff") this.applyNoteOff(e.note, "sequencer");
         else this.drums.trigger(e.id, e.velocity);
       }
     }
     /** Advance the pulse by one sample, triggering and releasing as due. */
     tickPulse() {
       if (this.pulseGate >= 0 && --this.pulseGate <= 0) {
-        this.applyNoteOff(this.pulse.note);
+        this.applyNoteOff(this.pulse.note, "pulse");
         this.pulseGate = -1;
       }
       if (!this.pulse.enabled) return;
@@ -1756,24 +1773,24 @@
       const period = Math.max(1, Math.round(60 / Math.max(1, this.pulse.bpm) * this.sampleRate));
       this.pulseCountdown = period;
       this.pulseGate = Math.min(period - 1, Math.max(1, Math.round(this.pulse.gateSeconds * this.sampleRate)));
-      this.applyNoteOn(this.pulse.note, this.pulse.velocity);
+      this.applyNoteOn(this.pulse.note, this.pulse.velocity, "pulse");
     }
-    applyNoteOn(note, velocity) {
-      let voice = this.voices.find((v) => v.active && v.note === note);
+    applyNoteOn(note, velocity, owner = "keyboard") {
+      let voice = this.voices.find((v) => v.active && v.note === note && v.owner === owner);
       if (!voice) voice = this.voices.find((v) => !v.active);
       if (!voice) {
         voice = this.voices.reduce((oldest, v) => v.age < oldest.age ? v : oldest, this.voices[0]);
         voice.steal();
       }
-      voice.noteOn(note, velocity, this.patch, ++this.ageCounter);
+      voice.noteOn(note, velocity, this.patch, ++this.ageCounter, owner);
     }
-    applyNoteOff(note) {
-      for (const v of this.voices) if (v.active && v.note === note) v.noteOff(this.patch);
+    applyNoteOff(note, owner = "keyboard") {
+      for (const v of this.voices) if (v.active && v.note === note && v.owner === owner) v.noteOff(this.patch);
     }
     drainEvents() {
       for (const e of this.pending) {
-        if (e.type === "on") this.applyNoteOn(e.note, e.velocity);
-        else this.applyNoteOff(e.note);
+        if (e.type === "on") this.applyNoteOn(e.note, e.velocity, e.owner);
+        else this.applyNoteOff(e.note, e.owner);
       }
       this.pending.length = 0;
     }

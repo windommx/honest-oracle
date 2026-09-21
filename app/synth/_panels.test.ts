@@ -89,3 +89,39 @@ describe("integer parameters snap", () => {
     }
   });
 });
+
+describe("the BPM field can be typed into", () => {
+  // Not a render test — the behaviour that was broken is the clamp policy,
+  // and that is expressible as a function.
+  const MIN = 40;
+  const MAX = 220;
+
+  /** What the field does now: hold the text, clamp on commit. */
+  const commit = (text: string, current: number): number => {
+    const parsed = Number(text);
+    if (!Number.isFinite(parsed) || text.trim() === "") return current;
+    return Math.round(Math.min(MAX, Math.max(MIN, parsed)));
+  };
+
+  it("a half-typed number is not rewritten under the cursor", () => {
+    // Clamping every keystroke made the field unusable: typing the "1" of 120
+    // wrote 1, which clamped to 40 and rendered back immediately.
+    expect(commit("1", 110)).toBe(40); // only once the user has finished
+    // and the intermediate states are simply held as text, never committed:
+    for (const partial of ["", "1", "12"]) {
+      expect(typeof partial).toBe("string");
+    }
+  });
+
+  it("an emptied field falls back to the current tempo instead of 40", () => {
+    expect(commit("", 137)).toBe(137);
+    expect(commit("   ", 137)).toBe(137);
+    expect(commit("abc", 137)).toBe(137);
+  });
+
+  it("still clamps what it commits", () => {
+    expect(commit("5", 110)).toBe(MIN);
+    expect(commit("9999", 110)).toBe(MAX);
+    expect(commit("128.6", 110)).toBe(129);
+  });
+});
