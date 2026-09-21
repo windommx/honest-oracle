@@ -88,29 +88,38 @@ export function EqCurve({
     const ctx = el.getContext("2d");
     if (!ctx) return;
 
+    // Nothing playing means nothing to paint. The loop used to reschedule
+    // itself unconditionally — clearing an empty canvas and asking for another
+    // frame 60 times a second in the state the page spends most of its life
+    // in, which keeps the tab from ever going idle.
+    if (!active) {
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, width, height);
+      return;
+    }
+
     const paint = () => {
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.clearRect(0, 0, width, height);
-      if (active) {
-        const bins = readSpectrum();
-        if (bins.length > 0) {
-          const nyquist = sampleRate / 2;
-          ctx.beginPath();
-          ctx.moveTo(0, height);
-          for (let x = 0; x <= width; x++) {
-            const hz = hzOf(x, width);
-            const bin = Math.min(bins.length - 1, Math.round((hz / nyquist) * bins.length));
-            const db = Math.max(SPECTRUM_FLOOR_DB, bins[bin]);
-            const y = height - ((db - SPECTRUM_FLOOR_DB) / (0 - SPECTRUM_FLOOR_DB)) * height;
-            ctx.lineTo(x, y);
-          }
-          ctx.lineTo(width, height);
-          ctx.closePath();
-          ctx.fillStyle = GOLD;
-          ctx.globalAlpha = 0.14;
-          ctx.fill();
-          ctx.globalAlpha = 1;
+
+      const bins = readSpectrum();
+      if (bins.length > 0) {
+        const nyquist = sampleRate / 2;
+        ctx.beginPath();
+        ctx.moveTo(0, height);
+        for (let x = 0; x <= width; x++) {
+          const hz = hzOf(x, width);
+          const bin = Math.min(bins.length - 1, Math.round((hz / nyquist) * bins.length));
+          const db = Math.max(SPECTRUM_FLOOR_DB, bins[bin]);
+          const y = height - ((db - SPECTRUM_FLOOR_DB) / (0 - SPECTRUM_FLOOR_DB)) * height;
+          ctx.lineTo(x, y);
         }
+        ctx.lineTo(width, height);
+        ctx.closePath();
+        ctx.fillStyle = GOLD;
+        ctx.globalAlpha = 0.14;
+        ctx.fill();
+        ctx.globalAlpha = 1;
       }
       raf = requestAnimationFrame(paint);
     };

@@ -8,7 +8,11 @@ export default defineConfig({
     alias: { "@": path.resolve(__dirname) },
   },
   test: {
-    include: ["lib/**/*.test.{ts,tsx}", "app/**/*.test.{ts,tsx}"],
+    // components/ is here because a guard test that the runner never picks up
+    // is worse than no guard: it reads as coverage in the file tree and
+    // protects nothing. Any new top-level directory holding tests has to be
+    // added, which the "every test file is included" check below enforces.
+    include: ["lib/**/*.test.{ts,tsx}", "app/**/*.test.{ts,tsx}", "components/**/*.test.{ts,tsx}"],
     environment: "node",
   },
 });

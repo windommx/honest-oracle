@@ -256,3 +256,46 @@ describe("truePeak", () => {
     expect(truePeak([new Float32Array(1000)])).toBe(0);
   });
 });
+
+describe("reset means reset", () => {
+  it("Analog Life replays identically after reset", () => {
+    // The module header promises the same file mastered twice gives the same
+    // bytes. Clearing only the interpolation state looks like a reset and is
+    // not — the generator carries on from wherever it had got to. Measured
+    // before the fix: 7760 of 8000 samples differed between two passes.
+    const a = new AnalogLife(SR);
+    a.setAmount(0.8);
+    const input = tone(440, 0.2);
+    const run = () => {
+      const out = new Float32Array(input.length);
+      for (let i = 0; i < input.length; i++) {
+        a.advance();
+        out[i] = a.tickLeft(input[i]);
+      }
+      return Array.from(out);
+    };
+    const first = run();
+    a.reset();
+    expect(run()).toEqual(first);
+  });
+
+  it("Tape Hiss keeps the seed it was constructed with", () => {
+    // reset() defaulting to the class seed silently moves a caller's chosen
+    // noise stream onto a different one, making the constructor argument
+    // meaningless after the first reset.
+    const h = new TapeHiss(SR, 1234);
+    h.setAmount(1);
+    const run = () => Array.from({ length: 500 }, () => h.tickLeft(0));
+    const first = run();
+    h.reset();
+    expect(run()).toEqual(first);
+  });
+
+  it("an explicit seed still overrides it", () => {
+    const h = new TapeHiss(SR, 1234);
+    h.setAmount(1);
+    const first = Array.from({ length: 200 }, () => h.tickLeft(0));
+    h.reset(9999);
+    expect(Array.from({ length: 200 }, () => h.tickLeft(0))).not.toEqual(first);
+  });
+});

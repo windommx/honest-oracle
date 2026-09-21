@@ -10,7 +10,7 @@
 // worklet.test.ts fails if the committed artifact is stale.
 
 import { build } from "esbuild";
-import { join } from "node:path";
+import { join, sep } from "node:path";
 
 export interface WorkletTarget {
   /** Source to bundle, relative to the repo root. */
@@ -28,8 +28,12 @@ export const WORKLETS: WorkletTarget[] = [
 export const ENTRY = join(process.cwd(), WORKLETS[0].source);
 export const OUTFILE = join(process.cwd(), WORKLETS[0].outfile);
 
+// The source path goes into the generated file, and the guard test compares
+// that file byte for byte against a fresh build. join() gives backslashes on
+// Windows, so the separator has to be normalised with the platform's own —
+// splitting on "/" is a no-op there and bakes the platform into the artifact.
 const banner = (source: string) => `// GENERATED FILE — do not edit.
-// Bundled from ${source.split("/").join("/")} by scripts/build-worklet.ts.
+// Bundled from ${source.split(sep).join("/")} by scripts/build-worklet.ts.
 // Run \`npm run build:worklet\` after changing the engine.`;
 
 export async function buildWorklet(write = true, target: WorkletTarget = WORKLETS[0]): Promise<string> {

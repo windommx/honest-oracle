@@ -122,3 +122,37 @@ describe("what the file picker offers", () => {
     expect(isWavName("a.mp3")).toBe(false);
   });
 });
+
+describe("damaged files", () => {
+  it("reports the samples it had to repair", async () => {
+    // Not silently: a float file can carry a NaN and one is enough to leave
+    // every later sample NaN, so the page says the file was damaged rather
+    // than pretending it was fine.
+    const broken = new Float32Array([0.5, Number.NaN, -0.3, Infinity]);
+    const loaded = await loadAudioFile(wavFile("broken.wav", [broken], 32), () => null);
+    expect(loaded.repairedSamples).toBe(2);
+    expect(loaded.left[1]).toBe(0);
+    expect(loaded.left[3]).toBe(0);
+  });
+
+  it("reports zero for a clean file", async () => {
+    const loaded = await loadAudioFile(wavFile("clean.wav", [tone(400)]), () => null);
+    expect(loaded.repairedSamples).toBe(0);
+  });
+
+  it("repairs what the browser's own decoder hands back", async () => {
+    const bad = new Float32Array([0.2, Number.NaN, 0.4]);
+    const ctx = {
+      decodeAudioData: async () =>
+        ({
+          sampleRate: 48000,
+          duration: 3 / 48000,
+          numberOfChannels: 1,
+          getChannelData: () => bad,
+        }) as unknown as AudioBuffer,
+    } as unknown as BaseAudioContext;
+    const loaded = await loadAudioFile(new File([new Uint8Array(8)], "t.mp3"), () => ctx);
+    expect(loaded.repairedSamples).toBeGreaterThan(0);
+    expect(Number.isFinite(loaded.left[1])).toBe(true);
+  });
+});

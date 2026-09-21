@@ -161,8 +161,17 @@ export class MasterChain {
     const n = Math.min(inLeft.length, inRight.length, outLeft.length, outRight.length);
 
     for (let i = 0; i < n; i++) {
+      // A single non-finite input sample permanently poisons the whole chain:
+      // every biquad holds state, NaN propagates into it, and the denormal
+      // guard cannot clear it because every comparison against NaN is false.
+      // Measured: one NaN in a 64-sample block, then 4096 samples of clean
+      // audio, and the output was still NaN at the end. A corrupt float WAV
+      // or a truncated bounce is enough to do it, so the guard belongs here
+      // where it costs two checks a sample rather than two per biquad.
       let l = inLeft[i];
       let r = inRight[i];
+      if (!Number.isFinite(l)) l = 0;
+      if (!Number.isFinite(r)) r = 0;
 
       l = this.eq.tickLeft(l);
       r = this.eq.tickRight(r);

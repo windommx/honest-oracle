@@ -444,14 +444,25 @@
   var RandomWalk = class {
     constructor(sampleRate2, hz, seed) {
       __publicField(this, "rng");
+      __publicField(this, "seed");
       __publicField(this, "stepSamples");
       __publicField(this, "countdown", 0);
       __publicField(this, "from", 0);
       __publicField(this, "to", 0);
+      this.seed = seed;
       this.rng = new Rng(seed);
       this.stepSamples = Math.max(1, Math.round(sampleRate2 / Math.max(0.05, hz)));
     }
+    /** Back to the exact state the constructor left, generator included.
+     *
+     *  Clearing only the interpolation state looks like a reset and is not: the
+     *  generator keeps running from wherever it had got to, so every replay of
+     *  the same audio drifts differently. Measured before this line existed:
+     *  7760 of 8000 samples differed between two passes over identical input,
+     *  which breaks the determinism this file's header promises and makes an
+     *  A/B of a track with Analog Life on a comparison of two different takes. */
     reset() {
+      this.rng.reset(this.seed);
       this.countdown = 0;
       this.from = 0;
       this.to = 0;
@@ -530,10 +541,12 @@
   var TapeHiss = class {
     constructor(sampleRate2, seed = 31326) {
       __publicField(this, "rng");
+      __publicField(this, "seed");
       __publicField(this, "shapeLeft", new Biquad());
       __publicField(this, "shapeRight", new Biquad());
       __publicField(this, "amount", 0);
       __publicField(this, "gain", 0);
+      this.seed = seed;
       this.rng = new Rng(seed);
       const c = bandpass(6e3, 0.6, sampleRate2);
       this.shapeLeft.setCoefficients(c);
@@ -543,7 +556,11 @@
       this.amount = Math.min(1, Math.max(0, amount));
       this.gain = this.amount === 0 ? 0 : Math.pow(10, HISS_MAX_DBFS / 20) * this.amount;
     }
-    reset(seed = 31326) {
+    /** Defaults to the seed this instance was BUILT with, not to the class
+     *  default — otherwise reset() silently moves a caller's chosen noise
+     *  stream onto a different one, and the seed parameter it passed to the
+     *  constructor stops meaning anything after the first reset. */
+    reset(seed = this.seed) {
       this.rng.reset(seed);
       this.shapeLeft.reset();
       this.shapeRight.reset();
@@ -1189,6 +1206,8 @@
       for (let i = 0; i < n; i++) {
         let l = inLeft[i];
         let r = inRight[i];
+        if (!Number.isFinite(l)) l = 0;
+        if (!Number.isFinite(r)) r = 0;
         l = this.eq.tickLeft(l);
         r = this.eq.tickRight(r);
         this.deEsser.detect(l, r);
@@ -1252,7 +1271,19 @@
       // assume a normal buffer.
       __publicField(this, "left", new Float32Array(0));
       __publicField(this, "right", new Float32Array(0));
-      __publicField(this, "frame", 0);
+      /**
+       * Playhead in FILE frames, fractional.
+       *
+       * It has to be fractional because the file's sample rate and the device's
+       * are frequently different — a 44.1k track on the 48k context most browsers
+       * open by default. Reading one frame per output sample, as this did, plays
+       * the track 8.84% fast: a measured 440Hz tone came out at 481Hz, a semitone
+       * and a half sharp, and the playhead ran ahead of the waveform it was drawn
+       * over. Worse, the export path uses the file's own rate and is correct, so
+       * what the operator auditioned was not what they shipped.
+       */
+      __publicField(this, "position", 0);
+      __publicField(this, "fileRate", 0);
       __publicField(this, "playing", false);
       __publicField(this, "looping", true);
       __publicField(this, "mastered", true);
@@ -1267,20 +1298,25 @@
           case "load":
             this.left = msg.left;
             this.right = msg.right;
-            this.frame = 0;
+            this.fileRate = msg.sampleRate > 0 ? msg.sampleRate : sampleRate;
+            this.position = 0;
             this.chain.reset();
             break;
           case "settings":
             this.chain.setSettings(msg.settings);
             break;
           case "transport":
+            if (msg.playing && this.position >= this.left.length) {
+              this.position = 0;
+              this.chain.reset();
+            }
             this.playing = msg.playing && this.left.length > 0;
             break;
           case "loop":
             this.looping = msg.loop;
             break;
           case "seek":
-            this.frame = Math.min(Math.max(0, Math.round(msg.frame)), this.left.length);
+            this.position = Math.min(Math.max(0, msg.frame), this.left.length);
             this.chain.reset();
             break;
           case "mastered":
@@ -1288,7 +1324,7 @@
             this.chain.reset();
             break;
           case "reset":
-            this.frame = 0;
+            this.position = 0;
             this.chain.reset();
             break;
         }
@@ -1314,20 +1350,28 @@
       }
       this.ensureScratch(size);
       const frames = this.left.length;
+      const step = this.fileRate > 0 ? this.fileRate / sampleRate : 1;
       for (let i = 0; i < size; i++) {
-        if (this.frame >= frames) {
+        if (this.position >= frames) {
           if (this.looping) {
-            this.frame = 0;
+            this.position -= frames;
           } else {
             this.dryL[i] = 0;
             this.dryR[i] = 0;
-            this.playing = false;
+            if (this.playing) {
+              this.playing = false;
+              const ended = { type: "ended" };
+              this.port.postMessage(ended);
+            }
             continue;
           }
         }
-        this.dryL[i] = this.left[this.frame];
-        this.dryR[i] = this.right[this.frame];
-        this.frame++;
+        const i0 = Math.floor(this.position);
+        const frac = this.position - i0;
+        const i1 = i0 + 1 < frames ? i0 + 1 : this.looping ? 0 : i0;
+        this.dryL[i] = this.left[i0] + (this.left[i1] - this.left[i0]) * frac;
+        this.dryR[i] = this.right[i0] + (this.right[i1] - this.right[i0]) * frac;
+        this.position += step;
       }
       if (this.mastered) {
         this.chain.process(this.dryL, this.dryR, outL, outR);
@@ -1339,6 +1383,10 @@
       for (let i = 0; i < size; i++) {
         const a = Math.abs(outL[i]);
         if (a > this.peak) this.peak = a;
+        if (outR !== outL) {
+          const b = Math.abs(outR[i]);
+          if (b > this.peak) this.peak = b;
+        }
       }
       this.report(size);
       return true;
@@ -1349,8 +1397,9 @@
       const meters = this.chain.meters;
       const status = {
         type: "status",
-        frame: this.frame,
+        frame: Math.round(this.position),
         frames: this.left.length,
+        rateRatio: this.fileRate > 0 ? this.fileRate / sampleRate : 1,
         playing: this.playing,
         peak: this.peak,
         momentaryLufs: meters.momentaryLufs,

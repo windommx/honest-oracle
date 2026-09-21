@@ -36,17 +36,28 @@ const MAX_GAIN_DRIFT_DB = 0.35;
  *  the drift never sounds like a deliberate LFO. */
 class RandomWalk {
   private readonly rng: Rng;
+  private readonly seed: number;
   private readonly stepSamples: number;
   private countdown = 0;
   private from = 0;
   private to = 0;
 
   constructor(sampleRate: number, hz: number, seed: number) {
+    this.seed = seed;
     this.rng = new Rng(seed);
     this.stepSamples = Math.max(1, Math.round(sampleRate / Math.max(0.05, hz)));
   }
 
+  /** Back to the exact state the constructor left, generator included.
+   *
+   *  Clearing only the interpolation state looks like a reset and is not: the
+   *  generator keeps running from wherever it had got to, so every replay of
+   *  the same audio drifts differently. Measured before this line existed:
+   *  7760 of 8000 samples differed between two passes over identical input,
+   *  which breaks the determinism this file's header promises and makes an
+   *  A/B of a track with Analog Life on a comparison of two different takes. */
   reset(): void {
+    this.rng.reset(this.seed);
     this.countdown = 0;
     this.from = 0;
     this.to = 0;
@@ -144,12 +155,14 @@ export const HISS_MAX_DBFS = -55;
 
 export class TapeHiss {
   private readonly rng: Rng;
+  private readonly seed: number;
   private readonly shapeLeft = new Biquad();
   private readonly shapeRight = new Biquad();
   private amount = 0;
   private gain = 0;
 
   constructor(sampleRate: number, seed = 0x7a5e) {
+    this.seed = seed;
     this.rng = new Rng(seed);
     // Tape hiss is not white — it is weighted toward the top, which is why it
     // is heard as hiss rather than as rumble.
@@ -163,7 +176,11 @@ export class TapeHiss {
     this.gain = this.amount === 0 ? 0 : Math.pow(10, HISS_MAX_DBFS / 20) * this.amount;
   }
 
-  reset(seed = 0x7a5e): void {
+  /** Defaults to the seed this instance was BUILT with, not to the class
+   *  default — otherwise reset() silently moves a caller's chosen noise
+   *  stream onto a different one, and the seed parameter it passed to the
+   *  constructor stops meaning anything after the first reset. */
+  reset(seed = this.seed): void {
     this.rng.reset(seed);
     this.shapeLeft.reset();
     this.shapeRight.reset();

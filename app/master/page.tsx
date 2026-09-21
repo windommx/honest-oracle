@@ -52,6 +52,8 @@ export default function MasterPage() {
     peak: 0,
     shortTermLufs: -Infinity,
     gainReductionDb: 0,
+    /** 1 when the device runs at the file's own rate. */
+    rateRatio: 1,
   });
   const [targetId, setTargetId] = useState<LoudnessTargetId>("streaming");
   const [render, setRender] = useState<MasterRender | null>(null);
@@ -66,32 +68,56 @@ export default function MasterPage() {
   useEffect(() => {
     const c = client.current;
     if (!c) return;
-    c.onStatus = (s) =>
+    c.onStatus = (s) => {
       setStatus({
         frame: s.frame,
         frames: s.frames,
         peak: s.peak,
         shortTermLufs: s.shortTermLufs,
         gainReductionDb: s.gainReductionDb,
+        rateRatio: s.rateRatio,
       });
+    };
+    // The worklet stops itself at the end of a non-looping file, and the page
+    // has to hear about it: otherwise the button reads "หยุด" on a finished
+    // track, the first press sends a no-op, and the spectrum keeps repainting
+    // at 60fps over a silent analyser.
+    //
+    // Taking it from the status message's `playing` field instead looks
+    // simpler and is a race — a status generated before the transport message
+    // was handled carries false, lands after the press, and flips the button
+    // back under the operator's finger.
+    c.onEnded = () => setPlaying(false);
     return () => {
       c.onStatus = null;
+      c.onEnded = null;
       void c.stop();
     };
   }, []);
 
   const target = LOUDNESS_TARGETS.find((t) => t.id === targetId) ?? LOUDNESS_TARGETS[0];
-  const sampleRate = audio?.sampleRate || client.current?.sampleRate || 48000;
+  /**
+   * The rate the EQ curve is drawn at.
+   *
+   * The LIVE context rate when there is one, because that is the rate the
+   * running chain's filters were designed at and the rate the analyser's bins
+   * span. Preferring the file's rate drew corners up to 9% away from the ones
+   * the audio was actually using, which breaks the one claim this page leads
+   * with. With no engine running there is nothing to disagree with, so the
+   * file's rate — which the export uses — is the right reference.
+   */
+  const engineRate = (running ? client.current?.sampleRate : 0) || audio?.sampleRate || 48000;
+  const resampling = Math.abs(status.rateRatio - 1) > 1e-6;
 
   /** Start audio if it is not already running. Must come from a gesture. */
   const ensureEngine = useCallback(async (): Promise<boolean> => {
     const c = client.current;
     if (!c) return false;
     if (c.running) return true;
-    const state = await c.start(settings);
+    const state = await c.start(settings, audio?.sampleRate);
     if (state === "running") {
       setRunning(true);
-      if (audio) c.load(audio.left, audio.right);
+      if (audio) c.load(audio.left, audio.right, audio.sampleRate);
       c.setLoop(looping);
       c.setMastered(mastered);
       return true;
@@ -107,11 +133,13 @@ export default function MasterPage() {
   }, [settings, audio, looping, mastered]);
 
   const update = useCallback((change: Partial<MasterSettings>) => {
-    setSettings((prev) => {
-      const next = { ...prev, ...change };
-      client.current?.setSettings(change);
-      return next;
-    });
+    // Outside the updater, not inside it. React double-invokes updaters in
+    // StrictMode and may discard and replay one while rendering concurrently,
+    // so a postMessage in there posts twice — and each one rebuilds the whole
+    // biquad list, re-runs the saturator's 512-point calibration sweep and
+    // re-derives the crossover, on the real-time thread.
+    client.current?.setSettings(change);
+    setSettings((prev) => ({ ...prev, ...change }));
     setPresetId("");
     // The measured result belongs to the settings that produced it; keeping it
     // on screen after a knob move would show a reading of something else.
@@ -136,13 +164,35 @@ export default function MasterPage() {
         setAudio(loaded);
         setRender(null);
         setPlaying(false);
-        client.current?.setPlaying(false);
-        client.current?.load(loaded.left, loaded.right);
-        setStatus((s) => ({ ...s, frame: 0, frames: loaded.left.length }));
+        const c = client.current;
+        c?.setPlaying(false);
+
+        // Reopen the context at the file's own rate when it is already running
+        // at a different one. That is what keeps the audition and the export
+        // the same computation: the chain is built at the context rate, so a
+        // mismatch means the EQ curve on screen belongs to different filters
+        // than the ones the export will use.
+        if (c?.running && c.sampleRate !== loaded.sampleRate) {
+          await c.stop();
+          setRunning(false);
+          const state = await c.start(settings, loaded.sampleRate);
+          setRunning(state === "running");
+          if (state === "running") {
+            c.setLoop(looping);
+            c.setMastered(mastered);
+          }
+        }
+        c?.load(loaded.left, loaded.right, loaded.sampleRate);
+        setStatus((s) => ({ ...s, frame: 0, frames: loaded.left.length, rateRatio: 1 }));
+
+        const repaired = loaded.repairedSamples
+          ? ` · ซ่อมแซมพลิ้น ${loaded.repairedSamples} แซมเปิลที่ไม่ใช่ตัวเลข`
+          : "";
         toast(
           `โหลด ${loaded.name} แล้ว — ${loaded.seconds.toFixed(1)} วินาที · ${loaded.sampleRate / 1000} kHz` +
-            (loaded.bitDepth ? ` · ${loaded.bitDepth} บิต` : ""),
-          { variant: "success" }
+            (loaded.bitDepth ? ` · ${loaded.bitDepth} บิต` : "") +
+            repaired,
+          { variant: repaired ? "error" : "success" }
         );
       } catch (err) {
         toast(
@@ -155,7 +205,7 @@ export default function MasterPage() {
         setBusy("");
       }
     },
-    []
+    [settings, looping, mastered]
   );
 
   const togglePlay = useCallback(async () => {
@@ -357,10 +407,17 @@ export default function MasterPage() {
             </span>
           )}
         </div>
+        {resampling && (
+          <p className="mb-2 text-[0.68rem]" style={{ color: GROUP_COLOR.character }}>
+            เบราว์เซอร์ไม่ยอมเปิดเสียงที่ {audio ? audio.sampleRate / 1000 : "?"} kHz จึงต้องแปลงอัตราสุ่มตอนเล่น
+            ({(1 / status.rateRatio).toFixed(4)}×) — ระดับเสียงถูกต้อง แต่สิ่งที่ได้ยินไม่ใช่ผลลัพธ์เดียวกับไฟล์ที่บันทึก
+            ซึ่งใช้อัตราเดิมของไฟล์เสมอ
+          </p>
+        )}
         <Waveform
           left={audio?.left ?? null}
           right={audio?.right ?? null}
-          sampleRate={sampleRate}
+          sampleRate={audio?.sampleRate ?? 48000}
           frame={status.frame}
           onSeek={(frame) => {
             client.current?.seek(frame);
@@ -372,7 +429,7 @@ export default function MasterPage() {
       <section className="mt-5 grid gap-4 lg:grid-cols-[1fr_260px]">
         <EqCurve
           settings={settings}
-          sampleRate={sampleRate}
+          sampleRate={engineRate}
           onBandChange={setBand}
           readSpectrum={readSpectrum}
           active={running && playing}

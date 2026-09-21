@@ -277,3 +277,56 @@ describe("headers are untrusted input", () => {
     }
   });
 });
+
+describe("float files can carry samples that are not numbers", () => {
+  const withFloats = (values: number[]) => {
+    const data = new Uint8Array(values.length * 4);
+    const dv = new DataView(data.buffer);
+    values.forEach((v, i) => dv.setFloat32(i * 4, v, true));
+    return handBuilt({ format: 3, bitDepth: 32, channels: 1, sampleRate: SR, data });
+  };
+
+  it("replaces a NaN with silence and says how many", () => {
+    // One NaN propagates into every filter's state and never leaves, because
+    // every comparison against NaN is false — including the denormal flush
+    // that would otherwise clear it. The rest of the track comes out NaN and
+    // the export is silent with nothing naming the cause.
+    const decoded = decodeWav(withFloats([0.5, Number.NaN, -0.25, Number.NaN]));
+    expect(decoded.repairedSamples).toBe(2);
+    expect(decoded.channels[0][1]).toBe(0);
+    expect(decoded.channels[0][3]).toBe(0);
+    expect(decoded.channels[0][0]).toBeCloseTo(0.5, 5);
+  });
+
+  it("replaces infinities too", () => {
+    const decoded = decodeWav(withFloats([Infinity, -Infinity, 0.1]));
+    expect(decoded.repairedSamples).toBe(2);
+    expect(decoded.channels[0][0]).toBe(0);
+    expect(decoded.channels[0][1]).toBe(0);
+  });
+
+  it("reports zero repairs for a clean file", () => {
+    expect(decodeWav(encodeWav([ramp(64)], SR, 32)).repairedSamples).toBe(0);
+    expect(decodeWav(encodeWav([ramp(64)], SR, 16)).repairedSamples).toBe(0);
+  });
+
+  it("reads 64-bit doubles rather than claiming to and refusing", () => {
+    // The float branch could always read them; the bit-depth whitelist made
+    // that half of the expression unreachable, so it read as support for a
+    // format the decoder actually rejected.
+    const data = new Uint8Array(24);
+    const dv = new DataView(data.buffer);
+    [0.5, -0.25, 0.125].forEach((v, i) => dv.setFloat64(i * 8, v, true));
+    const decoded = decodeWav(
+      handBuilt({ format: 3, bitDepth: 64, channels: 1, sampleRate: SR, data })
+    );
+    expect(decoded.bitDepth).toBe(64);
+    expect(decoded.float).toBe(true);
+    expect(Array.from(decoded.channels[0])).toEqual([0.5, -0.25, 0.125]);
+  });
+
+  it("still refuses a depth no format supports", () => {
+    const wav = handBuilt({ format: 1, bitDepth: 64, channels: 1, sampleRate: SR, data: new Uint8Array(16) });
+    expect(() => decodeWav(wav)).toThrow(/unsupported bit depth 64/);
+  });
+});

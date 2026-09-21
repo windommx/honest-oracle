@@ -15,9 +15,7 @@
 
 import { MasterChain, applyFades } from "./chain";
 import { auditMaster, type AuditResult } from "./audit";
-import { integratedLufs } from "./loudness";
-import { truePeak } from "./limiter";
-import { gainToDb, type MasterSettings } from "./types";
+import type { MasterSettings } from "./types";
 import { MAX_SAMPLE_RATE, MIN_SAMPLE_RATE } from "@/lib/audio-io/wav";
 
 /** Refuse to render more than this at once. A two-hour file at 48kHz stereo
@@ -90,15 +88,20 @@ export function renderMaster(options: MasterRenderOptions): MasterRender {
 
   applyFades([outL, outR], sampleRate, settings.fadeInSeconds, settings.fadeOutSeconds);
 
-  const channels = [outL, outR];
+  // The audit already measures both of these, and both are expensive: the
+  // loudness pass allocates four arrays the length of the file and the true
+  // peak pass evaluates four interpolations per sample per channel. Computing
+  // them again here doubled the cost and the peak memory of every measure and
+  // every export, on the main thread, inside one animation frame.
+  const audit = auditMaster([outL, outR], sampleRate, { targetLufs: options.targetLufs ?? -14 });
   return {
     left: outL,
     right: outR,
     sampleRate,
     seconds,
-    integratedLufs: integratedLufs(channels, sampleRate),
-    truePeakDb: gainToDb(truePeak(channels)),
-    audit: auditMaster(channels, sampleRate, { targetLufs: options.targetLufs ?? -14 }),
+    integratedLufs: audit.measurements.integratedLufs,
+    truePeakDb: audit.measurements.truePeakDb,
+    audit,
     elapsedMs: Date.now() - started,
   };
 }

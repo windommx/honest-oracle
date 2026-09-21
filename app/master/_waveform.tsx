@@ -35,6 +35,14 @@ export function Waveform({ left, right, sampleRate, frame, onSeek, height = 120 
     return waveformPeaks(right && right !== left ? [left, right] : [left], buckets);
   }, [left, right]);
 
+  // The waveform is drawn once per file (or resize); the playhead is a
+  // separate absolutely-positioned element.
+  //
+  // They were one effect with `frame` in its dependency list, and the worklet
+  // posts a frame roughly 47 times a second. Each one reassigned el.width —
+  // which reallocates the whole canvas backing store — redrew 1200 columns,
+  // and tore down and rebuilt a ResizeObserver, all on the same main thread
+  // that has to drain the audio thread's messages.
   useEffect(() => {
     const el = canvas.current;
     const box = wrapper.current;
@@ -73,19 +81,13 @@ export function Waveform({ left, right, sampleRate, frame, onSeek, height = 120 
         const bottom = middle - peaks.min[b] * middle;
         ctx.fillRect(x, top, 1, Math.max(1, bottom - top));
       }
-
-      if (frames > 0) {
-        const x = (frame / frames) * width;
-        ctx.fillStyle = GOLD;
-        ctx.fillRect(Math.min(width - 2, Math.max(0, x)), 0, 2, height);
-      }
     };
 
     draw();
     const observer = new ResizeObserver(draw);
     observer.observe(box);
     return () => observer.disconnect();
-  }, [peaks, frame, frames, height]);
+  }, [peaks, height]);
 
   const seekFromEvent = (clientX: number) => {
     const box = wrapper.current;
@@ -126,6 +128,16 @@ export function Waveform({ left, right, sampleRate, frame, onSeek, height = 120 
         }}
       >
         <canvas ref={canvas} className="block" />
+        {frames > 0 && (
+          <div
+            aria-hidden
+            className="absolute top-0 bottom-0 w-0.5 pointer-events-none"
+            style={{
+              left: `${Math.min(100, Math.max(0, (frame / frames) * 100))}%`,
+              backgroundColor: GOLD,
+            }}
+          />
+        )}
       </div>
       <div className="flex justify-between mt-1 text-[0.65rem] tabular-nums" style={{ color: TEXT_FAINT }}>
         <span>{clock(at)}</span>

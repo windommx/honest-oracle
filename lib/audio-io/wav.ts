@@ -46,6 +46,18 @@ export interface DecodedWav {
   bitDepth: number;
   /** True when the samples were stored as IEEE floats. */
   float: boolean;
+  /**
+   * Non-finite samples replaced with silence on the way in.
+   *
+   * Only a float file can contain one, and one is enough: NaN propagates into
+   * every filter's state and never leaves, because every comparison against
+   * NaN is false — including the denormal flush that would otherwise clear it.
+   * The whole rest of the track comes out NaN and the export is silent, with
+   * nothing anywhere naming the cause. Zero is the only honest substitute for
+   * a sample that is not a number, and the count is reported so the caller can
+   * say the file was damaged rather than pretending it was fine.
+   */
+  repairedSamples: number;
 }
 
 function ascii(view: DataView, offset: number): string {
@@ -185,13 +197,18 @@ export function decodeWav(bytes: Uint8Array): DecodedWav {
   if (format !== FORMAT_PCM && format !== FORMAT_FLOAT) {
     throw new RangeError(`unsupported WAV format ${format} — only PCM and IEEE float are read`);
   }
-  if (![16, 24, 32, 8].includes(bitDepth)) {
-    throw new RangeError(`unsupported bit depth ${bitDepth}`);
+  // 64 is here because the float branch below can read it and the byte maths
+  // already handles it; leaving it out made that branch unreachable code that
+  // read as support for a format the decoder actually refused.
+  const allowedDepths = format === FORMAT_FLOAT ? [32, 64] : [8, 16, 24, 32];
+  if (!allowedDepths.includes(bitDepth)) {
+    throw new RangeError(`unsupported bit depth ${bitDepth} for this format`);
   }
 
   const bytesPerSample = bitDepth / 8;
   const frames = Math.floor(dataBytes / (channelCount * bytesPerSample));
   const channels = Array.from({ length: channelCount }, () => new Float32Array(frames));
+  let repairedSamples = 0;
 
   for (let frame = 0; frame < frames; frame++) {
     for (let c = 0; c < channelCount; c++) {
@@ -199,6 +216,12 @@ export function decodeWav(bytes: Uint8Array): DecodedWav {
       let value: number;
       if (format === FORMAT_FLOAT) {
         value = bitDepth === 32 ? view.getFloat32(at, true) : view.getFloat64(at, true);
+        // Integer formats are bounded by construction, so only this branch can
+        // produce a NaN or an infinity.
+        if (!Number.isFinite(value)) {
+          value = 0;
+          repairedSamples++;
+        }
       } else if (bitDepth === 8) {
         // 8-bit PCM is unsigned, with 128 as silence — the one format where
         // reading it as signed gives a full-scale square wave.
@@ -215,7 +238,7 @@ export function decodeWav(bytes: Uint8Array): DecodedWav {
     }
   }
 
-  return { sampleRate, channels, bitDepth, float: format === FORMAT_FLOAT };
+  return { sampleRate, channels, bitDepth, float: format === FORMAT_FLOAT, repairedSamples };
 }
 
 /** Suggested filename for an export. Avoids characters Windows rejects. */

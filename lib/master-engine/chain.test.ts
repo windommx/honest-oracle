@@ -406,3 +406,38 @@ describe("metering the raw side of an A/B", () => {
     expect(Array.from(input.l)).toEqual(before);
   });
 });
+
+describe("one bad sample cannot poison the chain", () => {
+  it("recovers from a NaN instead of outputting NaN forever", () => {
+    // A NaN propagates into every biquad's state and never leaves: the
+    // denormal flush cannot clear it because every comparison against NaN is
+    // false. Measured before the guard: one NaN in a 64-sample block, then
+    // 4096 samples of clean audio, still NaN at the end — and the export came
+    // out silent with the audit reporting "file is silent" rather than naming
+    // the cause. A corrupt float WAV is enough to do it.
+    const chain = new MasterChain(SR, DEFAULT_MASTER);
+    const bad = new Float32Array(64).fill(0.2);
+    bad[10] = Number.NaN;
+    const scratch = new Float32Array(64);
+    chain.process(bad, bad, scratch, scratch);
+
+    const clean = new Float32Array(4096).fill(0.3);
+    const out = new Float32Array(4096);
+    chain.process(clean, clean, out, out);
+    expect(allFinite(out)).toBe(true);
+    expect(rms(out)).toBeGreaterThan(0.01);
+  });
+
+  it("survives an Infinity too", () => {
+    const chain = new MasterChain(SR, DEFAULT_MASTER);
+    const bad = new Float32Array(64).fill(0.2);
+    bad[5] = Infinity;
+    bad[6] = -Infinity;
+    const scratch = new Float32Array(64);
+    chain.process(bad, bad, scratch, scratch);
+    const clean = new Float32Array(2048).fill(0.3);
+    const out = new Float32Array(2048);
+    chain.process(clean, clean, out, out);
+    expect(allFinite(out)).toBe(true);
+  });
+});

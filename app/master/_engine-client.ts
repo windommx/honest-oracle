@@ -15,7 +15,7 @@
 
 "use client";
 
-import type { MasterCommand, MasterStatus } from "@/lib/master-engine/worklet-processor";
+import type { MasterCommand, MasterEnded, MasterStatus } from "@/lib/master-engine/worklet-processor";
 import type { MasterSettings, MasterUpdate } from "@/lib/master-engine/types";
 
 const WORKLET_URL = "/master-worklet.js";
@@ -23,6 +23,7 @@ const WORKLET_URL = "/master-worklet.js";
 export type EngineState = "idle" | "running" | "unsupported" | "failed";
 
 export interface MasterEngineStatus {
+  /** In FILE frames, so it indexes the waveform directly. */
   frame: number;
   frames: number;
   playing: boolean;
@@ -30,6 +31,9 @@ export interface MasterEngineStatus {
   momentaryLufs: number;
   shortTermLufs: number;
   gainReductionDb: number;
+  /** 1 when the device is running at the file's own rate. Anything else means
+   *  the audition is being resampled and does not match the export exactly. */
+  rateRatio: number;
 }
 
 export function audioWorkletSupported(): boolean {
@@ -45,6 +49,9 @@ export class MasterClient {
   private spectrum = new Float32Array(new ArrayBuffer(0));
 
   onStatus: ((s: MasterEngineStatus) => void) | null = null;
+  /** Fired once when a non-looping file runs out. An event, not a level —
+   *  see the note on MasterEnded. */
+  onEnded: (() => void) | null = null;
 
   get running(): boolean {
     return this.node !== null;
@@ -62,14 +69,30 @@ export class MasterClient {
     return this.ctx;
   }
 
-  async start(settings: MasterSettings): Promise<EngineState> {
+  /**
+   * Start audio, asking for a particular sample rate when one is known.
+   *
+   * Opening the context at the FILE's rate is what makes the audition and the
+   * export the same computation: the chain is built at the context rate, so
+   * when the two agree there is no resampling anywhere and the EQ curve on
+   * screen is the filter the export will use. Browsers may refuse the
+   * requested rate — the worklet then resamples and says so rather than
+   * playing the track sharp.
+   */
+  async start(settings: MasterSettings, preferredSampleRate?: number): Promise<EngineState> {
     if (this.node) return "running";
     if (!audioWorkletSupported()) return "unsupported";
 
     try {
       const Ctor =
         window.AudioContext ?? (window as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext!;
-      const ctx = new Ctor();
+      let ctx: AudioContext;
+      try {
+        ctx = preferredSampleRate ? new Ctor({ sampleRate: preferredSampleRate }) : new Ctor();
+      } catch {
+        // Some browsers and some hardware refuse an explicit rate outright.
+        ctx = new Ctor();
+      }
       if (ctx.state === "suspended") await ctx.resume();
 
       await ctx.audioWorklet.addModule(WORKLET_URL);
@@ -87,8 +110,12 @@ export class MasterClient {
       node.connect(analyser);
       analyser.connect(ctx.destination);
 
-      node.port.onmessage = (event: MessageEvent<MasterStatus>) => {
+      node.port.onmessage = (event: MessageEvent<MasterStatus | MasterEnded>) => {
         const data = event.data;
+        if (data?.type === "ended") {
+          this.onEnded?.();
+          return;
+        }
         if (data?.type !== "status") return;
         this.onStatus?.({
           frame: data.frame,
@@ -98,6 +125,7 @@ export class MasterClient {
           momentaryLufs: data.momentaryLufs,
           shortTermLufs: data.shortTermLufs,
           gainReductionDb: data.gainReductionDb,
+          rateRatio: data.rateRatio,
         });
       };
 
@@ -117,11 +145,12 @@ export class MasterClient {
   }
 
   /** Hand the file to the audio thread. Copies are made here because the
-   *  buffers are transferred and the page still needs its own. */
-  load(left: Float32Array, right: Float32Array): void {
+   *  buffers are transferred and the page still needs its own. The file's own
+   *  sample rate goes with them — the device's may differ. */
+  load(left: Float32Array, right: Float32Array, sampleRate: number): void {
     const l = Float32Array.from(left);
     const r = Float32Array.from(right);
-    this.send({ type: "load", left: l, right: r }, [l.buffer, r.buffer]);
+    this.send({ type: "load", left: l, right: r, sampleRate }, [l.buffer, r.buffer]);
   }
 
   setSettings(settings: MasterUpdate): void {

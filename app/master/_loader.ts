@@ -29,6 +29,10 @@ export interface LoadedAudio {
   via: "wav" | "browser";
   /** Source bit depth, when the file said. */
   bitDepth?: number;
+  /** Non-finite samples the decoder replaced with silence. A float file can
+   *  carry a NaN, and one is enough to leave every later sample NaN; the page
+   *  says the file was damaged rather than pretending it was fine. */
+  repairedSamples: number;
 }
 
 /** Extensions handled without an AudioContext. */
@@ -70,6 +74,7 @@ export async function loadAudioFile(
       seconds: left.length / decoded.sampleRate,
       via: "wav",
       bitDepth: decoded.bitDepth,
+      repairedSamples: decoded.repairedSamples,
     };
   }
 
@@ -96,6 +101,19 @@ export async function loadAudioFile(
   const channels: Float32Array[] = [];
   for (let c = 0; c < buffer.numberOfChannels; c++) channels.push(buffer.getChannelData(c));
   const { left, right } = toStereo(channels);
+
+  // The browser's decoders are not immune either — a corrupt frame can come
+  // back as NaN, and the chain has no way to recover from one.
+  let repairedSamples = 0;
+  for (const ch of [left, right]) {
+    for (let i = 0; i < ch.length; i++) {
+      if (!Number.isFinite(ch[i])) {
+        ch[i] = 0;
+        repairedSamples++;
+      }
+    }
+  }
+
   return {
     name: file.name,
     left,
@@ -103,6 +121,7 @@ export async function loadAudioFile(
     sampleRate: buffer.sampleRate,
     seconds: buffer.duration,
     via: "browser",
+    repairedSamples,
   };
 }
 

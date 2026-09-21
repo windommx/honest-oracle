@@ -17,8 +17,9 @@ import { MasterChain } from "./chain";
 import { DEFAULT_MASTER, type MasterUpdate } from "./types";
 
 export type MasterCommand =
-  /** Two channels of the whole file, transferred rather than copied. */
-  | { type: "load"; left: Float32Array; right: Float32Array }
+  /** Two channels of the whole file, transferred rather than copied.
+   *  `sampleRate` is the FILE's rate, which is not necessarily the device's. */
+  | { type: "load"; left: Float32Array; right: Float32Array; sampleRate: number }
   | { type: "settings"; settings: MasterUpdate }
   | { type: "transport"; playing: boolean }
   | { type: "loop"; loop: boolean }
@@ -27,11 +28,28 @@ export type MasterCommand =
   | { type: "mastered"; mastered: boolean }
   | { type: "reset" };
 
+/**
+ * Sent ONCE, when a non-looping file runs out.
+ *
+ * Deliberately an event and not a field on the status message. `playing` is a
+ * level, and levels race: a status generated before the transport message was
+ * handled reports false, arrives after the page has already set itself to
+ * playing, and switches the button back under the operator's finger. An event
+ * only ever fires for the thing that actually happened.
+ */
+export interface MasterEnded {
+  type: "ended";
+}
+
 export interface MasterStatus {
   type: "status";
-  /** Playhead, in frames. */
+  /** Playhead, in FILE frames — the unit the waveform and seeking use. */
   frame: number;
   frames: number;
+  /** Frames of the file consumed per output sample. 1 when the device rate
+   *  matches the file's; anything else means the audition is resampled and
+   *  the page says so. */
+  rateRatio: number;
   playing: boolean;
   peak: number;
   momentaryLufs: number;
@@ -56,7 +74,19 @@ class MasterProcessor extends AudioWorkletProcessor {
   // assume a normal buffer.
   private left: Float32Array<ArrayBufferLike> = new Float32Array(0);
   private right: Float32Array<ArrayBufferLike> = new Float32Array(0);
-  private frame = 0;
+  /**
+   * Playhead in FILE frames, fractional.
+   *
+   * It has to be fractional because the file's sample rate and the device's
+   * are frequently different — a 44.1k track on the 48k context most browsers
+   * open by default. Reading one frame per output sample, as this did, plays
+   * the track 8.84% fast: a measured 440Hz tone came out at 481Hz, a semitone
+   * and a half sharp, and the playhead ran ahead of the waveform it was drawn
+   * over. Worse, the export path uses the file's own rate and is correct, so
+   * what the operator auditioned was not what they shipped.
+   */
+  private position = 0;
+  private fileRate = 0;
   private playing = false;
   private looping = true;
   private mastered = true;
@@ -75,20 +105,30 @@ class MasterProcessor extends AudioWorkletProcessor {
         case "load":
           this.left = msg.left;
           this.right = msg.right;
-          this.frame = 0;
+          this.fileRate = msg.sampleRate > 0 ? msg.sampleRate : sampleRate;
+          this.position = 0;
           this.chain.reset();
           break;
         case "settings":
           this.chain.setSettings(msg.settings);
           break;
         case "transport":
+          // Rewind first when the file has already finished. Without this the
+          // non-looping transport is permanently dead after one pass: play
+          // sets playing = true, the very next sample finds the playhead past
+          // the end, and sets it straight back to false. The button looked
+          // broken and the only escape was seeking or reloading.
+          if (msg.playing && this.position >= this.left.length) {
+            this.position = 0;
+            this.chain.reset();
+          }
           this.playing = msg.playing && this.left.length > 0;
           break;
         case "loop":
           this.looping = msg.loop;
           break;
         case "seek":
-          this.frame = Math.min(Math.max(0, Math.round(msg.frame)), this.left.length);
+          this.position = Math.min(Math.max(0, msg.frame), this.left.length);
           // The chain's delay lines hold audio from before the jump; without
           // this, seeking plays a few milliseconds of the old position first.
           this.chain.reset();
@@ -98,7 +138,7 @@ class MasterProcessor extends AudioWorkletProcessor {
           this.chain.reset();
           break;
         case "reset":
-          this.frame = 0;
+          this.position = 0;
           this.chain.reset();
           break;
       }
@@ -128,20 +168,34 @@ class MasterProcessor extends AudioWorkletProcessor {
 
     this.ensureScratch(size);
     const frames = this.left.length;
+    // Frames of the file per output sample. Exactly 1 when the rates agree,
+    // and then `position` stays integral and the read below is the sample
+    // itself with no interpolation at all — the common case is bit-exact.
+    const step = this.fileRate > 0 ? this.fileRate / sampleRate : 1;
+
     for (let i = 0; i < size; i++) {
-      if (this.frame >= frames) {
+      if (this.position >= frames) {
         if (this.looping) {
-          this.frame = 0;
+          this.position -= frames;
         } else {
           this.dryL[i] = 0;
           this.dryR[i] = 0;
-          this.playing = false;
+          if (this.playing) {
+            this.playing = false;
+            const ended: MasterEnded = { type: "ended" };
+            this.port.postMessage(ended);
+          }
           continue;
         }
       }
-      this.dryL[i] = this.left[this.frame];
-      this.dryR[i] = this.right[this.frame];
-      this.frame++;
+      const i0 = Math.floor(this.position);
+      const frac = this.position - i0;
+      // Wrapping the far sample keeps a loop seamless instead of dipping to
+      // the first frame's value at the join.
+      const i1 = i0 + 1 < frames ? i0 + 1 : this.looping ? 0 : i0;
+      this.dryL[i] = this.left[i0] + (this.left[i1] - this.left[i0]) * frac;
+      this.dryR[i] = this.right[i0] + (this.right[i1] - this.right[i0]) * frac;
+      this.position += step;
     }
 
     if (this.mastered) {
@@ -157,9 +211,17 @@ class MasterProcessor extends AudioWorkletProcessor {
       this.chain.meterOnly(outL, outR);
     }
 
+    // Both channels. Reading only the left one hid anything peaking on the
+    // right: a file silent on the left and at 0.9 on the right metered as
+    // zero, so the operator saw an empty bar on material a decibel from
+    // clipping.
     for (let i = 0; i < size; i++) {
       const a = Math.abs(outL[i]);
       if (a > this.peak) this.peak = a;
+      if (outR !== outL) {
+        const b = Math.abs(outR[i]);
+        if (b > this.peak) this.peak = b;
+      }
     }
     this.report(size);
     return true;
@@ -171,8 +233,9 @@ class MasterProcessor extends AudioWorkletProcessor {
     const meters = this.chain.meters;
     const status: MasterStatus = {
       type: "status",
-      frame: this.frame,
+      frame: Math.round(this.position),
       frames: this.left.length,
+      rateRatio: this.fileRate > 0 ? this.fileRate / sampleRate : 1,
       playing: this.playing,
       peak: this.peak,
       momentaryLufs: meters.momentaryLufs,
