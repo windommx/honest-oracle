@@ -76,3 +76,16 @@ bun run gtaa -- run|macro|sensitivity|selftest|reset
 - `bun.lock` ต้นฉบับอ้าง `registry.npmjs.com`; เปลี่ยนเป็น `registry.npmjs.org` (registry เดียวกัน แพ็กเกจและ hash เดิมทุกตัว)
 - `.env` ต้นฉบับชี้ path ใน container เดิม จึงแทนด้วย `.env.example`
 - โฟลเดอร์ `examples/` และ `skills/` ของ template เดิม (ซึ่งมี tsc error ค้าง) ไม่ได้นำมา — ผลคือ `tsc --noEmit` 0 error และ `eslint .` ผ่านทั้งโปรเจกต์
+
+## แหล่งข้อมูลจริง (feed)
+
+ข้อมูลที่แนบมาเป็น demo (synthetic) — ต่อข้อมูลจริงได้ 4 ทาง ทุกทางเข้าท่อ ingest เดียวกัน (indicator · โผ · sector · EventLog provenance) และมีป้ายความจริงของข้อมูลกำกับ รายละเอียด/ข้อจำกัด/ToS อยู่ใน [`docs/research/market-feed.md`](docs/research/market-feed.md)
+
+| ทาง | ข้อมูลที่ได้ | วิธีใช้ |
+|---|---|---|
+| **Yahoo Finance (.BK)** — ดึงจาก server ได้ทันที | OHLCV รายวัน ปรับปันผล/สปลิต · มูลค่าซื้อขาย ≈ close×volume | แท็บข้อมูล → การ์ด "ดึงข้อมูลจริงจาก feed" หรือ `bun run fetch:th -- --symbols SET50 --range 2y` |
+| **SET (set.or.th) ผ่าน settfex** — Python บนเครื่องคุณ | ราคาปิด + volume + มูลค่าซื้อขายจริง (บาท) + องค์ประกอบดัชนี/sector | `pip install settfex` → `python lab/fetch_set_feed.py --index SET50 --post http://localhost:3000` |
+| **Settrade Open API** — ทางการ ต้องมีบัญชี | SET + TFEX real-time/ย้อนหลัง | เทมเพลต `lab/fetch_settrade_feed.py` → POST `/api/feed/ingest` |
+| **CSV** (AmiBroker) | ตามไฟล์ของคุณ | การ์ดนำเข้า CSV |
+
+API: `GET /api/feed` (ทะเบียนแหล่ง + รายชื่อตั้งต้น) · `POST /api/feed/fetch` (Yahoo) · `POST /api/feed/ingest` (JSON จากสคริปต์ภายนอก)

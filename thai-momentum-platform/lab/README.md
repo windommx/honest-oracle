@@ -17,6 +17,8 @@
 | `build_dataset.py` → `train/val.jsonl` + `lora_nimble_core.yaml` | (อนาคต: fine-tune แล้วสวับโมเดลผ่าน 5 ด่าน) | — |
 | `eval_harness.py` | POST `/api/lab/eval` (5-gate promotion) | `ResearchRun` (kind `lab_eval`) |
 | `context_updater.py` (journal → circuit-breaker) | context zeros (paper mode) | — |
+| `fetch_set_feed.py` → CSV + POST `/api/feed/ingest` | การ์ด "ดึงข้อมูลจริงจาก feed" (Yahoo) | `RawDaily` / `Snapshot` / `SymbolMeta` + `EventLog` (ingest) |
+| `fetch_settrade_feed.py` (เทมเพลต Settrade Open API) | — | เดียวกัน |
 
 ## ฐานข้อมูลที่ kit อ่าน
 
@@ -26,6 +28,8 @@ SQLite ของแพลตฟอร์ม: `../db/custom.db` → ตารา�
 
 ```bash
 pip install pandas numpy streamlit          # ชุดพื้นฐาน
+pip install "settfex>=0.24"                 # ดึงข้อมูลจริงจาก SET (fetch_set_feed.py) — Python 3.11+
+pip install yfinance                        # ทางเลือก: ผสาน OHLC จาก Yahoo ให้ SET Sniper
 pip install llama-cpp-python                # เฉพาะถ้ารัน nimble_runner/eval_harness ด้วยโมเดล local
 ```
 

@@ -16,3 +16,5 @@ lab/*.jsonl
 lab/states/
 lab/config/
 lab/evidence_report.json
+data/feed/*.csv
+data/feed/*.json

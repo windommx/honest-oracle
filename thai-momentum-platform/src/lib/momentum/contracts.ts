@@ -749,3 +749,88 @@ export interface AiScoreResponse {
   tookMs: number
   message: string // แจ้งเตือนเมื่อข้อมูลไม่พอ เป็นต้น
 }
+
+// ---------- Market feed (แหล่งข้อมูลจริง) ----------
+// แหล่งที่ระบบรู้จัก: yahoo = ดึงจาก server ได้ทันที · set = ผ่านสคริปต์ Python (settfex) บนเครื่องผู้ใช้
+// · settrade = Settrade Open API (ทางการ ต้องมีบัญชี) · csv = นำเข้าเอง — ทุกทางเข้าท่อ ingest เดียวกัน
+export type FeedSource = "yahoo" | "set" | "settrade" | "csv"
+export type FeedRange = "6mo" | "1y" | "2y" | "3y" | "5y" | "max"
+
+export interface FeedPreset {
+  id: string
+  label: string
+  description: string
+  symbols: string[]
+}
+export interface FeedSourceInfo {
+  id: FeedSource
+  label: string
+  /** เรียกจาก server ของแพลตฟอร์มได้เลย (true) หรือต้องรันสคริปต์ภายนอก (false) */
+  serverSide: boolean
+  /** ความจริงของข้อมูลที่ได้ — แสดงบนการ์ดเสมอ */
+  dataNote: string
+  howTo: string
+}
+export interface FeedInfoResponse {
+  presets: FeedPreset[]
+  sources: FeedSourceInfo[]
+  defaultRange: FeedRange
+  /** symbol → sector (TH_SECTORS) ของ universe ตั้งต้น */
+  sectorMap: Record<string, string>
+}
+
+export interface FeedSymbolReport {
+  symbol: string
+  ok: boolean
+  bars: number
+  firstDate: string | null
+  lastDate: string | null
+  warnings: string[]
+  error?: string
+}
+
+export interface FeedFetchRequest {
+  source?: "yahoo"
+  symbols: string[]
+  range?: FeedRange
+  /** ปรับราคาด้วยปันผล/สปลิต (adjclose) — ค่าเริ่มต้น true (โมเมนตัมข้ามวัน XD ไม่กระโดด) */
+  adjusted?: boolean
+  /** ล้างข้อมูล demo (seed) ก่อนนำเข้า เพื่อไม่ให้หุ้นจำลองปนกับหุ้นจริง */
+  replaceDemo?: boolean
+  /** symbol → sector (ทับค่าตั้งต้นได้) */
+  sectors?: Record<string, string>
+}
+
+export interface FeedIngestRow {
+  date: string
+  symbol: string
+  close: number
+  open?: number | null
+  high?: number | null
+  low?: number | null
+  /** มูลค่าซื้อขาย (บาท) — ถ้าไม่มีให้ส่ง volume แทน ระบบจะประมาณ close×volume */
+  val?: number | null
+  volume?: number | null
+}
+export interface FeedIngestRequest {
+  source: FeedSource | string
+  rows: FeedIngestRow[]
+  sectors?: Record<string, string>
+  replaceDemo?: boolean
+}
+
+export interface FeedFetchResponse {
+  ok: boolean
+  source: string
+  requested: number
+  fetched: number
+  failed: number
+  rowsFetched: number
+  reports: FeedSymbolReport[]
+  ingest: { insertedRaw: number; updatedRows: number; snapDates: number; latestDate: string | null } | null
+  sectorRows: number
+  replacedDemo: boolean
+  notes: string[]
+  tookMs: number
+  message: string
+}

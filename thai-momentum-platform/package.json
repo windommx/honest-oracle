@@ -13,7 +13,9 @@
     "db:reset": "prisma migrate reset",
     "ic": "bun scripts/ic.ts",
     "fetch:cross": "bun scripts/fetch-cross.ts",
-    "gtaa": "bun scripts/gtaa.ts"
+    "gtaa": "bun scripts/gtaa.ts",
+    "fetch:th": "bun scripts/fetch-th.ts",
+    "test": "bun test src"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

@@ -4,6 +4,7 @@ import { useState, type ChangeEvent } from "react"
 import { CheckCircle2, Loader2, Upload, XCircle } from "lucide-react"
 
 import { useApi, postJson } from "@/hooks/use-api"
+import FeedCard from "@/components/platform/feed-card"
 import { useToast } from "@/hooks/use-toast"
 import type {
   DatesResponse,
@@ -405,6 +406,12 @@ export default function DataTab() {
       <div className="grid gap-6 lg:grid-cols-2">
         <DemoSeedCard />
         <CsvIngestCard
+          onIngested={() => {
+            dates.refetch()
+            dq.refetch()
+          }}
+        />
+        <FeedCard
           onIngested={() => {
             dates.refetch()
             dq.refetch()
