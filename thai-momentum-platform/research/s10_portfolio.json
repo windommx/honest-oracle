@@ -1,0 +1,74 @@
+[
+  {
+    "url": "https://quant.stackexchange.com",
+    "name": "Ledoit/Wolf covariance shrinkage in risk-parity optimisation",
+    "snippet": "Jun 29, 2020 — This is more of a theoretical question. I have been working on some mean-variance / Black-Litterman models and played around with Ledoit/Wolf's covariance ...",
+    "host_name": "quant.stackexchange.com",
+    "rank": 0,
+    "date": "Jun 29, 2020",
+    "favicon": ""
+  },
+  {
+    "url": "https://kenwuyang.com",
+    "name": "Portfolio Optimization with Python: Hierarchical Risk Parity",
+    "snippet": "Oct 23, 2024 — Ledoit and Wolf (2004) propose a shrinkage approach, which combines the sample covariance matrix with a more structured and stable estimator, ...",
+    "host_name": "kenwuyang.com",
+    "rank": 1,
+    "date": "Oct 23, 2024",
+    "favicon": ""
+  },
+  {
+    "url": "https://github.com",
+    "name": "hierarchical-risk-parity",
+    "snippet": "Robust portfolio construction using Ledoit-Wolf covariance shrinkage and Hierarchical Risk Parity (HRP) for stable, risk-aware asset allocation",
+    "host_name": "github.com",
+    "rank": 2,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://research.cbs.dk",
+    "name": "Optimizing Portfolio Construction: Hierarchical Risk Parity (",
+    "snippet": "by R Kalytis · 2024 — A notable modification is the adoption of Ledoit - Wolf covariance shrinkage and the inverse- volatility approach instead of inverse- variance , 126 pages",
+    "host_name": "research.cbs.dk",
+    "rank": 3,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "http://www.ledoit.net",
+    "name": "Honey, I Shrunk the Sample Covariance Matrix",
+    "snippet": "by O Ledoit · 2003 · Cited by 2135 — The central message of this paper is that nobody should be using the sample covariance matrix for the purpose of portfolio optimization. It contains estima-. Read more 22 pages",
+    "host_name": "www.ledoit.net",
+    "rank": 4,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://developer.nvidia.com",
+    "name": "Hierarchical Risk Parity on RAPIDS: An ML Approach to",
+    "snippet": "Apr 19, 2022 — Read a step-by-step guide on how hierarchical risk parity can be used in portfolio optimization to manage risk.",
+    "host_name": "developer.nvidia.com",
+    "rank": 5,
+    "date": "Apr 19, 2022",
+    "favicon": ""
+  },
+  {
+    "url": "https://papers.ssrn.com",
+    "name": "Hierarchical Risk Parity versus Mean-Variance and Equal",
+    "snippet": "This paper presents a comparative simulation study of three portfolio construction methodologies: Markowitz mean- variance optimization, Equal Risk Contribution ... Read more",
+    "host_name": "papers.ssrn.com",
+    "rank": 6,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.cfauk.org",
+    "name": "Tackling Portfolio Optimisers Limitations with ML",
+    "snippet": "In other words, HRP allows to factor a hierarchical structure into the estimate of the covariance matrix that breaks the earlier mentioned “perfect network” ... Read more",
+    "host_name": "www.cfauk.org",
+    "rank": 7,
+    "date": "",
+    "favicon": ""
+  }
+]

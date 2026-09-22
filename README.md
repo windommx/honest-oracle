@@ -65,3 +65,8 @@ Webhook endpoint:
 - ตั้งค่า env ตาม `.env.example`
 - Deploy แล้วรัน Prisma ผ่าน `db:push` (หรือปรับเป็น `migrate` ตาม workflow ทีม)
 
+
+## Thai Momentum Platform (แอปแยกใน `thai-momentum-platform/`)
+
+แพลตฟอร์มโมเมนตัมหุ้นไทย (Jev × Momentum System) บูรณะจากซอร์สต้นฉบับแบบ 1:1 เป็นแอป Next.js 16 อิสระ มี `package.json` และฐานข้อมูล SQLite ของตัวเอง
+ไม่ผูกกับแอปหลักในโฟลเดอร์ราก (root `tsconfig.json` exclude โฟลเดอร์นี้ไว้) — วิธีรันและเอกสารทั้งหมดอยู่ที่ `thai-momentum-platform/README.md`

@@ -1,0 +1,364 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-plex-thai), var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  /* ---------- DAYLIGHT TERMINAL ACCENTS ----------
+   * ชื่อ token เดิม (neon-*) คงไว้เพื่อความเข้ากันได้ของคอมโพเนนต์
+   * แต่ค่าสีเป็นเฉดเข้มที่ contrast ผ่านบนพื้นสว่าง (WCAG AA)
+   *   cyan = accent หลัก · green = ขึ้น · rose = ลง · amber = เฝ้าระวัง */
+  --color-neon-cyan: #0e7490; /* cyan-700 */
+  --color-neon-magenta: #be185d; /* pink-700 */
+  --color-neon-purple: #7c3aed; /* violet-600 */
+  --color-neon-green: #047857; /* emerald-700 */
+  --color-neon-amber: #b45309; /* amber-700 */
+  --color-neon-rose: #e11d48; /* rose-600 */
+}
+
+:root {
+  --radius: 0.625rem;
+  /* กระดาษวิจัยสว่าง — ขาวนวลเย็นเล็กน้อย ไม่จ้าเกินไป */
+  --background: oklch(0.977 0.004 247);
+  --foreground: oklch(0.245 0.02 255);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.245 0.02 255);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.245 0.02 255);
+  --primary: oklch(0.51 0.09 195); /* teal-700 */
+  --primary-foreground: oklch(0.985 0.005 195);
+  --secondary: oklch(0.955 0.006 250);
+  --secondary-foreground: oklch(0.3 0.02 255);
+  --muted: oklch(0.953 0.006 250);
+  --muted-foreground: oklch(0.5 0.02 255);
+  --accent: oklch(0.955 0.018 200); /* teal tint */
+  --accent-foreground: oklch(0.4 0.07 200);
+  --destructive: oklch(0.58 0.22 17); /* rose-600 */
+  --border: oklch(0.905 0.008 255);
+  --input: oklch(0.885 0.008 255);
+  --ring: oklch(0.6 0.1 195);
+  --chart-1: oklch(0.6 0.115 195); /* teal-600 */
+  --chart-2: oklch(0.79 0.13 75); /* amber-500 */
+  --chart-3: oklch(0.63 0.14 155); /* emerald-600 */
+  --chart-4: oklch(0.56 0.21 303); /* violet-600 */
+  --chart-5: oklch(0.65 0.21 350); /* pink-600 */
+  --sidebar: oklch(0.995 0.002 250);
+  --sidebar-foreground: oklch(0.245 0.02 255);
+  --sidebar-primary: oklch(0.51 0.09 195);
+  --sidebar-primary-foreground: oklch(0.985 0.005 195);
+  --sidebar-accent: oklch(0.955 0.014 200);
+  --sidebar-accent-foreground: oklch(0.4 0.06 200);
+  --sidebar-border: oklch(0.915 0.008 255);
+  --sidebar-ring: oklch(0.6 0.1 195);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+
+  /* ---------- พื้นหลัง Daylight — กระดาษ + grid จาง + ล้างสีนุ่มแสง ---------- */
+  body {
+    background-color: #f6f8fb;
+    background-image:
+      radial-gradient(1000px 620px at 88% -12%, rgba(13, 148, 136, 0.055), transparent 62%),
+      radial-gradient(920px 580px at -12% 26%, rgba(124, 58, 237, 0.04), transparent 58%),
+      radial-gradient(860px 540px at 56% 112%, rgba(190, 24, 93, 0.035), transparent 60%),
+      linear-gradient(rgba(100, 116, 139, 0.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(100, 116, 139, 0.05) 1px, transparent 1px);
+    background-size:
+      100% 100%,
+      100% 100%,
+      100% 100%,
+      44px 44px,
+      44px 44px;
+    background-attachment: fixed;
+  }
+
+  /* ---------- Scrollbar โทนสว่าง ---------- */
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(100, 116, 139, 0.26);
+    border-radius: 8px;
+    border: 2px solid rgba(246, 248, 251, 0.85);
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(13, 148, 136, 0.45);
+  }
+  * {
+    scrollbar-color: rgba(100, 116, 139, 0.3) transparent;
+    scrollbar-width: thin;
+  }
+
+  ::selection {
+    background: rgba(13, 148, 136, 0.18);
+    color: #0f172a;
+  }
+
+  /* ---------- กัน horizontal overflow บนจอแคบ (มือถือ) ----------
+   * 1) min-width:0 — การ์ดที่เป็นลูกของ grid/flex ต้องย่อตัวได้
+   *    (ค่า default min-width:auto ปล่อยให้เนื้อหา min-content กว้างดันหน้าล้น)
+   * 2) max-width:100% — บนจอแคบ grid หลายตัวไม่มี explicit template
+   *    (grid-cols-*  apply เฉพาะ breakpoint ใหญ่) → implicit auto track
+   *    ขนาดตาม min-content ของกราฟ/ตารางที่วัดความกว้างค้างไว้
+   *    max-width บีบการ์ดกลับมาที่ความกว้างจริงของ cell
+   *    แล้ว ResizeObserver ของ recharts จะ re-measure ให้เอง */
+  main [data-slot="card"] {
+    min-width: 0;
+    max-width: 100%;
+  }
+}
+
+/* ============================================================
+ * DAYLIGHT CARD — การ์ดขาวขอบสีอ่อน เงานุ่ม (แทนกระจกเรืองแสง)
+ * ใช้ตัวแปร --glow-a/b/c และ --edge-glow กำหนดโทน per-card ได้เหมือนเดิม
+ * ============================================================ */
+.neon-card {
+  --glow-a: rgba(13, 148, 136, 0.28);
+  --glow-b: rgba(190, 24, 93, 0.14);
+  --glow-c: rgba(124, 58, 237, 0.18);
+  --edge-glow: rgba(13, 148, 136, 0.1);
+  --card-sheen: rgba(255, 255, 255, 0.85);
+  position: relative;
+  border: 1px solid transparent;
+  background:
+    linear-gradient(180deg, #ffffff 0%, #fdfefe 100%) padding-box,
+    linear-gradient(135deg, var(--glow-a), var(--glow-b) 50%, var(--glow-c)) border-box;
+  box-shadow:
+    0 1px 2px rgba(16, 24, 40, 0.05),
+    0 6px 18px -10px var(--edge-glow),
+    inset 0 1px 0 var(--card-sheen);
+}
+
+.neon-card-cyan {
+  --glow-a: rgba(14, 116, 144, 0.34);
+  --glow-b: rgba(14, 116, 144, 0.12);
+  --glow-c: rgba(5, 150, 105, 0.16);
+  --edge-glow: rgba(14, 116, 144, 0.11);
+}
+
+.neon-card-magenta {
+  --glow-a: rgba(190, 24, 93, 0.3);
+  --glow-b: rgba(124, 58, 237, 0.14);
+  --glow-c: rgba(190, 24, 93, 0.12);
+  --edge-glow: rgba(190, 24, 93, 0.1);
+}
+
+.neon-card-green {
+  --glow-a: rgba(5, 150, 105, 0.3);
+  --glow-b: rgba(14, 116, 144, 0.14);
+  --glow-c: rgba(5, 150, 105, 0.14);
+  --edge-glow: rgba(5, 150, 105, 0.1);
+}
+
+.neon-card-purple {
+  --glow-a: rgba(124, 58, 237, 0.3);
+  --glow-b: rgba(190, 24, 93, 0.12);
+  --glow-c: rgba(124, 58, 237, 0.14);
+  --edge-glow: rgba(124, 58, 237, 0.1);
+}
+
+.neon-card-amber {
+  --glow-a: rgba(217, 119, 6, 0.3);
+  --glow-b: rgba(225, 29, 72, 0.12);
+  --glow-c: rgba(217, 119, 6, 0.14);
+  --edge-glow: rgba(217, 119, 6, 0.1);
+}
+
+/* ---------- ตัวอักษรเน้นสี (เดิมเรืองแสง — ตอนนี้เป็นสีเข้มอ่านง่ายบนพื้นสว่าง) ---------- */
+.neon-text-cyan {
+  color: #0e7490;
+}
+.neon-text-green {
+  color: #047857;
+}
+.neon-text-magenta {
+  color: #be185d;
+}
+
+/* ---------- เส้นแบ่งสีอ่อนแนวนอน ---------- */
+.neon-divider {
+  height: 1px;
+  border: 0;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(13, 148, 136, 0.4),
+    rgba(190, 24, 93, 0.25),
+    transparent
+  );
+}
+
+/* ============================================================
+ * TICKER TAPE — แถบหุ้นเลื่อนอัตโนมัติแบบ trading terminal
+ * (หยุดชั่วคราวเมื่อ hover/focus · เคารพ prefers-reduced-motion)
+ * ============================================================ */
+@keyframes ticker-scroll {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+.ticker-track {
+  animation: ticker-scroll 48s linear infinite;
+  will-change: transform;
+}
+.ticker-viewport:hover .ticker-track,
+.ticker-viewport:focus-within .ticker-track {
+  animation-play-state: paused;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ticker-track {
+    animation: none;
+  }
+}
+
+/* ---------- จุดสถานะเต้น (LIVE / API ONLINE) — เฉดเข้มให้เห็นชัดบนพื้นขาว ---------- */
+@keyframes dot-pulse-green {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(5, 150, 105, 0.4);
+    opacity: 1;
+  }
+  50% {
+    box-shadow: 0 0 0 4px rgba(5, 150, 105, 0);
+    opacity: 0.75;
+  }
+}
+@keyframes dot-pulse-amber {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(217, 119, 6, 0.4);
+    opacity: 1;
+  }
+  50% {
+    box-shadow: 0 0 0 4px rgba(217, 119, 6, 0);
+    opacity: 0.75;
+  }
+}
+@keyframes dot-pulse-rose {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(225, 29, 72, 0.4);
+    opacity: 1;
+  }
+  50% {
+    box-shadow: 0 0 0 4px rgba(225, 29, 72, 0);
+    opacity: 0.75;
+  }
+}
+.status-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 9999px;
+  flex-shrink: 0;
+}
+.status-dot-live {
+  background: #059669;
+  animation: dot-pulse-green 2.2s ease-in-out infinite;
+}
+.status-dot-pre {
+  background: #d97706;
+  animation: dot-pulse-amber 2.2s ease-in-out infinite;
+}
+.status-dot-closed {
+  background: #e11d48;
+  animation: dot-pulse-rose 2.6s ease-in-out infinite;
+}
+.status-dot-off {
+  background: #94a3b8;
+}
+
+/* ---------- fade ขอบ ticker (viewport mask) ---------- */
+.ticker-viewport {
+  mask-image: linear-gradient(
+    90deg,
+    transparent 0,
+    #000 28px,
+    #000 calc(100% - 28px),
+    transparent 100%
+  );
+}
+
+/* ============================================================
+   Command Center 3.0 — โครงสร้างโมดูลมาตรฐาน (.feature / .options)
+   ทุกโมดูลบนหน้าภาพรวมใช้โครงเดียวกัน: head → .options → body
+   (สม่ำเสมอ = มืออาชีพ; โครงอยู่ที่นี่ที่เดียว ปรับทีเดียวทั้งระบบ)
+   ============================================================ */
+@layer components {
+  .feature {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    border-radius: 0.75rem;
+    border: 1px solid var(--border);
+    background-color: var(--card);
+    color: var(--card-foreground);
+    box-shadow: 0 1px 2px rgba(16, 24, 40, 0.05);
+  }
+  .feature:hover {
+    border-color: rgba(14, 116, 144, 0.35);
+  }
+  .options {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.375rem;
+    min-width: 0;
+    margin-top: 0.625rem;
+    border-top: 1px solid color-mix(in srgb, var(--border) 72%, transparent);
+    border-bottom: 1px solid color-mix(in srgb, var(--border) 72%, transparent);
+    background: color-mix(in srgb, currentColor 3%, transparent);
+    padding: 0.375rem 1rem;
+  }
+}

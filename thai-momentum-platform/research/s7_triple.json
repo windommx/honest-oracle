@@ -1,0 +1,56 @@
+[
+  {
+    "url": "https://hudsonthames.org",
+    "name": "Does Meta Labeling Add to Signal Efficacy?",
+    "snippet": "Our results confirm the fact that a combination of event-based sampling, triple - barrier method and meta labeling improves the performance of the strategies.",
+    "host_name": "hudsonthames.org",
+    "rank": 0,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://mlfinpy.readthedocs.io",
+    "name": "Data Labelling",
+    "snippet": "The triple - barrier method tackles this issue by dynamically setting the upper and lower barriers for each observation based on their given volatilities.",
+    "host_name": "mlfinpy.readthedocs.io",
+    "rank": 1,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://research.mental-momentum.ai",
+    "name": "Meta-labeling and triple-barrier methods in machine learning",
+    "snippet": "Learn how Marcos López de Prado's triple-barrier method and meta-labeling architectures improve machine learning trading by reducing false positives.",
+    "host_name": "research.mental-momentum.ai",
+    "rank": 2,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.newsletter.quantreo.com",
+    "name": "The Triple Barrier Labeling of Marco Lopez de Prado",
+    "snippet": "May 2, 2025 — The Triple Barrier Method gives your model a much stronger foundation to distinguish between valid trades and noisy signals. 3 . Why It's a ... Read more",
+    "host_name": "www.newsletter.quantreo.com",
+    "rank": 3,
+    "date": "May 2, 2025",
+    "favicon": ""
+  },
+  {
+    "url": "https://ai.plainenglish.io",
+    "name": "Improve Your ML Model With Better Labels | by David Zhao",
+    "snippet": "Jan 9, 2021 — The triple barrier method involves “ labelling an observation according to the first barrier touched of out three barriers… two horizontal ... Read more",
+    "host_name": "ai.plainenglish.io",
+    "rank": 4,
+    "date": "Jan 9, 2021",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.quantmemo.com",
+    "name": "Triple-Barrier Labeling - Quant Memo",
+    "snippet": "Triple-barrier labeling is López de Prado's path-aware alternative . It labels each observation by which of three barriers the price touches first, mirroring how ... Read more",
+    "host_name": "www.quantmemo.com",
+    "rank": 5,
+    "date": "",
+    "favicon": ""
+  }
+]

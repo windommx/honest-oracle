@@ -1,0 +1,17 @@
+# lora_nimble_core.yaml — fine-tune Nimble จาก train.jsonl/val.jsonl (build_dataset.py ผลิต)
+# ใช้: llamafactory-cli train lora_nimble_core.yaml
+model_name_or_path: models/nimble-9b          # fine-tune ต่อจาก decision model โดยตรง
+template: qwen
+finetuning_type: lora
+lora_rank: 16
+lora_alpha: 32
+lora_target: q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj
+dataset: core_train
+val_dataset: core_val
+cutoff_len: 2048
+num_train_epochs: 2          # พอ — ข้อมูลเราเล็ก overfit ง่าย
+learning_rate: 1.0e-4
+lr_scheduler_type: cosine
+per_device_train_batch_size: 4
+gradient_accumulation_steps: 4
+# 24GB VRAM → LoRA bf16 | 12–16GB → เพิ่ม quantization_bit: 4 (QLoRA)
