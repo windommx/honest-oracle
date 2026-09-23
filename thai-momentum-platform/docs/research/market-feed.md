@@ -1,0 +1,167 @@
+# แหล่งข้อมูลตลาด (Market Feed) — ผลสำรวจ การเลือก และวิธีต่อเข้าแพลตฟอร์ม
+
+> ปัญหาตั้งต้น: ราคาหุ้นไทยในระบบทั้งหมดเป็น **ข้อมูลสังเคราะห์ (seed)** — 240 สัญลักษณ์สมมติ ไม่ใช่หุ้นจริง จึง "ไม่ตรงกับตลาด" โดยธรรมชาติ
+> แหล่งข้อมูลจริงที่มีอยู่ก่อนหน้ามีเพียง GTAA (Yahoo adjclose 15 ETF สหรัฐ) และ `fetch:cross` (SPX/USDTHB/GOLD)
+> เอกสารนี้สรุปว่าแหล่งไหนใช้ได้จริง ให้ข้อมูลอะไร มีข้อจำกัดอะไร และต่อเข้าระบบอย่างไร — สถานะ 22 ก.ย. 2026 · อัปเดต 23 ก.ย. 2026: สายพานรายวัน + data trust layer + track record (§3, §4.7, §5)
+
+## 1. สิ่งที่ทดสอบและค้นคว้า (พูดตรง ๆ)
+
+- จาก sandbox ที่ใช้พัฒนา (proxy บล็อก egress) **ทุกโฮสต์ข้อมูลตลาดถูกปฏิเสธ** (Yahoo, set.or.th, settrade.com, Stooq, Twelve Data, EODHD, Alpha Vantage ตอบ 403) จึง **ไม่สามารถยืนยัน feed สด** จากที่นี่ได้ — โค้ดในเอกสารนี้ตรวจด้วย unit test บนตัวอย่างข้อมูลจริงรูปแบบเดียวกัน และต้องรันจริงบนเครื่องผู้ใช้ครั้งแรกแล้วดูรายงานรายตัว
+- ที่ยืนยันได้จากซอร์สโค้ดของไลบรารี **settfex 0.24.1** (PyPI, 21 ก.ย. 2026): เว็บ SET มี bot protection (Incapsula/Imperva) — ไลบรารีต้องใช้ `curl_cffi` ปลอม TLS fingerprint เป็น Chrome + header เฉพาะ + cookie สุ่ม จึงผ่านได้ → `fetch` ธรรมดาของ Node จาก server แพลตฟอร์ม **ผ่านไม่ได้** เป็นเหตุผลที่ทาง SET ต้องรันเป็นสคริปต์ Python บนเครื่องผู้ใช้
+- ตรวจกับ settfex 0.24.2 ที่ติดตั้งจริง: `get_chart_quotation` **ไม่ได้ export ที่ระดับบนสุด** (`from settfex import get_chart_quotation` → ImportError) ต้อง import จาก `settfex.services.set` — สคริปต์แก้แล้ว (เดิมทุกตัวล้มเหลว = ไม่ได้ข้อมูลเลย) · `Quotation.local_datetime` เป็นเวลากรุงเทพ (naive) จึงใช้ตัดวันที่ได้ตรง
+- Yahoo chart API v8 (`query1.finance.yahoo.com/v8/finance/chart/PTT.BK`) เป็น endpoint เดียวกับที่โมดูล GTAA ใช้ดึงข้อมูลจริง 30 ปีสำเร็จจาก container ที่มีเน็ต (worklog Task 14-b) — ต้องส่ง `User-Agent` แบบ browser
+
+## 2. ตารางเปรียบเทียบแหล่ง feed หุ้นไทย
+
+| แหล่ง | ข้อมูลที่ได้ | มูลค่าซื้อขาย (val) | OHLC ย้อนหลัง | องค์ประกอบดัชนี/sector | ค่าใช้จ่าย | สถานะ | เรียกจาก server ได้? | คำแนะนำ |
+|---|---|---|---|---|---|---|---|---|
+| **Yahoo Finance (.BK)** | รายวัน 20+ ปี, adjclose | ≈ close×volume (ประมาณ) | ✅ | ❌ | ฟรี | ไม่เป็นทางการ, rate limit ต่อ IP | ✅ (fetch + UA) | **ทางเริ่มต้น** — กดจาก UI ได้ทันที |
+| **SET (set.or.th) ผ่าน settfex** | ราคาปิด/volume/value รายวัน (period ถึง MAX), stock list, index composition, sector, sign (SP/XD…) | ✅ จริง (บาท) | ❌ (chart-quotation ให้ปิดต่อวัน) | ✅ | ฟรี | ไม่เป็นทางการ (endpoint ของเว็บ), ต้อง curl_cffi | ❌ (Incapsula) | **ทางที่แม่นเรื่องสภาพคล่อง** — รัน Python บนเครื่องผู้ใช้, ผสาน OHLC จาก Yahoo ได้ |
+| **Settrade Open API** | SET + TFEX real-time และย้อนหลัง (candlestick), ส่งคำสั่งได้ | ✅ | ✅ | บางส่วน | ฟรีสำหรับลูกค้าโบรกเกอร์ที่รองรับ | **ทางการ** ต้อง app key | ✅ ถ้าใส่ credential บน server | **เป้าหมายระยะยาว** (เปิด TFEX ให้ Basis/Parity/VRP) — เทมเพลต `lab/fetch_settrade_feed.py` |
+| SETSMART (SET Information Services) | ประวัติราคา/สถิติ/งบ ครบ ส่งออก CSV | ✅ | ✅ | ✅ | สมัครสมาชิก (มีค่าใช้จ่าย) | ทางการ | ❌ (เว็บ) | ส่งออก CSV → การ์ดนำเข้า CSV |
+| Twelve Data (XBKK) | time series รายวัน/นาที | ตาม API | ✅ | ✅ | แผน Basic ฟรีมีแค่ trial symbols ต่างประเทศ — SET เต็มต้องแผนเสียเงิน | ทางการ (vendor) | ✅ (API key) | ถ้าต้องการ SLA และหลายตลาด |
+| EODHD (`.BK`) | EOD OHLCV ปรับ split/dividend, fundamentals | ✅ | ✅ | ✅ | ฟรี 20 call/วัน, EOD plan ≈ €20/เดือน | ทางการ (vendor) | ✅ (API key) | ทางเลือกเสียเงินราคาถูกสุดที่ครอบ SET ทั้งตลาด |
+| Alpha Vantage / Stooq / Marketstack | ครอบ SET ไม่ครบหรือไม่มี | — | — | — | — | — | — | ไม่แนะนำสำหรับหุ้นไทย |
+| Scraping settrade.com (เช่น ThaiStock lib) | ราคา 6 เดือน | ✅ | ✅ | ❌ | ฟรี | ไม่เป็นทางการ, ไลบรารีไม่อัปเดต, เปราะบาง | ❌ | ไม่แนะนำ |
+| AmiBroker export (ของเดิม) | ตามข้อมูลที่ผู้ใช้มี | ตาม feed ของ AmiBroker | ✅ | ❌ | ตาม feed เดิม | — | การ์ด CSV | ยังใช้ได้เหมือนเดิม |
+
+ข้อสังเกตเรื่องความถูกต้อง:
+- **val** ของแพลตฟอร์มคือมูลค่าซื้อขายบาท ใช้ใน liq5 (≥ 3 ล้าน/วัน 5 วัน), MFD, signed flow, Volume Profile — Yahoo ให้ volume (หุ้น) เท่านั้น ระบบจึงประมาณ `close × volume` (ต่างจากค่าจริงไม่กี่ % เพราะ SET นับ Σ ราคา×จำนวนทุก trade) ถ้าต้องการค่าจริงให้ใช้ทาง SET/Settrade
+- **ปันผล/สปลิต**: Yahoo `close` ปรับสปลิตแล้วแต่ไม่ปรับปันผล; `adjclose` ปรับทั้งคู่ — ค่าเริ่มต้นของระบบใช้ adjusted (คูณ OHLC ด้วย adjclose/close รายวัน) เพื่อไม่ให้โมเมนตัมข้ามวัน XD กระโดด สลับเป็นราคาดิบได้ในการ์ด
+- **volume ของ Yahoo สำหรับหุ้นไทย** มีรายงานปัญหาเป็นครั้งคราว (ดัชนี ^SET.BK แสดง volume 0; issue ใน yfinance) — quality gate ของ feed เตือนเมื่อมูลค่าเป็น 0 เกินครึ่งของวัน
+- **ป้าย provenance**: ทุกการนำเข้ายิง `EventLog(kind=ingest, payload.source=yahoo|set|settrade|…)` → Flagship เปลี่ยนป้ายจาก SYNTHETIC เป็น REAL อัตโนมัติ
+- **CrossAsset (SPX/USDTHB/GOLD) หลังล้าง demo**: ชุดของ seed สังเคราะห์จากผลตอบแทนของตลาดจำลอง ถ้าคงไว้ crossZ (25% ของ regimeScore) จะเป็นสัญญาณปลอมปนกับหุ้นจริง — `replaceDemo` จึงล้าง CrossAsset ด้วย เว้นแต่มีป้าย `Setting.cross_asset_source = yahoo` (มาจาก `bun run fetch:cross`) · หลังล้าง crossZ ไม่มีส่วนร่วม และชั้น lead-lag ของ SET Sniper ปิด จนกว่าจะรัน `bun run fetch:cross` (การ์ด/สคริปต์แจ้งในหมายเหตุผลนำเข้า)
+
+## 3. สถาปัตยกรรม feed ในแพลตฟอร์ม (สิ่งที่เพิ่มในรอบนี้)
+
+```
+แหล่งใด ๆ ──► rows {date,symbol,open?,high?,low?,close,val} ──► ingestFeed()
+   │                                                              ├─ replaceDemo? → clearDemoMarketData()
+   ├─ Yahoo (server)   src/lib/feed/yahoo.ts  ← POST /api/feed/fetch  ├─ ingestRows() (upsert · retN/liq5 · โผ Top-N)
+   ├─ settfex (Python) lab/fetch_set_feed.py  ← POST /api/feed/ingest ├─ SymbolMeta (sector: ผู้ใช้ → universe → Unknown)
+   ├─ Settrade (Python) lab/fetch_settrade_feed.py ← POST /api/feed/ingest └─ emitEvent("ingest", …, {source})
+   └─ CLI              scripts/fetch-th.ts (Yahoo → DB หรือ CSV)
+```
+
+| ไฟล์ | หน้าที่ |
+|---|---|
+| `src/lib/feed/universe.ts` | รายชื่อตั้งต้น 78 ตัว (SET50 + ขนาดกลาง) พร้อม sector · `parseSymbolList` · แผนที่ sector ของ SET → 13 กลุ่ม |
+| `src/lib/feed/yahoo.ts` | `mapChartToRows` (pure) · `fetchYahooDaily` (query1→query2, ถอยหลังลองซ้ำเฉพาะ 429/5xx/timeout — 401/403 ไม่ลองซ้ำ) · `fetchYahooBatch` (เรียงคิว + รายงานรายตัว · 3 ตัวแรกเข้าไม่ได้ทั้งหมด = ถูกบล็อก หยุดทั้งชุด · งบเวลา 220 วินาทีใน route ตัวที่ไม่ทันรายงานว่า "ข้าม") |
+| `src/lib/feed/quality.ts` | `assessSymbol` (ประวัติสั้น/กระโดด >35%/มูลค่า 0/วันซ้ำ) · `flagStale` |
+| `src/lib/feed/rows.ts` | `normalizeFeedRows` — ตรวจแถว JSON จากสคริปต์ภายนอก |
+| `src/lib/feed/ingest.ts` | `ingestFeed` · `clearDemoMarketData` (รวม CrossAsset สังเคราะห์) |
+| `src/lib/feed/sources.ts` | ทะเบียนแหล่ง + ป้ายความจริงของข้อมูล (แสดงบนการ์ดเสมอ) |
+| `src/app/api/feed/*` | `GET /api/feed` · `POST /api/feed/fetch` · `POST /api/feed/ingest` |
+| `src/components/platform/feed-card.tsx` | การ์ดในแท็บข้อมูล |
+| `scripts/fetch-th.ts` | `bun run fetch:th` (cron ได้) |
+| `lab/fetch_set_feed.py` · `lab/fetch_settrade_feed.py` | สคริปต์ Python (SET ผ่าน settfex / เทมเพลต Settrade) |
+| `src/lib/feed/feed.test.ts` | `bun test src` — ส่วน pure ทั้งหมด |
+| `src/lib/feed/calendar.ts` · `calendar-file.ts` | ปฏิทินซื้อขาย SET (Asia/Bangkok): วันหยุด 2025–2026 แบบ best-effort + ไฟล์วันหยุดของผู้ใช้ (`SET_HOLIDAYS_FILE` / `--holidays`) · รอบที่ข้อมูลปิดตลาดควรพร้อม (≥ 17:30) · นับวันซื้อขายที่ตามหลัง |
+| `src/lib/feed/provenance.ts` | ทะเบียน provenance + licensing ต่อแหล่ง (ทางการหรือไม่ · สิทธิ์เชิงพาณิชย์ · ราคาปรับ/ดิบ · val จริง/ประมาณ · ลำดับความน่าเชื่อถือ) · ยุคข้อมูลจาก EventLog · ป้ายหลักฐาน REAL/SYNTHETIC/MIXED/UNVERIFIED_SOURCE |
+| `src/lib/feed/freshness.ts` | freshness monitor: วันล่าสุดของ DB vs รอบที่ควรมี · ความค้างรายหุ้น · % ของ universe ที่อัปเดตถึงรอบล่าสุด |
+| `src/lib/feed/reconcile.ts` | reconciliation ข้ามแหล่ง (ต่าง > 0.5% = ติดธง) · จำแนก match / rebased (ฐานราคาถูกปรับย้อนหลัง) / rescaled (คนละฐาน) / conflict · ผสานหลายแหล่งตาม precedence |
+| `src/lib/feed/corporate-actions.ts` | ตรวจราคาปิดเปลี่ยนเกินเพดาน/พื้น ±30% ของ SET → split-like / reverse-split-like / drop / jump (ติดธง ไม่ปรับราคาเอง) |
+| `src/lib/feed/inbox.ts` · `pipeline.ts` · `trust.ts` | โฟลเดอร์รับไฟล์จากสคริปต์ Python · สายพานปิดตลาดรายวัน (dependency-injected ทดสอบได้) · สรุปสำหรับ `GET /api/data/trust` |
+| `scripts/daily.ts` | `bun run daily` — สายพานปิดตลาดรายวัน (§4.7) |
+| `src/lib/track/*` · `GET /api/track-record` | track record ของพอร์ตกระดาษ Jev (ดู `docs/research/evidence-protocol.md`) |
+| `scripts/evidence-real.ts` | `bun run evidence:real` — รายงานหลักฐานบนข้อมูลจริง (ปฏิเสธป้าย REAL เมื่อข้อมูลจำลอง/ประวัติ < 250 วัน) |
+
+## 4. วิธีใช้
+
+### 4.1 Yahoo จาก UI (เร็วสุด)
+แท็บ **ข้อมูล → ดึงข้อมูลจริงจาก feed** → เลือก preset SET50 หรือพิมพ์รายชื่อ → ช่วง 2 ปี → เปิด "ล้างข้อมูล demo ก่อน" (ครั้งแรก) → ดึงข้อมูล
+ระบบดึงทีละตัว (เว้น 150 ms) 50 ตัว ≈ 1 นาที รวม ingest แล้วรายงานตัวที่ล้มเหลว/มีคำเตือน
+
+### 4.2 Yahoo จาก CLI / cron
+```bash
+bun run fetch:th -- --symbols SET50 --range 2y --replace-demo   # ครั้งแรก
+bun run fetch:th -- --symbols SET50 --range 6mo                 # อัปเดตรายวัน (upsert ทับวันเดิม)
+bun run fetch:th -- --symbols @my-list.txt --csv data/feed/my.csv   # เขียน CSV อย่างเดียว
+# crontab หลังตลาดปิด: 0 18 * * 1-5  cd /path/thai-momentum-platform && bun run fetch:th -- --symbols SET50 --range 6mo
+```
+
+### 4.3 SET ผ่าน settfex (มูลค่าซื้อขายจริง + องค์ประกอบดัชนี)
+```bash
+pip install "settfex>=0.24" yfinance          # Python 3.11+
+cd thai-momentum-platform/lab
+python fetch_set_feed.py --index SET50 --period 3Y --ohlc-from-yahoo --post http://localhost:3000 --replace-demo
+```
+- `--index ALL` ดึงหุ้นสามัญทั้ง SET (ตัด warrant/DW/NVDR แบบหยาบ) ใช้เวลานานตามจำนวนตัว (หน่วง 0.3 s/ตัว)
+- ไม่ใส่ `--post` → ได้ CSV ที่ `data/feed/set-YYYYMMDD.csv` + `.sectors.json` นำเข้าผ่านการ์ด CSV ได้
+
+### 4.4 Settrade Open API (ทางการ)
+สมัครที่ developer.settrade.com/open-api (ต้องมีบัญชีกับโบรกเกอร์ที่รองรับ) → สร้าง app → ตั้ง env `SETTRADE_APP_ID / APP_SECRET / BROKER_ID / APP_CODE` → `pip install settrade-v2` →
+`python lab/fetch_settrade_feed.py --symbols PTT,KBANK --limit 500 --post http://localhost:3000`
+เทมเพลตยังไม่ได้ทดสอบกับบัญชีจริง: ถ้ารูปแบบ candlestick ของ SDK ต่างจากที่คาด สคริปต์พิมพ์คีย์ที่ได้จริงให้แก้ `to_rows()`
+- `--symbols` ต้องเป็นรายชื่อหุ้น (ไม่ขยายชื่อดัชนีอย่าง SET50 ให้ — ชื่อดัชนีถูกข้ามพร้อมคำเตือน) · วันที่ของแท่งแปลงเป็นเวลาไทย (UTC+7) ไม่ขึ้นกับ timezone ของเครื่อง
+
+### 4.5 CSV (การ์ดนำเข้า / `POST /api/ingest`)
+- ตัวคั่น `,` · tab (วางจาก Excel) · `;` — ขึ้นบรรทัด LF/CRLF/CR · ช่องในเครื่องหมายคำพูดและตัวคั่นหลักพัน (`"12,345,678"`) · BOM ของ Excel
+- คอลัมน์ `date` (หรือ `Date/Time`), `symbol` (หรือ `Ticker`), `close` + `val`/`value` หรือ `volume`/`vol` · `PTT.BK` = `PTT`
+- วันที่ `2026-09-18` · `20260918` · `18/09/2026` (วัน/เดือน/ปี แบบไทยเป็นค่าเริ่มต้น; ถ้าทั้งไฟล์มีค่าเดือน/วันที่ไม่กำกวมจะอ่านแบบเดือน/วัน) · ปี พ.ศ. (2569 = 2026) — วันที่ที่ไม่มีจริงหรือราคาปิด ≤ 0 ถูกทิ้ง
+
+### 4.6 fetch:cross (SPX / USDTHB / GOLD จริง)
+`bun run fetch:cross` แทนที่ชุดของแต่ละ asset ทั้งชุด (ไม่ upsert ทับชุดสังเคราะห์) · วันที่ตาม timezone ของตลาดนั้น (FX ของ Yahoo ตราเวลาเที่ยงคืนลอนดอน — ตัดวันที่แบบ UTC จะเลื่อนถอยไป 1 วัน) · asset ที่ดึงไม่สำเร็จและเดิมเป็นชุดสังเคราะห์ถูกลบ (ไม่ผสมของปลอมกับของจริง) · ติดป้าย `cross_asset_source = yahoo`
+
+### 4.7 สายพานปิดตลาดรายวัน (`bun run daily`)
+
+ทำทุกอย่างหลังตลาดปิดในคำสั่งเดียว ผ่านไลบรารีโดยตรง (ไม่ผ่าน HTTP จึงไม่ติด auth/rate limit ของ API):
+
+```
+ปฏิทิน SET → ดึงข้อมูล (Yahoo .BK หรือ inbox) → reconcile กับ DB + corporate action → ingest เฉพาะแถวใหม่/แถวที่เปลี่ยน
+→ freshness + DQ (วิกฤต = หยุด) → POST /api/jev/run (in-process) → GET /api/verify → track snapshot (EventLog)
+→ backup (src/lib/ops/backup ถ้ามี) → data/runs/<รอบ>.json + EventLog "daily_run"
+```
+
+```bash
+bun run daily                                  # รอบล่าสุดที่ข้อมูลปิดตลาดควรพร้อม (≥ 17:30 น.) · ข้ามเสาร์–อาทิตย์/วันหยุดเมื่อรอบล่าสุดทำแล้ว
+bun run daily -- --dry-run                     # ดึง/ตรวจครบ ไม่เขียน DB ไม่ย้ายไฟล์ ไม่รันสมอง (ใช้เป็น health check)
+bun run daily -- --skip-fetch                  # ไม่ดึงใหม่ — ตรวจ + รันสมองบนข้อมูลใน DB
+bun run daily -- --source inbox                # ใช้ไฟล์จาก lab/fetch_set_feed.py / fetch_settrade_feed.py ใน data/feed/inbox/
+bun run daily -- --date 2026-09-22 --symbols SET50 --holidays my-set-holidays.json
+# cron: 30 18 * * 1-5  cd /app && bun run daily >> data/runs/cron.log 2>&1
+```
+
+| exit | ความหมาย |
+|---|---|
+| 0 | สำเร็จ · ไม่มีอะไรเปลี่ยน (รันซ้ำ) · ข้าม (วันหยุด/ก่อนเวลาข้อมูลปิดตลาด และรอบล่าสุดทำไปแล้ว) |
+| 1 | ข้อผิดพลาดที่ไม่คาดคิด |
+| 2 | argument ผิด |
+| 3 | ดึงข้อมูลไม่ได้เลย (ถูกบล็อก/ไม่มีเน็ต/inbox ว่าง) |
+| 4 | คุณภาพข้อมูลวิกฤต — ไม่รันสมอง: หุ้นใน universe ขาดแท่งของรอบเกิน `--max-missing-pct` (20%) · ราคาขัดกับค่าเดิมใน DB เกิน `--max-conflict-pct` (20%) · ราคาเปลี่ยนเกิน ±30% ในรอบนี้ (ปฏิเสธ **ก่อน** ingest) · แถวซ้ำ/ตัวกรองรั่ว · DB ยังเป็นข้อมูลจำลองแต่สั่งดึงข้อมูลจริง |
+| 5 | STALE — วันล่าสุดของข้อมูลไม่ขยับถึงรอบที่ควรมี (feed ยังไม่อัปเดต หรือวันหยุดที่ไม่อยู่ในปฏิทิน) |
+| 6 | `/api/jev/run` หรือ `/api/verify` ตอบ error |
+
+พฤติกรรมสำคัญ:
+- **รันซ้ำปลอดภัย:** แถวที่ตรงกับ DB ไม่ถูก ingest · Jev มี idempotency guard ต่อวัน · snapshot เดิมไม่บันทึกซ้ำ · ไม่ backup เมื่อไม่มีอะไรเปลี่ยน · ไม่ emit EventLog → รันซ้ำวันเดียวกันไม่เขียน DB เลย (ตรวจด้วย checksum ของไฟล์ DB แล้ว)
+- **ไม่ประมวลผลแท่งระหว่างวัน:** แถวที่ลงวันหลังรอบที่ประมวลผลถูกตัดทิ้ง (Yahoo ส่งแท่งสดระหว่างเปิดตลาด)
+- **ฐานราคาเปลี่ยน (Yahoo ปรับปันผล/สปลิตย้อนหลัง):** ดึงทุกวันช่วง 6 เดือนซ้อนกับ DB → reconcile พบ "rebased/rescaled" → ดึงประวัติเต็ม (`--rebase-range max`) ของหุ้นนั้นมาแทนทั้งชุด (ประวัติไม่ต่อกันคนละฐาน) · ปิดได้ด้วย `--no-rebase`
+- **inbox หลายแหล่งวันเดียวกัน:** reconcile ทุกคู่ (ต่าง > 0.5% ติดธง + คำเตือน) แล้วเลือกค่าของแหล่งที่น่าเชื่อถือกว่า (Settrade → SET → CSV → Yahoo) · ingest แยกตามแหล่ง (EventLog บอกที่มาจริง) · ไฟล์ที่ใช้แล้วย้ายไป `inbox/archive/<รอบ>/` · ไฟล์เสียไป `inbox/rejected/<รอบ>/` · ปัญหาวิกฤตก่อน ingest = ไฟล์คงอยู่ใน inbox ให้แก้แล้วรันใหม่
+- **ไม่ล้างข้อมูล demo ให้เด็ดขาด:** DB ที่เป็น SYNTHETIC/MIXED + สั่งดึงข้อมูลจริง = exit 4 พร้อมคำแนะนำ (ครั้งแรกใช้ `bun run fetch:th -- --range 5y --replace-demo` ซึ่งมี backup + confirm)
+- `--date` กำหนดรอบสำหรับปฏิทิน/freshness และตัดข้อมูลหลังวันนั้น — Jev ตัดสินใจบนข้อมูลล่าสุดใน DB เสมอ (ไม่มีการตัดสินใจย้อนหลัง)
+
+## 5. Quality gate และหลังนำเข้า
+1. รายงานรายตัวก่อนเข้าฐาน: ไม่พบสัญลักษณ์ / ประวัติสั้น < 60 แท่ง / ราคากระโดด > 35% / มูลค่า 0 เกินครึ่ง / วันล่าสุดตามหลังชุด
+2. DQ ของระบบ (`/api/dq`) ตรวจซ้ำ: แถวซ้ำ · ช่องว่างวันที่ **วัดเป็นวันทำการ (จ.–ศ.) ที่หายไป** — ขาดเกิน 4 วันทำการ = ข้อมูลหาย (flag) ส่วนช่วงปิดยาว 3–4 วันทำการ (สงกรานต์/ปีใหม่ ซึ่ง SET ปิดติดกันยาวสุด ~4 วันทำการ เช่น 12–15 เม.ย. 2564) แจ้งในรายละเอียดแต่ไม่นับเป็นปัญหา (เดิม "> 5 วันปฏิทิน" ติด flag ทุกปี และ flag นี้ลดโหมด Flagship / นับใน circuit breaker ของ SET Sniper) · กระโดด > 35% เทียบราคาปิดล่าสุดที่มีของหุ้นตัวนั้น (ข้ามวันพักการซื้อขาย) · ตัวกรองรั่ว · DB ว่าง = ไม่มีรายการตรวจ (ไม่แสดง "ผ่านทั้งหมด")
+3. นำเข้าประวัติย้อนหลัง/แก้ราคาย้อนหลัง: retN ของวันถัดไป (สูงสุด 300 แท่ง) เปลี่ยนตาม — ระบบสร้างโผใหม่ให้ทุกวันที่ indicator เปลี่ยน ไม่ใช่เฉพาะวันที่ในไฟล์
+4. **Data trust layer (`GET /api/data/trust` · แท็บ Track Record → TR5):** provenance + licensing ของทุกแหล่ง · ยุคข้อมูลและประวัติ ingest ต่อแหล่ง · freshness เทียบปฏิทิน SET (รอบที่ควรมี · วันล่าสุด · % อัปเดต · หุ้นค้าง ≥ 5 วันซื้อขาย) · corporate action ใน 60 วันซื้อขายล่าสุด · reconciliation และสถานะของสายพานรายวันรอบล่าสุด
+   ป้ายหลักฐานเข้มกว่าป้ายของ Flagship: REAL ต้องให้ "ทุก" แหล่งในยุคข้อมูลเป็นแหล่งที่ระบบรู้จัก (yahoo / set / settrade / csv) — ข้อมูลจาก fixture หรือแหล่งไม่รู้จักปนอยู่ = `UNVERIFIED_SOURCE`
+5. หลังนำเข้าข้อมูลจริงครั้งแรก ควรรันใหม่ตามลำดับ: Evidence Night (H1–H4) → `bun run ic` (IC harness) → CPCV → Bayes Stop backtest — ค่า verdict/policy เดิมทั้งหมดผูกกับข้อมูล seed และถูกล้างเมื่อเปิด "ล้างข้อมูล demo"
+
+## 6. ข้อจำกัดและเงื่อนไขการใช้งาน
+- Yahoo และ endpoint ของเว็บ SET เป็นบริการสาธารณะที่ **ไม่มีสัญญาบริการ** — ใช้เพื่อวิจัย/ส่วนตัว เคารพ rate limit และเงื่อนไขของผู้ให้บริการ ใช้เชิงพาณิชย์ควรใช้ SETSMART/Settrade/vendor ที่มีสัญญา
+- รายชื่อตั้งต้นใน `universe.ts` เป็นภาพ ณ ครึ่งแรกปี 2026 — องค์ประกอบดัชนีเปลี่ยนทุกครึ่งปี ให้ใช้ `fetch_set_feed.py --index` ดึงสด หรือแก้รายชื่อเอง
+- ระบบ **ตรวจ** corporate action (ราคาเปลี่ยนเกิน ±30% = ติดธง + สายพานรายวันปฏิเสธรอบนั้น) และ **จับฐานราคาเปลี่ยน** (reconciliation) แต่ไม่ปรับราคาเอง — อาศัย adjclose ของ Yahoo หรือราคาที่แหล่งปรับให้ แล้วดึงประวัติเต็มใหม่
+- ปฏิทินวันหยุด SET ในโค้ดเป็นค่าตั้งต้นที่ดีที่สุดที่รู้ (ยืนยันกับ set.or.th จาก sandbox ไม่ได้) — วางไฟล์วันหยุดของปีปัจจุบันผ่าน `SET_HOLIDAYS_FILE` · วันหยุดที่ตกหล่น = สายพานรายงาน STALE (exit 5) ไม่ใช่เดาข้อมูลเติม
+- การล้างข้อมูลตลาดทั้งชุด (seed / `--replace-demo`) เริ่ม **ยุคข้อมูลใหม่** — track record นับใหม่จากศูนย์ (การตัดสินใจเก่ายังอยู่ใน audit แต่ไม่นับรวม)
+- ข้อกำหนดการใช้ของผู้ให้บริการ (Yahoo = ส่วนตัว ไม่ใช่เชิงพาณิชย์ · เว็บ SET = ต้องตรวจเงื่อนไขก่อน scrape) สรุปไว้ใน `src/lib/feed/provenance.ts` เพื่อเตือน — ไม่ใช่คำแนะนำทางกฎหมาย
+- TFEX ยังไม่มีแหล่ง (FuturesDaily/OptionsDaily ว่าง) จนกว่าจะต่อ Settrade Open API
+
+## 7. อ้างอิง
+- settfex บน PyPI (0.24.1, 21 ก.ย. 2026): https://pypi.org/project/settfex/
+- Settrade Open API: https://developer.settrade.com/open-api/ · บทความ Investic: https://medium.com/investic/เทรดหุ้นไทยผ่าน-settrade-open-api-ทำยังไง-b4f7cf541b7f
+- SET Information Services (SETSMART): https://set.or.th/en/services/connectivity-and-data/data/web-based
+- Twelve Data — Stock Exchange of Thailand (XBKK): https://twelvedata.com/exchanges/XBKK · แผนราคา: https://twelvedata.com/pricing
+- EODHD — รายชื่อตลาด: https://eodhd.com/list-of-stock-markets · แผนราคา: https://eodhd.com/pricing
+- yfinance issues เรื่องคุณภาพข้อมูล: https://github.com/ranaroussi/yfinance/issues/300 · https://github.com/ranaroussi/yfinance/issues/1610
+- ThaiStock (scraping settrade.com): https://github.com/UncleEngineer/ThaiStock

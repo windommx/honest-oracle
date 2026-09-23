@@ -1,0 +1,35 @@
+import { NextResponse } from "next/server"
+import { seedDemoData } from "@/lib/momentum/core"
+import { emitEvent } from "@/lib/research/events"
+import { guardDestructive, type BackupInfo } from "@/lib/security/destructive-guard"
+import type { SeedResponse } from "@/lib/momentum/contracts"
+
+export const dynamic = "force-dynamic"
+export const maxDuration = 300
+
+// POST /api/seed  { days?, symbols?, confirm? } → สร้างข้อมูลตัวอย่าง (wipe ของเดิมทั้งหมด)
+// DB มีข้อมูลอยู่แล้ว → ต้องส่ง confirm:"RESET" (ไม่งั้น 409 พร้อมรายการสิ่งที่จะหาย) และระบบสำรอง DB ก่อนลบทุกครั้ง
+export async function POST(req: Request) {
+  try {
+    const parsed: unknown = await req.json().catch(() => null)
+    const body = (parsed && typeof parsed === "object" ? parsed : {}) as { days?: unknown; symbols?: unknown }
+    const guard = await guardDestructive("seed", parsed)
+    if (!guard.ok) return guard.response
+    const stats = await seedDemoData({
+      days: typeof body.days === "number" ? body.days : undefined,
+      symbols: typeof body.symbols === "number" ? body.symbols : undefined,
+    })
+    await emitEvent("seed", "human", {
+      days: stats.dates,
+      symbols: stats.symbols,
+      rawRows: stats.rawRows,
+      snapRows: stats.snapRows,
+      sectorRows: stats.sectorRows,
+      backup: guard.backup?.file ?? null,
+    })
+    const res: SeedResponse & { backup: BackupInfo | null } = { ok: true, ...stats, backup: guard.backup }
+    return NextResponse.json(res)
+  } catch (e) {
+    return NextResponse.json({ error: (e as Error).message }, { status: 500 })
+  }
+}

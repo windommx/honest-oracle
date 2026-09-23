@@ -1,0 +1,937 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-plex-thai), var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  /* ---------- ACCENTS (ชื่อ neon-* เดิม — ค่าสีสลับตามธีมผ่านตัวแปรใน :root / .dark) ----------
+   * cyan = ข้อมูล/ลิงก์ (น้ำเงิน) · green = ขึ้น · rose = ลง · amber = เฝ้าระวัง
+   * ทุกเฉดผ่าน WCAG AA (≥ 4.5:1) ทั้งบนพื้นหน้า/การ์ด และบนพื้นทินต์ของตัวเอง 10–20% (ป้าย badge)
+   * — ตรวจเชิงตัวเลขแล้วทั้ง 2 ธีม (ตารางค่าอยู่ท้าย :root / .dark) */
+  --color-neon-cyan: var(--neon-cyan);
+  --color-neon-magenta: var(--neon-magenta);
+  --color-neon-purple: var(--neon-purple);
+  --color-neon-green: var(--neon-green);
+  --color-neon-amber: var(--neon-amber);
+  --color-neon-rose: var(--neon-rose);
+  /* ตัวอักษรบนพื้นสี neon ทึบ (ปุ่ม/ป้ายเต็มสี) — ขาวในธีมสว่าง · กรมท่าเข้มในธีมมืด */
+  --color-on-neon: var(--on-neon);
+
+  /* ทองประจำแบรนด์ — gold = งานตกแต่ง (วง/เส้น/พื้น) ห้ามใช้กับตัวอักษรเล็ก
+   * gold-ink = ทองสำหรับตัวอักษร · gold-soft = พื้นทองอ่อนของไฮไลต์ */
+  --color-gold: var(--gold);
+  --color-gold-ink: var(--gold-ink);
+  --color-gold-soft: var(--gold-soft);
+  --color-ivory: var(--ivory);
+
+  /* พื้นผิวของ shell (header/footer/dock) และชิปขาว (ช่องค้นหา/นาฬิกา/ปุ่มแคปซูล) */
+  --color-shell: var(--shell);
+  --color-chip: var(--chip);
+  --color-chip-border: var(--chip-border);
+}
+
+/* =====================================================================
+ * GOLD IVORY (สว่าง) — พื้นงาช้างอุ่น การ์ดขาว หมึกกรมท่า ทองเป็นสีหลัก
+ * ===================================================================== */
+:root {
+  --radius: 0.875rem;
+  --background: #faf7f0;
+  --foreground: #1b2537;
+  --card: #ffffff;
+  --card-foreground: #1b2537;
+  --popover: #ffffff;
+  --popover-foreground: #1b2537;
+  --primary: #806210; /* ทองเข้ม — ตัวอักษรขาวบนพื้นนี้ 5.7:1 */
+  --primary-foreground: #ffffff;
+  --secondary: #f6f1e4;
+  --secondary-foreground: #3a3325;
+  --muted: #f4efe3;
+  --muted-foreground: #67615a; /* 5.7:1 บนงาช้าง · 6.1:1 บนการ์ด */
+  --accent: #fbf2da; /* ทองอ่อน */
+  --accent-foreground: #6b4f0a;
+  --destructive: #b91c1c;
+  --destructive-foreground: #ffffff; /* 6.5:1 บน destructive (toast/ปุ่มลบ) */
+  --border: #ebe3d1;
+  --input: #e3d9c4;
+  --ring: #a8841f; /* ทองเข้มพอให้วงโฟกัส ≥ 3:1 บนพื้นขาว (WCAG 1.4.11) */
+  --focus: #806210;
+  --chart-1: #c9a227; /* ทอง */
+  --chart-2: #1d4ed8; /* น้ำเงิน */
+  --chart-3: #15803d; /* เขียว */
+  --chart-4: #6d28d9; /* ม่วง */
+  --chart-5: #db2777; /* ชมพู */
+  --sidebar: #fffdf8;
+  --sidebar-foreground: #1b2537;
+  --sidebar-primary: #806210;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: rgba(251, 242, 218, 0.9);
+  --sidebar-accent-foreground: #6b4f0a;
+  --sidebar-border: rgba(214, 196, 150, 0.45);
+  --sidebar-ring: #a8841f;
+
+  /* accents (ตัวอักษร) — card / งาช้าง / ทินต์ตัวเอง 10% · 20% */
+  --neon-cyan: #1d4ed8; /* 6.7 / 6.3 / 5.7 / 4.9 */
+  --neon-green: #12703a; /* 6.2 / 5.8 / 5.3 / 4.6 */
+  --neon-rose: #b91c1c; /* 6.5 / 6.1 / 5.5 / 4.6 */
+  --neon-amber: #9a4508; /* 6.5 / 6.1 / 5.6 / 4.8 */
+  --neon-purple: #6d28d9; /* 7.1 / 6.6 / 6.0 / 5.1 */
+  --neon-magenta: #a8174f; /* 7.2 / 6.8 / 6.1 / 5.1 */
+  --on-neon: #ffffff;
+  --gold: #c9a227;
+  --gold-ink: #775a0c; /* 6.5 บนการ์ด · 5.8 บน gold-soft · ≥ 4.6 บนแสงทองของ hero/พื้นหลัง */
+  --gold-soft: #fbf2da;
+  --ivory: #faf7f0;
+
+  --shell: #fffdf8;
+  --chip: #ffffff;
+  --chip-border: #ece3cf;
+
+  /* กราฟ (Recharts) — ตัวแปรเดียวกันทุกแท็บ: ใช้ผ่าน src/components/platform/chart-theme.ts */
+  --chart-axis: #5f6b7d; /* ตัวเลขแกน 5.4:1 บนการ์ด */
+  --chart-grid: rgba(100, 116, 139, 0.18);
+  --chart-ref: rgba(100, 116, 139, 0.45);
+  --chart-cursor: rgba(100, 116, 139, 0.12);
+  --chart-dot-ring: #ffffff;
+  --series-green: #059669;
+  --series-rose: #e11d48;
+  --series-amber: #d97706;
+  --series-blue: #1d4ed8;
+  --series-purple: #7c3aed;
+  --series-magenta: #db2777;
+  --series-slate: #64748b;
+  --series-muted: #94a3b8;
+  --series-gold: #a8841f;
+  --tooltip-shadow: 0 4px 12px rgba(16, 24, 40, 0.08);
+  /* heatmap ที่มีตัวเลขทับ (ICIR ฯลฯ) — ใช้ผ่าน color-mix(… N%, transparent) */
+  --heat-pos: rgb(5, 150, 105);
+  --heat-neg: rgb(225, 29, 72);
+  --hero-donut-track: #f1e7cc;
+}
+
+/* =====================================================================
+ * GOLD NIGHT (มืด) — พื้นกรมท่าลึก การ์ดถ่านอมน้ำเงิน หมึกงาช้าง ทองอุ่นเป็นสีหลัก
+ * ค่าทุกตัวตรวจ contrast แล้ว (ตัวอักษร ≥ 4.5:1 บนพื้น/การ์ด/ทินต์ 10–20% · วงโฟกัส ≥ 3:1)
+ * ===================================================================== */
+.dark {
+  --background: #0d1320;
+  --foreground: #ede6d4; /* 14.9 บนพื้น · 13.7 บนการ์ด */
+  --card: #151c2c;
+  --card-foreground: #ede6d4;
+  --popover: #182133;
+  --popover-foreground: #ede6d4;
+  --primary: #d8b24a; /* ทองอุ่น — ตัวอักษรเข้มบนพื้นนี้ 9.1:1 */
+  --primary-foreground: #1a1405;
+  --secondary: #1e2638;
+  --secondary-foreground: #e4dccb;
+  --muted: #1c2436;
+  --muted-foreground: #a9a293; /* 7.3 บนพื้น · 6.7 บนการ์ด · 6.1 บน muted */
+  --accent: #2b2515; /* ทองมืด */
+  --accent-foreground: #f1d68a;
+  --destructive: #f87171;
+  --destructive-foreground: #1a0707; /* 6.5:1 บน destructive */
+  --border: #283248;
+  --input: #2f3a52;
+  --ring: #d8b24a;
+  --focus: #e5c060;
+  --chart-1: #d8b24a;
+  --chart-2: #6ea8ff;
+  --chart-3: #4ade80;
+  --chart-4: #b49cfb;
+  --chart-5: #f472b6;
+  --sidebar: #10172a;
+  --sidebar-foreground: #ede6d4;
+  --sidebar-primary: #d8b24a;
+  --sidebar-primary-foreground: #1a1405;
+  --sidebar-accent: rgba(216, 178, 74, 0.1);
+  --sidebar-accent-foreground: #f1d68a;
+  --sidebar-border: #232c40;
+  --sidebar-ring: #d8b24a;
+
+  /* accents (ตัวอักษร) — card / พื้น / ทินต์ตัวเอง 10% · 20% */
+  --neon-cyan: #6ea8ff; /* 7.1 / 7.7 / 6.0 / 4.9 */
+  --neon-green: #4ade80; /* 9.8 / 10.7 / 8.0 / 6.2 */
+  --neon-rose: #fb7185; /* 6.3 / 6.9 / 5.5 / 4.6 */
+  --neon-amber: #fbbf24; /* 10.2 / 11.1 / 8.4 / 6.5 */
+  --neon-purple: #b49cfb; /* 7.4 / 8.0 / 6.2 / 5.0 */
+  --neon-magenta: #f472b6; /* 6.4 / 7.0 / 5.6 / 4.7 */
+  --on-neon: #0b1120; /* บนพื้น neon ทึบ ≥ 7:1 */
+  --gold: #d4ad3c;
+  --gold-ink: #e5c060; /* 9.8 บนการ์ด */
+  --gold-soft: #2a2414;
+  --ivory: #0d1320;
+
+  --shell: #10172a;
+  --chip: #1a2234;
+  --chip-border: #2c364d;
+
+  --chart-axis: #9aa6b8; /* 6.9:1 บนการ์ด */
+  --chart-grid: rgba(148, 163, 184, 0.14);
+  --chart-ref: rgba(148, 163, 184, 0.4);
+  --chart-cursor: rgba(148, 163, 184, 0.1);
+  --chart-dot-ring: #151c2c;
+  --series-green: #34d399;
+  --series-rose: #fb7185;
+  --series-amber: #fbbf24;
+  --series-blue: #6ea8ff;
+  --series-purple: #a78bfa;
+  --series-magenta: #f472b6;
+  --series-slate: #94a3b8;
+  --series-muted: #64748b;
+  --series-gold: #e0bb52;
+  --tooltip-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  /* เฉดเข้มกว่าเดิม — ตัวอักษรงาช้างบนช่องเข้มสุดยัง ≥ 4.5:1 */
+  --heat-pos: rgb(16, 122, 87);
+  --heat-neg: rgb(190, 24, 60);
+  --hero-donut-track: #283248;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+
+  /* ---------- พื้นหลัง Gold Ivory — งาช้างอุ่น + แสงทอง/ฟ้า/ชมพูนุ่ม ๆ ที่มุม (ไม่มีเส้น grid) ---------- */
+  body {
+    background-color: var(--background);
+    background-image:
+      radial-gradient(1100px 640px at 6% -12%, rgba(201, 162, 39, 0.13), transparent 60%),
+      radial-gradient(960px 620px at 104% -6%, rgba(147, 197, 253, 0.2), transparent 58%),
+      radial-gradient(900px 560px at 62% 112%, rgba(251, 207, 232, 0.16), transparent 60%);
+    background-attachment: fixed;
+  }
+  /* Gold Night — แสงทองอุ่นซ้ายบน · น้ำเงินจาง ๆ ขวาบน บนกรมท่าลึก */
+  .dark body {
+    background-image:
+      radial-gradient(1100px 640px at 6% -12%, rgba(216, 178, 74, 0.1), transparent 60%),
+      radial-gradient(960px 620px at 104% -6%, rgba(96, 165, 250, 0.09), transparent 58%),
+      radial-gradient(900px 560px at 62% 112%, rgba(244, 114, 182, 0.05), transparent 60%);
+  }
+
+  /* ---------- Scrollbar ---------- */
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(138, 106, 16, 0.22);
+    border-radius: 8px;
+    border: 2px solid color-mix(in srgb, var(--background) 90%, transparent);
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(138, 106, 16, 0.4);
+  }
+  * {
+    scrollbar-color: rgba(138, 106, 16, 0.28) transparent;
+    scrollbar-width: thin;
+  }
+  .dark ::-webkit-scrollbar-thumb {
+    background: rgba(216, 178, 74, 0.22);
+  }
+  .dark ::-webkit-scrollbar-thumb:hover {
+    background: rgba(216, 178, 74, 0.38);
+  }
+  .dark * {
+    scrollbar-color: rgba(216, 178, 74, 0.28) transparent;
+  }
+
+  ::selection {
+    background: rgba(201, 162, 39, 0.24);
+    color: var(--foreground);
+  }
+  .dark ::selection {
+    background: rgba(216, 178, 74, 0.32);
+  }
+
+  /* ---------- วงโฟกัสคีย์บอร์ดที่เห็นชัดทุกธีม (WCAG 2.4.7 / 1.4.11) ----------
+   * ปุ่ม/ลิงก์ที่ไม่ได้กำหนดวงโฟกัสเอง (outline-none + ring) ได้เส้นทองเข้ม 2px
+   * คอมโพเนนต์ shadcn ที่มี outline-none + focus-visible:ring อยู่แล้วจะชนะด้วย layer utilities */
+  :where(a[href], button, [role="button"], [role="radio"], [role="tab"], [role="switch"], [role="checkbox"], summary, [tabindex]:not([tabindex="-1"])):focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+  }
+
+  /* ---------- กัน horizontal overflow บนจอแคบ (มือถือ) ----------
+   * 1) min-width:0 — การ์ดที่เป็นลูกของ grid/flex ต้องย่อตัวได้
+   *    (ค่า default min-width:auto ปล่อยให้เนื้อหา min-content กว้างดันหน้าล้น)
+   * 2) max-width:100% — บนจอแคบ grid หลายตัวไม่มี explicit template
+   *    (grid-cols-*  apply เฉพาะ breakpoint ใหญ่) → implicit auto track
+   *    ขนาดตาม min-content ของกราฟ/ตารางที่วัดความกว้างค้างไว้
+   *    max-width บีบการ์ดกลับมาที่ความกว้างจริงของ cell
+   *    แล้ว ResizeObserver ของ recharts จะ re-measure ให้เอง */
+  main [data-slot="card"] {
+    min-width: 0;
+    max-width: 100%;
+  }
+}
+
+/* ============================================================
+ * ลิงก์ข้ามไปเนื้อหาหลัก (skip link) — ซ่อนจนกว่าจะโฟกัสด้วยคีย์บอร์ด
+ * ============================================================ */
+.skip-link {
+  position: fixed;
+  left: 0.75rem;
+  top: 0.5rem;
+  z-index: 100;
+  transform: translateY(-160%);
+  border-radius: 0.75rem;
+  background: var(--primary);
+  color: var(--primary-foreground);
+  padding: 0.6rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 700;
+  box-shadow: 0 8px 24px -8px rgba(0, 0, 0, 0.35);
+  transition: transform 0.15s ease;
+}
+.skip-link:focus,
+.skip-link:focus-visible {
+  transform: translateY(0);
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+/* ============================================================
+ * IVORY CARD — การ์ดขาว มุมมน ขอบงาช้างบาง เงาอุ่นนุ่ม
+ * --glow-a/b/c = โทนขอบ per-card (ไล่สีจางมาก) · --edge-glow = สีเงา
+ * ============================================================ */
+.neon-card {
+  --glow-a: rgba(201, 162, 39, 0.26);
+  --glow-b: rgba(235, 227, 209, 0.95);
+  --glow-c: rgba(147, 197, 253, 0.3);
+  --edge-glow: rgba(120, 90, 20, 0.16);
+  --card-sheen: rgba(255, 255, 255, 0.9);
+  --card-top: #ffffff;
+  --card-bottom: #fffefb;
+  position: relative;
+  border: 1px solid transparent;
+  background:
+    linear-gradient(180deg, var(--card-top) 0%, var(--card-bottom) 100%) padding-box,
+    linear-gradient(135deg, var(--glow-a), var(--glow-b) 45%, var(--glow-c)) border-box;
+  box-shadow:
+    0 1px 2px rgba(120, 90, 20, 0.05),
+    0 12px 30px -18px var(--edge-glow),
+    inset 0 1px 0 var(--card-sheen);
+}
+
+.neon-card-cyan {
+  --glow-a: rgba(29, 78, 216, 0.26);
+  --glow-c: rgba(29, 78, 216, 0.1);
+  --edge-glow: rgba(29, 78, 216, 0.14);
+}
+
+.neon-card-magenta {
+  --glow-a: rgba(190, 24, 93, 0.24);
+  --glow-c: rgba(109, 40, 217, 0.12);
+  --edge-glow: rgba(190, 24, 93, 0.12);
+}
+
+.neon-card-green {
+  --glow-a: rgba(21, 128, 61, 0.26);
+  --glow-c: rgba(201, 162, 39, 0.16);
+  --edge-glow: rgba(21, 128, 61, 0.12);
+}
+
+.neon-card-purple {
+  --glow-a: rgba(109, 40, 217, 0.24);
+  --glow-c: rgba(190, 24, 93, 0.1);
+  --edge-glow: rgba(109, 40, 217, 0.12);
+}
+
+.neon-card-amber {
+  --glow-a: rgba(201, 162, 39, 0.4);
+  --glow-c: rgba(180, 83, 9, 0.14);
+  --edge-glow: rgba(180, 83, 9, 0.14);
+}
+
+/* Gold Night — การ์ดถ่านอมน้ำเงิน ขอบไล่ทอง→กรมท่า→ฟ้าจาง เงาดำนุ่ม */
+.dark .neon-card {
+  --glow-a: rgba(216, 178, 74, 0.3);
+  --glow-b: rgba(44, 54, 77, 0.95);
+  --glow-c: rgba(110, 168, 255, 0.22);
+  --edge-glow: rgba(0, 0, 0, 0.55);
+  --card-sheen: rgba(255, 255, 255, 0.04);
+  --card-top: #172033;
+  --card-bottom: #141b2b;
+}
+.dark .neon-card-cyan {
+  --glow-a: rgba(110, 168, 255, 0.4);
+  --glow-c: rgba(110, 168, 255, 0.14);
+}
+.dark .neon-card-magenta {
+  --glow-a: rgba(244, 114, 182, 0.36);
+  --glow-c: rgba(180, 156, 251, 0.16);
+}
+.dark .neon-card-green {
+  --glow-a: rgba(74, 222, 128, 0.32);
+  --glow-c: rgba(216, 178, 74, 0.18);
+}
+.dark .neon-card-purple {
+  --glow-a: rgba(180, 156, 251, 0.36);
+  --glow-c: rgba(244, 114, 182, 0.14);
+}
+.dark .neon-card-amber {
+  --glow-a: rgba(216, 178, 74, 0.45);
+  --glow-c: rgba(251, 191, 36, 0.16);
+}
+
+/* ---------- ตัวอักษรเน้นสี (ผูก token — สลับตามธีม) ---------- */
+.neon-text-cyan {
+  color: var(--neon-cyan);
+}
+.neon-text-green {
+  color: var(--neon-green);
+}
+.neon-text-magenta {
+  color: var(--neon-magenta);
+}
+
+/* ---------- เส้นแบ่งสีอ่อนแนวนอน ---------- */
+.neon-divider {
+  height: 1px;
+  border: 0;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(201, 162, 39, 0.5),
+    rgba(147, 197, 253, 0.45),
+    transparent
+  );
+}
+
+/* ============================================================
+ * TICKER TAPE — แถบหุ้นเลื่อนอัตโนมัติแบบ trading terminal
+ * (หยุดชั่วคราวเมื่อ hover/focus · เคารพ prefers-reduced-motion)
+ * ============================================================ */
+@keyframes ticker-scroll {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+.ticker-track {
+  animation: ticker-scroll 48s linear infinite;
+  will-change: transform;
+}
+.ticker-viewport:hover .ticker-track,
+.ticker-viewport:focus-within .ticker-track,
+.ticker-viewport[data-paused="true"] .ticker-track {
+  animation-play-state: paused;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ticker-track {
+    animation: none;
+  }
+}
+
+/* ---------- จุดสถานะเต้น (LIVE / API ONLINE) — เฉดเข้มให้เห็นชัดบนพื้นขาว ---------- */
+@keyframes dot-pulse-green {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(22, 163, 74, 0.4);
+    opacity: 1;
+  }
+  50% {
+    box-shadow: 0 0 0 4px rgba(22, 163, 74, 0);
+    opacity: 0.75;
+  }
+}
+@keyframes dot-pulse-amber {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(217, 119, 6, 0.4);
+    opacity: 1;
+  }
+  50% {
+    box-shadow: 0 0 0 4px rgba(217, 119, 6, 0);
+    opacity: 0.75;
+  }
+}
+@keyframes dot-pulse-rose {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.4);
+    opacity: 1;
+  }
+  50% {
+    box-shadow: 0 0 0 4px rgba(220, 38, 38, 0);
+    opacity: 0.75;
+  }
+}
+.status-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 9999px;
+  flex-shrink: 0;
+}
+.status-dot-live {
+  background: #16a34a;
+  animation: dot-pulse-green 2.2s ease-in-out infinite;
+}
+.status-dot-pre {
+  background: #d97706;
+  animation: dot-pulse-amber 2.2s ease-in-out infinite;
+}
+.status-dot-closed {
+  background: #dc2626;
+  animation: dot-pulse-rose 2.6s ease-in-out infinite;
+}
+.status-dot-off {
+  background: #94a3b8;
+}
+.dark .status-dot-live {
+  background: #22c55e;
+}
+.dark .status-dot-pre {
+  background: #f59e0b;
+}
+.dark .status-dot-closed {
+  background: #f87171;
+}
+.dark .status-dot-off {
+  background: #64748b;
+}
+@media (prefers-reduced-motion: reduce) {
+  .status-dot-live,
+  .status-dot-pre,
+  .status-dot-closed {
+    animation: none;
+  }
+}
+
+/* ---------- fade ขอบ ticker (viewport mask) ---------- */
+.ticker-viewport {
+  mask-image: linear-gradient(
+    90deg,
+    transparent 0,
+    #000 28px,
+    #000 calc(100% - 28px),
+    transparent 100%
+  );
+}
+
+/* ============================================================
+   Command Center 3.0 — โครงสร้างโมดูลมาตรฐาน (.feature / .options)
+   ทุกโมดูลบนหน้าภาพรวมใช้โครงเดียวกัน: head → .options → body
+   (สม่ำเสมอ = มืออาชีพ; โครงอยู่ที่นี่ที่เดียว ปรับทีเดียวทั้งระบบ)
+   ============================================================ */
+@layer components {
+  .feature {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    border-radius: 1.375rem;
+    border: 1px solid #efe6d3;
+    background: linear-gradient(180deg, #ffffff 0%, #fffdf9 100%);
+    color: var(--card-foreground);
+    box-shadow:
+      0 1px 2px rgba(120, 90, 20, 0.05),
+      0 16px 36px -24px rgba(120, 90, 20, 0.22);
+    transition:
+      border-color 0.2s ease,
+      box-shadow 0.2s ease;
+  }
+  .feature:hover {
+    border-color: rgba(201, 162, 39, 0.45);
+    box-shadow:
+      0 1px 2px rgba(120, 90, 20, 0.06),
+      0 18px 40px -24px rgba(120, 90, 20, 0.3);
+  }
+  .options {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.375rem;
+    min-width: 0;
+    margin-top: 0.625rem;
+    border-top: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+    border-bottom: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+    background: linear-gradient(90deg, rgba(251, 242, 218, 0.55), rgba(250, 247, 240, 0.35));
+    padding: 0.375rem 1rem;
+  }
+
+  .dark .feature {
+    border-color: #263048;
+    background: linear-gradient(180deg, #172033 0%, #141b2b 100%);
+    box-shadow:
+      0 1px 2px rgba(0, 0, 0, 0.3),
+      0 18px 40px -26px rgba(0, 0, 0, 0.7);
+  }
+  .dark .feature:hover {
+    border-color: rgba(216, 178, 74, 0.45);
+    box-shadow:
+      0 1px 2px rgba(0, 0, 0, 0.35),
+      0 20px 44px -26px rgba(0, 0, 0, 0.8);
+  }
+  .dark .options {
+    background: linear-gradient(90deg, rgba(216, 178, 74, 0.08), rgba(255, 255, 255, 0.015));
+  }
+}
+
+/* ============================================================
+ * GOLD IVORY — ชิ้นส่วนเฉพาะธีม (hero / kicker / pill / KPI tile / icon tile / nav)
+ * ============================================================ */
+@layer components {
+
+  /* ป้ายหัวข้อตัวพิมพ์ใหญ่ห่าง ๆ สีทอง (เช่น "THAI MOMENTUM PLATFORM · …") */
+  .gold-kicker {
+    font-size: 0.6875rem;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--gold-ink);
+  }
+
+  /* การ์ด hero ด้านบน Command Center — ครีมอุ่นไล่ทองมุมขวา ฟ้าอ่อนมุมซ้ายล่าง */
+  .hero-card {
+    position: relative;
+    overflow: hidden;
+    border-radius: 1.75rem;
+    border: 1px solid #f0e6cc;
+    background:
+      radial-gradient(720px 320px at 102% -8%, rgba(233, 196, 106, 0.32), transparent 62%),
+      radial-gradient(620px 340px at -6% 110%, rgba(191, 219, 254, 0.45), transparent 60%),
+      linear-gradient(135deg, #fffefb 0%, #fdf9ef 100%);
+    box-shadow:
+      0 1px 2px rgba(120, 90, 20, 0.06),
+      0 26px 60px -36px rgba(120, 90, 20, 0.38);
+  }
+  .dark .hero-card {
+    border-color: #2a3349;
+    background:
+      radial-gradient(720px 320px at 102% -8%, rgba(216, 178, 74, 0.12), transparent 62%),
+      radial-gradient(620px 340px at -6% 110%, rgba(59, 130, 246, 0.1), transparent 60%),
+      linear-gradient(135deg, #172033 0%, #111827 100%);
+    box-shadow:
+      0 1px 2px rgba(0, 0, 0, 0.35),
+      0 26px 60px -36px rgba(0, 0, 0, 0.8);
+  }
+  /* แผงกระจกด้านขวาของ hero (นาฬิกา + breadth) */
+  .hero-panel {
+    border: 1px solid rgba(255, 255, 255, 0.8);
+    background: rgba(255, 255, 255, 0.6);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  }
+  /* ธีมมืด: กระจกทึบเข้ม (ไม่ใช่ขาวจาง) — ตัวอักษร muted บนแสงทองมุมขวายัง ≥ 4.5:1 */
+  .dark .hero-panel {
+    border-color: rgba(255, 255, 255, 0.08);
+    background: rgba(13, 19, 32, 0.45);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  }
+
+  /* ปุ่ม/ชิปทรงแคปซูลขาว (action ของ hero) */
+  .pill-action {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-height: 2.75rem;
+    padding: 0 1.1rem;
+    border-radius: 0.95rem;
+    border: 1px solid var(--chip-border);
+    background: var(--chip);
+    font-size: 0.875rem;
+    font-weight: 700;
+    color: var(--foreground);
+    box-shadow: 0 1px 2px rgba(120, 90, 20, 0.06), 0 6px 16px -10px rgba(120, 90, 20, 0.28);
+    transition:
+      border-color 0.15s ease,
+      transform 0.15s ease,
+      box-shadow 0.15s ease;
+  }
+  .pill-action:hover {
+    border-color: rgba(201, 162, 39, 0.6);
+    transform: translateY(-1px);
+    box-shadow: 0 1px 2px rgba(120, 90, 20, 0.06), 0 10px 22px -12px rgba(120, 90, 20, 0.4);
+  }
+  .pill-action:focus-visible {
+    outline: 3px solid var(--focus);
+    outline-offset: 2px;
+  }
+  .dark .pill-action {
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35), 0 8px 18px -12px rgba(0, 0, 0, 0.7);
+  }
+  .dark .pill-action:hover {
+    border-color: rgba(216, 178, 74, 0.6);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35), 0 12px 24px -12px rgba(0, 0, 0, 0.8);
+  }
+  @media (min-width: 640px) {
+    .pill-action {
+      min-height: 2.5rem;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .pill-action:hover {
+      transform: none;
+    }
+  }
+
+  /* KPI tile — การ์ดขาวมุมมน + พื้นไล่สีพาสเทลด้านล่าง + โค้งจาง ๆ มุมขวาล่าง (สีตาม hue) */
+  .kpi-tile {
+    --wash: rgba(201, 162, 39, 0.12);
+    --kpi-ring: rgba(255, 255, 255, 0.6);
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    border-radius: 1.25rem;
+    border: 1px solid #efe6d3;
+    background: var(--card);
+    box-shadow:
+      0 1px 2px rgba(120, 90, 20, 0.05),
+      0 12px 28px -20px rgba(120, 90, 20, 0.25);
+  }
+  .kpi-tile::after {
+    content: "";
+    position: absolute;
+    inset: auto 0 0 0;
+    height: 62%;
+    background: linear-gradient(to top, var(--wash), transparent);
+    z-index: -1;
+    pointer-events: none;
+  }
+  .kpi-tile::before {
+    content: "";
+    position: absolute;
+    right: -46px;
+    bottom: -70px;
+    width: 150px;
+    height: 150px;
+    border-radius: 9999px;
+    border: 18px solid var(--kpi-ring);
+    z-index: -1;
+    pointer-events: none;
+  }
+  .kpi-wash-cyan {
+    --wash: rgba(59, 130, 246, 0.13);
+  }
+  .kpi-wash-green {
+    --wash: rgba(34, 197, 94, 0.13);
+  }
+  .kpi-wash-amber {
+    --wash: rgba(234, 179, 8, 0.16);
+  }
+  .kpi-wash-magenta {
+    --wash: rgba(244, 63, 94, 0.12);
+  }
+  .kpi-wash-purple {
+    --wash: rgba(139, 92, 246, 0.13);
+  }
+  .dark .kpi-tile {
+    --kpi-ring: rgba(255, 255, 255, 0.035);
+    border-color: #263048;
+    background: #161e2f;
+    box-shadow:
+      0 1px 2px rgba(0, 0, 0, 0.3),
+      0 14px 30px -22px rgba(0, 0, 0, 0.75);
+  }
+  .dark .kpi-wash-cyan {
+    --wash: rgba(110, 168, 255, 0.12);
+  }
+  .dark .kpi-wash-green {
+    --wash: rgba(74, 222, 128, 0.1);
+  }
+  .dark .kpi-wash-amber {
+    --wash: rgba(216, 178, 74, 0.13);
+  }
+  .dark .kpi-wash-magenta {
+    --wash: rgba(244, 114, 182, 0.1);
+  }
+  .dark .kpi-wash-purple {
+    --wash: rgba(180, 156, 251, 0.12);
+  }
+
+  /* ไอคอนในกล่องสีตาม hue (หัวโมดูล .feature / KPI / การ์ดทะเบียนเอนจิน) */
+  .hue-tile {
+    border-width: 1px;
+    border-style: solid;
+  }
+  .hue-tile-cyan {
+    border-color: color-mix(in srgb, var(--neon-cyan) 20%, transparent);
+    background: linear-gradient(to bottom right, #eef3ff, #dfe9ff);
+    color: var(--neon-cyan);
+  }
+  .hue-tile-magenta {
+    border-color: color-mix(in srgb, var(--neon-magenta) 20%, transparent);
+    background: linear-gradient(to bottom right, #fdf0f5, #fbe1ec);
+    color: var(--neon-magenta);
+  }
+  .hue-tile-green {
+    border-color: color-mix(in srgb, var(--neon-green) 20%, transparent);
+    background: linear-gradient(to bottom right, #effaf2, #dcf3e3);
+    color: var(--neon-green);
+  }
+  .hue-tile-purple {
+    border-color: color-mix(in srgb, var(--neon-purple) 20%, transparent);
+    background: linear-gradient(to bottom right, #f4f0fe, #e8e0fc);
+    color: var(--neon-purple);
+  }
+  .hue-tile-amber {
+    border-color: #ecd48f;
+    background: linear-gradient(to bottom right, #fdf6df, #f8e7b5);
+    color: var(--gold-ink);
+  }
+  .dark .hue-tile-cyan {
+    background: linear-gradient(to bottom right, rgba(110, 168, 255, 0.16), rgba(110, 168, 255, 0.06));
+  }
+  .dark .hue-tile-magenta {
+    background: linear-gradient(to bottom right, rgba(244, 114, 182, 0.16), rgba(244, 114, 182, 0.06));
+  }
+  .dark .hue-tile-green {
+    background: linear-gradient(to bottom right, rgba(74, 222, 128, 0.14), rgba(74, 222, 128, 0.05));
+  }
+  .dark .hue-tile-purple {
+    background: linear-gradient(to bottom right, rgba(180, 156, 251, 0.16), rgba(180, 156, 251, 0.06));
+  }
+  .dark .hue-tile-amber {
+    border-color: rgba(216, 178, 74, 0.35);
+    background: linear-gradient(to bottom right, rgba(216, 178, 74, 0.2), rgba(216, 178, 74, 0.07));
+  }
+
+  /* เมนู sidebar ที่เลือกอยู่ — แคปซูลทองอ่อน */
+  .nav-active {
+    border: 1px solid #e8d49c;
+    background: linear-gradient(to right, #fdf6df, #fbeecb);
+    color: var(--gold-ink);
+    font-weight: 600;
+    box-shadow: 0 2px 8px -4px rgba(154, 116, 18, 0.45);
+  }
+  .nav-active:hover {
+    background: linear-gradient(to right, #fcf1d2, #f9e8bd);
+    color: var(--gold-ink);
+  }
+  .dark .nav-active {
+    border-color: rgba(216, 178, 74, 0.4);
+    background: linear-gradient(to right, rgba(216, 178, 74, 0.2), rgba(216, 178, 74, 0.1));
+    box-shadow: 0 2px 10px -4px rgba(0, 0, 0, 0.6);
+  }
+  .dark .nav-active:hover {
+    background: linear-gradient(to right, rgba(216, 178, 74, 0.26), rgba(216, 178, 74, 0.14));
+  }
+
+  /* เหรียญทอง — โลโก้แบรนด์ (ไอคอนเดียวกับ favicon) */
+  .brand-coin {
+    background: radial-gradient(circle at 32% 26%, #fff4c7 0%, #ecc96b 36%, #c9a227 68%, #9a7412 100%);
+    color: #3b2a06;
+    box-shadow:
+      0 4px 12px -4px rgba(154, 116, 18, 0.65),
+      inset 0 1px 0 rgba(255, 255, 255, 0.65);
+    outline: 1px solid rgba(184, 145, 47, 0.45);
+    outline-offset: -1px;
+  }
+  .dark .brand-coin {
+    box-shadow:
+      0 4px 14px -4px rgba(216, 178, 74, 0.45),
+      inset 0 1px 0 rgba(255, 255, 255, 0.55);
+  }
+
+  /* คำศัพท์เฉพาะ (<Term>) — ขีดเส้นใต้จุด ๆ บอกว่ามีคำอธิบาย */
+  .term-trigger {
+    display: inline;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    font: inherit;
+    color: inherit;
+    letter-spacing: inherit;
+    text-align: inherit;
+    text-decoration-line: underline;
+    text-decoration-style: dotted;
+    text-decoration-thickness: 1.5px;
+    text-decoration-color: color-mix(in srgb, var(--gold) 80%, transparent);
+    text-underline-offset: 3px;
+    cursor: help;
+    border-radius: 0.25rem;
+  }
+  .term-trigger:hover {
+    text-decoration-style: solid;
+    color: var(--gold-ink);
+  }
+  .term-trigger[data-state="open"] {
+    color: var(--gold-ink);
+    text-decoration-style: solid;
+  }
+}
+
+/* ============================================================
+ * RECHARTS — ตาข่ายป้องกันค่า default ที่ผูกธีมสว่าง (#666 / #ccc / #fff)
+ * กราฟที่ใช้ chart-theme.ts อยู่แล้วไม่ได้รับผล (ค่า attribute ไม่ตรง selector)
+ * ============================================================ */
+.recharts-cartesian-axis-tick-value[fill="#666"],
+.recharts-polar-angle-axis-tick-value[fill="#666"],
+.recharts-label[fill="#808080"],
+.recharts-text.recharts-label:not([fill]) {
+  fill: var(--chart-axis);
+}
+.recharts-cartesian-grid line[stroke="#ccc"],
+.recharts-reference-line line[stroke="#ccc"],
+.recharts-cartesian-axis-line[stroke="#666"],
+.recharts-cartesian-axis-tick-line[stroke="#666"] {
+  stroke: var(--chart-grid);
+}
+.recharts-tooltip-cursor[fill="#ccc"] {
+  fill: var(--chart-cursor);
+}
+.recharts-tooltip-cursor[stroke="#ccc"] {
+  stroke: var(--chart-ref);
+}
+.recharts-default-tooltip {
+  background-color: var(--popover) !important;
+  border-color: var(--border) !important;
+  color: var(--popover-foreground);
+}
+.recharts-default-tooltip .recharts-tooltip-label {
+  color: var(--muted-foreground);
+}
+/* ป้ายคำอธิบายซีรีส์: ตัวอักษรสีกลาง (อ่านออกทุกธีม ≥ 4.5:1) · สีซีรีส์อยู่ที่ไอคอนหน้าป้าย */
+.recharts-legend-item-text {
+  color: var(--muted-foreground) !important;
+}
+.dark .recharts-dot[stroke="#fff"],
+.dark .recharts-active-dot circle[stroke="#fff"] {
+  stroke: var(--chart-dot-ring);
+}

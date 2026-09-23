@@ -1,0 +1,20 @@
+# systemd — สำรองฐานข้อมูลทุกคืน (VACUUM INTO แบบออนไลน์ ไม่ต้องหยุดเว็บ) · เรียกจาก thai-momentum-backup.timer
+# สำเนานอกเครื่อง: ตั้ง TMP_BACKUP_MIRROR_DIR (เช่น NAS ที่ mount ไว้) ใน /etc/thai-momentum-platform.env
+[Unit]
+Description=Thai Momentum Platform — nightly database backup
+After=thai-momentum.service
+
+[Service]
+Type=oneshot
+User=tmp
+Group=tmp
+WorkingDirectory=/opt/thai-momentum-platform
+EnvironmentFile=/etc/thai-momentum-platform.env
+Environment=TMP_BACKUP_DIR=/var/lib/thai-momentum-platform/backups
+ExecStart=/usr/local/bin/bun scripts/backup-db.ts --reason nightly
+TimeoutStartSec=30min
+StateDirectory=thai-momentum-platform
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true

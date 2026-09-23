@@ -1,0 +1,48 @@
+# ============================================================
+# Fly.io — all-in-one (เว็บ + scheduler ใน machine เดียว) + volume /data
+# SQLite อยู่บน volume ที่ผูกกับ machine เดียว → ห้าม scale เกิน 1 machine
+#
+#   cp deploy/fly.toml.example fly.toml         # วางที่ thai-momentum-platform/ แล้วแก้ app / primary_region
+#   fly apps create thai-momentum-platform
+#   fly volumes create tmp_data --size 3 --region sin
+#   fly secrets set TMP_AUTH_PASSWORD='<รหัสยาวสุ่ม>' TMP_AUTH_SECRET=$(openssl rand -hex 32) TMP_API_TOKEN=$(openssl rand -hex 32)
+#   fly deploy --build-arg TMP_GIT_SHA=$(git rev-parse --short HEAD)
+#   curl -s https://<app>.fly.dev/api/health
+# ============================================================
+app = "thai-momentum-platform"
+primary_region = "sin"
+
+[build]
+  dockerfile = "Dockerfile"
+  build-target = "aio"
+
+[env]
+  DATABASE_URL = "file:/data/app.db"
+  TMP_BACKUP_DIR = "/data/backups"
+  TZ = "Asia/Bangkok"
+  # อยู่หลัง TLS ของ Fly เสมอ
+  TMP_HSTS = "1"
+
+[mounts]
+  source = "tmp_data"
+  destination = "/data"
+
+[http_service]
+  internal_port = 3000
+  force_https = true
+  # scheduler (daily 18:30 / backup 02:30) ต้องรันตลอด — ห้าม auto stop
+  auto_stop_machines = "off"
+  auto_start_machines = true
+  min_machines_running = 1
+
+  [[http_service.checks]]
+    grace_period = "40s"
+    interval = "30s"
+    method = "GET"
+    path = "/api/health"
+    timeout = "10s"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  # server ใช้ RSS ≈ 0.9 GB หลังเปิดรายงานครบทุกแท็บบนชุด demo (240 หุ้น × 520 วัน) + scheduler/daily ในเครื่องเดียวกัน
+  memory = "2gb"

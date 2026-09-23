@@ -1,0 +1,235 @@
+// ============================================================
+// Shadow Lab — Nimble decision runner (z-ai-web-dev-sdk — BACKEND ONLY)
+//
+// Nimble = LLM ที่ตัดสินจาก State Packet เดียวกับ rule engine
+// ห้าม import ไฟล์นี้ใน client component เด็ดขาด (server / route เท่านั้น)
+// ============================================================
+
+import ZAI from 'z-ai-web-dev-sdk'
+import type { Gates, StatePacket } from './state'
+
+// Prompt หลักของ THE CORE (ตามสเปกเป๊ะ — ห้ามแก้ข้อความ)
+export const SYSTEM_PROMPT =
+  'You are THE CORE risk manager. Decide ONLY from the five gates (regime, selection, level, trigger, risk) plus context circuit-breakers. action=ENTER_LONG iff all gates=1 and day_pnl_R>-2. confidence = calibrated probability this is a grade-A setup. Respond with ONLY a JSON object: {"action":"ENTER_LONG"|"NO_TRADE","confidence":0..1,"gates":{"regime":0|1,"selection":0|1,"level":0|1,"trigger":0|1,"risk":0|1},"edge_case_note":""}'
+
+// Prompt กลาง ๆ (base) — ใช้เทียบ no-regression ใน gate 5 ของ eval
+export const GENERIC_PROMPT =
+  'You are a trading assistant. Respond with ONLY a JSON object with keys action (ENTER_LONG|NO_TRADE), confidence (0..1), gates (five 0|1 sub-keys), edge_case_note.'
+
+// ค่าความมั่นใจขั้นต่ำที่ wouldExecute จะเกิดจริง (double-key: rule ✓ + Nimble ✓ + conf ≥ 0.75)
+export const CONF_MIN = 0.75
+
+// เพดานเวลาต่อการเรียก LLM 1 ครั้ง — SDK ไม่มี timeout เอง (fetch ค้างได้ไม่รู้จบ)
+export const LLM_TIMEOUT_MS = 30_000
+
+export interface NimbleDecision {
+  action: 'ENTER_LONG' | 'NO_TRADE'
+  confidence: number
+  gates: Gates
+  edgeCaseNote?: string
+  error?: string
+  // true = ไม่ได้คำตอบจากโมเดลเลย (config/SDK/เครือข่าย/timeout/429) — ห้ามบันทึกหรือนับเป็นการตัดสินใจ
+  unavailable?: boolean
+}
+
+const ZERO_GATES: Gates = { regime: 0, selection: 0, level: 0, trigger: 0, risk: 0 }
+
+// ---------------- lazy singleton ----------------
+let zaiPromise: Promise<ZAI> | null = null
+
+function getZAI(): Promise<ZAI> {
+  if (!zaiPromise) {
+    zaiPromise = ZAI.create().catch((e: unknown) => {
+      // อย่าแคช error (เช่นยังไม่มี .z-ai-config) — ครั้งถัดไปต้องอ่าน config ใหม่ ไม่ต้องรีสตาร์ท server
+      zaiPromise = null
+      throw e
+    })
+  }
+  return zaiPromise
+}
+
+function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error(`nimble_timeout_${Math.round(ms / 1000)}s`)), ms)
+  })
+  return Promise.race([p, timeout]).finally(() => clearTimeout(timer))
+}
+
+// ---------------- response parsing ----------------
+function extractContent(res: unknown): string {
+  if (typeof res === 'string') return res
+  const r = res as {
+    choices?: { message?: { content?: unknown }; text?: unknown }[]
+    content?: unknown
+  }
+  const c0 = r?.choices?.[0]
+  const raw = c0?.message?.content ?? c0?.text ?? r?.content
+  return typeof raw === 'string' ? raw : ''
+}
+
+function stripFences(text: string): string {
+  const trimmed = text.trim()
+  const m = trimmed.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/)
+  return m ? m[1].trim() : trimmed
+}
+
+const coerce01 = (v: unknown): number => (v === 1 || v === '1' || v === true ? 1 : 0)
+
+function normalize(obj: Record<string, unknown> | null, rawError?: string): NimbleDecision {
+  if (!obj) {
+    return { action: 'NO_TRADE', confidence: 0, gates: { ...ZERO_GATES }, error: rawError ?? 'unparseable_response' }
+  }
+  const action = obj.action === 'ENTER_LONG' ? 'ENTER_LONG' : 'NO_TRADE'
+  let conf = typeof obj.confidence === 'string' ? Number(obj.confidence) : (obj.confidence as number)
+  if (typeof conf !== 'number' || !Number.isFinite(conf)) conf = 0
+  conf = Math.min(1, Math.max(0, conf))
+
+  const g = (obj.gates ?? {}) as Record<string, unknown>
+  const gates: Gates = {
+    regime: coerce01(g.regime),
+    selection: coerce01(g.selection),
+    level: coerce01(g.level),
+    trigger: coerce01(g.trigger),
+    risk: coerce01(g.risk),
+  }
+
+  // grammar check — ใช้ตัด gate 4 ของ eval: action/confidence/gates ต้องครบและไม่มี error
+  const rawConf =
+    typeof obj.confidence === 'number'
+      ? obj.confidence
+      : typeof obj.confidence === 'string' && obj.confidence.trim() !== '' // โมเดลบางครั้งส่ง "0.85" — ยอมรับได้
+        ? Number(obj.confidence)
+        : NaN
+  // นอกช่วง 0..1 (เช่น 85 = เปอร์เซ็นต์) ไม่ใช่ความน่าจะเป็นตามสัญญา — ห้าม clamp แล้วนับเป็นคำตอบสมบูรณ์
+  const confOk = Number.isFinite(rawConf) && rawConf >= 0 && rawConf <= 1
+  const complete =
+    typeof obj.action === 'string' &&
+    (obj.action === 'ENTER_LONG' || obj.action === 'NO_TRADE') &&
+    confOk &&
+    typeof obj.gates === 'object' &&
+    obj.gates !== null &&
+    ['regime', 'selection', 'level', 'trigger', 'risk'].every((k) => (obj.gates as Record<string, unknown>)[k] !== undefined)
+
+  return {
+    action,
+    confidence: conf,
+    gates,
+    edgeCaseNote: typeof obj.edge_case_note === 'string' ? obj.edge_case_note : undefined,
+    error: complete ? undefined : (rawError ?? 'incomplete_json'),
+  }
+}
+
+// ---------------- main API ----------------
+
+export async function decide(
+  state: StatePacket,
+  opts?: { genericPrompt?: boolean; timeoutMs?: number }
+): Promise<NimbleDecision> {
+  try {
+    const zai = await getZAI()
+    const messages = [
+      { role: "assistant" as const, content: opts?.genericPrompt ? GENERIC_PROMPT : SYSTEM_PROMPT },
+      { role: "user" as const, content: JSON.stringify(state) },
+    ]
+
+    // เรียก LLM + ถอยหลังเมื่อโดน rate limit (429) — ลองใหม่สูงสุด 2 ครั้ง
+    let lastErr = ""
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        const completion = await withTimeout(
+          zai.chat.completions.create({
+            messages,
+            thinking: { type: "disabled" },
+            temperature: 0,
+            maxTokens: 300,
+          }),
+          opts?.timeoutMs ?? LLM_TIMEOUT_MS
+        )
+        const raw = extractContent(completion)
+        if (!raw.trim()) {
+          return { action: "NO_TRADE", confidence: 0, gates: { ...ZERO_GATES }, error: "empty_response" }
+        }
+        const cleaned = stripFences(raw)
+        try {
+          return normalize(JSON.parse(cleaned) as Record<string, unknown>)
+        } catch {
+          // fallback: ดึง {...} ออกจากข้อความที่มีสิ่งแปลกปน
+          const m = cleaned.match(/\{[\s\S]*\}/)
+          if (m) {
+            try {
+              return normalize(JSON.parse(m[0]) as Record<string, unknown>)
+            } catch {
+              return normalize(null, "json_parse_failed")
+            }
+          }
+          return normalize(null, "json_parse_failed")
+        }
+      } catch (e) {
+        lastErr = (e as Error).message
+        const is429 = lastErr.includes("429")
+        if (is429 && attempt < 2) {
+          await new Promise((r) => setTimeout(r, attempt === 0 ? 2000 : 4000))
+          continue
+        }
+        break
+      }
+    }
+    return {
+      action: "NO_TRADE",
+      confidence: 0,
+      gates: { ...ZERO_GATES },
+      error: lastErr || "unknown_error",
+      unavailable: true,
+    }
+  } catch (e) {
+    return {
+      action: "NO_TRADE",
+      confidence: 0,
+      gates: { ...ZERO_GATES },
+      error: (e as Error).message,
+      unavailable: true,
+    }
+  }
+}
+
+// รันชุดด้วย concurrency 6 (คงลำดับเดิมของ input)
+// โมเดลติดต่อไม่ได้ครั้งแรก (unavailable) → หยุดส่งตัวที่เหลือ (กันรอ timeout ซ้ำทีละรอบ)
+// ตัวที่ไม่ได้ถามจะติดธง unavailable ชัด ๆ — ไม่ปลอมเป็น NO_TRADE ที่ "ตัดสินแล้ว"
+export async function decideBatch(
+  states: StatePacket[],
+  opts?: { genericPrompt?: boolean; timeoutMs?: number }
+): Promise<NimbleDecision[]> {
+  const out: NimbleDecision[] = new Array(states.length)
+  let next = 0
+  let halted: string | null = null
+  const workers = Array.from({ length: Math.min(6, Math.max(1, states.length)) }, async () => {
+    for (;;) {
+      if (halted !== null) return
+      const i = next++
+      if (i >= states.length) return
+      const d = await decide(states[i], opts)
+      out[i] = d
+      if (d.unavailable && halted === null) halted = d.error ?? "unavailable"
+    }
+  })
+  await Promise.all(workers)
+  for (let i = 0; i < states.length; i++) {
+    if (!out[i]) {
+      out[i] = {
+        action: "NO_TRADE",
+        confidence: 0,
+        gates: { ...ZERO_GATES },
+        error: `skipped: ${halted ?? "unavailable"}`,
+        unavailable: true,
+      }
+    }
+  }
+  return out
+}
+
+// error ตัวแรกของคำตอบที่ "ไม่ได้มาจากโมเดล" (null = โมเดลตอบครบทุกตัว)
+export function firstUnavailable(decisions: NimbleDecision[]): string | null {
+  for (const d of decisions) if (d.unavailable) return d.error ?? "unavailable"
+  return null
+}

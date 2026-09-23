@@ -1,0 +1,11 @@
+# 02:30 เวลาไทยทุกวัน (ไม่ชนกับ daily 18:30 และช่วงตลาดเปิด)
+[Unit]
+Description=Thai Momentum Platform — nightly backup 02:30 Asia/Bangkok
+
+[Timer]
+OnCalendar=*-*-* 02:30:00 Asia/Bangkok
+Persistent=true
+Unit=thai-momentum-backup.service
+
+[Install]
+WantedBy=timers.target

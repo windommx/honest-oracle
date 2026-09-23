@@ -1,0 +1,279 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ข้อมูลดิบรายวันต่อหุ้น (จาก AmiBroker export หรือ demo generator)
+// open/high/low เพิ่มให้ชุด SET Sniper (sweep/FVG/key levels) — null ได้ถ้า CSV เดิมไม่มีคอลัมน์
+model RawDaily {
+  id     Int     @id @default(autoincrement())
+  date   String // YYYY-MM-DD
+  symbol String
+  close  Float
+  open   Float?
+  high   Float?
+  low    Float?
+  val    Float   @default(0) // มูลค่าซื้อขาย (บาท)
+  liq5   Int     @default(0) // 1 = มูลค่า > 1ล้าน ติดต่อกัน 5 วัน
+  ret5   Float?
+  ret10  Float?
+  ret20  Float?
+  ret40  Float?
+  ret80  Float?
+  ret160 Float?
+  ret300 Float?
+
+  @@unique([date, symbol])
+  @@index([date])
+  @@index([symbol])
+}
+
+// โผ Top-30 ต่อ timeframe ต่อวัน
+model Snapshot {
+  id        Int    @id @default(autoincrement())
+  date      String
+  timeframe Int // 5/10/20/40/80/160/300
+  rank      Int // 1..30
+  symbol    String
+  ret       Float // % ผลตอบแทนตาม timeframe
+
+  @@unique([date, timeframe, rank])
+  @@index([date])
+  @@index([symbol])
+}
+
+// การตัดสินใจของสมอง Jev (typed decisions + audit log)
+model Decision {
+  id        Int      @id @default(autoincrement())
+  date      String
+  question  String // Q_REGIME | Q_ENTRY | Q_EXIT | Q_ESCALATE
+  target    String
+  action    String
+  conf      Float
+  reason    String   @default("")
+  executed  Boolean  @default(false)
+  outcome   Float? // forward return % หลัง verify
+  source    String   @default("lite") // lite | human
+  createdAt DateTime @default(now())
+
+  @@index([date])
+  @@index([question])
+}
+
+// พอร์ตกระดาษ (paper portfolio)
+model Position {
+  symbol    String  @id
+  entryDate String
+  entryPx   Float
+  slots     Float
+  stop      Float
+  createdAt DateTime @default(now())
+}
+
+// ผลการรันวิจัย (profit-engine trial / CPCV) + pre-registration hash
+model ResearchRun {
+  id         Int      @id @default(autoincrement())
+  kind       String // trial | cpcv
+  paramsHash String // sha256 ของกติกาที่ freeze
+  params     String // JSON
+  result     String // JSON สรุปผล
+  verdict    String // GO | NO-GO | WEAK | ...
+  createdAt  DateTime @default(now())
+
+  @@index([kind])
+}
+
+// การตั้งค่าระบบ (prereg freeze, meta model weights, on/off)
+model Setting {
+  key   String @id
+  value String
+}
+
+// Event sourcing + hash chain (ตรวจการแอบแก้ log ย้อนหลังได้)
+model EventLog {
+  id       Int      @id @default(autoincrement())
+  ts       DateTime @default(now())
+  kind     String // seed | ingest | backtest | jev_run | gate | research | ...
+  actor    String // system | jev_lite | human | paper
+  payload  String // JSON
+  prevHash String
+  hash     String
+
+  @@index([kind])
+}
+
+// Human gate: คำสั่งที่รอมนุษย์อนุมัติ (default-deny)
+model PendingGate {
+  id        Int       @id @default(autoincrement())
+  date      String
+  question  String
+  target    String
+  action    String
+  conf      Float
+  reason    String    @default("")
+  status    String    @default("pending") // pending | approved | rejected | expired | executed
+  createdAt DateTime  @default(now())
+  decidedAt DateTime?
+
+  @@index([status])
+}
+
+// ข้อมูลสินทรัพย์อ้างอิงข้ามตลาด (Cross-Asset Momentum Rank)
+// asset = SPX (S&P500) | USDTHB | GOLD — ใช้สร้าง crossZ ของ Regime Composite
+model CrossAsset {
+  date  String
+  asset String
+  close Float
+
+  @@id([date, asset])
+  @@index([asset])
+}
+
+// TFEX futures รายวัน (สำหรับ Basis/Calendar engine — STANDBY จนกว่าจะ ingest CSV จาก TFEX)
+model FuturesDaily {
+  id    Int    @id @default(autoincrement())
+  date  String
+  month String // สัญญา เช่น S50Z6
+  px    Float
+  oi    Float?
+
+  @@unique([date, month])
+  @@index([month])
+}
+
+// TFEX options chain (สำหรับ VRP condor / Parity arb — STANDBY จนกว่าจะ ingest)
+model OptionsDaily {
+  id      Int    @id @default(autoincrement())
+  date    String
+  expiry  String
+  strike  Float
+  callBid Float?
+  callAsk Float?
+  putBid  Float?
+  putAsk  Float?
+  iv      Float?
+
+  @@unique([date, expiry, strike])
+  @@index([expiry])
+}
+
+// แผนที่หุ้น → อุตสาหกรรม (สำหรับ Sector / Sector-Group risk limits)
+model SymbolMeta {
+  symbol String @id
+  sector String // Banking, Energy, ICT, ...
+}
+
+// ประวัติการรัน backtest
+model BacktestRun {
+  id        Int      @id @default(autoincrement())
+  params    String // JSON
+  result    String // JSON สรุปสถิติ
+  createdAt DateTime @default(now())
+}
+
+// ประวัติเทรดที่ปิดแล้ว (paper trade log) — ฐานข้อมูลของ Bayesian Stop-Loss Engine
+// path = [{d, p}] รายวันระหว่างถือ: p = close/entryPx (เก็บเป็น JSON)
+// mae = max drawdown จากจุดเข้า (ทศนิยม ≥0, close-based) — ตัวแปรหลักของ posterior
+model Trade {
+  id         Int     @id @default(autoincrement())
+  symbol     String
+  entry      String // วันเข้า (YYYY-MM-DD)
+  exit       String // วันออก
+  entryPx    Float
+  exitPx     Float
+  ret        Float // % หลังต้นทุน round-trip
+  mae        Float // max adverse excursion (ทศนิยม)
+  regime     String // label ตลาดวันเข้า: risk_on | neutral | risk_off
+  src        String // auto | human-approved (ถังต่อผู้ตัดสินใจ)
+  holdDays   Int
+  pathJson   String // [{d, p}] — R method ใช้ทุกจุดนี้สร้าง posterior
+  stopPolicy String @default("fixed15") // backstop ที่ใช้ตอนจำลอง
+  openTrade  Boolean @default(false)
+
+  @@index([exit])
+  @@index([symbol])
+  @@index([src])
+}
+
+// Shadow Lab: double-key log (rule × Nimble) — กระดูกสันหลังของแล็บเงา
+model ShadowLog {
+  id           Int      @id @default(autoincrement())
+  key          String   @unique // md5(date|asset) 12 ตัว
+  date         String
+  asset        String
+  origin       String   @default("panel") // panel | synth
+  stateJson    String   @default("") // State Packet เต็ม (ใช้ replay ตอน eval)
+  ruleAction   String? // ENTER_LONG | null(=NO_TRADE)
+  gatesJson    String   @default("{}")
+  nimbleAction String
+  nimbleConf   Float
+  wickRatio    Float?
+  closePos     Float?
+  wouldExecute Boolean  @default(false)
+  outcomeR     Float?
+  entryPx      Float?
+  stopPx       Float?
+  createdAt    DateTime @default(now())
+  @@index([date])
+}
+
+// Edge-case labels — พิธี 5 นาที/สัปดาห์ (ground truth = มนุษย์เกรด A)
+model EdgeLabel {
+  id        Int      @id @default(autoincrement())
+  logKey    String   @unique
+  date      String
+  asset     String
+  rule      String?
+  nimble    String?
+  gut       String   @default("") // ENTER | NO_TRADE | ""
+  label     String // ENTER_LONG | NO_TRADE
+  reason    String // TRIG_WEAK | ZONE_THIN | REGIME_BORDER | NEWS_OVERHANG | FOMO_URGE | FEAR_URGE | DATA_GAP | OTHER
+  confLabel Int      @default(3) // 1-5
+  createdAt DateTime @default(now())
+}
+
+// GTAA Rotation — ประวัติการรันที่บันทึกลง tracking log
+// หลักการ: config เดิม + panel เดิม = ผลเดิมเสมอ (deterministic) → ตรวจย้อนหลังได้ว่า "ตัวเลขที่เคยโชว์" เป็นอะไร
+model GtaaRun {
+  id          Int      @id @default(autoincrement())
+  configHash  String // sha256(config JSON) 10 ตัวแรก — จับ config ซ้ำ
+  config      String // JSON GtaaConfig
+  months      Int
+  cagr        Float
+  maxDD       Float
+  sharpe      Float
+  benchCagr   Float
+  benchMaxDD  Float
+  benchSharpe Float
+  dataSource  String // yahoo | synthetic | upload | ...
+  qualityOk   Boolean
+  metrics     String // JSON { startMonth, endMonth, vol, hitRate, turnoverAnnual }
+  createdAt   DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([configHash])
+}
+
+// GTAA — snapshot สัญญาณที่บันทึก "ก่อนเกิดผล" (หลักฐานล่วงหน้า เทียบผลจริงภายหลังได้)
+// unique ต่อ (decisionMonth, configHash) = สัญญาณเดือนเดียวกันด้วยกฎเดียวกันเก็บครั้งเดียว (upsert)
+model GtaaSignal {
+  id            Int      @id @default(autoincrement())
+  decisionMonth String // YYYY-MM ปิดเดือนที่ตัดสินใจ (อิง panel.dates ล่าสุด)
+  appliesMonth  String // YYYY-MM เดือนที่นำพอร์ตนี้ไปใช้จริง
+  cashPct       Float // น้ำหนักเงินสดของพอร์ตเป้าหมาย
+  cashTicker    String // BIL | IEF (trendedBond)
+  holdings      String // JSON [{ticker, weight, name, group, score, rank, trendPass}]
+  failed        String // JSON string[] ticker ที่สอบตกเทรนด์ (โดนเตะไปเงินสด)
+  benchPass     Boolean // SPY ยืนเหนือ SMA ของเดือนตัดสินใจ
+  stance        String? // risk_on | caution | risk_off (จาก Macro Gate)
+  dataSource    String
+  configHash    String
+  createdAt     DateTime @default(now())
+
+  @@unique([decisionMonth, configHash])
+  @@index([decisionMonth])
+}

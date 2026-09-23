@@ -1,0 +1,56 @@
+[
+  {
+    "url": "https://www.quantstart.com",
+    "name": "Market Regime Detection using Hidden Markov Models in",
+    "snippet": "In this article the Hidden Markov Model will be utilised within the QSTrader framework as a risk-managing market regime filter. It will disallow trades when ... Read more",
+    "host_name": "www.quantstart.com",
+    "rank": 0,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.mdpi.com",
+    "name": "Regime-Switching Factor Investing with Hidden Markov",
+    "snippet": "by M Wang · 2020 · Cited by 67 — This study uses the hidden Markov model ( HMM ) to identify different market regimes in the US stock market and proposes an investment strategy",
+    "host_name": "www.mdpi.com",
+    "rank": 1,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.quantifiedstrategies.com",
+    "name": "Hidden Markov Model Market Regimes: How HMM Detects",
+    "snippet": "The HMM essentially acts as a regime switch , allocating capital to range-trading models instead of trending models during these periods.",
+    "host_name": "www.quantifiedstrategies.com",
+    "rank": 2,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://dl.acm.org",
+    "name": "Feature Selection for HMM Regime Detection: An Empirical",
+    "snippet": "Jun 16, 2026 — HMM -based regime detection has a well-established lineage in financial econometrics [4, 13] and has been applied to daily equity data with ... Read more",
+    "host_name": "dl.acm.org",
+    "rank": 3,
+    "date": "Jun 16, 2026",
+    "favicon": ""
+  },
+  {
+    "url": "https://questdb.com",
+    "name": "Market Regime Detection Using Hidden Markov Models",
+    "snippet": "Hidden Markov Models detect market regimes by modeling hidden states and transitions, identifying volatility and trend phases to inform trading strategies.",
+    "host_name": "questdb.com",
+    "rank": 4,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://papers.ssrn.com",
+    "name": "Cross-Asset Market Regime Detection Using Hidden",
+    "snippet": "by S Polavarapu · 2026 · Cited by 1 — This paper demonstrates empirically during regime shifts, producing an 11.58 percentage. Model ( HMM ) The objective is not to predict markets , ...",
+    "host_name": "papers.ssrn.com",
+    "rank": 5,
+    "date": "",
+    "favicon": ""
+  }
+]

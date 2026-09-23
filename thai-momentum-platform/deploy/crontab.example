@@ -1,0 +1,22 @@
+# ============================================================
+# crontab ของผู้ใช้ที่รันแอป (crontab -e) — ทางเลือกแทน systemd timer / service scheduler ของ docker compose
+# ใช้ deploy/scheduler.ts --once เพื่อได้คำสั่ง/การตั้งค่า/log JSON ชุดเดียวกับ scheduler (แต่ไม่มี retry อัตโนมัติ)
+# bun โหลด .env ในโฟลเดอร์แอปเอง — ตั้ง DATABASE_URL เป็น absolute path และ TMP_BACKUP_DIR ไว้ในนั้น
+#
+# เวลา: 18:30 / 02:30 เวลาไทย — cronie (RHEL/Fedora/Arch) รองรับ CRON_TZ
+#       cron ของ Debian/Ubuntu ไม่รองรับ CRON_TZ → ตั้งเครื่องเป็น Asia/Bangkok (timedatectl set-timezone Asia/Bangkok)
+#       หรือแปลงเป็นเวลาเครื่อง: เครื่อง UTC = 30 11 * * 1-5 และ 30 19 * * *
+# ============================================================
+CRON_TZ=Asia/Bangkok
+SHELL=/bin/bash
+PATH=/usr/local/bin:/usr/bin:/bin
+
+# สายพานปิดตลาด (จ.–ศ.) — วันหยุด SET: daily.ts ตรวจปฏิทินเองแล้วข้าม
+30 18 * * 1-5  cd /opt/thai-momentum-platform && mkdir -p data/runs && bun deploy/scheduler.ts --once daily >> data/runs/cron.log 2>&1
+
+# สำรองฐานข้อมูลทุกคืน (ออนไลน์ ไม่ต้องหยุดเว็บ) — เก็บ 14 ไฟล์ล่าสุดใน TMP_BACKUP_DIR
+30 2 * * *     cd /opt/thai-momentum-platform && mkdir -p data/runs && bun deploy/scheduler.ts --once backup >> data/runs/cron.log 2>&1
+
+# (ไม่บังคับ) ตรวจสุขภาพทุก 5 นาที — แจ้งเตือนผ่านอีเมลของ cron (MAILTO) เมื่อไม่ใช่ 200
+# MAILTO=ops@example.com
+# */5 * * * *  curl -fsS -m 10 -o /dev/null http://127.0.0.1:3000/api/health || echo "thai-momentum /api/health ล้ม $(date)"

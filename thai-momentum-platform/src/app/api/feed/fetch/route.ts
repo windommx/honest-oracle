@@ -1,0 +1,121 @@
+// POST /api/feed/fetch — ดึงราคาจริงจาก Yahoo Finance (.BK) ฝั่ง server แล้วเข้าท่อ ingest เดียวกับ CSV
+// body: FeedFetchRequest { symbols, range?, adjusted?, replaceDemo?, sectors? }
+// - เครื่องที่เข้าเน็ตปกติ: ได้ข้อมูล → รายงานรายตัว → ingest → SymbolMeta → EventLog(ingest, source=yahoo)
+// - sandbox ที่บล็อก egress: ตอบ 502 พร้อมเหตุผลรายตัว + วิธีทางเลือก (CLI บนเครื่องผู้ใช้ / สคริปต์ Python)
+// - replaceDemo บน DB ที่มีข้อมูล: ต้องส่ง confirm:"REPLACE" (ไม่งั้น 409 ก่อนเริ่มดึง) และสำรอง DB ก่อนล้างเสมอ
+
+import { NextResponse } from "next/server"
+import { fetchYahooBatch, YAHOO_RANGES } from "@/lib/feed/yahoo"
+import { flagStale } from "@/lib/feed/quality"
+import { CROSS_ASSET_CLEARED_NOTE, ingestFeed } from "@/lib/feed/ingest"
+import { parseSymbolList } from "@/lib/feed/universe"
+import { DEFAULT_FEED_RANGE } from "@/lib/feed/sources"
+import { checkDestructiveConfirmation, guardDestructive, type BackupInfo } from "@/lib/security/destructive-guard"
+import type { FeedFetchRequest, FeedFetchResponse, FeedRange } from "@/lib/momentum/contracts"
+
+export const dynamic = "force-dynamic"
+export const maxDuration = 300
+
+const MAX_SYMBOLS = 300
+// งบเวลาช่วงดึง (เหลือเวลาให้ ingest ภายใน maxDuration) — ตัวที่ดึงไม่ทันถูกรายงานว่า "ข้าม" ไม่ใช่ timeout ทั้งคำขอ
+const FETCH_BUDGET_MS = 220_000
+
+export async function POST(req: Request) {
+  const t0 = Date.now()
+  try {
+    const parsed: unknown = await req.json().catch(() => null)
+    const body = (parsed && typeof parsed === "object" ? parsed : {}) as Partial<FeedFetchRequest> & { symbols?: unknown }
+    const text = Array.isArray(body.symbols)
+      ? body.symbols.filter((s): s is string => typeof s === "string").join(",")
+      : typeof body.symbols === "string"
+        ? body.symbols
+        : ""
+    const { symbols, invalid } = parseSymbolList(text)
+    if (symbols.length === 0) {
+      return NextResponse.json({ error: "ต้องระบุรายชื่อหุ้นอย่างน้อย 1 ตัว (เช่น PTT, KBANK หรือ SET50)" }, { status: 400 })
+    }
+    if (symbols.length > MAX_SYMBOLS) {
+      return NextResponse.json({ error: `จำกัด ${MAX_SYMBOLS} ตัวต่อรอบ (ส่งมา ${symbols.length})` }, { status: 400 })
+    }
+    const range: FeedRange = YAHOO_RANGES.includes(body.range as FeedRange) ? (body.range as FeedRange) : DEFAULT_FEED_RANGE
+    const adjusted = body.adjusted !== false
+    const replaceDemo = body.replaceDemo === true
+    const sectors = body.sectors && typeof body.sectors === "object" ? body.sectors : undefined
+    // ตอบ 409 ทันทีก่อนเริ่มดึง Yahoo (ซึ่งอาจใช้หลายนาที) ถ้ายังไม่ได้ยืนยันการล้างข้อมูล
+    if (replaceDemo) {
+      const check = await checkDestructiveConfirmation("replaceDemo", body)
+      if (!check.ok) return check.response
+    }
+
+    const batch = await fetchYahooBatch(symbols, range, { adjusted, deadline: t0 + FETCH_BUDGET_MS })
+    const reports = flagStale(batch.reports)
+    const failed = reports.filter((r) => !r.ok)
+    const notes: string[] = [
+      adjusted
+        ? "ราคาปรับด้วย adjclose ของ Yahoo (ปันผล + สปลิต) — เหมาะกับโมเมนตัมข้ามวัน XD"
+        : "ราคาดิบ (ไม่ปรับปันผล) — วันขึ้น XD จะเห็นราคากระโดดลง",
+      "มูลค่าซื้อขาย (val) = close × volume โดยประมาณ — SET นับ Σ ราคา×จำนวนทุก trade ต่างกันไม่กี่ %",
+      "แหล่ง Yahoo ไม่เป็นทางการ — ตรวจ DQ และเทียบราคาปิดกับ SET ก่อนใช้ตัดสินใจ",
+    ]
+    if (invalid.length > 0) notes.push(`ข้ามสัญลักษณ์ที่รูปแบบไม่ถูกต้อง: ${invalid.join(", ")}`)
+
+    if (batch.rows.length === 0) {
+      const message = batch.blocked
+        ? "เซิร์ฟเวอร์นี้เข้าถึง Yahoo Finance ไม่ได้ (ถูกบล็อกหรือไม่มีอินเทอร์เน็ต) — รัน `bun run fetch:th` บนเครื่องที่เข้าเน็ตได้ หรือใช้สคริปต์ Python lab/fetch_set_feed.py แล้วส่งเข้า /api/feed/ingest"
+        : "ไม่ได้ข้อมูลจากสัญลักษณ์ที่ระบุเลย — ตรวจชื่อย่อ (ต้องเป็นชื่อบน SET เช่น PTT ไม่ใช่ PTT.BK)"
+      return NextResponse.json<FeedFetchResponse>(
+        {
+          ok: false,
+          source: "yahoo",
+          requested: symbols.length,
+          fetched: 0,
+          failed: failed.length,
+          rowsFetched: 0,
+          reports,
+          ingest: null,
+          sectorRows: 0,
+          replacedDemo: false,
+          notes,
+          tookMs: Date.now() - t0,
+          message,
+        },
+        { status: 502 },
+      )
+    }
+
+    // ด่านเต็มตอนจะลบจริง: ตรวจยืนยันซ้ำ (ข้อมูลอาจเปลี่ยนระหว่างดึง) + สำรอง DB (สำรองไม่ได้ = ไม่ลบ)
+    let backup: BackupInfo | null = null
+    if (replaceDemo) {
+      const guard = await guardDestructive("replaceDemo", body)
+      if (!guard.ok) return guard.response
+      backup = guard.backup
+    }
+
+    const res = await ingestFeed({ rows: batch.rows, source: "yahoo", actor: "human", replaceDemo, sectors })
+    if (res.clearedCrossAsset) notes.push(CROSS_ASSET_CLEARED_NOTE)
+    if (backup) notes.push(`สำรองฐานข้อมูลก่อนล้างไว้ที่ ${backup.file}`)
+    const okCount = reports.filter((r) => r.ok).length
+    return NextResponse.json<FeedFetchResponse>({
+      ok: true,
+      source: "yahoo",
+      requested: symbols.length,
+      fetched: okCount,
+      failed: failed.length,
+      rowsFetched: batch.rows.length,
+      reports,
+      ingest: {
+        insertedRaw: res.ingest.insertedRaw,
+        updatedRows: res.ingest.updatedRows,
+        snapDates: res.ingest.snapDates.length,
+        latestDate: res.latestDate,
+      },
+      sectorRows: res.sectorRows,
+      replacedDemo: res.replacedDemo,
+      notes,
+      tookMs: Date.now() - t0,
+      message: `ดึงจาก Yahoo ${okCount}/${symbols.length} ตัว ${batch.rows.length.toLocaleString()} แถว → นำเข้า ${res.ingest.insertedRaw.toLocaleString()} แถว สร้างโผ ${res.ingest.snapDates.length} วัน${failed.length > 0 ? ` (ล้มเหลว ${failed.length} ตัว — ดูรายงาน)` : ""}`,
+    })
+  } catch (e) {
+    return NextResponse.json({ error: e instanceof Error ? e.message : "internal error" }, { status: 500 })
+  }
+}

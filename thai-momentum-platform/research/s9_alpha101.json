@@ -1,0 +1,56 @@
+[
+  {
+    "url": "https://arxiv.org",
+    "name": "101 Formulaic Alphas",
+    "snippet": "by Z Kakushadze · 2016 · Cited by 158 — We present explicit formulas – that are also computer code – for 101 real-life quantitative trading alphas . Summary for the cross - sectional ...",
+    "host_name": "arxiv.org",
+    "rank": 0,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://docs.dolphindb.com",
+    "name": "WorldQuant 101 Alphas",
+    "snippet": "In the current version of the wq101alpha module, all factors involve both cross-sectional and time-series computations . You need to prepare a matrix as the ... Read more",
+    "host_name": "docs.dolphindb.com",
+    "rank": 1,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.researchgate.net",
+    "name": "101 Formulaic Alphas",
+    "snippet": "May 2, 2026 — We present explicit formulas - that are also computer code - for 101 real-life quantitative trading alphas . formulaic alpha factors ,",
+    "host_name": "www.researchgate.net",
+    "rank": 2,
+    "date": "May 2, 2026",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.zhihu.com",
+    "name": "What is the origin of worldquant 101alpha?",
+    "snippet": "I carefully reviewed the < WorldQuant Formulaic 101 Alphas > report, and the WorldQuant alpha expressions are actually how they are derived. Read more",
+    "host_name": "www.zhihu.com",
+    "rank": 3,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.studocu.com",
+    "name": "Alpha 101 - Explicit Formulas for 101 Real-Life Trading",
+    "snippet": "In this section we describe empirical properties of our formulaic alphas based on data proprietary to WorldQuant LLC, Summary for the cross - sectional ...",
+    "host_name": "www.studocu.com",
+    "rank": 4,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://post.bytes.com",
+    "name": "A Simpler Way to Calculate WorldQuant 101 Alphas - Post.Byes",
+    "snippet": "Feb 20, 2024 — This formula involves both cross - sectional data and time series data, and the calculation uses nested functions with up to 6 levels, which ... Read more",
+    "host_name": "post.bytes.com",
+    "rank": 5,
+    "date": "Feb 20, 2024",
+    "favicon": ""
+  }
+]
