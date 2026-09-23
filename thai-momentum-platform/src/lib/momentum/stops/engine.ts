@@ -6,6 +6,12 @@
 //                             วันทำการ จากเทรดที่ปิดก่อน window − embargo 10 วัน (กัน look-ahead)
 // - evaluateStopPositions() : ตำแหน่งเปิดวันนี้ → dNow, P(L|b), EV_hold, exitNow, beyondOpt
 //
+// การเติมราคาเมื่อ stop ทำงาน (ตัดสินเมื่อ 2026-09-23 — ดู docs/research/methodology.md):
+//   fill="close" (ค่าเริ่มต้น) = ขายที่ "ราคาปิดของวันแรกที่ปิดทะลุ stop" ตรงกับ live Jev (ปิด ณ ราคาปิด paper)
+//   และ runBacktest — gap ลงลึกกว่า stop ได้ผลจริงที่แย่กว่า −s เสมอ · fill="level" = สมมติเดิม (ขายได้ที่ 1−s พอดี)
+//   เก็บไว้เทียบเท่านั้น: มองโลกสวยเมื่อราคา gap และเมื่อ path บาง (seed เก่าเก็บแค่วันเข้า+วันออก → ทุกไม้ขาดทุน
+//   ถูก "ตัดที่ −s" ทั้งที่ไม่มีหลักฐานว่าราคาเคยผ่าน −s ก่อนวันออก — เหตุที่ demo เคย adopt stop 1–1.5%)
+//
 // กติกา adoption ที่ pre-register (ล็อกก่อนเห็นผล):
 //   รับ bayes arm ก็ต่อเมื่อ Sharpe_arm > Sharpe_fixed + 0.2 และ MaxDD แย่กว่าเกิน 2pp ไม่ได้
 //   และ n ≥ 100 — ไม่งั้นคง fixed10 ตามเดิม
@@ -20,6 +26,7 @@ import {
   liveExit,
   type BayesTrade,
   type Posterior,
+  type StopFill,
 } from "./bayes"
 import type {
   StopArm,
@@ -39,6 +46,8 @@ const BASE_BACKSTOP = 0.15 // กำแพงหลังบ้านของ�
 const RECENCY = 0.995 // w = 0.995^Δวันทำการ
 const COST_LEG = (TH_STRATEGY.costBps + TH_STRATEGY.slipBpsBase) / 1e4 // 70bps ต่อขา
 const COST_RT = 2 * COST_LEG
+/** path นับเป็น "รายวัน" เมื่อมีจุดครอบ ≥ 80% ของวันที่หุ้นมีราคาจริงระหว่างถือ (กันวันที่ ingest ย้อนหลังทีหลัง) */
+export const DAILY_PATH_COVERAGE = 0.8
 const ARMS: StopArm[] = ["fixed10", "bayesT", "bayesR"]
 const ARM_LABEL: Record<StopArm, string> = {
   fixed10: "fixed −10% (เดิม)",
@@ -59,6 +68,29 @@ export interface StopTradeRec {
   path: { d: string; p: number }[]
   exIdx: number | null // index วัน exit ในปฏิทินทำการ
   eiIdx: number | null
+  /** path ครอบวันที่มีราคาจริงระหว่างถือ ≥ DAILY_PATH_COVERAGE (ไม่ระบุ = ไม่ใช่ → posterior ไม่ให้เครดิต stop) */
+  dailyPath?: boolean
+}
+
+/** path รายวันพอจะหา "ราคาปิดวันแรกที่ทะลุ stop" ได้หรือไม่ — เทียบกับวันที่หุ้นมีราคาจริงใน pivot (pure) */
+export function isDailyPath(
+  path: { d: string }[],
+  ei: number | null,
+  ex: number | null,
+  prices: number[] | null, // ราคาปิดของหุ้นตัวนี้ตามปฏิทิน pivot (NaN = ไม่มีราคาวันนั้น)
+  dates: string[]
+): boolean {
+  if (ei === null || ex === null || ex <= ei || !prices) return false
+  const have = new Set(path.map((x) => x.d))
+  let priced = 0
+  let covered = 0
+  for (let j = ei + 1; j <= ex; j++) {
+    const v = prices[j]
+    if (!isFinite(v) || v <= 0) continue
+    priced++
+    if (have.has(dates[j])) covered++
+  }
+  return priced > 0 && covered / priced >= DAILY_PATH_COVERAGE
 }
 
 export interface StopsPolicy {
@@ -104,6 +136,17 @@ export async function loadClosedTrades(): Promise<{
   }
   const rows = await db.trade.findMany({ orderBy: [{ exit: "asc" }, { id: "asc" }] })
   const trades: StopTradeRec[] = []
+  // คอลัมน์ราคาต่อหุ้น (ตามปฏิทิน pivot) — ใช้ตรวจว่า path ของเทรดเป็นรายวันจริงหรือเป็น path บาง
+  const colCache = new Map<number, number[]>()
+  const priceCol = (si: number | undefined): number[] | null => {
+    if (si === undefined) return null
+    let col = colCache.get(si)
+    if (!col) {
+      col = pivot.px.map((row) => row[si])
+      colCache.set(si, col)
+    }
+    return col
+  }
   for (const r of rows) {
     let path: { d: string; p: number }[] = []
     try {
@@ -118,6 +161,8 @@ export async function loadClosedTrades(): Promise<{
     } catch {
       path = []
     }
+    const exIdx = pivot.dateIdx.get(r.exit) ?? null
+    const eiIdx = pivot.dateIdx.get(r.entry) ?? null
     trades.push({
       id: r.id,
       symbol: r.symbol,
@@ -129,8 +174,9 @@ export async function loadClosedTrades(): Promise<{
       src: r.src,
       holdDays: r.holdDays,
       path,
-      exIdx: pivot.dateIdx.get(r.exit) ?? null,
-      eiIdx: pivot.dateIdx.get(r.entry) ?? null,
+      exIdx,
+      eiIdx,
+      dailyPath: isDailyPath(path, eiIdx, exIdx, priceCol(pivot.symIdx.get(r.symbol)), pivot.dates),
     })
   }
   _tradesCache = { key, trades }
@@ -148,7 +194,7 @@ function toBayes(trades: StopTradeRec[], asOfIdx: number): BayesTrade[] {
   return trades.map((t) => {
     const ex = t.exIdx ?? asOfIdx
     const dBack = Math.max(0, asOfIdx - ex)
-    return { ret: t.ret, mae: t.mae, path: t.path, weight: Math.pow(RECENCY, dBack) }
+    return { ret: t.ret, mae: t.mae, path: t.path, dailyPath: t.dailyPath === true, weight: Math.pow(RECENCY, dBack) }
   })
 }
 
@@ -180,6 +226,8 @@ export function posteriorDto(p: Posterior): StopPosteriorDto {
     evOpt: p.evOpt,
     evNoStop: p.evNoStop,
     evCurve: p.evCurve,
+    fill: p.fill,
+    nNoPathEvidence: p.nNoPathEvidence,
   }
 }
 
@@ -217,25 +265,33 @@ interface ArmTrade {
 
 interface ArmFull {
   arm: StopArm
+  fill: StopFill
   trades: ArmTrade[]
   equity: number[]
   stopNow: number | null
   sMap: Map<number, number> // refit index → s*
 }
 
+export interface SimulateArmOptions {
+  /** "close" (ค่าเริ่มต้น — ตรง live) | "level" (สมมติเดิม เก็บไว้เทียบ) — ใช้ทั้งตอนเติมราคาและตอน refit posterior */
+  fill?: StopFill
+}
+
 export function simulateArm(
   arm: StopArm,
   trades: StopTradeRec[],
   N: number,
-  dateIdx: Map<string, number>
+  dateIdx: Map<string, number>,
+  opts: SimulateArmOptions = {}
 ): ArmFull {
+  const fill: StopFill = opts.fill === "level" ? "level" : "close"
   // (1) walk-forward refit schedule — posterior สร้าง "จากอดีตเท่านั้น" (exit ≤ R − embargo)
   const sMap = new Map<number, number>()
   if (arm !== "fixed10") {
     for (let R = REFIT_START; R < N; R += REFIT_DAYS) {
       const usable = trades.filter((t) => t.exIdx !== null && t.exIdx <= R - EMBARGO_DAYS)
       const bayes = toBayes(usable, R)
-      const p = buildPosterior(bayes, { mode: arm === "bayesT" ? "T" : "R", cost: COST_RT })
+      const p = buildPosterior(bayes, { mode: arm === "bayesT" ? "T" : "R", cost: COST_RT, fill })
       sMap.set(R, p.sOpt === null ? 0.1 : Math.min(p.sOpt, BASE_BACKSTOP))
     }
   }
@@ -271,19 +327,23 @@ export function simulateArm(
       const pEnd = 1 + t.ret / 100 + COST_RT
       if (isFinite(pEnd) && pEnd > 0) pAt.set(ex, pEnd)
     }
-    // เดิน path: ถ้า dd ≥ s ณ วันที่มีราคาจริง (ไม่เกินวันออก) → ถูก stop ที่ระดับ s วันนั้น
+    // เดิน path: ถ้า dd ≥ s ณ วันที่มีราคาจริง (ไม่เกินวันออก) → ถูก stop วันนั้น
+    // (กันเศษ float ที่ขอบ: ปิดที่ 0.90 พอดีกับ s = 10% ต้องนับว่าทะลุ — สอดคล้อง binIndex ของ posterior)
     let stopped = false
     let stopIdx = ex
     for (let j = ei + 1; j <= ex; j++) {
       const p = pAt.get(j)
       if (p === undefined) continue
-      if (Math.max(0, 1 - p) >= s) {
+      if (Math.max(0, 1 - p) >= s - 1e-9) {
         stopped = true
         stopIdx = j
         break
       }
     }
-    armTrades.push({ ret: stopped ? (-s - COST_RT) * 100 : t.ret, stopped, stopIdx, ei, ex, s })
+    // ราคาที่ขายได้จริงเมื่อถูก stop: fill="close" = ราคาปิดวันที่ทะลุ (≤ 1−s เสมอ — gap ลึกก็รับผลจริง ตรง live)
+    // fill="level" = 1−s พอดี (สมมติเดิม — เก็บไว้เทียบ)
+    const pFill = stopped ? (fill === "level" ? 1 - s : (pAt.get(stopIdx) as number)) : NaN
+    armTrades.push({ ret: stopped ? (pFill - 1 - COST_RT) * 100 : t.ret, stopped, stopIdx, ei, ex, s })
 
     // (4) daily accounting — slot เท่ากัน / maxPos, cost ต่อขา (entry + exit) — ลงบัญชีวันที่ราคาเกิดจริง
     dayRet[ei] += -COST_LEG
@@ -292,7 +352,7 @@ export function simulateArm(
       const pj = pAt.get(j)
       if (pj === undefined) continue
       let r = pj / pp - 1
-      if (stopped && j === stopIdx) r = (1 - s) / pp - 1 - COST_LEG
+      if (stopped && j === stopIdx) r = pFill / pp - 1 - COST_LEG
       else if (!stopped && j === ex) r -= COST_LEG
       dayRet[j] += r
       pp = pj
@@ -305,7 +365,7 @@ export function simulateArm(
     cur *= 1 + dayRet[i] / maxPos
     equity.push(cur)
   }
-  return { arm, trades: armTrades, equity, stopNow: null, sMap }
+  return { arm, fill, trades: armTrades, equity, stopNow: null, sMap }
 }
 
 function armStats(a: ArmFull): StopArmRow {
@@ -355,11 +415,12 @@ export interface ArmsResult {
   nTrades: number
 }
 
-export async function runStopArms(): Promise<ArmsResult> {
+/** walk-forward 3 arms — ค่าเริ่มต้น fill="close" (ตรง live) · { fill: "level" } = สมมติเดิม ใช้เทียบในงานวิจัยเท่านั้น */
+export async function runStopArms(opts: SimulateArmOptions = {}): Promise<ArmsResult> {
   const { trades, dates, dateIdx } = await loadClosedTrades()
   const N = dates.length
   const usable = trades.filter((t) => t.eiIdx !== null && t.exIdx !== null && t.exIdx > t.eiIdx)
-  const simArms = ARMS.map((a) => simulateArm(a, usable, N, dateIdx))
+  const simArms = ARMS.map((a) => simulateArm(a, usable, N, dateIdx, opts))
 
   // stopNow ของ bayes arm = s* จาก refit ล่าสุดที่มีข้อมูลพอ
   const latestStop: { bayesT: number | null; bayesR: number | null } = { bayesT: null, bayesR: null }
@@ -407,19 +468,43 @@ export async function runStopArms(): Promise<ArmsResult> {
 // ---------- บันทึกเทรดที่ปิดจริงจากพอร์ต (Jev exit → trade log) ----------
 const COST_LEG_PERSIST = (TH_STRATEGY.costBps + TH_STRATEGY.slipBpsBase) / 1e4
 
+export interface PersistClosedTradeOptions {
+  /**
+   * true = บังคับปิดหุ้นที่หยุดซื้อขาย/ไม่มีราคา (Jev: ไม่มีราคา ≥ NO_PRICE_EXIT_DAYS วัน) — วันออก = exitDate
+   * (วันที่ตัดสินปิด: เงินถูกล็อกถึงวันนี้) แต่ราคาออก = ราคาปิดล่าสุดที่มีจริงระหว่างถือ
+   * ไม่ระบุ/false = ต้องมีราคาวันออก (เดิม) ไม่งั้นไม่บันทึก
+   */
+  fillAtLastKnown?: boolean
+}
+
 /** เมื่อ Jev ปิดสถานะ → บันทึกเข้า Trade log (path รายวันจาก closePivot) เพื่อให้ posterior เรียนรู้ตัวเอง */
 export async function persistClosedTrade(
   pos: { symbol: string; entryDate: string; entryPx: number },
   exitDate: string,
-  regime: string
+  regime: string,
+  opts: PersistClosedTradeOptions = {}
 ): Promise<boolean> {
   const pivot = await closePivot()
   const ei = pivot.dateIdx.get(pos.entryDate)
   const xi = pivot.dateIdx.get(exitDate)
   const si = pivot.symIdx.get(pos.symbol)
   if (ei === undefined || xi === undefined || si === undefined || xi <= ei || pos.entryPx <= 0) return false
-  // ไม่มีราคาวันออก = คำนวณผลเทรดไม่ได้ → ไม่บันทึก
-  if (!isFinite(pivot.px[xi][si]) || pivot.px[xi][si] <= 0) return false
+  // ราคาออก: ราคาปิดวันออก · หุ้นหยุดซื้อขาย (fillAtLastKnown) → ราคาปิดล่าสุดที่มีจริงใน [วันเข้า, วันออก]
+  let exitPx = pivot.px[xi][si]
+  if (!isFinite(exitPx) || exitPx <= 0) {
+    // ไม่มีราคาวันออก และไม่ได้สั่งปิดที่ราคาล่าสุด = คำนวณผลเทรดไม่ได้ → ไม่บันทึก
+    if (!opts.fillAtLastKnown) return false
+    exitPx = NaN
+    for (let j = xi; j >= ei; j--) {
+      const v = pivot.px[j][si]
+      if (isFinite(v) && v > 0) {
+        exitPx = v
+        break
+      }
+    }
+    // ไม่มีราคาเลยตั้งแต่วันเข้า → ใช้ราคาเข้า (ไม่แต่งราคา: ผล = −ต้นทุน round-trip)
+    if (!isFinite(exitPx)) exitPx = pos.entryPx
+  }
   const path: { d: string; p: number }[] = []
   let mae = 0
   for (let j = ei; j <= xi; j++) {
@@ -431,7 +516,9 @@ export async function persistClosedTrade(
     path.push({ d: pivot.dates[j], p: Math.round(p * 10000) / 10000 })
     mae = Math.max(mae, Math.max(0, 1 - p))
   }
-  const pLast = path[path.length - 1].p
+  // ผลเทรดจากจุดสุดท้ายของ path = ราคาออกจริง (ปกติ = ราคาปิดวันออก · หุ้นหยุดซื้อขาย = ราคาปิดล่าสุดที่มี
+  // เพราะ path ข้ามวันที่ไม่มีราคา) — path ว่าง (ไม่มีราคาเลยตั้งแต่วันเข้า) → ราคาเข้า
+  const pLast = path.length > 0 ? path[path.length - 1].p : exitPx / pos.entryPx
   const ret = Math.round((pLast - 1 - 2 * COST_LEG_PERSIST) * 100 * 100) / 100
   await db.trade.create({
     data: {
@@ -439,7 +526,7 @@ export async function persistClosedTrade(
       entry: pos.entryDate,
       exit: exitDate,
       entryPx: pos.entryPx,
-      exitPx: pivot.px[xi][si],
+      exitPx,
       ret,
       mae: Math.round(mae * 10000) / 10000,
       regime,

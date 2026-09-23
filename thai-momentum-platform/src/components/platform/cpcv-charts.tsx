@@ -11,6 +11,7 @@ import {
   YAxis,
 } from "recharts"
 import type { CpcvResponse } from "@/lib/momentum/contracts"
+import { CHART, TOOLTIP_STYLE } from "./chart-theme"
 
 /**
  * CpcvCharts — ภาพการกระจายผล CPCV (หัวใจของ Combinatorial CV คือ "การกระจาย"
@@ -18,23 +19,15 @@ import type { CpcvResponse } from "@/lib/momentum/contracts"
  * ธีม neon ตามแพลตฟอร์ม · เรนเดอร์เฉพาะเมื่อมี pathRows
  */
 
-const TOOLTIP_STYLE = {
-  backgroundColor: "#ffffff",
-  border: "1px solid #ece3cf",
-  borderRadius: 10,
-  fontSize: 12,
-  color: "#0f172a",
-  boxShadow: "0 4px 12px rgba(16,24,40,0.08)",
-} as const
-
-const TICK = { fill: "#64748b", fontSize: 10 } as const
-const GRID = "rgba(100,116,139,0.18)"
-const GREEN = "#059669"
-const ROSE = "#e11d48"
-const CYAN = "#1d4ed8" // น้ำเงินข้อมูลของธีม Gold Ivory (= neon-cyan)
-const MAGENTA = "#db2777"
-const AMBER = "#d97706"
-const PURPLE = "#7c3aed"
+const TICK = { fill: CHART.axis, fontSize: 10 } as const
+// สีผูก CSS variable (สลับตามธีมอัตโนมัติ) — ดู chart-theme.ts
+const GRID = CHART.grid
+const GREEN = CHART.green
+const ROSE = CHART.rose
+const CYAN = CHART.blue // น้ำเงินข้อมูล (= neon-cyan)
+const MAGENTA = CHART.magenta
+const AMBER = CHART.amber
+const PURPLE = CHART.purple
 
 function ChartFrame({ title, sub, children }: { title: string; sub?: string; children: React.ReactNode }) {
   return (
@@ -89,7 +82,7 @@ export default function CpcvCharts({ result }: { result: CpcvResponse }) {
           <XAxis dataKey="name" tick={TICK} tickLine={false} axisLine={{ stroke: GRID }} interval={0} />
           <YAxis tick={TICK} tickLine={false} axisLine={false} domain={[Math.floor(hitLo - 4), Math.ceil(hitHi + 4)]} />
           <Tooltip
-            cursor={{ fill: "rgba(100,116,139,0.12)" }}
+            cursor={{ fill: CHART.cursor }}
             contentStyle={TOOLTIP_STYLE}
             formatter={(v) => [`${Number(v).toFixed(2)}%`, "hit"]}
           />
@@ -108,11 +101,11 @@ export default function CpcvCharts({ result }: { result: CpcvResponse }) {
           <XAxis dataKey="name" tick={TICK} tickLine={false} axisLine={{ stroke: GRID }} interval={0} />
           <YAxis tick={TICK} tickLine={false} axisLine={false} />
           <Tooltip
-            cursor={{ fill: "rgba(100,116,139,0.12)" }}
+            cursor={{ fill: CHART.cursor }}
             contentStyle={TOOLTIP_STYLE}
             formatter={(v) => [`${Number(v).toFixed(2)}%`, "gap"]}
           />
-          <ReferenceLine y={0} stroke="rgba(100,116,139,0.45)" />
+          <ReferenceLine y={0} stroke={CHART.ref} />
           <ReferenceLine y={+result.avgGap.toFixed(2)} stroke={CYAN} strokeDasharray="4 3" label={{ value: "avg", fill: CYAN, fontSize: 10, position: "right" }} />
           <Bar dataKey="gap" radius={[3, 3, 0, 0]}>
             {gapData.map((d, i) => (
@@ -127,7 +120,7 @@ export default function CpcvCharts({ result }: { result: CpcvResponse }) {
           <XAxis dataKey="name" tick={TICK} tickLine={false} axisLine={{ stroke: GRID }} />
           <YAxis tick={TICK} tickLine={false} axisLine={false} allowDecimals={false} />
           <Tooltip
-            cursor={{ fill: "rgba(100,116,139,0.12)" }}
+            cursor={{ fill: CHART.cursor }}
             contentStyle={TOOLTIP_STYLE}
             formatter={(v) => [`${v} paths`, "จำนวน"]}
             labelFormatter={(l) => `hit ≥ ${l}%`}
@@ -141,7 +134,7 @@ export default function CpcvCharts({ result }: { result: CpcvResponse }) {
           <XAxis dataKey="name" tick={TICK} tickLine={false} axisLine={{ stroke: GRID }} interval={0} />
           <YAxis tick={TICK} tickLine={false} axisLine={false} domain={[0.4, 0.62]} />
           <Tooltip
-            cursor={{ fill: "rgba(100,116,139,0.12)" }}
+            cursor={{ fill: CHART.cursor }}
             contentStyle={TOOLTIP_STYLE}
             formatter={(v) => [Number(v).toFixed(3), "AUC"]}
           />

@@ -4,13 +4,23 @@
 // Yahoo: ดึงจาก server ได้ทันที · SET (settfex) / Settrade: แสดงคำสั่งให้รันบนเครื่องผู้ใช้
 // ทุกแหล่งแสดง "ความจริงของข้อมูล" (dataNote) เสมอ — ไม่มีแหล่งไหนถูกติดป้ายว่าทางการโดยไม่ใช่
 
-import { useState } from "react"
+import { useId, useState } from "react"
 import { AlertTriangle, CheckCircle2, Globe2, Loader2, XCircle } from "lucide-react"
 
 import { useApi } from "@/hooks/use-api"
 import { useToast } from "@/hooks/use-toast"
 import type { FeedFetchResponse, FeedInfoResponse, FeedRange, FeedSource } from "@/lib/momentum/contracts"
 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -31,6 +41,9 @@ const RANGES: { value: FeedRange; label: string }[] = [
   { value: "max", label: "ทั้งหมด" },
 ]
 
+/** คำยืนยันที่ API ต้องการเมื่อ replaceDemo = true (ลบข้อมูล demo ก่อนนำเข้า — ไม่ส่ง = 409) */
+const REPLACE_CONFIRM = "REPLACE"
+
 function countSymbols(text: string): number {
   return text.split(/[\s,;]+/).filter((t) => t.trim()).length
 }
@@ -46,12 +59,23 @@ export default function FeedCard({ onIngested }: { onIngested?: () => void }) {
   const [running, setRunning] = useState(false)
   const [result, setResult] = useState<FeedFetchResponse | null>(null)
   const [failure, setFailure] = useState<{ message: string; detail: FeedFetchResponse | null } | null>(null)
+  const [confirmOpen, setConfirmOpen] = useState(false)
+  const sourceId = useId()
+  const rangeId = useId()
+  const symbolsId = useId()
 
   const presets = info.data?.presets ?? []
   const sources = info.data?.sources ?? []
   const current = sources.find((s) => s.id === source)
   const text = symbolsText ?? presets[0]?.symbols.join(", ") ?? ""
   const nSymbols = countSymbols(text)
+
+  /** ปุ่มดึงข้อมูล — ถ้าเลือก "ล้างข้อมูล demo" ต้องยืนยันใน dialog ก่อน */
+  function requestRun() {
+    if (running || nSymbols === 0) return
+    if (replaceDemo) setConfirmOpen(true)
+    else void run()
+  }
 
   async function run() {
     if (running || nSymbols === 0) return
@@ -62,10 +86,24 @@ export default function FeedCard({ onIngested }: { onIngested?: () => void }) {
       const r = await fetch("/api/feed/fetch", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ source: "yahoo", symbols: text, range, adjusted, replaceDemo }),
+        body: JSON.stringify({
+          source: "yahoo",
+          symbols: text,
+          range,
+          adjusted,
+          replaceDemo,
+          ...(replaceDemo ? { confirm: REPLACE_CONFIRM } : {}),
+        }),
       })
       // proxy/gateway timeout ตอบเป็น HTML ไม่ใช่ JSON — แสดงสถานะ HTTP แทนข้อความ JSON parse error
       const j = ((await r.json().catch(() => null)) ?? { error: `HTTP ${r.status}` }) as FeedFetchResponse & { error?: string }
+      if (r.status === 409) {
+        // เซิร์ฟเวอร์ปฏิเสธการเขียนทับเพราะยังไม่ได้ยืนยัน — บอกวิธีแก้ ไม่ทิ้งข้อความ HTTP ดิบ
+        const msg = j.error ?? "ต้องยืนยันก่อนล้างข้อมูล demo — กดดึงข้อมูลอีกครั้งแล้วยืนยันในหน้าต่างที่ขึ้นมา"
+        setFailure({ message: msg, detail: null })
+        toast({ variant: "destructive", title: "ยังไม่ได้ยืนยันการล้างข้อมูล demo", description: msg })
+        return
+      }
       if (!r.ok || !j.ok) {
         setFailure({ message: j.error ?? j.message ?? `HTTP ${r.status}`, detail: j.reports ? j : null })
         toast({ variant: "destructive", title: "ดึงข้อมูลไม่สำเร็จ", description: j.error ?? j.message ?? `HTTP ${r.status}` })
@@ -91,7 +129,7 @@ export default function FeedCard({ onIngested }: { onIngested?: () => void }) {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <Globe2 className="size-4 text-neon-cyan" /> ดึงข้อมูลจริงจาก feed
+          <Globe2 className="size-4 text-neon-cyan" aria-hidden /> ดึงข้อมูลจริงจาก feed
         </CardTitle>
         <CardDescription>
           แทนข้อมูล demo ด้วยราคาหุ้นไทยจริง — ทุกแหล่งเข้าท่อเดียวกับ CSV (indicator · โผ · sector · audit
@@ -111,9 +149,9 @@ export default function FeedCard({ onIngested }: { onIngested?: () => void }) {
           <>
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">
-                <Label>แหล่งข้อมูล</Label>
+                <Label htmlFor={sourceId}>แหล่งข้อมูล</Label>
                 <Select value={source} onValueChange={(v) => setSource(v as FeedSource)} disabled={running}>
-                  <SelectTrigger className="h-11 sm:h-9">
+                  <SelectTrigger id={sourceId} className="h-11 sm:h-9" aria-label="แหล่งข้อมูล">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -127,9 +165,9 @@ export default function FeedCard({ onIngested }: { onIngested?: () => void }) {
                 </Select>
               </div>
               <div className="space-y-1.5">
-                <Label>ช่วงย้อนหลัง</Label>
+                <Label htmlFor={rangeId}>ช่วงย้อนหลัง</Label>
                 <Select value={range} onValueChange={(v) => setRange(v as FeedRange)} disabled={running || source !== "yahoo"}>
-                  <SelectTrigger className="h-11 sm:h-9">
+                  <SelectTrigger id={rangeId} className="h-11 sm:h-9" aria-label="ช่วงย้อนหลัง">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -158,7 +196,7 @@ export default function FeedCard({ onIngested }: { onIngested?: () => void }) {
               <>
                 <div className="space-y-1.5">
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <Label>รายชื่อหุ้น (ชื่อย่อบน SET คั่นด้วย , หรือขึ้นบรรทัดใหม่ · พิมพ์ชื่อ preset ได้)</Label>
+                    <Label htmlFor={symbolsId}>รายชื่อหุ้น (ชื่อย่อบน SET คั่นด้วย , หรือขึ้นบรรทัดใหม่ · พิมพ์ชื่อ preset ได้)</Label>
                     <div className="flex flex-wrap gap-1.5">
                       {presets.map((p) => (
                         <Button
@@ -177,6 +215,7 @@ export default function FeedCard({ onIngested }: { onIngested?: () => void }) {
                     </div>
                   </div>
                   <Textarea
+                    id={symbolsId}
                     value={text}
                     onChange={(e) => setSymbolsText(e.target.value)}
                     className="h-28 font-mono text-xs"
@@ -194,21 +233,22 @@ export default function FeedCard({ onIngested }: { onIngested?: () => void }) {
                       ปรับราคาด้วยปันผล/สปลิต (adjclose)
                       <span className="block text-[11px] text-muted-foreground">โมเมนตัมข้ามวัน XD ไม่กระโดด</span>
                     </span>
-                    <Switch checked={adjusted} onCheckedChange={setAdjusted} disabled={running} />
+                    <Switch checked={adjusted} onCheckedChange={setAdjusted} disabled={running} aria-label="ปรับราคาด้วยปันผลและสปลิต" />
                   </label>
                   <label className="flex min-h-11 items-center justify-between gap-3 rounded-md border border-border px-3 py-2 text-sm">
                     <span>
                       ล้างข้อมูล demo ก่อนนำเข้า
                       <span className="block text-[11px] text-muted-foreground">
-                        ลบราคา/โผ/พอร์ตกระดาษของหุ้นจำลอง + CrossAsset จำลอง (SPX/USDTHB/GOLD) — คง audit ไว้ · ใช้ข้อมูลข้ามตลาดจริงด้วย bun run fetch:cross
+                        ลบข้อมูลตลาดเดิมทั้งหมด (ราคา/โผ/พอร์ตกระดาษ/เทรด) + CrossAsset จำลอง (SPX/USDTHB/GOLD) — คง audit ไว้ · สำรอง DB
+                        อัตโนมัติก่อนลบ · ใช้ข้อมูลข้ามตลาดจริงด้วย bun run fetch:cross
                       </span>
                     </span>
-                    <Switch checked={replaceDemo} onCheckedChange={setReplaceDemo} disabled={running} />
+                    <Switch checked={replaceDemo} onCheckedChange={setReplaceDemo} disabled={running} aria-label="ล้างข้อมูล demo ก่อนนำเข้า" />
                   </label>
                 </div>
 
                 <div className="flex flex-wrap items-center gap-3">
-                  <Button onClick={run} disabled={running || nSymbols === 0} className="min-h-11 sm:min-h-9">
+                  <Button onClick={requestRun} disabled={running || nSymbols === 0} className="min-h-11 sm:min-h-9">
                     {running ? (
                       <>
                         <Loader2 className="animate-spin" />
@@ -231,7 +271,7 @@ export default function FeedCard({ onIngested }: { onIngested?: () => void }) {
             ) : (
               <div className="space-y-2 rounded-md border border-border bg-foreground/[0.03] p-3 text-sm">
                 <div className="font-medium">แหล่งนี้รันบนเครื่องคุณ แล้วส่งเข้าแพลตฟอร์มผ่าน POST /api/feed/ingest</div>
-                <pre className="overflow-x-auto rounded bg-muted p-3 text-[11px] leading-5">
+                <pre tabIndex={0} aria-label="คำสั่งสำหรับรันบนเครื่องคุณ" className="overflow-x-auto rounded bg-muted p-3 text-[11px] leading-5">
                   {source === "set"
                     ? `pip install "settfex>=0.24"            # ต้องการ Python 3.11+
 cd thai-momentum-platform/lab
@@ -250,6 +290,29 @@ python fetch_settrade_feed.py --symbols PTT,KBANK,CPALL --limit 500 --post http:
             )}
           </>
         )}
+
+        {/* ยืนยันก่อนล้างข้อมูล demo — ส่ง confirm:"REPLACE" ไปกับคำขอ */}
+        <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>ล้างข้อมูล demo ก่อนนำเข้า?</AlertDialogTitle>
+              <AlertDialogDescription>
+                ระบบจะลบข้อมูลตลาดเดิม<b>ทั้งหมด</b>ในฐานข้อมูล (ราคา · โผ · sector) รวมถึงพอร์ตกระดาษ ประวัติเทรด คำสั่งรออนุมัติ
+                ผล backtest และ CrossAsset จำลอง — ไม่ใช่เฉพาะข้อมูลตัวอย่าง — แล้วนำเข้าข้อมูลจริง {nSymbols} ตัวจาก Yahoo แทน ·
+                บันทึก audit/การตัดสินใจยังเก็บไว้ และระบบสำรองฐานข้อมูลให้อัตโนมัติก่อนลบ
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>ยกเลิก</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => void run()}
+                className="bg-destructive text-white hover:bg-destructive/90 dark:bg-destructive/60"
+              >
+                ยืนยัน ล้าง demo แล้วนำเข้า
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
         {failure && (
           <Alert variant="destructive">

@@ -34,6 +34,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Switch } from "@/components/ui/switch"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { cn } from "@/lib/utils"
+import { Term } from "../glossary"
 
 /* ────────────────────────────── types (ตรงกับ /api/evidence + /api/config/th จริง) ────────────────────────────── */
 
@@ -151,10 +152,6 @@ const SOURCE_LABEL: Record<string, string> = {
 const GATE_ICIR = 0.25
 const TOM_GATE_T = 2 // H3 PASS เมื่อ t > 2 (ด้านเดียว)
 
-// สีเดียวกับ Recharts ของแท็บอื่น (emerald-600 / rose-600 — ใช้แบบ rgba เมื่อต้อง map alpha)
-const NEON_GREEN_RGB = "5, 150, 105"
-const NEON_ROSE_RGB = "225, 29, 72"
-
 const FORMS = [5, 10, 20, 40, 80, 160, 300]
 const HOLDS = [3, 5, 10, 20]
 
@@ -251,7 +248,7 @@ function verdictBadgeCls(v: string | null | undefined): string {
     return "border-neon-green/40 bg-neon-green/10 text-neon-green shadow-[0_1px_2px_rgba(16,24,40,0.06)]"
   if (v === "FAIL")
     return "border-neon-rose/40 bg-neon-rose/10 text-neon-rose shadow-[0_1px_2px_rgba(16,24,40,0.06)]"
-  return "border-neon-amber/40 bg-neon-amber/10 text-[#f59e0b]"
+  return "border-neon-amber/40 bg-neon-amber/10 text-neon-amber"
 }
 
 function hypVerdict(h: Hypothesis | null | undefined): { state: "pass" | "fail" | "other" | "none"; label: string | null } {
@@ -367,7 +364,7 @@ function HypothesisCard({
           </>
         ) : (
           <div className="space-y-1.5">
-            <div className="text-2xl font-bold text-muted-foreground/50">—</div>
+            <div className="text-2xl font-bold text-muted-foreground">—</div>
             <p className="text-[11px] text-muted-foreground">ยังไม่รันในโหมดนี้</p>
           </div>
         )}
@@ -382,9 +379,10 @@ function Cell({ cell }: { cell: ScanCell | undefined }) {
   const icir = cellIcir(cell)
   const has = icir !== null
   const alpha = has ? Math.min(1, Math.abs(icir) / 0.5) * 0.75 + 0.06 : 0
+  // สีผูกตัวแปรธีม (--heat-pos/--heat-neg) — ธีมมืดใช้เฉดเข้มขึ้น ตัวเลขสีงาช้างบนช่องเข้มสุดยังอ่านออก
   const bg = has
-    ? `rgba(${icir > 0 ? NEON_GREEN_RGB : NEON_ROSE_RGB}, ${alpha.toFixed(2)})`
-    : "rgba(15,23,42,0.03)"
+    ? `color-mix(in srgb, var(${icir > 0 ? "--heat-pos" : "--heat-neg"}) ${Math.round(alpha * 100)}%, transparent)`
+    : "color-mix(in srgb, var(--foreground) 4%, transparent)"
   const pass = has && icir > GATE_ICIR
   return (
     <div
@@ -395,7 +393,7 @@ function Cell({ cell }: { cell: ScanCell | undefined }) {
       )}
       style={{ backgroundColor: bg }}
     >
-      <span className={cn("font-mono text-[11px] leading-3", has ? "text-foreground" : "text-slate-600")}>
+      <span className={cn("font-mono text-[11px] leading-3", has ? "text-foreground" : "text-muted-foreground")}>
         {has ? icir.toFixed(2) : "—"}
       </span>
       <span className="font-mono text-[9px] leading-3 text-muted-foreground">{has && cell?.n != null ? `n=${cell.n}` : ""}</span>
@@ -456,11 +454,11 @@ function IcirHeatmap({ cells }: { cells: ScanCell[] }) {
       {/* legend */}
       <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[11px] text-muted-foreground">
         <span className="flex items-center gap-1">
-          <span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: `rgba(${NEON_GREEN_RGB}, 0.7)` }} aria-hidden />
+          <span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: "color-mix(in srgb, var(--heat-pos) 70%, transparent)" }} aria-hidden />
           ICIR &gt; 0
         </span>
         <span className="flex items-center gap-1">
-          <span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: `rgba(${NEON_ROSE_RGB}, 0.7)` }} aria-hidden />
+          <span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: "color-mix(in srgb, var(--heat-neg) 70%, transparent)" }} aria-hidden />
           ICIR &lt; 0
         </span>
         <span className="flex items-center gap-1">
@@ -620,7 +618,10 @@ export default function EvidenceTab() {
             <ClipboardCheck className="size-5 text-neon-cyan" aria-hidden />
             Evidence Board — ตลาดไทย &quot;ยอม&quot; ให้เราเก็บเบี้ยช่องไหน
           </CardTitle>
-          <CardDescription>prior จากวรรณกรรม ≠ คำตอบ — ผู้ตัดสินคือข้อมูลจริง</CardDescription>
+          <CardDescription>
+            prior จากวรรณกรรม ≠ คำตอบ — ผู้ตัดสินคือข้อมูลจริง · ทุกรอบรัน = <Term id="evidence-night">Evidence Night</Term>{" "}
+            ทดสอบสมมติฐานที่<Term id="prereg">ลงทะเบียนล่วงหน้า</Term>
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="flex flex-wrap items-end gap-3">
@@ -660,7 +661,7 @@ export default function EvidenceTab() {
 
           <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
             {updatedBy && (
-              <Badge variant="outline" className="border-neon-purple/40 bg-neon-purple/10 font-mono text-[#8b5cf6]">
+              <Badge variant="outline" className="border-neon-purple/40 bg-neon-purple/10 font-mono text-neon-purple">
                 updatedBy: {updatedBy}
               </Badge>
             )}
@@ -726,10 +727,12 @@ export default function EvidenceTab() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <LayoutGrid className="size-4 text-neon-magenta" aria-hidden />
-            ICIR Heatmap — form × hold (H1)
+            <span>
+              <Term id="icir">ICIR</Term> Heatmap — form × hold (H1)
+            </span>
           </CardTitle>
           <CardDescription>
-            แต่ละช่อง = Information-ICIR ของสัญญาณโมเมนตัม form {FORMS[0]}–{FORMS[FORMS.length - 1]} วัน ถือ {HOLDS[0]}–
+            แต่ละช่อง = Information-ICIR ของสัญญาณ<Term id="momentum">โมเมนตัม</Term> form {FORMS[0]}–{FORMS[FORMS.length - 1]} วัน ถือ {HOLDS[0]}–
             {HOLDS[HOLDS.length - 1]} วัน (form 160/300 ทดสอบเฉพาะถือ 10 วัน)
           </CardDescription>
         </CardHeader>
@@ -771,7 +774,7 @@ export default function EvidenceTab() {
                   ) : (
                     weights.map(({ tf, w }) => (
                       <div key={tf} className="flex items-center gap-2">
-                        <span className={cn("w-10 shrink-0 font-mono text-[11px]", w > 0 ? "text-foreground/80" : "text-slate-600")}>{tf}D</span>
+                        <span className={cn("w-10 shrink-0 font-mono text-[11px]", w > 0 ? "text-foreground/80" : "text-muted-foreground")}>{tf}D</span>
                         <div className="h-5 min-w-0 flex-1 overflow-hidden rounded bg-foreground/[0.06]">
                           {w > 0 && (
                             <div
@@ -781,7 +784,7 @@ export default function EvidenceTab() {
                           )}
                         </div>
                         <span
-                          className={cn("w-12 shrink-0 text-right font-mono text-[11px]", w > 0 ? "text-neon-cyan" : "text-slate-600")}
+                          className={cn("w-12 shrink-0 text-right font-mono text-[11px]", w > 0 ? "text-neon-cyan" : "text-muted-foreground")}
                         >
                           {(w * 100).toFixed(0)}%
                         </span>
@@ -833,7 +836,7 @@ export default function EvidenceTab() {
                     {cfg.updatedBy && (
                       <Badge
                         variant="outline"
-                        className="border-neon-purple/40 bg-neon-purple/10 font-mono text-[10px] text-[#8b5cf6]"
+                        className="border-neon-purple/40 bg-neon-purple/10 font-mono text-[10px] text-neon-purple"
                       >
                         updatedBy: {cfg.updatedBy}
                       </Badge>
@@ -863,7 +866,7 @@ export default function EvidenceTab() {
                               </Badge>
                             ))}
                             {h.note && <span className="min-w-0 text-[11px] text-muted-foreground">{h.note}</span>}
-                            {h.updatedBy && <span className="ml-auto font-mono text-[10px] text-slate-600">{h.updatedBy}</span>}
+                            {h.updatedBy && <span className="ml-auto font-mono text-[10px] text-muted-foreground">{h.updatedBy}</span>}
                           </li>
                         )
                       })}

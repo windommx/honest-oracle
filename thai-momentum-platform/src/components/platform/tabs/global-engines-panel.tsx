@@ -98,6 +98,8 @@ const STAT_LABELS: Record<string, string> = {
   barrierUp: "กำแพงบน",
   barrierDn: "กำแพงล่าง",
   horizon: "กำแพงเวลา (แท่ง)",
+  momICIR: "ICIR โมเมนตัมดิบ (ฐานเทียบ)",
+  fipVsMomICIR: "ส่วนเพิ่มจาก continuity (ΔICIR)",
 }
 
 const NUMBER_KEYS = new Set([
@@ -106,7 +108,7 @@ const NUMBER_KEYS = new Set([
   "lastWeight", "csadPct", "spread", "tSpread", "nSamples", "pctTp", "pctSl",
   "pctTimeout", "evAfterCost", "avgHoldBars", "pStressNow", "fwdStress", "fwdCalm",
   "nAssets", "obsDays", "shrinkDelta", "effectiveN", "topWeight", "avgCorr",
-  "barrierUp", "barrierDn", "horizon",
+  "barrierUp", "barrierDn", "horizon", "momICIR", "fipVsMomICIR",
 ])
 
 function fmtStat(key: string, v: number | string): string {

@@ -25,15 +25,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { cn } from "@/lib/utils"
-
-const TOOLTIP_STYLE = {
-  backgroundColor: "#ffffff",
-  border: "1px solid #ece3cf",
-  borderRadius: 12,
-  fontSize: 12,
-  color: "#0f172a",
-  boxShadow: "0 4px 10px rgba(16,24,40,0.08)",
-} as const
+import ScrollBox from "../scroll-box"
+import { Term } from "../glossary"
+import { AXIS_TICK, CHART, TOOLTIP_STYLE } from "../chart-theme"
 
 function labelBadge(label: SignalsResponse["label"]) {
   if (label === "risk_on")
@@ -60,7 +54,7 @@ function fmtShare(v: number | null | undefined): string {
 function BreadthHeatmap({ market }: { market: SignalsResponse["market"] }) {
   const rows = market.slice(-60)
   return (
-    <div className="overflow-x-auto">
+    <ScrollBox className="overflow-x-auto" label="Breadth heatmap 60 วัน (เลื่อนดูได้)">
       <div className="grid gap-px bg-foreground/[0.06]" style={{ gridTemplateColumns: "72px repeat(4,1fr)", minWidth: 480 }}>
         <div className="bg-card px-2 py-1 text-[10px] text-muted-foreground">วันที่</div>
         {[">MA20", ">MA50", ">MA200", "thrust5"].map((h) => (
@@ -91,7 +85,7 @@ function BreadthHeatmap({ market }: { market: SignalsResponse["market"] }) {
         เขียวเข้มทั้งแถว = bull regime · MA20 เขียวแต่ MA200 แดง = rally ใน bear (ระวัง) · ทุกคอลัมน์แดง = cash is
         king — breadth breakdown มักนำหน้า SET 1-3 วัน
       </p>
-    </div>
+    </ScrollBox>
   )
 }
 
@@ -102,29 +96,37 @@ function MfdScatter({ data }: { data: SignalsResponse["stockToday"] }) {
     x: s.priceRank,
     y: s.flowRank,
     fill:
-      s.mfd > 0.45 ? "#e11d48" : s.mfd < -0.3 ? "#059669" : "#64748b",
+      s.mfd > 0.45 ? CHART.rose : s.mfd < -0.3 ? CHART.green : CHART.slate,
   }))
+  const dist = points.filter((p) => p.mfd > 0.45).length
+  const accum = points.filter((p) => p.mfd < -0.3).length
   return (
     <div>
+      {/* จุดกระจายของ Recharts มี role="img" ไม่มีชื่อ — ซ่อนจาก screen reader แล้วสรุปเป็นข้อความแทน */}
+      <p className="sr-only">
+        กราฟกระจาย {points.length} หุ้น: แกนนอน = อันดับโมเมนตัมราคา แกนตั้ง = อันดับเงินไหล · distribution (MFD สูง) {dist} ตัว ·
+        accumulation (MFD ติดลบ) {accum} ตัว
+      </p>
+      <div aria-hidden="true">
       <ResponsiveContainer width="100%" height={300}>
         <ScatterChart margin={{ top: 8, right: 12, bottom: 4, left: 0 }}>
           <XAxis
             type="number"
             dataKey="x"
             domain={[0, 1]}
-            tick={{ fontSize: 10, fill: "#64748b" }}
-            label={{ value: "Price momentum rank (ret20)", fontSize: 10, fill: "#64748b", position: "insideBottom", offset: -2 }}
+            tick={AXIS_TICK}
+            label={{ value: "Price momentum rank (ret20)", fontSize: 10, fill: CHART.axis, position: "insideBottom", offset: -2 }}
           />
           <YAxis
             type="number"
             dataKey="y"
             domain={[0, 1]}
-            tick={{ fontSize: 10, fill: "#64748b" }}
-            label={{ value: "Money-flow rank", fontSize: 10, fill: "#64748b", angle: -90, position: "insideLeft" }}
+            tick={AXIS_TICK}
+            label={{ value: "Money-flow rank", fontSize: 10, fill: CHART.axis, angle: -90, position: "insideLeft" }}
           />
           <ZAxis range={[60, 60]} />
-          <ReferenceLine x={0.5} stroke="rgba(100,116,139,0.35)" />
-          <ReferenceLine y={0.5} stroke="rgba(100,116,139,0.35)" />
+          <ReferenceLine x={0.5} stroke={CHART.ref} />
+          <ReferenceLine y={0.5} stroke={CHART.ref} />
           <Tooltip
             contentStyle={TOOLTIP_STYLE}
             content={({ payload }) => {
@@ -141,13 +143,14 @@ function MfdScatter({ data }: { data: SignalsResponse["stockToday"] }) {
               )
             }}
           />
-          <Scatter data={points} fill="#64748b" shape="circle" />
+          <Scatter data={points} fill={CHART.slate} shape="circle" />
         </ScatterChart>
       </ResponsiveContainer>
+      </div>
       <div className="mt-1 flex flex-wrap gap-3 text-xs text-muted-foreground">
-        <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-neon-rose" /> ขวา-ล่าง = distribution (block)</span>
-        <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-neon-green" /> ซ้าย-บน = accumulation (boost เมื่อผ่าน IC)</span>
-        <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-slate-500" /> ปกติ</span>
+        <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-neon-rose" aria-hidden /> ขวา-ล่าง = distribution (block)</span>
+        <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-neon-green" aria-hidden /> ซ้าย-บน = accumulation (boost เมื่อผ่าน IC)</span>
+        <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-muted-foreground" aria-hidden /> ปกติ</span>
       </div>
     </div>
   )
@@ -167,8 +170,8 @@ function SectorStream({ sectors }: { sectors: SignalsResponse["sectors"] }) {
   return (
     <ResponsiveContainer width="100%" height={300}>
       <AreaChart data={data} margin={{ top: 8, right: 12, bottom: 4, left: 0 }}>
-        <XAxis dataKey="date" tick={{ fontSize: 10, fill: "#64748b" }} interval={29} />
-        <YAxis tickFormatter={(v: number) => `${v.toFixed(0)}%`} tick={{ fontSize: 10, fill: "#64748b" }} width={44} />
+        <XAxis dataKey="date" tick={AXIS_TICK} interval={29} />
+        <YAxis tickFormatter={(v: number) => `${v.toFixed(0)}%`} tick={AXIS_TICK} width={44} />
         <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v: number) => `${Number(v).toFixed(1)}%`} />
         <Legend wrapperStyle={{ fontSize: 10 }} />
         {sectors.map((s, i) => (
@@ -227,10 +230,13 @@ export default function SignalsTab() {
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="flex items-center gap-2 text-base">
-            <Activity className="h-4 w-4 text-neon-green" aria-hidden /> Regime Composite — สัญญาณระดับตลาด
+            <Activity className="h-4 w-4 text-neon-green" aria-hidden />
+            <span>
+              <Term id="regime">Regime</Term> Composite — สัญญาณระดับตลาด
+            </span>
           </CardTitle>
           <CardDescription>
-            0.35·breadthZ + 0.25·crossZ + 0.20·(1−2·volPct) + 0.20·overlapZ → gross budget ไหลต่อเนื่องแทน binary
+            0.35·breadthZ + 0.25·crossZ + 0.20·(1−2·volPct) + 0.20·overlapZ → <Term id="gross">gross budget</Term> ไหลต่อเนื่องแทน binary
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-wrap items-center gap-4">
@@ -269,7 +275,9 @@ export default function SignalsTab() {
         {/* ---------- MFD Scatter ---------- */}
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-base">💸 Money Flow Divergence (วันล่าสุด {d.latest})</CardTitle>
+            <CardTitle className="text-base">
+              💸 Money Flow Divergence (<Term id="mfd">MFD</Term>) — วันล่าสุด {d.latest}
+            </CardTitle>
             <CardDescription>
               MFD = rank(ราคา) − rank(เงินไหล) — distribution นำราคาลง 2-4 สัปดาห์ / accumulation นำราคาขึ้น
             </CardDescription>
@@ -303,7 +311,9 @@ export default function SignalsTab() {
       {/* ---------- Breadth Heatmap ---------- */}
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-base">🌡️ Market Breadth Heatmap (60 วัน)</CardTitle>
+          <CardTitle className="text-base">
+            🌡️ Market <Term id="breadth">Breadth</Term> Heatmap (60 วัน)
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <BreadthHeatmap market={d.market} />
@@ -314,10 +324,12 @@ export default function SignalsTab() {
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="flex flex-wrap items-center justify-between gap-2 text-base">
-            <span>🔬 Signal IC Report — สอบสัญญาณก่อนให้สิทธิ์ออกเสียง</span>
+            <span>
+              🔬 Signal <Term id="ic">IC</Term> Report — สอบสัญญาณก่อนให้สิทธิ์ออกเสียง
+            </span>
             <span className="flex items-center gap-2">
               <Select value={hold} onValueChange={setHold}>
-                <SelectTrigger className="h-8 w-[110px]" aria-label="hold period">
+                <SelectTrigger className="h-8 w-[110px]" aria-label="ระยะถือ (hold period)">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -353,12 +365,22 @@ export default function SignalsTab() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>signal</TableHead>
-                      <TableHead>meanIC</TableHead>
-                      <TableHead>ICIR</TableHead>
-                      <TableHead>t</TableHead>
+                      <TableHead>
+                        <Term id="ic">meanIC</Term>
+                      </TableHead>
+                      <TableHead>
+                        <Term id="icir">ICIR</Term>
+                      </TableHead>
+                      <TableHead>
+                        <Term id="t-stat">t</Term>
+                      </TableHead>
                       <TableHead>n</TableHead>
-                      <TableHead>hit</TableHead>
-                      <TableHead>verdict</TableHead>
+                      <TableHead>
+                        <Term id="hit-rate">hit</Term>
+                      </TableHead>
+                      <TableHead>
+                        <Term id="verdict">verdict</Term>
+                      </TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -409,7 +431,9 @@ export default function SignalsTab() {
       {/* ---------- A/B Shadow ---------- */}
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-base">⚖️ A/B Shadow — กฎเดิม (lite) vs กฎใหม่ (lite+v2)</CardTitle>
+          <CardTitle className="text-base">
+            ⚖️ <Term id="ab-test">A/B Shadow</Term> — กฎเดิม (lite) vs กฎใหม่ (lite+v2)
+          </CardTitle>
           <CardDescription>{ab.data?.message ?? "กติกาโปรโมท: paired n≥100 และ meanDiff > 0 หลัง cost 55bps"}</CardDescription>
         </CardHeader>
         <CardContent>

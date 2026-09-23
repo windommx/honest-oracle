@@ -1,11 +1,14 @@
 // POST /api/feed/ingest — ทางเข้า JSON สำหรับสคริปต์ภายนอก (settfex / Settrade Open API / อื่น ๆ)
-// body: FeedIngestRequest { source, rows: [{date,symbol,close,open?,high?,low?,val?|volume?}], sectors?, replaceDemo? }
+// body: FeedIngestRequest { source, rows: [{date,symbol,close,open?,high?,low?,val?|volume?}], sectors?, replaceDemo?, confirm? }
 // ส่งเป็นชุดได้ (สคริปต์แบ่ง 20,000 แถว/ครั้ง) — replaceDemo ควรใส่เฉพาะชุดแรก
+// replaceDemo ล้างข้อมูลตลาดทั้งหมด (ไม่ใช่เฉพาะ demo) → ถ้ามีข้อมูลอยู่ต้องส่ง confirm:"REPLACE" (ไม่งั้น 409)
+// และระบบสำรอง DB (data/backups) ก่อนลบทุกครั้ง
 
 import { NextResponse } from "next/server"
 import { normalizeFeedRows } from "@/lib/feed/rows"
 import { assessSymbol, flagStale } from "@/lib/feed/quality"
 import { CROSS_ASSET_CLEARED_NOTE, ingestFeed } from "@/lib/feed/ingest"
+import { guardDestructive, type BackupInfo } from "@/lib/security/destructive-guard"
 import type { ParsedCsvRow } from "@/lib/momentum/core"
 import type { FeedFetchResponse, FeedIngestRequest } from "@/lib/momentum/contracts"
 
@@ -43,17 +46,25 @@ export async function POST(req: Request) {
     }
     const symbols = [...bySym.keys()]
     const reports = flagStale(symbols.map((s) => assessSymbol(s, bySym.get(s) ?? [])))
+    const replaceDemo = body.replaceDemo === true
+    let backup: BackupInfo | null = null
+    if (replaceDemo) {
+      const guard = await guardDestructive("replaceDemo", body)
+      if (!guard.ok) return guard.response
+      backup = guard.backup
+    }
     const res = await ingestFeed({
       rows,
       source,
       actor: "system",
-      replaceDemo: body.replaceDemo === true,
+      replaceDemo,
       sectors: body.sectors && typeof body.sectors === "object" ? body.sectors : undefined,
     })
     const notes: string[] = []
     if (dropped > 0) notes.push(`ทิ้งแถวที่ไม่ถูกต้อง ${dropped.toLocaleString()} แถว`)
     if (res.clearedCrossAsset) notes.push(CROSS_ASSET_CLEARED_NOTE)
-    return NextResponse.json<FeedFetchResponse>({
+    if (backup) notes.push(`สำรองฐานข้อมูลก่อนล้างไว้ที่ ${backup.file}`)
+    return NextResponse.json<FeedFetchResponse & { backup?: BackupInfo | null }>({
       ok: true,
       source,
       requested: symbols.length,
@@ -69,6 +80,7 @@ export async function POST(req: Request) {
       },
       sectorRows: res.sectorRows,
       replacedDemo: res.replacedDemo,
+      ...(replaceDemo ? { backup } : {}),
       notes,
       tookMs: Date.now() - t0,
       message: `รับข้อมูลจาก ${source} ${symbols.length} ตัว ${rows.length.toLocaleString()} แถว → สร้างโผ ${res.ingest.snapDates.length} วัน${dropped > 0 ? ` (ทิ้งแถวเสีย ${dropped.toLocaleString()})` : ""}${res.clearedCrossAsset ? " · ล้าง CrossAsset จำลองแล้ว — รัน bun run fetch:cross เพื่อใช้ข้อมูลจริง" : ""}`,

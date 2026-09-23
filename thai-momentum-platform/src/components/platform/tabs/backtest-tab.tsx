@@ -41,15 +41,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { cn } from "@/lib/utils"
-
-const TOOLTIP_STYLE = {
-  backgroundColor: "#ffffff",
-  border: "1px solid #ece3cf",
-  borderRadius: 12,
-  fontSize: 12,
-  color: "#0f172a",
-  boxShadow: "0 4px 10px rgba(16,24,40,0.08)",
-} as const
+import { AXIS_TICK_11, CHART, TOOLTIP_LABEL_STYLE, TOOLTIP_STYLE } from "../chart-theme"
 
 const DEFAULTS: BacktestParams = {
   k: 3,
@@ -340,30 +332,30 @@ export default function BacktestTab() {
                       dataKey="date"
                       tickFormatter={(v: string) => String(v).slice(5)}
                       minTickGap={40}
-                      tick={{ fontSize: 11 }}
+                      tick={AXIS_TICK_11}
                     />
                     <YAxis
                       domain={["auto", "auto"]}
                       tickFormatter={(v: number) => `${((v - 1) * 100).toFixed(0)}%`}
                       width={52}
-                      tick={{ fontSize: 11 }}
+                      tick={AXIS_TICK_11}
                     />
                     <Tooltip
                       contentStyle={TOOLTIP_STYLE}
-                      labelStyle={{ color: "#64748b" }}
-                      cursor={{ stroke: "rgba(100,116,139,0.35)", strokeDasharray: "3 3" }}
+                      labelStyle={TOOLTIP_LABEL_STYLE}
+                      cursor={{ stroke: CHART.ref, strokeDasharray: "3 3" }}
                     />
                     <Legend />
                     <Line
                       dataKey="strategy"
-                      stroke="#059669"
+                      stroke={CHART.green}
                       strokeWidth={2}
                       dot={false}
                       name="กลยุทธ์"
                     />
                     <Line
                       dataKey="benchmark"
-                      stroke="#64748b"
+                      stroke={CHART.slate}
                       strokeDasharray="5 5"
                       dot={false}
                       name="Benchmark"
@@ -423,6 +415,10 @@ export default function BacktestTab() {
                                 className="border-neon-rose/40 text-neon-rose"
                               >
                                 stop
+                              </Badge>
+                            ) : t.delisted ? (
+                              <Badge variant="outline" className="border-neon-amber/40 text-neon-amber" title={t.note}>
+                                หยุดซื้อขาย
                               </Badge>
                             ) : (
                               <Badge variant="outline" className="text-muted-foreground">

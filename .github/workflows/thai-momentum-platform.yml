@@ -1,0 +1,93 @@
+name: thai-momentum-platform
+
+# แอป thai-momentum-platform/ (Next.js 16 + Bun + Prisma/SQLite + Python LAB KIT) — root `npm run verify`
+# (web-tests.yml) ไม่ครอบคลุมโฟลเดอร์นี้ จึงมี gate ของตัวเอง: ทุกคำสั่งรันได้เหมือนกันบนเครื่อง
+# (cd thai-momentum-platform && <คำสั่งเดียวกัน>) — CI เขียวหมายถึงสิ่งเดียวกับรันเองเขียว
+on:
+  push:
+    paths:
+      - 'thai-momentum-platform/**'
+      - '.github/workflows/thai-momentum-platform.yml'
+  pull_request:
+    paths:
+      - 'thai-momentum-platform/**'
+      - '.github/workflows/thai-momentum-platform.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: thai-momentum-platform-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+  NEXT_TELEMETRY_DISABLED: '1'
+  PRISMA_HIDE_UPDATE_MESSAGE: '1'
+
+defaults:
+  run:
+    working-directory: thai-momentum-platform
+
+jobs:
+  web:
+    runs-on: ubuntu-latest
+    name: web (typecheck · lint · test · build · API smoke · audit)
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: '1.3.11'
+      # server โปรดักชัน (.next/standalone/server.js) รันด้วย node — Bun 1.3.11 รัน build ของ Next 16.3.6 ไม่ได้
+      # (ทุก route 500 "Expected CommonJS module to have a function wrapper") · Docker image ใช้ node 22 เช่นกัน
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Cache bun dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: bun-${{ runner.os }}-${{ hashFiles('thai-momentum-platform/bun.lock') }}
+          restore-keys: |
+            bun-${{ runner.os }}-
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      - name: Prisma generate
+        run: bunx prisma generate
+      - name: Typecheck
+        run: bunx tsc --noEmit --incremental false
+      - name: Lint
+        run: bun run lint
+      # preload src/test/setup.ts สร้าง SQLite ชั่วคราวจาก prisma/schema.prisma — ไม่แตะ db/custom.db
+      - name: Unit + scenario tests
+        run: bun test src
+      - name: Ops tests (backup/restore CLI · scheduler)
+        run: bun test ./scripts ./deploy
+      - name: Build (standalone)
+        run: bun run build
+        env:
+          # build ไม่ควรต่อ DB (route เป็น dynamic ทั้งหมด) — ไฟล์ชั่วคราวทำให้ล้มชัดเจนถ้ามีหน้าใดเรียก DB ตอน build
+          DATABASE_URL: file:${{ runner.temp }}/build.db
+      # เปิด server จริงบนสำเนาของ db/custom.db → GET ทุก route: 200 + JSON เคร่งครัด (ไม่มี NaN/Infinity)
+      # + /api/research/importance ครั้งที่สองต้องมาจาก cache (X-Cache: HIT)
+      - name: API smoke test (standalone server)
+        run: bun deploy/smoke.ts
+      - name: Dependency audit (fail on critical)
+        run: bun audit --audit-level=critical
+
+  python:
+    runs-on: ubuntu-latest
+    name: lab kit (python 3.11)
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install numpy + pandas
+        run: pip install numpy pandas
+      - name: thai_fit · apply_verdict · preflight · context_updater
+        run: python3 -m unittest discover -s lab/tests_stops
+      - name: state_gen · synth_state · nimble_runner · eval · dashboard
+        run: python3 lab/tests_lab/test_lab_kit.py

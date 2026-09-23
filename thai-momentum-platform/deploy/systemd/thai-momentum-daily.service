@@ -1,0 +1,28 @@
+# systemd — สายพานปิดตลาดรายวัน (bun scripts/daily.ts) · เรียกจาก thai-momentum-daily.timer
+# ลองใหม่เฉพาะ exit code ชั่วคราว (1 ไม่คาดคิด · 3 ดึงข้อมูลไม่ได้ · 5 ข้อมูลยังไม่ขยับ) ทุก 20 นาที สูงสุด 3 ครั้ง
+# 2 argument ผิด / 4 คุณภาพข้อมูลวิกฤต / 6 สมอง Jev ล้ม = ไม่ลองซ้ำ ต้องมีคนดู: journalctl -u thai-momentum-daily
+[Unit]
+Description=Thai Momentum Platform — daily SET close pipeline
+After=network-online.target thai-momentum.service
+Wants=network-online.target
+StartLimitIntervalSec=3h
+StartLimitBurst=4
+
+[Service]
+Type=oneshot
+User=tmp
+Group=tmp
+WorkingDirectory=/opt/thai-momentum-platform
+EnvironmentFile=/etc/thai-momentum-platform.env
+Environment=TMP_BACKUP_DIR=/var/lib/thai-momentum-platform/backups
+ExecStart=/usr/local/bin/bun scripts/daily.ts
+TimeoutStartSec=90min
+Restart=on-failure
+RestartSec=20min
+RestartPreventExitStatus=2 4 6
+StateDirectory=thai-momentum-platform
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/thai-momentum-platform/data

@@ -4,9 +4,16 @@
 // - buildMomentumSignals(k)      : หุ้นที่ติดโผ >= k timeframes พร้อมกัน
 // - buildNaiveSignals(topN)      : naive baseline = Top-N โดย ret20 (กรองสภาพคล่องเดียวกัน)
 // - valuePivot()                 : matrix มูลค่าซื้อขาย (cache เหมือน closePivot)
+//
+// กติกาการออก (ตรงกับ live Jev — docs/research/methodology.md):
+//   stop  : ราคาปิด ≤ stop → ขายที่ "ราคาปิดวันนั้น" (gap ลงลึกกว่า stop ก็รับผลจริง ไม่ใช่ราคา stop พอดี)
+//   time  : ถือครบ hold วันทำการ → ขายที่ราคาปิด (วันที่ไม่มีราคา → ออกวันแรกที่มีราคา)
+//   ไม่มีราคา: ไม่มีราคาติดกันครบ NO_PRICE_EXIT_DAYS (10) วันทำการ → บังคับปิดที่ราคาปิดล่าสุดที่มี ณ วันที่ 10
+//          (ตัดสินเมื่อ 2026-09-23 — เดิมหุ้นที่ถูกพัก/เพิกถอนค้างในพอร์ตตลอดไปและกินช่อง maxPos)
 // ============================================================
 
 import { db } from "@/lib/db"
+import { NO_PRICE_EXIT_DAYS, noPriceExitReason } from "@/lib/jev/exit"
 import { MIN_VALUE, closePivot, snapshotMembers, type Pivot } from "./core"
 import type { BacktestParams, BacktestStats, EquityPoint, TradeRow } from "./contracts"
 
@@ -108,16 +115,28 @@ interface PosState {
   ei: number // entry date index
   entry: number
   stop: number
-  prev: number
+  prev: number // ราคาปิดล่าสุดที่มีจริง (อ้างอิง mark-to-market + ราคาบังคับปิดเมื่อหยุดซื้อขาย)
+  li: number // index วันล่าสุดที่มีราคา
+}
+
+/**
+ * แถวเทรดของ backtest — TradeRow (contracts) + ธงบังคับปิดเพราะไม่มีราคา
+ * reason ใน contracts มีแค่ "stop" | "time" → การบังคับปิดหุ้นหยุดซื้อขายลง reason "time" (หมดเวลารอราคา)
+ * พร้อม delisted = true และ note ภาษาไทย (ค้น/นับแยกได้ — ไม่ปนกับ time exit ปกติ)
+ */
+export interface BacktestTradeRow extends TradeRow {
+  delisted?: boolean
+  note?: string
 }
 
 export interface BacktestFull {
   params: BacktestParams
   equity: EquityPoint[]
   stats: BacktestStats
-  trades: TradeRow[]
+  trades: BacktestTradeRow[] // 200 เทรดล่าสุด (ส่งให้ UI)
   dailyRet: number[] // ผลตอบแทนรายวันเต็มชุด (สำหรับงานวิจัย — ไม่ได้ส่งให้ UI)
   nDates: number
+  delistExits: number // จำนวนเทรดที่ถูกบังคับปิดเพราะไม่มีราคาครบ NO_PRICE_EXIT_DAYS วัน (ทั้งชุด)
 }
 
 export async function runBacktest(
@@ -136,7 +155,8 @@ export async function runBacktest(
   let pending: Set<string> = EMPTY
   const equity: number[] = [1]
   const bench: number[] = [1]
-  const trades: TradeRow[] = []
+  const trades: BacktestTradeRow[] = []
+  let delistExits = 0
   let exposureSum = 0
 
   for (let i = 1; i < N; i++) {
@@ -150,7 +170,7 @@ export async function runBacktest(
         if (s === undefined) continue
         const pxi = px[i][s]
         if (!isFinite(pxi) || pxi <= 0) continue
-        pos.set(sym, { s, ei: i, entry: pxi, stop: pxi * (1 - stopPct), prev: pxi })
+        pos.set(sym, { s, ei: i, entry: pxi, stop: pxi * (1 - stopPct), prev: pxi, li: i })
         nEntries++
       }
       pending = EMPTY
@@ -164,11 +184,37 @@ export async function runBacktest(
       dayR += (pxn / p.prev - 1) / maxPos
     }
 
-    // (3) exits (stop/time)
-    const exits: { sym: string; p: PosState; pxn: number; retPct: number; reason: "stop" | "time" }[] = []
+    // (3) exits (stop/time/ไม่มีราคา)
+    // stop ตัดสินจากราคาปิดและขายที่ "ราคาปิดวันนั้น" (pxn ≤ stop — gap ลงลึกกว่า stop ได้ผลจริงที่แย่กว่า −stopPct)
+    // = วิธีเดียวกับ live Jev (ปิด ณ ราคาปิด) และ walk-forward ของ Bayes stop (fill="close")
+    const exits: {
+      sym: string
+      p: PosState
+      pxn: number
+      retPct: number
+      reason: "stop" | "time"
+      delisted?: boolean
+      noPriceDays?: number
+    }[] = []
     for (const [sym, p] of pos) {
       const pxn = px[i][p.s]
-      if (!isFinite(pxn)) continue
+      if (!isFinite(pxn)) {
+        // หยุดซื้อขาย/ไม่มีราคาติดกันครบ NO_PRICE_EXIT_DAYS วันทำการ → บังคับปิด ณ วันนี้ที่ราคาปิดล่าสุดที่มี
+        // (mark-to-market ถึงราคานั้นไปแล้ว → วันนี้เหลือแค่ต้นทุนขาออก) · น้อยกว่านั้น = รอราคากลับมา
+        const gap = i - p.li
+        if (gap >= NO_PRICE_EXIT_DAYS) {
+          exits.push({
+            sym,
+            p,
+            pxn: p.prev,
+            retPct: (p.prev / p.entry - 1 - 2 * cost) * 100,
+            reason: "time",
+            delisted: true,
+            noPriceDays: gap,
+          })
+        }
+        continue
+      }
       if (pxn <= p.stop) {
         exits.push({ sym, p, pxn, retPct: (pxn / p.entry - 1 - 2 * cost) * 100, reason: "stop" })
       } else if (i - p.ei >= hold) {
@@ -177,7 +223,7 @@ export async function runBacktest(
     }
     for (const e of exits) {
       pos.delete(e.sym)
-      trades.push({
+      const row: BacktestTradeRow = {
         symbol: e.sym,
         entryDate: dates[e.p.ei],
         exitDate: dates[i],
@@ -185,16 +231,25 @@ export async function runBacktest(
         exitPx: e.pxn,
         ret: r2(e.retPct),
         reason: e.reason,
-      })
+      }
+      if (e.delisted) {
+        row.delisted = true
+        row.note = `${noPriceExitReason(e.noPriceDays ?? NO_PRICE_EXIT_DAYS)} (${dates[e.p.li]})`
+        delistExits++
+      }
+      trades.push(row)
     }
 
     // (3b) หักต้นทุนธุรกรรมจาก equity จริง (entry + exit ต่างกัน cost × 1 ครั้ง)
     dayR -= (cost * (nEntries + exits.length)) / maxPos
 
-    // (4) survivors อัปเดตราคาอ้างอิง
+    // (4) survivors อัปเดตราคาอ้างอิง + วันล่าสุดที่มีราคา
     for (const p of pos.values()) {
       const pxn = px[i][p.s]
-      if (isFinite(pxn)) p.prev = pxn
+      if (isFinite(pxn)) {
+        p.prev = pxn
+        p.li = i
+      }
     }
 
     // (5) exposure
@@ -294,5 +349,6 @@ export async function runBacktest(
     trades: trades.slice(-200),
     dailyRet,
     nDates: N,
+    delistExits,
   }
 }

@@ -24,6 +24,7 @@ import { fmtNum, fmtPct, useApi } from "@/hooks/use-api"
 import { TH_RISK, TH_STRATEGY } from "@/lib/config/thai"
 import type { PortfolioResponse } from "@/lib/momentum/contracts"
 import { cn } from "@/lib/utils"
+import { Term } from "../glossary"
 
 // ค่าจาก config/thai (single source of truth) — เดิม hardcode -10% / 10 สล็อต ไม่ตรงระบบจริง (-9% / 7)
 const RULES = [
@@ -103,7 +104,9 @@ export default function PortfolioTab() {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Effective N</CardTitle>
+            <CardTitle className="text-base">
+              <Term id="eff-n">Effective N</Term>
+            </CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
             <p className="text-2xl font-bold tabular-nums">
@@ -158,7 +161,7 @@ export default function PortfolioTab() {
                 เพื่อเริ่ม
               </p>
               <p className="text-xs text-muted-foreground">
-                ระบบเป็น PAPER MODE 100% — ไม่มีคำสั่งเข้าตลาดจริง
+                ระบบเป็น <Term id="paper">PAPER MODE</Term> 100% — ไม่มีคำสั่งเข้าตลาดจริง
               </p>
             </div>
           ) : (

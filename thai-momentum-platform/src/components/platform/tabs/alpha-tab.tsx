@@ -14,6 +14,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import ScrollBox from "../scroll-box"
 
 function statusBadge(status: EnginesResponse["engines"][0]["status"]) {
   if (status === "ACTIVE")
@@ -25,7 +26,7 @@ function statusBadge(status: EnginesResponse["engines"][0]["status"]) {
 
 function actionBadge(a: PairsResponse["pairs"][0]["action"]) {
   if (a === "ENTER")
-    return <Badge className="border-neon-green/40 bg-neon-green text-white">ENTER</Badge>
+    return <Badge className="border-neon-green/40 bg-neon-green text-on-neon">ENTER</Badge>
   if (a === "STOP")
     return <Badge className="border-neon-rose/40 bg-neon-rose/10 text-neon-rose">STOP</Badge>
   if (a === "TAKE" || a === "TIME_EXIT")
@@ -65,7 +66,7 @@ function PairsCard() {
             {pairs.data.pairs.length === 0 ? (
               <p className="text-sm text-muted-foreground">ไม่มีคู่ที่ผ่านเกณฑ์ — engine อยู่โหมดรอ ไม่บังคับเทรด</p>
             ) : (
-              <div className="max-h-96 overflow-y-auto rounded-lg border border-border/60">
+              <ScrollBox className="max-h-96 overflow-y-auto rounded-lg border border-border/60" label="ตารางผลลัพธ์ (เลื่อนดูได้)">
                 <Table>
                   <TableHeader className="sticky top-0 bg-card">
                     <TableRow>
@@ -106,7 +107,7 @@ function PairsCard() {
                     })}
                   </TableBody>
                 </Table>
-              </div>
+              </ScrollBox>
             )}
           </>
         )}
@@ -192,7 +193,7 @@ function SyntheticCard() {
           ))}
         </div>
         <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
-          <Badge className={res.preferred === "synthetic" ? "bg-neon-green text-white" : ""}>
+          <Badge className={res.preferred === "synthetic" ? "bg-neon-green text-on-neon" : ""}>
             เลือก: {res.preferred === "synthetic" ? "SYNTHETIC" : "DIRECT FUTURES"}
           </Badge>
           <Badge variant="outline" className="font-mono">
@@ -332,7 +333,7 @@ function BasisCard() {
           ))}
         </div>
         <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
-          <Badge className={res.action === "SHORT_SPREAD" ? "bg-neon-green text-white" : res.action === "LONG_SPREAD" ? "bg-neon-green text-white" : ""}>
+          <Badge className={res.action === "SHORT_SPREAD" ? "bg-neon-green text-on-neon" : res.action === "LONG_SPREAD" ? "bg-neon-green text-on-neon" : ""}>
             {res.action}
           </Badge>
           <Badge variant="outline" className="font-mono">

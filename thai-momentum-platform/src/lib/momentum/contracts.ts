@@ -136,6 +136,9 @@ export interface TradeRow {
   exitPx: number
   ret: number // % หลังต้นทุน
   reason: "stop" | "time"
+  /** บังคับปิดเพราะไม่มีราคาครบ NO_PRICE_EXIT_DAYS วันทำการ (reason = "time") — 2026-09-23 */
+  delisted?: boolean
+  note?: string
 }
 export interface EquityPoint { date: string; strategy: number; benchmark: number }
 export interface BacktestResult {
@@ -656,6 +659,10 @@ export interface StopPosteriorDto {
   evOpt: number | null
   evNoStop: number // baseline ไม่มี stop
   evCurve: { s: number; ev: number }[] // E[R|s] ทุกระดับ (สำหรับกราฟ)
+  /** ราคาขายเมื่อหลุด stop: close = ราคาปิดวันแรกที่ทะลุ (ตรง live) · level = ราคา stop พอดี (ใช้เทียบเท่านั้น) */
+  fill?: "close" | "level"
+  /** เทรดที่ไม่มี path รายวันพอ → ไม่ให้เครดิต stop (ใช้ EV ของการถือ) */
+  nNoPathEvidence?: number
 }
 
 export interface StopArmRow {

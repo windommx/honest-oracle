@@ -2,6 +2,7 @@
 // body: FeedFetchRequest { symbols, range?, adjusted?, replaceDemo?, sectors? }
 // - เครื่องที่เข้าเน็ตปกติ: ได้ข้อมูล → รายงานรายตัว → ingest → SymbolMeta → EventLog(ingest, source=yahoo)
 // - sandbox ที่บล็อก egress: ตอบ 502 พร้อมเหตุผลรายตัว + วิธีทางเลือก (CLI บนเครื่องผู้ใช้ / สคริปต์ Python)
+// - replaceDemo บน DB ที่มีข้อมูล: ต้องส่ง confirm:"REPLACE" (ไม่งั้น 409 ก่อนเริ่มดึง) และสำรอง DB ก่อนล้างเสมอ
 
 import { NextResponse } from "next/server"
 import { fetchYahooBatch, YAHOO_RANGES } from "@/lib/feed/yahoo"
@@ -9,6 +10,7 @@ import { flagStale } from "@/lib/feed/quality"
 import { CROSS_ASSET_CLEARED_NOTE, ingestFeed } from "@/lib/feed/ingest"
 import { parseSymbolList } from "@/lib/feed/universe"
 import { DEFAULT_FEED_RANGE } from "@/lib/feed/sources"
+import { checkDestructiveConfirmation, guardDestructive, type BackupInfo } from "@/lib/security/destructive-guard"
 import type { FeedFetchRequest, FeedFetchResponse, FeedRange } from "@/lib/momentum/contracts"
 
 export const dynamic = "force-dynamic"
@@ -39,6 +41,11 @@ export async function POST(req: Request) {
     const adjusted = body.adjusted !== false
     const replaceDemo = body.replaceDemo === true
     const sectors = body.sectors && typeof body.sectors === "object" ? body.sectors : undefined
+    // ตอบ 409 ทันทีก่อนเริ่มดึง Yahoo (ซึ่งอาจใช้หลายนาที) ถ้ายังไม่ได้ยืนยันการล้างข้อมูล
+    if (replaceDemo) {
+      const check = await checkDestructiveConfirmation("replaceDemo", body)
+      if (!check.ok) return check.response
+    }
 
     const batch = await fetchYahooBatch(symbols, range, { adjusted, deadline: t0 + FETCH_BUDGET_MS })
     const reports = flagStale(batch.reports)
@@ -76,8 +83,17 @@ export async function POST(req: Request) {
       )
     }
 
+    // ด่านเต็มตอนจะลบจริง: ตรวจยืนยันซ้ำ (ข้อมูลอาจเปลี่ยนระหว่างดึง) + สำรอง DB (สำรองไม่ได้ = ไม่ลบ)
+    let backup: BackupInfo | null = null
+    if (replaceDemo) {
+      const guard = await guardDestructive("replaceDemo", body)
+      if (!guard.ok) return guard.response
+      backup = guard.backup
+    }
+
     const res = await ingestFeed({ rows: batch.rows, source: "yahoo", actor: "human", replaceDemo, sectors })
     if (res.clearedCrossAsset) notes.push(CROSS_ASSET_CLEARED_NOTE)
+    if (backup) notes.push(`สำรองฐานข้อมูลก่อนล้างไว้ที่ ${backup.file}`)
     const okCount = reports.filter((r) => r.ok).length
     return NextResponse.json<FeedFetchResponse>({
       ok: true,

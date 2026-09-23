@@ -3,6 +3,7 @@ import { db } from "@/lib/db"
 import { closePivot } from "@/lib/momentum/core"
 import type { VerifyBucket, VerifyResponse } from "@/lib/momentum/contracts"
 import { forwardReturnPct } from "@/lib/portfolio/returns"
+import { mayPersistOnGet } from "@/lib/security/request-principal"
 
 export const dynamic = "force-dynamic"
 
@@ -10,6 +11,7 @@ const round3 = (x: number) => Math.round(x * 1000) / 1000
 
 // GET /api/verify?hold=10 → เติม outcome (forward return %) ให้ Q_ENTRY ที่ executed แล้ว
 // และสรุป calibration ของ conf เป็น bucket + Brier score
+// เขียน outcome ลง DB เฉพาะผู้ดูแลที่เรียกจากหน้าเว็บนี้/สคริปต์ — ผู้ชม/เว็บอื่นได้ผลที่คำนวณในหน่วยความจำ (ตัวเลขเท่ากัน)
 export async function GET(req: Request) {
   try {
     const url = new URL(req.url)
@@ -18,7 +20,9 @@ export async function GET(req: Request) {
 
     const pivot = await closePivot()
 
-    // 1) เติม outcome ให้ decision ที่ยังไม่มีผล
+    // 1) เติม outcome ให้ decision ที่ยังไม่มีผล (ไม่มีสิทธิ์บันทึก = เก็บไว้ในหน่วยความจำเพื่อสรุปผลรอบนี้)
+    const persist = mayPersistOnGet(req)
+    const computed = new Map<number, number>()
     const open = await db.decision.findMany({
       where: { question: "Q_ENTRY", executed: true, outcome: null },
     })
@@ -31,13 +35,14 @@ export async function GET(req: Request) {
       const fwd = forwardReturnPct(pivot.px, i, s, hold)
       if (fwd === null) continue
       const outcome = round3(fwd)
-      await db.decision.update({ where: { id: d.id }, data: { outcome } })
+      if (persist) await db.decision.update({ where: { id: d.id }, data: { outcome } })
+      else computed.set(d.id, outcome)
     }
 
-    // 2) bucket calibration จากทุก Q_ENTRY ที่มี outcome แล้ว
-    const scored = (
-      await db.decision.findMany({ where: { question: "Q_ENTRY", outcome: { not: null } } })
-    ).filter((r) => r.outcome !== null)
+    // 2) bucket calibration จากทุก Q_ENTRY ที่มี outcome แล้ว (+ ที่เพิ่งคำนวณแต่ไม่ได้บันทึก)
+    const stored = await db.decision.findMany({ where: { question: "Q_ENTRY", outcome: { not: null } } })
+    const fresh = open.filter((d) => computed.has(d.id)).map((d) => ({ ...d, outcome: computed.get(d.id) as number }))
+    const scored = [...stored, ...fresh].filter((r) => r.outcome !== null)
 
     const defs: { range: string; lo: number; hi: number; last: boolean }[] = [
       { range: "<0.50", lo: 0, hi: 0.5, last: false },

@@ -13,6 +13,8 @@ function Progress({
   return (
     <ProgressPrimitive.Root
       data-slot="progress"
+      // ส่ง value ให้ Root ด้วย — Radix จึงใส่ aria-valuenow (เดิมเป็น indeterminate ตลอด)
+      value={value}
       className={cn(
         "bg-primary/20 relative h-2 w-full overflow-hidden rounded-full",
         className

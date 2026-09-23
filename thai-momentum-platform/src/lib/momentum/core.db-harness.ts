@@ -155,12 +155,12 @@ async function routesScenario() {
   await db.crossAsset.createMany({ data: [{ date: "2026-06-01", asset: "SPX", close: 1500 }, { date: "2026-06-01", asset: "GOLD", close: 1100 }] })
   await db.setting.create({ data: { key: core.CROSS_ASSET_SOURCE_KEY, value: "synthetic" } })
   const feedRows = [null, ...dates.map((date, i) => ({ date, symbol: "KBANK", close: 150 + i, val: null, volume: 100000 }))]
-  const r1 = await feedIngest.POST(post({ source: "test", rows: feedRows, sectors: { KBANK: 1 }, replaceDemo: true }))
+  const r1 = await feedIngest.POST(post({ source: "test", rows: feedRows, sectors: { KBANK: 1 }, replaceDemo: true, confirm: "REPLACE" }))
   out.feedReplace = { status: r1.status, body: await r1.json(), crossLeft: await db.crossAsset.count(), val: (await db.rawDaily.findFirst({ where: { symbol: "KBANK" } }))?.val }
   // ข้อมูลจริงจาก fetch:cross (ป้าย yahoo) ต้องคงอยู่
   await db.crossAsset.create({ data: { date: "2026-06-01", asset: "SPX", close: 6000 } })
   await db.setting.upsert({ where: { key: core.CROSS_ASSET_SOURCE_KEY }, create: { key: core.CROSS_ASSET_SOURCE_KEY, value: "yahoo" }, update: { value: "yahoo" } })
-  const r2 = await feedIngest.POST(post({ source: "test", rows: feedRows.slice(1), replaceDemo: true }))
+  const r2 = await feedIngest.POST(post({ source: "test", rows: feedRows.slice(1), replaceDemo: true, confirm: "REPLACE" }))
   out.feedKeepReal = { status: r2.status, crossLeft: await db.crossAsset.count() }
   out.feedEmpty = (await feedIngest.POST(post({ rows: [] }))).status
   return out

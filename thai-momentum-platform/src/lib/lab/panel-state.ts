@@ -34,6 +34,34 @@ export interface PanelRow {
   liq5: number
 }
 
+/**
+ * G4 trigger proxy จาก close 3 จุดล่าสุด (prev2 → prev → close) — ไม่มี OHLC จริง
+ *   ret1 = close/prev − 1 (แท่งวันนี้) · ret2 = prev/prev2 − 1 (แท่งก่อนหน้า)
+ *
+ * T1 = แท่งปฏิเสธราคาต่ำ (ไส้ล่างยาว + ปิดส่วนบนของช่วง — hammer/pin bar ที่โซน) แบบ 2 แท่ง:
+ *   "ไส้" = แท่งก่อนหน้าลงลึก ≥ 2% (ret2 ≤ −0.02 — ราคาไปทดสอบโซน) แล้ววันนี้ยืนเหนือ 0.995× ราคาปิด
+ *   ของแท่งนั้น (ไม่ไหลต่อ = ปฏิเสธราคาต่ำ) → wick_ratio 2.5 · และปิดแข็ง close_pos ≥ 0.67 (ret1 ≥ +4.25%)
+ *   แก้เมื่อ 2026-09-23: เดิมข้อแรกใช้ ret1 ≤ −0.02 คู่กับ close > 0.995·prev ซึ่งเป็นไปไม่ได้พร้อมกัน
+ *   (ret1 ≤ −2% ⇒ close ≤ 0.98·prev) → wick_ratio = 1.2 เสมอ และ T1 ไม่เคยเกิด — เจตนาตามหัวข้อ
+ *   "proxy จาก 2 แท่ง" คือให้แท่งก่อนหน้าเป็นไส้ จึงใช้ ret2 ในข้อแรก
+ * T2 = แท่งโมเมนตัมกลับตัว: วันนี้ขึ้น > 3% หลังวันลง (ret2 < 0) — เช็กหลัง T1 (T1 เข้มกว่า: ลงลึกกว่า+ปิดแรงกว่า)
+ * สูตรนี้จุดเดียว — rule engine และ Nimble เห็นค่าเดียวกัน (กัน train/serve skew) · lab/state_gen.py ใช้ OHLC จริง
+ * + กฎ S1–S3 คนละเครื่องยนต์ (lab/README.md) จึงไม่มีสูตรคู่ที่ต้องแก้ตาม
+ */
+export function triggerProxy(
+  ret1: number,
+  ret2: number,
+  close: number,
+  prev: number
+): { wickRatio: number; closePos: number; pattern: StatePacket['trigger']['pattern'] } {
+  const wickRatio = ret2 <= -0.02 && close > prev * 0.995 ? 2.5 : 1.2
+  const closePos = clamp(0.5 + ret1 * 4, 0, 1)
+  let pattern: StatePacket['trigger']['pattern'] = null
+  if (wickRatio >= 2 && closePos >= 0.67) pattern = 'T1'
+  else if (ret1 > 0.03 && ret2 < 0) pattern = 'T2'
+  return { wickRatio, closePos, pattern }
+}
+
 export async function buildPanelStates(limit?: number): Promise<PanelStates> {
   // โหลด RawDaily ครั้งเดียวต่อ request (เรียง date, symbol) — ตามสเปก
   const rows = await db.rawDaily.findMany({
@@ -187,11 +215,7 @@ export function panelStatesFromRows(rows: PanelRow[], limit?: number): PanelStat
     const levelType = close <= minClose20 * 1.02 ? 'pullback' : 'breakout'
 
     // G4 trigger — proxy จาก 2 แท่งล่าสุด (ไม่มี OHLC: daily range proxy = |ret1|·close)
-    const wickRatio = ret1 <= -0.02 && close > c.prev * 0.995 ? 2.5 : 1.2
-    const closePos = clamp(0.5 + ret1 * 4, 0, 1)
-    let pattern: StatePacket['trigger']['pattern'] = null
-    if (wickRatio >= 2 && closePos >= 0.67) pattern = 'T1'
-    else if (ret1 > 0.03 && ret2 < 0) pattern = 'T2'
+    const { wickRatio, closePos, pattern } = triggerProxy(ret1, ret2, close, c.prev)
     const inZone = close >= zoneLo * 0.98 && close <= zoneHi * 1.05
 
     // G5 risk — entry/stop/RR ถึง supply แบบประมาณ

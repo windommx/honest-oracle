@@ -44,13 +44,13 @@ export const STATUS_CLS: Record<ModuleStatusKind, string> = {
 
 export const BADGE_SHADOW = "shadow-[0_1px_2px_rgba(16,24,40,0.06)]"
 
-/** icon tile — hue เป็น static class map กัน Tailwind ตัด class หาย */
-const HUE_TILE: Record<Hue, string> = {
-  cyan: "border-neon-cyan/20 bg-gradient-to-br from-[#eef3ff] to-[#dfe9ff] text-neon-cyan",
-  magenta: "border-neon-magenta/20 bg-gradient-to-br from-[#fdf0f5] to-[#fbe1ec] text-neon-magenta",
-  green: "border-neon-green/20 bg-gradient-to-br from-[#effaf2] to-[#dcf3e3] text-neon-green",
-  purple: "border-neon-purple/20 bg-gradient-to-br from-[#f4f0fe] to-[#e8e0fc] text-neon-purple",
-  amber: "border-[#ecd48f] bg-gradient-to-br from-[#fdf6df] to-[#f8e7b5] text-gold-ink",
+/** icon tile — คลาส .hue-tile-* ใน globals.css (สว่าง/มืดในที่เดียว) · static map กันคลาสหาย */
+export const HUE_TILE: Record<Hue, string> = {
+  cyan: "hue-tile hue-tile-cyan",
+  magenta: "hue-tile hue-tile-magenta",
+  green: "hue-tile hue-tile-green",
+  purple: "hue-tile hue-tile-purple",
+  amber: "hue-tile hue-tile-amber",
 }
 
 /** สีตัวเลข/ข้อความตาม tone — ใช้กับ MiniStat/Meter */
@@ -205,7 +205,7 @@ export function MiniStat({
   sub,
   tone = "neutral",
 }: {
-  label: string
+  label: ReactNode
   value: ReactNode
   sub?: ReactNode
   tone?: Tone
@@ -292,7 +292,9 @@ export function HeadIconButton({
 export function FeatureModule({
   code,
   title,
+  titleNode,
   desc,
+  descNode,
   icon: Icon,
   hue,
   status,
@@ -312,7 +314,11 @@ export function FeatureModule({
 }: {
   code: string
   title: string
+  /** หัวข้อแบบมี <Term> — แสดงแทน title (title ยังใช้เป็นชื่อ landmark) */
+  titleNode?: ReactNode
   desc?: string
+  /** คำอธิบายแบบมี <Term> — แสดงแทน desc */
+  descNode?: ReactNode
   icon: LucideIcon
   hue: Hue
   status?: ModuleStatus | null
@@ -351,7 +357,7 @@ export function FeatureModule({
       <div className={cn("flex min-w-0 items-center gap-2 px-4 pt-3.5", dense && "px-3 pt-2.5")}>
         <span
           className={cn(
-            "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border shadow-[0_2px_6px_-3px_rgba(120,90,20,0.35)]",
+            "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl shadow-[0_2px_6px_-3px_rgba(120,90,20,0.35)]",
             HUE_TILE[hue],
           )}
         >
@@ -362,11 +368,11 @@ export function FeatureModule({
             <span className="shrink-0 font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
               {code}
             </span>
-            <h2 className="min-w-0 truncate text-[15px] font-extrabold tracking-tight">{title}</h2>
+            <h2 className="min-w-0 truncate text-[15px] font-extrabold tracking-tight">{titleNode ?? title}</h2>
             {status ? <StatusBadge s={status} /> : null}
           </div>
-          {desc && !dense ? (
-            <p className="mt-0.5 line-clamp-2 text-[11px] leading-4 text-muted-foreground">{desc}</p>
+          {(descNode ?? desc) && !dense ? (
+            <p className="mt-0.5 line-clamp-2 text-[11px] leading-4 text-muted-foreground">{descNode ?? desc}</p>
           ) : null}
         </div>
         {headActions}

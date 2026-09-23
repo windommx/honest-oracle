@@ -3,9 +3,10 @@
   "version": "0.2.1",
   "private": true,
   "scripts": {
-    "dev": "next dev -p 3000 2>&1 | tee dev.log",
+    "dev": "next dev -p 3000 -H 127.0.0.1 2>&1 | tee dev.log",
     "build": "next build && cp -r .next/static .next/standalone/.next/ && cp -r public .next/standalone/",
-    "start": "NODE_ENV=production bun .next/standalone/server.js 2>&1 | tee server.log",
+    "start": "NODE_ENV=production HOSTNAME=127.0.0.1 node .next/standalone/server.js 2>&1 | tee server.log",
+    "start:lan": "NODE_ENV=production HOSTNAME=0.0.0.0 node .next/standalone/server.js 2>&1 | tee server.log",
     "lint": "eslint .",
     "db:push": "prisma db push --accept-data-loss",
     "db:generate": "prisma generate",
@@ -15,7 +16,14 @@
     "fetch:cross": "bun scripts/fetch-cross.ts",
     "gtaa": "bun scripts/gtaa.ts",
     "fetch:th": "bun scripts/fetch-th.ts",
-    "test": "bun test src"
+    "test": "bun test src",
+    "daily": "bun scripts/daily.ts",
+    "evidence:real": "bun scripts/evidence-real.ts",
+    "backup": "bun scripts/backup-db.ts",
+    "restore": "bun scripts/restore-db.ts",
+    "smoke": "bun deploy/smoke.ts",
+    "scheduler": "bun deploy/scheduler.ts",
+    "test:ops": "bun test ./scripts ./deploy"
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",

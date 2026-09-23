@@ -33,6 +33,7 @@ import {
   ArrowDownCircle,
   ArrowUpCircle,
   Beaker,
+  BookOpen,
   BrainCircuit,
   Briefcase,
   CalendarCheck,
@@ -44,6 +45,7 @@ import {
   Gauge,
   Globe2,
   Inbox,
+  Library,
   LineChart,
   Maximize2,
   Minimize2,
@@ -99,6 +101,7 @@ import {
   BADGE_SHADOW,
   EmptyNote,
   FeatureModule,
+  HUE_TILE,
   Meter,
   MiniStat,
   OptionsBar,
@@ -135,15 +138,10 @@ import {
 import { resolveGtaaCountdown, weeklyDdRatio } from "@/lib/platform/command-center"
 import OptionsCenter from "../options-center"
 import CommandHero from "../command-hero"
+import { AXIS_TICK, CHART, TOOLTIP_STYLE } from "../chart-theme"
+import { Term } from "../glossary"
+import ScrollBox from "../scroll-box"
 
-const TOOLTIP_STYLE = {
-  backgroundColor: "#ffffff",
-  border: "1px solid #ece3cf",
-  borderRadius: 12,
-  fontSize: 12,
-  color: "#0f172a",
-  boxShadow: "0 4px 10px rgba(16,24,40,0.08)",
-} as const
 
 // =====================================================================
 // Posture engine — เกณฑ์ลงทะเบียนล่วงหน้า (pre-registered)
@@ -309,6 +307,7 @@ function breakerBadge(level: number | null, label?: string) {
 function KpiCard({
   icon: Icon,
   label,
+  labelNode,
   value,
   sub,
   target,
@@ -318,6 +317,8 @@ function KpiCard({
 }: {
   icon: LucideIcon
   label: string
+  /** ป้ายแบบมี <Term> — แสดงแทน label (label ยังใช้เป็นชื่อปุ่ม “ดู →”) */
+  labelNode?: ReactNode
   value: ReactNode
   sub?: ReactNode
   target: string
@@ -330,7 +331,7 @@ function KpiCard({
   return (
     <div className={cn("kpi-tile min-w-0", `kpi-wash-${h}`, dense ? "p-3" : "p-4")}>
       <div className="flex min-w-0 items-start justify-between gap-2">
-        <span className={cn("flex size-9 shrink-0 items-center justify-center rounded-xl border", HUE_TILE[h])}>
+        <span className={cn("flex size-9 shrink-0 items-center justify-center rounded-xl", HUE_TILE[h])}>
           <Icon className="size-4" aria-hidden />
         </span>
         <button
@@ -342,7 +343,7 @@ function KpiCard({
           ดู →
         </button>
       </div>
-      <div className={cn("min-w-0 truncate text-xs font-semibold text-muted-foreground", dense ? "mt-2" : "mt-3")}>{label}</div>
+      <div className={cn("min-w-0 truncate text-xs font-semibold text-muted-foreground", dense ? "mt-2" : "mt-3")}>{labelNode ?? label}</div>
       <div className="mt-0.5 min-w-0 truncate text-2xl leading-tight font-extrabold tracking-tight tabular-nums">{value}</div>
       {sub ? <div className="mt-1 min-w-0 truncate text-xs text-muted-foreground">{sub}</div> : null}
     </div>
@@ -365,25 +366,17 @@ interface ModuleRow {
   status: ModuleStatus
 }
 
-const HUE_TILE: Record<Hue, string> = {
-  cyan: "border-neon-cyan/20 bg-gradient-to-br from-[#eef3ff] to-[#dfe9ff] text-neon-cyan",
-  magenta: "border-neon-magenta/20 bg-gradient-to-br from-[#fdf0f5] to-[#fbe1ec] text-neon-magenta",
-  green: "border-neon-green/20 bg-gradient-to-br from-[#effaf2] to-[#dcf3e3] text-neon-green",
-  purple: "border-neon-purple/20 bg-gradient-to-br from-[#f4f0fe] to-[#e8e0fc] text-neon-purple",
-  amber: "border-[#ecd48f] bg-gradient-to-br from-[#fdf6df] to-[#f8e7b5] text-gold-ink",
-}
-
 function ModuleCard({ m, dense, onGoTo }: { m: ModuleRow; dense?: boolean; onGoTo: (tab: string) => void }) {
   return (
     <button
       type="button"
       onClick={() => onGoTo(m.tab)}
       aria-label={`${m.name} — ${m.role} (เปิดแท็บ)`}
-      className="group block h-full w-full min-w-0 rounded-xl border border-border bg-card text-left text-card-foreground shadow-sm transition-all hover:border-gold/60 hover:shadow-[0_8px_20px_-10px_rgba(154,116,18,0.35)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold/60"
+      className="group block h-full w-full min-w-0 rounded-xl border border-border bg-card text-left text-card-foreground shadow-sm transition-all hover:border-gold/60 hover:shadow-[0_8px_20px_-10px_rgba(154,116,18,0.35)]"
     >
       <div className={cn("flex h-full min-w-0 flex-col gap-2 p-4", dense && "gap-1.5 p-3")}>
         <div className="flex min-w-0 items-center gap-2 overflow-hidden">
-          <span className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border", HUE_TILE[m.hue])}>
+          <span className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-xl", HUE_TILE[m.hue])}>
             <m.icon className="size-4" aria-hidden />
           </span>
           <span className="min-w-0 flex-1 truncate text-sm font-bold">{m.name}</span>
@@ -576,11 +569,11 @@ function GtaaModuleBody({
               : "ยังไม่มีตารางสัญญาณ — รอโมดูล GTAA โหลด"}
           </EmptyNote>
         ) : (
-          <div className="max-h-64 space-y-1 overflow-y-auto pr-1">
+          <ScrollBox className="max-h-64 space-y-1 overflow-y-auto pr-1" label="สัญญาณ GTAA รายสินทรัพย์ (เลื่อนดูได้)">
             {shown.map((s) => (
               <SignalRowLine key={s.ticker} s={s} />
             ))}
-          </div>
+          </ScrollBox>
         )}
       </div>
 
@@ -731,7 +724,7 @@ function EvidenceModuleBody({
           )}
         </div>
       ) : (
-        <div className="max-h-56 min-w-0 overflow-y-auto pr-1">
+        <ScrollBox className="max-h-56 min-w-0 overflow-y-auto pr-1" label="ผลลัพธ์ตาม source (เลื่อนดูได้)">
           {ev.buckets.length === 0 ? (
             <EmptyNote minH={70}>ยังไม่มีผล verify ต่อ source — รอ decisions มี outcome</EmptyNote>
           ) : (
@@ -763,7 +756,7 @@ function EvidenceModuleBody({
               </tbody>
             </table>
           )}
-        </div>
+        </ScrollBox>
       )}
     </div>
   )
@@ -823,12 +816,12 @@ function LabModuleBody({
           tone={(lab.stats.agreementRate ?? 0) >= 0.7 ? "green" : "amber"}
         />
         <MiniStat
-          label="Brier"
+          label={<Term id="brier">Brier</Term>}
           value={lab.brier != null && (lab.brierN == null || lab.brierN >= 10) ? lab.brier.toFixed(3) : "—"}
           sub={lab.brier != null && lab.brierN != null && lab.brierN < 10 ? `n=${lab.brierN} (<10) ยังน้อยเกินตัดสิน` : "ยิ่งต่ำยิ่งดี"}
         />
         <MiniStat
-          label="expectancy"
+          label={<Term id="expectancy">expectancy</Term>}
           value={lab.expectancy != null ? `${lab.expectancy >= 0 ? "+" : ""}${lab.expectancy.toFixed(2)}R` : "—"}
           sub={`n ${lab.executedN}`}
           tone={(lab.expectancy ?? 0) > 0 ? "green" : (lab.expectancy ?? 0) < 0 ? "rose" : "neutral"}
@@ -849,20 +842,20 @@ function LabModuleBody({
             <AreaChart data={spark} margin={{ top: 6, right: 8, bottom: 0, left: 0 }}>
               <defs>
                 <linearGradient id="labCumR" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#059669" stopOpacity={0.3} />
-                  <stop offset="100%" stopColor="#059669" stopOpacity={0.02} />
+                  <stop offset="0%" stopColor={CHART.green} stopOpacity={0.3} />
+                  <stop offset="100%" stopColor={CHART.green} stopOpacity={0.02} />
                 </linearGradient>
               </defs>
-              <CartesianGrid stroke="rgba(100,116,139,0.15)" strokeDasharray="3 3" vertical={false} />
+              <CartesianGrid stroke={CHART.grid} strokeDasharray="3 3" vertical={false} />
               <XAxis dataKey="i" hide />
-              <YAxis tick={{ fontSize: 10, fill: "#64748b" }} width={34} />
+              <YAxis tick={AXIS_TICK} width={34} />
               <Tooltip contentStyle={TOOLTIP_STYLE} />
-              <ReferenceLine y={0} stroke="rgba(100,116,139,0.35)" />
+              <ReferenceLine y={0} stroke={CHART.ref} />
               <Area
                 type="monotone"
                 dataKey="cumR"
                 name="cumR"
-                stroke="#059669"
+                stroke={CHART.green}
                 strokeWidth={1.8}
                 fill="url(#labCumR)"
                 dot={false}
@@ -969,13 +962,19 @@ function RiskModuleBody({
 
       <div className="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-3">
         <div className="min-w-0 space-y-1">
-          <p className="text-[11px] font-medium text-muted-foreground">Circuit Breaker (0–3)</p>
+          <p className="text-[11px] font-medium text-muted-foreground">
+            <Term id="breaker">Circuit Breaker</Term> (0–3)
+          </p>
           {breaker ? (
             <>
               <p className={cn("font-mono text-sm font-bold", breaker.level === 0 ? "text-neon-green" : breaker.level === 1 ? "text-neon-amber" : "text-neon-rose")}>
                 L{breaker.level} · {breaker.label}
               </p>
-              <Meter value={breaker.level / 3} tone={breaker.level === 0 ? "green" : breaker.level === 1 ? "amber" : "rose"} />
+              <Meter
+                value={breaker.level / 3}
+                tone={breaker.level === 0 ? "green" : breaker.level === 1 ? "amber" : "rose"}
+                ariaLabel="ระดับ circuit breaker"
+              />
             </>
           ) : (
             <p className="text-xs text-muted-foreground">{breakerError ? "ออฟไลน์ — ดึง SET Sniper ไม่สำเร็จ" : "กำลังโหลด…"}</p>
@@ -989,7 +988,9 @@ function RiskModuleBody({
           <Meter value={volPct ?? 0} tone={volTone} ariaLabel="ความผันผวน percentile" />
         </div>
         <div className="min-w-0 space-y-1">
-          <p className="text-[11px] font-medium text-muted-foreground">Weekly DD / เพดาน</p>
+          <p className="text-[11px] font-medium text-muted-foreground">
+            Weekly <Term id="max-dd">DD</Term> / เพดาน
+          </p>
           <p className={cn("font-mono text-sm font-bold", TONE_TEXT[ddTone])}>
             {risk?.weeklyDD != null ? `${(risk.weeklyDD * 100).toFixed(1)}%` : "—"}
             <span className="text-[10px] font-normal text-muted-foreground">
@@ -1000,7 +1001,9 @@ function RiskModuleBody({
           <Meter value={ddRatio} tone={ddTone} ariaLabel="สัดส่วน drawdown สัปดาห์ต่อเพดาน" />
         </div>
         <div className="min-w-0 space-y-1">
-          <p className="text-[11px] font-medium text-muted-foreground">Effective N (กระจายตัว)</p>
+          <p className="text-[11px] font-medium text-muted-foreground">
+            <Term id="eff-n">Effective N</Term> (กระจายตัว)
+          </p>
           <p className="font-mono text-sm font-bold">{risk?.effN != null ? risk.effN.toFixed(1) : "—"}</p>
           <p className="text-[10px] text-muted-foreground">ยิ่งใกล้จำนวนตำแหน่ง = กระจายดี</p>
         </div>
@@ -1127,7 +1130,7 @@ function OpsModuleBody({
             <span
               className={cn(
                 "flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[10px] font-bold",
-                c.done ? "bg-neon-green text-white" : "bg-neon-amber/25 text-neon-amber",
+                c.done ? "bg-neon-green text-on-neon" : "bg-neon-amber/20 text-neon-amber",
               )}
               aria-hidden
             >
@@ -1165,10 +1168,16 @@ const QUESTION_ICON: Record<string, { icon: LucideIcon; cls: string }> = {
 export default function OverviewTab({
   onGoTo,
   onOpenPalette,
+  onOpenGuide,
+  onOpenGlossary,
 }: {
   onGoTo: (tab: string) => void
   /** เปิด Command Palette (ปุ่ม "ค้นหา" บน hero) */
   onOpenPalette?: () => void
+  /** เปิดคู่มือเริ่มต้น (เมนู "โหมด" / Options Center) */
+  onOpenGuide?: () => void
+  /** เปิดแผงอภิธานศัพท์ */
+  onOpenGlossary?: () => void
 }) {
   // ---------- ตัวเลือกการจัดวาง + เวลา/ความสด (hydrate หลัง mount ผ่าน microtask กัน cascading render) ----------
   const [prefs, setPrefs] = useState<DashboardPrefs>(DEFAULT_PREFS)
@@ -1408,9 +1417,10 @@ export default function OverviewTab({
   }, [lab.data])
 
   // ---------- ประตูตัดสิน 3 ชั้น (โชว์แยกทุกตัว — ไม่มีกล่องดำ) ----------
-  const gates: { name: string; badge: ReactNode; note: string }[] = [
+  const gates: { name: string; term: string; badge: ReactNode; note: string }[] = [
     {
       name: "Regime ไทย (รายวัน)",
+      term: "regime",
       badge: labelBadge(sig.data?.label),
       note:
         sig.data != null
@@ -1421,6 +1431,7 @@ export default function OverviewTab({
     },
     {
       name: "GTAA โลก (รายเดือน)",
+      term: "gtaa",
       badge: gtaaStanceBadge(ov.data?.gtaa?.stance),
       note:
         ov.data?.gtaa != null
@@ -1431,6 +1442,7 @@ export default function OverviewTab({
     },
     {
       name: "Circuit Breaker (SET Sniper)",
+      term: "breaker",
       badge: breakerBadge(breaker ? breaker.level : null, breaker?.label),
       note:
         breaker != null
@@ -1640,7 +1652,7 @@ export default function OverviewTab({
           {visibleCount}/{FEATURE_IDS.length} โมดูล{hiddenCount > 0 ? ` · ซ่อน ${hiddenCount}` : ""}
           {activeFocus ? ` · โฟกัส: ${FEATURE_LABELS[activeFocus]}` : ""}
         </span>
-        <span className="hidden font-mono text-[10px] tracking-wide text-muted-foreground/70 xl:inline" aria-hidden>
+        <span className="hidden font-mono text-[10px] tracking-wide text-muted-foreground xl:inline" aria-hidden>
           O ตัวเลือก · R รีเฟรช · D กระชับ · L เลย์เอาต์ · X โหมดอ่าน
         </span>
         {pulse.data ? (
@@ -1687,18 +1699,8 @@ export default function OverviewTab({
             ariaLabel="ความหนาแน่นการจัดวาง"
             dense={dense}
           />
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={refreshAll}
-            className="h-11 gap-1.5 sm:h-8"
-            aria-label="รีเฟรชข้อมูลทุกแหล่ง"
-            disabled={refreshing}
-          >
-            <RefreshCw className={cn("size-3.5", refreshing && "animate-spin")} aria-hidden />
-            <span className="hidden sm:inline">รีเฟรช</span>
-          </Button>
-          <DropdownMenu>
+          {/* modal={false} + portal ใน <main>: ไม่ใส่ aria-hidden ทั้งหน้า และเมนูอยู่ใน landmark (axe: aria-hidden-focus / region) */}
+          <DropdownMenu modal={false}>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm" className="h-11 gap-1.5 sm:h-8" aria-label="พรีเซ็ตการจัดวางด่วน">
                 <Sparkles className="size-3.5" aria-hidden />
@@ -1706,7 +1708,11 @@ export default function OverviewTab({
                 <ChevronDown className="size-3 opacity-60" aria-hidden />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-64">
+            <DropdownMenuContent
+              align="end"
+              className="w-64"
+              container={typeof document === "undefined" ? undefined : document.getElementById("main-content")}
+            >
               <DropdownMenuLabel>พรีเซ็ตด่วน — จัดวางทั้งชุดในคลิกเดียว</DropdownMenuLabel>
               {BUILTIN_PRESETS.map((p) => (
                 <DropdownMenuItem key={p.id} onClick={() => applyPreset(p)} className="gap-2">
@@ -1729,8 +1735,20 @@ export default function OverviewTab({
               <DropdownMenuItem onClick={() => setOptionsOpen(true)} className="gap-2">
                 <SlidersHorizontal className="size-3.5" aria-hidden />
                 <span className="text-xs">เปิด Options Center…</span>
-                <kbd className="ml-auto rounded border border-border bg-foreground/[0.04] px-1 font-mono text-[9px]">O</kbd>
+                <kbd className="ml-auto rounded border border-border bg-foreground/[0.04] px-1 font-mono text-[10px]">O</kbd>
               </DropdownMenuItem>
+              {onOpenGuide ? (
+                <DropdownMenuItem onClick={onOpenGuide} className="gap-2">
+                  <BookOpen className="size-3.5" aria-hidden />
+                  <span className="text-xs">คู่มือเริ่มต้น</span>
+                </DropdownMenuItem>
+              ) : null}
+              {onOpenGlossary ? (
+                <DropdownMenuItem onClick={onOpenGlossary} className="gap-2">
+                  <Library className="size-3.5" aria-hidden />
+                  <span className="text-xs">อภิธานศัพท์</span>
+                </DropdownMenuItem>
+              ) : null}
             </DropdownMenuContent>
           </DropdownMenu>
           <Button
@@ -1841,7 +1859,9 @@ export default function OverviewTab({
               {gates.map((g) => (
                 <div key={g.name} className="min-w-0 space-y-1">
                   <div className="flex min-w-0 flex-wrap items-center gap-2">
-                    <span className="min-w-0 truncate text-xs font-semibold">{g.name}</span>
+                    <span className="min-w-0 truncate text-xs font-semibold">
+                      <Term id={g.term}>{g.name}</Term>
+                    </span>
                     {g.badge}
                   </div>
                   <p className="line-clamp-2 min-w-0 text-[11px] leading-4 text-muted-foreground">{g.note}</p>
@@ -1917,6 +1937,7 @@ export default function OverviewTab({
             <KpiCard
               icon={Compass}
               label="Regime วันนี้"
+              labelNode={<><Term id="regime">Regime</Term> วันนี้</>}
               hue="cyan"
               dense={dense}
               value={
@@ -1940,6 +1961,7 @@ export default function OverviewTab({
             <KpiCard
               icon={Globe2}
               label="Global Regime (GTAA)"
+              labelNode={<>Global Regime (<Term id="gtaa">GTAA</Term>)</>}
               hue="green"
               dense={dense}
               value={gtaaStanceBadge(ovData.gtaa?.stance)}
@@ -1954,6 +1976,7 @@ export default function OverviewTab({
             <KpiCard
               icon={Inbox}
               label="รออนุมัติ (Human Gate)"
+              labelNode={<>รออนุมัติ (<Term id="human-gate">Human Gate</Term>)</>}
               hue={pendingGates > 0 ? "amber" : "green"}
               dense={dense}
               value={`${pendingGates.toLocaleString()} รายการ`}
@@ -1964,6 +1987,7 @@ export default function OverviewTab({
             <KpiCard
               icon={ShieldAlert}
               label="Bayes Stop"
+              labelNode={<Term id="bayes-stop">Bayes Stop</Term>}
               hue="purple"
               dense={dense}
               value={
@@ -1981,13 +2005,14 @@ export default function OverviewTab({
                   "—"
                 )
               }
-              sub={`s* = ${stopSOpt !== null ? `${(stopSOpt * 100).toFixed(1)}%` : "—"}`}
+              sub={<><Term id="s-star">s*</Term> = {stopSOpt !== null ? `${(stopSOpt * 100).toFixed(1)}%` : "—"}</>}
               target="stops"
               onGoTo={onGoTo}
             />
             <KpiCard
               icon={Sparkles}
               label="สัญญาณที่ผ่าน IC"
+              labelNode={<>สัญญาณที่ผ่าน <Term id="ic">IC</Term></>}
               hue="cyan"
               dense={dense}
               value={promoted.length > 0 ? promoted.join(", ") : "—"}
@@ -1998,6 +2023,7 @@ export default function OverviewTab({
             <KpiCard
               icon={ShieldCheck}
               label="DQ (Data Quality)"
+              labelNode={<><Term id="dq">DQ</Term> (Data Quality)</>}
               hue="amber"
               dense={dense}
               value={
@@ -2024,6 +2050,7 @@ export default function OverviewTab({
             <KpiCard
               icon={Wallet}
               label="พอร์ตกระดาษ"
+              labelNode={<Term id="paper">พอร์ตกระดาษ</Term>}
               hue="green"
               dense={dense}
               value={`${ovData.positions.toLocaleString()} ตำแหน่ง`}
@@ -2072,10 +2099,16 @@ export default function OverviewTab({
               code="M3"
               {...modFocus("regime")}
               title="Regime Composite"
+              titleNode={<><Term id="regime">Regime</Term> Composite</>}
               icon={Activity}
               hue="cyan"
               dense={dense}
               desc="0.35·breadthZ + 0.25·crossZ + 0.20·(1−2·volPct) + 0.20·overlapZ → gross budget (ส้ม, แกนขวา)"
+              descNode={
+                <>
+                  0.35·breadthZ + 0.25·crossZ + 0.20·(1−2·volPct) + 0.20·overlapZ → <Term id="gross">gross budget</Term> (ส้ม, แกนขวา)
+                </>
+              }
               className="lg:col-span-2"
               options={
                 <OptionsBar dense={dense}>
@@ -2105,21 +2138,21 @@ export default function OverviewTab({
                   <ComposedChart data={regimeData} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
                     <defs>
                       <linearGradient id="regimeFill" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#059669" stopOpacity={0.35} />
-                        <stop offset="100%" stopColor="#059669" stopOpacity={0.02} />
+                        <stop offset="0%" stopColor={CHART.green} stopOpacity={0.35} />
+                        <stop offset="100%" stopColor={CHART.green} stopOpacity={0.02} />
                       </linearGradient>
                     </defs>
-                    <CartesianGrid stroke="rgba(100,116,139,0.18)" strokeDasharray="3 3" vertical={false} />
+                    <CartesianGrid stroke={CHART.grid} strokeDasharray="3 3" vertical={false} />
                     <XAxis
                       dataKey="date"
-                      tick={{ fontSize: 10, fill: "#64748b" }}
+                      tick={AXIS_TICK}
                       interval={Math.max(0, Math.ceil(regimeData.length / 6) - 1)}
                     />
                     <YAxis
                       yAxisId="left"
                       domain={[-2, 2]}
                       ticks={[-2, -1, 0, 1, 2]}
-                      tick={{ fontSize: 10, fill: "#64748b" }}
+                      tick={AXIS_TICK}
                       width={32}
                     />
                     {showGross ? (
@@ -2129,19 +2162,19 @@ export default function OverviewTab({
                         domain={[0, 1.5]}
                         ticks={[0, 0.5, 1, 1.5]}
                         tickFormatter={(v: number) => `×${v.toFixed(1)}`}
-                        tick={{ fontSize: 10, fill: "#64748b" }}
+                        tick={AXIS_TICK}
                         width={38}
                       />
                     ) : null}
                     <Tooltip contentStyle={TOOLTIP_STYLE} />
                     <Legend wrapperStyle={{ fontSize: 11 }} />
-                    <ReferenceLine yAxisId="left" y={0} stroke="rgba(100,116,139,0.35)" />
+                    <ReferenceLine yAxisId="left" y={0} stroke={CHART.ref} />
                     <Area
                       yAxisId="left"
                       type="monotone"
                       dataKey="regimeScore"
                       name="regime score"
-                      stroke="#059669"
+                      stroke={CHART.green}
                       strokeWidth={2}
                       fill="url(#regimeFill)"
                       dot={false}
@@ -2153,7 +2186,7 @@ export default function OverviewTab({
                         type="monotone"
                         dataKey="grossMult"
                         name="gross ×"
-                        stroke="#d97706"
+                        stroke={CHART.amber}
                         strokeWidth={1.5}
                         dot={false}
                         isAnimationActive={false}
@@ -2170,6 +2203,7 @@ export default function OverviewTab({
               code="M4"
               {...modFocus("breadth")}
               title="Market Breadth"
+              titleNode={<>Market <Term id="breadth">Breadth</Term></>}
               icon={LineChart}
               hue="magenta"
               dense={dense}
@@ -2210,6 +2244,7 @@ export default function OverviewTab({
           code="M5"
           {...modFocus("gtaa")}
           title="GTAA Monthly Ops (ตลาดโลก — shadow รายเดือน)"
+          titleNode={<><Term id="gtaa">GTAA</Term> Monthly Ops (ตลาดโลก — <Term id="shadow">shadow</Term> รายเดือน)</>}
           icon={Globe2}
           hue="green"
           dense={dense}
@@ -2274,6 +2309,7 @@ export default function OverviewTab({
               hue="amber"
               dense={dense}
               desc="Evidence Night: H1–H4 → verdict → auto-apply config (มี audit ทุกครั้ง)"
+              descNode={<><Term id="evidence-night">Evidence Night</Term>: H1–H4 → verdict → auto-apply config (มี audit ทุกครั้ง)</>}
               status={
                 evid.data
                   ? { kind: "ready", text: evid.data.runs[0] ? "รันแล้ว" : "ว่าง" }
@@ -2307,6 +2343,7 @@ export default function OverviewTab({
               code="M7"
               {...modFocus("lab")}
               title="Shadow Lab"
+              titleNode={<><Term id="shadow">Shadow</Term> Lab</>}
               icon={Beaker}
               hue="amber"
               dense={dense}
@@ -2465,7 +2502,7 @@ export default function OverviewTab({
                       </span>
                       <div className="h-5 min-w-0 flex-1 overflow-hidden rounded bg-foreground/[0.06]">
                         <div
-                          className="h-full rounded bg-neon-green shadow-[0_0_10px_-2px_rgba(5,150,105,0.35)]"
+                          className="h-full rounded bg-neon-green shadow-[0_0_10px_-2px_color-mix(in_srgb,var(--neon-green)_35%,transparent)]"
                           style={{
                             width: `${Math.max(3, (Math.max(0, s.score) / topStocks.max) * 100)}%`,
                             opacity: 0.45 + 0.55 * (1 - i / Math.max(1, topStocks.arr.length)),
@@ -2491,6 +2528,7 @@ export default function OverviewTab({
               hue="purple"
               dense={dense}
               desc="จาก audit log — ทุกคำสั่งผ่าน Human Gate ก่อนเข้าพอร์ต (default-deny)"
+              descNode={<>จาก audit log — ทุกคำสั่งผ่าน <Term id="human-gate">Human Gate</Term> ก่อนเข้าพอร์ต (default-deny)</>}
               options={
                 <OptionsBar dense={dense}>
                   <Segmented
@@ -2519,7 +2557,7 @@ export default function OverviewTab({
               ) : recentDecisions.length === 0 ? (
                 <EmptyNote minH={90}>{decFail ?? "ยังไม่มีการตัดสินใจ — กดรัน Jev"}</EmptyNote>
               ) : (
-                <div className="max-h-80 space-y-2 overflow-y-auto pr-1">
+                <ScrollBox className="max-h-80 space-y-2 overflow-y-auto pr-1" label="การตัดสินใจล่าสุดของ Jev (เลื่อนดูได้)">
                   {recentDecisions.map((d) => {
                     const q = QUESTION_ICON[d.question] ?? { icon: Sparkles, cls: "text-neon-purple" }
                     const Icon = q.icon
@@ -2543,7 +2581,7 @@ export default function OverviewTab({
                       </div>
                     )
                   })}
-                </div>
+                </ScrollBox>
               )}
             </FeatureModule>
           ) : null}
@@ -2562,6 +2600,22 @@ export default function OverviewTab({
         onApplyPreset={applyPreset}
         onDeletePreset={handleDeletePreset}
         onResetAll={resetAll}
+        onOpenGuide={
+          onOpenGuide
+            ? () => {
+                setOptionsOpen(false)
+                onOpenGuide()
+              }
+            : undefined
+        }
+        onOpenGlossary={
+          onOpenGlossary
+            ? () => {
+                setOptionsOpen(false)
+                onOpenGlossary()
+              }
+            : undefined
+        }
       />
     </div>
   )

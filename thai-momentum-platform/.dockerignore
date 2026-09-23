@@ -1,0 +1,44 @@
+# build context ของ Dockerfile = โฟลเดอร์นี้ — ส่งเฉพาะสิ่งที่ build ต้องใช้ (เร็วขึ้น + ไม่มีความลับ/ข้อมูลผู้ใช้หลุดเข้า image)
+# db/custom.db และ data/gtaa/panel.json ต้องอยู่ใน context (เป็น seed ของ volume /data)
+
+# dependency / ผลลัพธ์ build ของเครื่อง host (image ติดตั้ง/สร้างใหม่เองตาม bun.lock)
+node_modules
+.next
+out
+build
+*.tsbuildinfo
+next-env.d.ts
+
+# ความลับ — ส่งเข้า container ตอนรันผ่าน env_file / environment เท่านั้น
+.env
+.env.*
+!.env.example
+
+# ข้อมูลที่เกิดตอนใช้งาน (อยู่ใน volume /data ไม่ใช่ใน image)
+data/backups
+data/runs
+data/feed/*
+!data/feed/.gitkeep
+db/*.db-journal
+db/*.db-wal
+db/*.db-shm
+db/backups
+*.log
+
+# LAB KIT (Python) รันบนเครื่องผู้ใช้ ไม่อยู่ใน image
+lab
+research
+docs
+worklog.md
+**/__pycache__
+**/*.pyc
+
+# อื่น ๆ
+.git
+.github
+.vscode
+.idea
+.DS_Store
+Dockerfile
+docker-compose*.yml
+.dockerignore

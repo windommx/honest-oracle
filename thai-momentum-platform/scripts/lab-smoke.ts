@@ -5,6 +5,7 @@
 // ============================================================
 import { POST as runPost } from "../src/app/api/lab/run/route"
 import { GET as dashboardGet } from "../src/app/api/lab/dashboard/route"
+import { internalRequest } from "../src/lib/security/request-principal"
 import { POST as labelPost } from "../src/app/api/lab/label/route"
 import { POST as evalPost } from "../src/app/api/lab/eval/route"
 import { PrismaClient } from "@prisma/client"
@@ -32,7 +33,7 @@ async function main() {
   // ---------- 3) dashboard ----------
   let edgeKey: string | null = null
   {
-    const [dt, res] = await ms(dashboardGet())
+    const [dt, res] = await ms(dashboardGet(internalRequest("http://localhost/api/lab/dashboard")))
     const j = (await res.json()) as {
       matrix: { cells: number[][] }
       stats: { total: number; wouldExecute: number; agreementRate: number | null }
@@ -80,7 +81,7 @@ async function main() {
   }
   // ---------- 5) dashboard รอบสอง (ตรวจ label ขึ้น + edgeQueue ตัด key ที่ label แล้ว) ----------
   {
-    const res = await dashboardGet()
+    const res = await dashboardGet(internalRequest("http://localhost/api/lab/dashboard"))
     const j = (await res.json()) as {
       labels: { key: string; label: string; reason: string }[]
       edgeQueue: { key: string }[]
@@ -141,7 +142,7 @@ async function main() {
     },
     update: { outcomeR: null, entryPx: rows[entryIdx].close, stopPx: rows[entryIdx].close * 0.95 },
   })
-  await dashboardGet()
+  await dashboardGet(internalRequest("http://localhost/api/lab/dashboard"))
   const filled = await db.shadowLog.findUnique({ where: { key: tkey } })
   console.log("7) outcome filler:", someSymbol, "date", rows[entryIdx].date, "entry", rows[entryIdx].close, "→ outcomeR =", filled?.outcomeR)
   // เคลียร์ขยะทดสอบ

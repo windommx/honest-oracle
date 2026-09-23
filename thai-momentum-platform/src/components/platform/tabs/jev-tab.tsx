@@ -39,6 +39,8 @@ import type {
   VerifyResponse,
 } from "@/lib/momentum/contracts"
 import { cn } from "@/lib/utils"
+import ScrollBox from "../scroll-box"
+import { Term } from "../glossary"
 
 // ---------- color maps ----------
 
@@ -352,7 +354,9 @@ export default function JevTab() {
       {/* 3) Human Gate */}
       <Card>
         <CardHeader>
-          <CardTitle>🙋 Human Gate — คำสั่งรออนุมัติ</CardTitle>
+          <CardTitle>
+            🙋 <Term id="human-gate">Human Gate</Term> — คำสั่งรออนุมัติ
+          </CardTitle>
           <CardDescription className="text-xs">
             Jev เสนอ — คุณตัดสิน · ทุกการตัดสินถูกบันทึกใน audit log
           </CardDescription>
@@ -436,7 +440,7 @@ export default function JevTab() {
                 ยังไม่มีบันทึก — กด &quot;รันสมอง Jev วันนี้&quot; เพื่อเริ่มต้น
               </p>
             ) : (
-              <div className="max-h-96 overflow-auto [&::-webkit-scrollbar]:size-1.5 [&::-webkit-scrollbar-thumb]:bg-foreground/10 [&::-webkit-scrollbar-track]:bg-transparent">
+              <ScrollBox className="max-h-96 overflow-auto [&::-webkit-scrollbar]:size-1.5 [&::-webkit-scrollbar-thumb]:bg-foreground/10 [&::-webkit-scrollbar-track]:bg-transparent" label="บันทึกการตัดสินใจ (เลื่อนดูได้)">
                 <div className="space-y-1 font-mono text-xs">
                   {decisions.data.decisions.map((d) => (
                     <div
@@ -465,7 +469,7 @@ export default function JevTab() {
                       <span className="text-muted-foreground">{fmtNum(d.conf, 2)}</span>
                       <span
                         className={
-                          d.executed ? "text-neon-green" : "text-slate-600"
+                          d.executed ? "text-neon-green" : "text-muted-foreground"
                         }
                       >
                         {d.executed ? "✓" : "·"}
@@ -486,7 +490,7 @@ export default function JevTab() {
                     </div>
                   ))}
                 </div>
-              </div>
+              </ScrollBox>
             )}
           </CardContent>
         </Card>

@@ -10,6 +10,13 @@
 //   (Unknown → Layer 1 จำนวนชื่อ/sector → พื้นที่พอร์ต → Layer 2 น้ำหนัก sector
 //    → Layer 3 น้ำหนักกลุ่ม) โดยพยายามลดขนาดลงกริด 0.25 slot ก่อนตัดทิ้งเสมอ
 //
+// หุ้นที่ไม่รู้ sector (ไม่มีใน SymbolMeta — ตัดสินเมื่อ 2026-09-23):
+//   cap ต่อ sector (จำนวนชื่อ ≤ 3 / น้ำหนัก ≤ 30%) คิด "ถังละตัว" (capBucketOf → "Unknown:SYM")
+//   เพราะการไม่รู้ sector ไม่ใช่หลักฐานว่าอยู่ sector เดียวกัน — เดิมรวมเป็นถัง "Unknown" เดียว
+//   ทำให้ทั้งพอร์ตถือหุ้นไม่รู้ sector ได้แค่ 3 ตัว · รายงาน exposure ยังรวมเป็นแถว "Unknown" แถวเดียว
+//   (breached ของแถวนั้น = มีหุ้นตัวใดตัวหนึ่งเกิน cap — ตรงกับเกณฑ์ที่ gate จริง) · ไม่มีกลุ่มใหญ่
+//   TH_HARD_REJECT_UNKNOWN = true ยังตัดหุ้นไม่รู้ sector ทิ้งทั้งหมดเหมือนเดิม
+//
 // หมายเหตุ: exposure ที่รายงานเป็น "มุมมองบรรยาย" — แถวที่ breached จะเกิดได้
 // เมื่อสถานะเดิม (existing) ละเมิด cap อยู่ก่อนแล้ว เกณฑ์ที่ gate จริงคือ
 // applySectorConstraints (เชิงป้องกัน)
@@ -35,8 +42,18 @@ export async function getSectorMap(): Promise<Map<string, string>> {
   return map
 }
 
+export const UNKNOWN_SECTOR = "Unknown"
+
 export function sectorOf(map: Map<string, string>, symbol: string): string {
-  return map.get(symbol) ?? "Unknown"
+  return map.get(symbol) ?? UNKNOWN_SECTOR
+}
+
+/**
+ * ถังที่ใช้คิด cap ต่อ sector (จำนวนชื่อ/น้ำหนัก): sector จริง หรือ "Unknown:SYM" ถังละตัวสำหรับหุ้นที่ไม่รู้ sector
+ * (ไม่รู้ ≠ sector เดียวกัน — ไม่ pool ข้อมูลที่ไม่มี) · รายงานยังใช้ sectorOf (รวมเป็น "Unknown")
+ */
+export function capBucketOf(map: Map<string, string>, symbol: string): string {
+  return map.get(symbol) ?? `${UNKNOWN_SECTOR}:${symbol}`
 }
 
 // reverse lookup: sector → กลุ่มใหญ่ (เช่น Banking → Financials), null ถ้าไม่สังกัดกลุ่มใด
@@ -63,22 +80,31 @@ export function computeSectorExposure(
   const totalSlots = positions.reduce((a, p) => a + p.slots, 0)
   if (positions.length === 0 || !(totalSlots > 0)) return []
   const agg = new Map<string, { slots: number; names: number }>()
+  const bucketSlots = new Map<string, number>() // ถัง cap จริง (หุ้นไม่รู้ sector = ถังละตัว)
   for (const p of positions) {
     const sector = sectorOf(sectorMap, p.symbol)
     const cur = agg.get(sector) ?? { slots: 0, names: 0 }
     cur.slots += p.slots
     cur.names += 1
     agg.set(sector, cur)
+    const b = capBucketOf(sectorMap, p.symbol)
+    bucketSlots.set(b, (bucketSlots.get(b) ?? 0) + p.slots)
+  }
+  // แถว Unknown: รวมรายงานเป็นแถวเดียว แต่ breached เทียบ cap "ต่อถัง" (หุ้นตัวใดตัวหนึ่งเกิน) ตามเกณฑ์ที่ gate จริง
+  let maxUnknownBucket = 0
+  for (const [b, s] of bucketSlots) {
+    if (b.startsWith(`${UNKNOWN_SECTOR}:`)) maxUnknownBucket = Math.max(maxUnknownBucket, s)
   }
   const rows: SectorExposureRow[] = []
   for (const [sector, v] of agg) {
     const weight = v.slots / totalSlots
+    const capWeight = sector === UNKNOWN_SECTOR ? maxUnknownBucket / totalSlots : weight
     rows.push({
       sector,
       weight: round2(weight),
       names: v.names,
       cap: TH_MAX_SECTOR_WEIGHT,
-      breached: weight > TH_MAX_SECTOR_WEIGHT + EPS,
+      breached: capWeight > TH_MAX_SECTOR_WEIGHT + EPS,
     })
   }
   rows.sort((a, b) => b.weight - a.weight)
@@ -167,6 +193,7 @@ export function applySectorConstraints(
       : budget
 
   // สถานะจำลอง: เริ่มจากพอร์ตเดิม แล้วรับ candidate ทีละตัวตามลำดับที่ให้มา
+  // slotsBySector/namesBySector นับตาม "ถัง cap" (capBucketOf) — หุ้นไม่รู้ sector ถังละตัว
   const slotsBySymbol = new Map<string, number>()
   const slotsBySector = new Map<string, number>()
   const namesBySector = new Map<string, Set<string>>()
@@ -174,12 +201,12 @@ export function applySectorConstraints(
   let usedSlots = 0
 
   const register = (symbol: string, slots: number) => {
-    const sector = sectorOf(sectorMap, symbol)
+    const bucket = capBucketOf(sectorMap, symbol)
     slotsBySymbol.set(symbol, (slotsBySymbol.get(symbol) ?? 0) + slots)
-    slotsBySector.set(sector, (slotsBySector.get(sector) ?? 0) + slots)
-    if (!namesBySector.has(sector)) namesBySector.set(sector, new Set())
-    namesBySector.get(sector)!.add(symbol)
-    const group = groupOf(sector)
+    slotsBySector.set(bucket, (slotsBySector.get(bucket) ?? 0) + slots)
+    if (!namesBySector.has(bucket)) namesBySector.set(bucket, new Set())
+    namesBySector.get(bucket)!.add(symbol)
+    const group = groupOf(sectorOf(sectorMap, symbol))
     if (group) slotsByGroup.set(group, (slotsByGroup.get(group) ?? 0) + slots)
     usedSlots += slots
   }
@@ -191,7 +218,8 @@ export function applySectorConstraints(
 
   for (const cand of candidates) {
     const want = round2(cand.slots)
-    const sector = sectorOf(sectorMap, cand.symbol)
+    const sector = sectorOf(sectorMap, cand.symbol) // ชื่อที่รายงาน ("Unknown" สำหรับหุ้นไม่รู้ sector)
+    const bucket = capBucketOf(sectorMap, cand.symbol) // ถังที่ใช้คิด cap จริง
     const group = groupOf(sector)
 
     // ขนาดที่ขอมาไม่ถูกต้อง (NaN/≤0) → ตัด (กัน NaN ลามเข้า usedSlots แล้วทุกตัวถัดไปผ่านหมด)
@@ -201,13 +229,13 @@ export function applySectorConstraints(
     }
 
     // 0) ไม่ทราบ sector + เปิดโหมด hard reject → ตัด
-    if (sector === "Unknown" && TH_HARD_REJECT_UNKNOWN) {
+    if (sector === UNKNOWN_SECTOR && TH_HARD_REJECT_UNKNOWN) {
       rejected.push({ symbol: cand.symbol, reason: `${cand.symbol} ถูกตัด — ไม่ทราบ sector` })
       continue
     }
 
-    // Layer 1: จำนวนชื่อต่อ sector ≤ 3 (นับจาก existing + ที่รับเข้าแล้วในรอบนี้)
-    const names = namesBySector.get(sector)?.size ?? 0
+    // Layer 1: จำนวนชื่อต่อ sector ≤ 3 (นับจาก existing + ที่รับเข้าแล้วในรอบนี้ — ต่อถัง cap)
+    const names = namesBySector.get(bucket)?.size ?? 0
     if (names >= TH_MAX_NAMES_PER_SECTOR) {
       rejected.push({
         symbol: cand.symbol,
@@ -229,8 +257,8 @@ export function applySectorConstraints(
         ? `${cand.symbol} (${sector}) ลดขนาดเหลือ ${fmtSlots(s)} slots — พื้นที่พอร์ตเหลือ ${fmtSlots(remaining)} slots`
         : null
 
-    // Layer 2: น้ำหนัก sector เดี่ยว ≤ 30% — ลดขนาดลงกริด 0.25 ก่อนตัด
-    const secSlots = slotsBySector.get(sector) ?? 0
+    // Layer 2: น้ำหนัก sector เดี่ยว ≤ 30% (ต่อถัง cap) — ลดขนาดลงกริด 0.25 ก่อนตัด
+    const secSlots = slotsBySector.get(bucket) ?? 0
     if ((secSlots + s) / budget > TH_MAX_SECTOR_WEIGHT + EPS) {
       const sFit = floorGrid(budget * TH_MAX_SECTOR_WEIGHT - secSlots)
       if (sFit < MIN_DOWNSIZE - EPS) {

@@ -3,8 +3,20 @@
 // CrossAsset: SPX / USDTHB / GOLD รายวัน จึงคำนวณ lag-correlation แทน:
 //   corr(asset t, market t+k) ที่ k = 0..5 — ถ้า |corr| สูงสุดที่ k ≥ 1
 //   แปลว่า asset "นำ" ตลาดไทย k วัน (correlation ไม่ใช่เหตุ-ผล — แจ้งใน note เสมอ)
+//
+// เกณฑ์นัยสำคัญ (ตัดสินเมื่อ 2026-09-23 — docs/research/methodology.md):
+//   ติดป้าย "leads" (= ใช้เป็นเรดาร์ได้) ต้องผ่านครบ 3 ข้อ: bestLag ≥ 1 · |r_lag| > 1.1·|r_0| ·
+//   |r_lag| ≥ 2/√n (≈ นัยสำคัญ 95% สองทางของ r ภายใต้ H0: ρ = 0 — se(r) ≈ 1/√n, n = จำนวนคู่ที่ใช้ที่ lag นั้น)
+//   ไม่ผ่านเกณฑ์นัยสำคัญ → ไม่ติดป้าย lead และ note บอก "ยังไม่มีนัยสำคัญ (|r| < 2/√n)"
+//   การเคลื่อนพร้อมกันวันเดียวกัน ("lags") ใช้เกณฑ์เดียวกันกับ r_0 — ไม่ผ่าน → "flat"
+//   หมายเหตุ: สแกน 5 lag = ทดสอบหลายครั้ง (โอกาสเจอ lead ปลอมสูงกว่า 5%) — เกณฑ์ 1.1·|r_0| ช่วยกรองอีกชั้น
 
 import type { LeadLagRow } from "./types"
+
+/** เกณฑ์ |r| ขั้นต่ำที่ถือว่ามีนัยสำคัญ ≈ 95% (สองทาง) สำหรับ n คู่ — 2/√n */
+export function corrSignificanceFloor(n: number): number {
+  return n > 0 ? 2 / Math.sqrt(n) : Infinity
+}
 
 export function crossAssetLeadLag(
   crossRows: { date: string; asset: string; close: number }[],
@@ -27,65 +39,71 @@ export function crossAssetLeadLag(
       if (rows[i - 1].close > 0) rets.push({ date: rows[i].date, ret: rows[i].close / rows[i - 1].close - 1 })
     }
     if (rets.length < 80) continue
+    // index ของวันในปฏิทินของ asset (วันซ้ำ → ใช้ตัวแรก เหมือน findIndex เดิม)
+    const rowIdx = new Map<string, number>()
+    rows.forEach((x, i) => {
+      if (!rowIdx.has(x.date)) rowIdx.set(x.date, i)
+    })
 
-    const corrAt = (shift: number): number => {
-      // pair asset วัน t กับ market วัน t+shift (shift ≥ 0 = asset นำ)
+    const corrAt = (shift: number): { r: number; n: number } => {
+      // pair asset วัน t กับ market วัน t+shift (shift ≥ 0 = asset นำ) — เลื่อนตามปฏิทินของ asset
       const pairs: [number, number][] = []
       for (const a of rets) {
-        if (shift === 0) {
-          const m = mktByDate.get(a.date)
-          if (m !== undefined) pairs.push([a.ret, m])
-        } else {
-          const tIdx = rets.findIndex((x) => x.date === a.date)
-          void tIdx
-          // ใช้ lookup ตามลำดับวัน: หาวัน market = a.date เลื่อน shift วันในอนาคตของ asset
-          const iSelf = rows.findIndex((x) => x.date === a.date)
-          const future = rows[iSelf + shift]
-          if (!future) continue
-          const m = mktByDate.get(future.date)
-          if (m !== undefined) pairs.push([a.ret, m])
-        }
+        const iSelf = rowIdx.get(a.date)
+        if (iSelf === undefined) continue
+        const future = shift === 0 ? rows[iSelf] : rows[iSelf + shift]
+        if (!future) continue
+        const m = mktByDate.get(future.date)
+        if (m !== undefined) pairs.push([a.ret, m])
       }
-      if (pairs.length < 60) return NaN
-      return pearson(pairs.map((p) => p[0]), pairs.map((p) => p[1]))
+      if (pairs.length < 60) return { r: NaN, n: pairs.length }
+      return { r: pearson(pairs.map((p) => p[0]), pairs.map((p) => p[1])), n: pairs.length }
     }
 
-    const corr0 = corrAt(0)
+    const c0 = corrAt(0)
+    const corr0 = c0.r
     // วันที่ของ asset กับตลาดไทยทับกันไม่พอ (< 60 คู่) = วัดไม่ได้ — ไม่ออกแถว (เดิมออก r=0 ปลอม + โน้ต "r=NaN")
     if (!Number.isFinite(corr0)) continue
     let bestLag = 0
     let bestCorr = corr0
+    let bestN = c0.n
     for (let k = 1; k <= 5; k++) {
       const c = corrAt(k)
-      if (Number.isFinite(c) && Math.abs(c) > Math.abs(bestCorr)) {
-        bestCorr = c
+      if (Number.isFinite(c.r) && Math.abs(c.r) > Math.abs(bestCorr)) {
+        bestCorr = c.r
         bestLag = k
+        bestN = c.n
       }
     }
-    const direction: LeadLagRow["direction"] =
-      bestLag >= 1 && Math.abs(bestCorr) > Math.abs(corr0) * 1.1
-        ? bestCorr > 0
-          ? "leads"
-          : "leads"
-        : Number.isFinite(corr0)
-          ? "lags"
-          : "flat"
+    const floor0 = corrSignificanceFloor(c0.n)
+    const floorLag = corrSignificanceFloor(bestN)
+    const leadCandidate = bestLag >= 1 && Math.abs(bestCorr) > Math.abs(corr0) * 1.1
+    const leadSignificant = leadCandidate && Math.abs(bestCorr) >= floorLag
+    const sameDaySignificant = Math.abs(corr0) >= floor0
+    const direction: LeadLagRow["direction"] = leadSignificant ? "leads" : sameDaySignificant ? "lags" : "flat"
 
     const assetNote: Record<string, string> = {
       SPX: "ดัชนีสหรัฐฯ — พรีเมียมริสก์โลก",
       USDTHB: "ค่าเงินบาท (USDTHB ลง = บาทแข็ง = เงินไหลเข้า)",
       GOLD: "ทองคำ — safe haven ตอน risk-off",
     }
+    const aNote = assetNote[asset] ?? ""
+    const notSig = (r: number, n: number, floor: number) =>
+      `ยังไม่มีนัยสำคัญ (|r| < 2/√n: |${r.toFixed(2)}| < ${floor.toFixed(2)}, n=${n})`
+    const sameDayTxt = sameDaySignificant
+      ? `เคลื่อนพร้อมตลาดรายวัน (r=${corr0.toFixed(2)}, n=${c0.n})`
+      : `ความสัมพันธ์วันเดียวกัน ${notSig(corr0, c0.n, floor0)}`
     out.push({
       asset,
-      corr0: Number.isFinite(corr0) ? corr0 : 0,
+      corr0,
       bestLag,
-      bestCorr: Number.isFinite(bestCorr) ? bestCorr : 0,
+      bestCorr,
       direction,
-      note:
-        direction === "leads"
-          ? `${asset} มีความสัมพันธ์กับตลาดไทยสูงสุดเมื่อเลื่อน ${bestLag} วัน (r=${bestCorr.toFixed(2)}) — ใช้เป็นเรดาร์ก่อนเปิดตลาดได้ · ${assetNote[asset] ?? ""}`
-          : `เคลื่อนพร้อมตลาดรายวัน (r=${corr0.toFixed(2)}) ไม่เห็น lead ชัดในหน้าต่าง 1–5 วัน · ${assetNote[asset] ?? ""}`,
+      note: leadSignificant
+        ? `${asset} มีความสัมพันธ์กับตลาดไทยสูงสุดเมื่อเลื่อน ${bestLag} วัน (r=${bestCorr.toFixed(2)}, n=${bestN} ≥ เกณฑ์ 2/√n = ${floorLag.toFixed(2)}) — ใช้เป็นเรดาร์ก่อนเปิดตลาดได้ (สหสัมพันธ์ ไม่ใช่เหตุ-ผล) · ${aNote}`
+        : leadCandidate
+          ? `lead ${bestLag} วัน ${notSig(bestCorr, bestN, floorLag)} — ยังไม่ใช้เป็นเรดาร์ · ${sameDayTxt} · ${aNote}`
+          : `${sameDayTxt} ไม่เห็น lead ชัดในหน้าต่าง 1–5 วัน · ${aNote}`,
     })
   }
   return out

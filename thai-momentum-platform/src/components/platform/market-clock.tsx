@@ -76,9 +76,10 @@ export default function MarketClock({ className = "" }: { className?: string }) 
 
   return (
     <div
+      role="group"
       title={meta.title}
       aria-label={`เวลาประเทศไทย ${ict?.clock ?? "--:--:--"} · ${meta.label}`}
-      className={`hidden h-9 items-center gap-2 rounded-full border border-[#ece3cf] bg-white/90 px-3 shadow-[0_1px_2px_rgba(120,90,20,0.06)] transition-colors hover:border-gold/60 sm:flex ${className}`}
+      className={`hidden h-9 items-center gap-2 rounded-full border border-chip-border bg-chip/90 px-3 shadow-[0_1px_2px_rgba(120,90,20,0.06)] transition-colors hover:border-gold/60 sm:flex ${className}`}
     >
       <span className={`status-dot ${ict ? meta.dot : "status-dot-off"}`} aria-hidden />
       <span
@@ -87,7 +88,7 @@ export default function MarketClock({ className = "" }: { className?: string }) 
         {ict?.clock ?? "--:--:--"}
       </span>
       <span className="hidden text-[10px] font-medium text-muted-foreground lg:inline">{meta.label}</span>
-      <span className="hidden font-mono text-[10px] text-muted-foreground/70 lg:inline">ICT</span>
+      <span className="hidden font-mono text-[10px] text-muted-foreground lg:inline">ICT</span>
     </div>
   )
 }

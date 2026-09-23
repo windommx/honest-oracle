@@ -10,9 +10,14 @@
 // 4) ต่อฟีเจอร์ j × nRepeats รอบ: permute คอลัมน์ j ของ test (Fisher-Yates, seeded rng)
 //    → AUC_perm → drop = AUC_base − AUC_perm
 // 5) รวม mean/std ของ drop ข้ามทุก (split × repeat) → ฟีเจอร์ที่ permute แล้ว AUC ตกมาก = สำคัญ
+//
+// ผลเป็น deterministic (seeded rng) → ขึ้นกับ "ข้อมูล × พารามิเตอร์" เท่านั้น: ใช้ purgedPermutationImportanceCached()
+// เพื่อคำนวณครั้งเดียวต่อชุดข้อมูล (demo 240 หุ้น × 520 วัน ≈ 4.5–6 วินาทีต่อครั้ง ถ้าไม่ cache)
 // ============================================================
 
 import { TH_STRATEGY } from "@/lib/config/thai"
+import { db } from "@/lib/db"
+import { dataFingerprint } from "@/lib/momentum/core"
 import type { ImportanceResponse, ImportanceRow } from "@/lib/momentum/contracts"
 import { buildMetaPanel, FEATURE_INFO } from "./features"
 import { cpcvSplits } from "./cpcv"
@@ -164,4 +169,96 @@ export async function purgedPermutationImportance(
     tookMs: Date.now() - t0,
   }
   return result
+}
+
+// ============================================================
+// cache ในโปรเซส — คำนวณครั้งเดียวต่อ (ชุดข้อมูล × พารามิเตอร์)
+// key ข้อมูล = dataFingerprint() (จำนวนแถว · วันล่าสุด · id ล่าสุดของ RawDaily · data_version ที่ผู้เขียนทุกทางตรา
+//              — ingest/seed/ล้าง demo/cron จาก process อื่น) + จำนวนแถว/id ล่าสุดของ Snapshot (n_tf/streak มาจากโผ;
+//              rebuild โผลบแล้วสร้างแถวใหม่ id เพิ่มเสมอ)
+// ข้อมูลเปลี่ยน → ทิ้งผลเก่าทั้งหมด · เก็บเป็น Promise → request พร้อมกันใช้การคำนวณเดียวกัน (single-flight)
+// คำนวณล้มเหลว → ลบ entry ทิ้ง (ไม่ cache error) · คืนสำเนาเสมอ ผู้เรียกแก้ object แล้ว cache ไม่เพี้ยน
+// ============================================================
+
+const CACHE_MAX_ENTRIES = 32 // พารามิเตอร์ต่างกันได้ ≤ 32 ชุดต่อชุดข้อมูล (เกินแล้วทิ้งตัวที่ใช้ล่าสุดนานที่สุด)
+
+export type ImportanceCacheStatus = "hit" | "miss"
+
+interface ImportanceCacheState {
+  dataKey: string
+  entries: Map<string, Promise<ImportanceResponse>>
+}
+
+let _cache: ImportanceCacheState = { dataKey: "", entries: new Map() }
+const _stats = { hits: 0, misses: 0, computations: 0 }
+
+/** ตัวนับของ cache (สำหรับ test / ตรวจสุขภาพ) — computations = จำนวนครั้งที่คำนวณจริง */
+export function importanceCacheStats(): { hits: number; misses: number; computations: number; size: number } {
+  return { ..._stats, size: _cache.entries.size }
+}
+
+/** ล้าง cache + ตัวนับ (ใช้ใน test) */
+export function clearImportanceCache(): void {
+  _cache = { dataKey: "", entries: new Map() }
+  _stats.hits = 0
+  _stats.misses = 0
+  _stats.computations = 0
+}
+
+/** ค่าพารามิเตอร์หลังใส่ default — ค่าที่ให้ผลเท่ากันต้องได้ key เดียวกัน */
+function normalizeOptions(opts: ImportanceOptions): Required<ImportanceOptions> {
+  return {
+    hold: opts.hold ?? TH_STRATEGY.hold,
+    nGroups: opts.nGroups ?? 6,
+    nTestGroups: opts.nTestGroups ?? 2,
+    nRepeats: Math.max(1, Math.round(opts.nRepeats ?? 3)),
+    seed: opts.seed ?? 42,
+  }
+}
+
+/** ลายนิ้วมือของข้อมูลทั้งหมดที่ importance อ่าน (RawDaily + Snapshot) — query นับ/ค่าสูงสุดเท่านั้น (ไม่กี่ ms) */
+export async function importanceDataKey(): Promise<string> {
+  const [fp, snap] = await Promise.all([
+    dataFingerprint(),
+    db.snapshot.aggregate({ _count: { _all: true }, _max: { id: true } }),
+  ])
+  return `${fp}|${snap._count._all}:${snap._max.id ?? 0}`
+}
+
+/**
+ * purgedPermutationImportance แบบมี cache — ผลเหมือนเรียกตรงทุกไบต์ (รวม tookMs = เวลาที่ใช้คำนวณจริงครั้งนั้น)
+ * cache = "hit" ถ้าได้จากผลที่คำนวณไว้แล้ว (หรือกำลังคำนวณอยู่) สำหรับชุดข้อมูลปัจจุบัน
+ */
+export async function purgedPermutationImportanceCached(
+  opts: ImportanceOptions = {}
+): Promise<{ result: ImportanceResponse; cache: ImportanceCacheStatus }> {
+  const o = normalizeOptions(opts)
+  const dataKey = await importanceDataKey()
+  if (_cache.dataKey !== dataKey) _cache = { dataKey, entries: new Map() }
+  const state = _cache
+  const paramKey = `${o.hold}|${o.nGroups}|${o.nTestGroups}|${o.nRepeats}|${o.seed}`
+
+  const pending = state.entries.get(paramKey)
+  if (pending) {
+    _stats.hits++
+    state.entries.delete(paramKey) // LRU: ย้ายไปท้ายสุด
+    state.entries.set(paramKey, pending)
+    return { result: structuredClone(await pending), cache: "hit" }
+  }
+
+  _stats.misses++
+  _stats.computations++
+  const job = purgedPermutationImportance(o)
+  state.entries.set(paramKey, job)
+  while (state.entries.size > CACHE_MAX_ENTRIES) {
+    const oldest = state.entries.keys().next().value
+    if (oldest === undefined) break
+    state.entries.delete(oldest)
+  }
+  try {
+    return { result: structuredClone(await job), cache: "miss" }
+  } catch (e) {
+    if (state.entries.get(paramKey) === job) state.entries.delete(paramKey)
+    throw e
+  }
 }

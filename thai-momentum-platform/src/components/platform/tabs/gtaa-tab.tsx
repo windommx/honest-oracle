@@ -67,15 +67,8 @@ import type {
   TrackedSignalRow,
   WalkForwardResult,
 } from "@/lib/gtaa/types"
-
-const TOOLTIP_STYLE = {
-  backgroundColor: "#ffffff",
-  border: "1px solid #ece3cf",
-  borderRadius: 12,
-  fontSize: 12,
-  color: "#0f172a",
-  boxShadow: "0 4px 12px rgba(16,24,40,0.08)",
-} as const
+import { AXIS_TICK, AXIS_TICK_11, CHART, TOOLTIP_LABEL_STYLE, TOOLTIP_STYLE } from "../chart-theme"
+import ScrollBox from "../scroll-box"
 
 function pct(x: number | null | undefined, digits = 1): string {
   if (x === null || x === undefined || !Number.isFinite(x)) return "—"
@@ -115,7 +108,7 @@ function StatTile({
   tone?: "good" | "bad" | "neutral"
 }) {
   return (
-    <div className="min-w-0 rounded-lg border border-border bg-white px-3 py-2.5">
+    <div className="min-w-0 rounded-lg border border-border bg-card px-3 py-2.5">
       <p className="truncate text-[10px] font-medium text-muted-foreground">{label}</p>
       <p
         className={cn(
@@ -149,28 +142,28 @@ function EquityChart({ data }: { data: { month: string; strategy: number; benchm
       <AreaChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
         <defs>
           <linearGradient id="gtaaEq" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#c9a227" stopOpacity={0.28} />
-            <stop offset="100%" stopColor="#c9a227" stopOpacity={0.02} />
+            <stop offset="0%" stopColor={CHART.gold} stopOpacity={0.28} />
+            <stop offset="100%" stopColor={CHART.gold} stopOpacity={0.02} />
           </linearGradient>
         </defs>
-        <CartesianGrid stroke="#e2e8f0" strokeDasharray="3 3" vertical={false} />
-        <XAxis dataKey="month" minTickGap={56} tick={{ fontSize: 10 }} tickFormatter={(v: string) => String(v).slice(2)} />
+        <CartesianGrid stroke={CHART.grid} strokeDasharray="3 3" vertical={false} />
+        <XAxis dataKey="month" minTickGap={56} tick={AXIS_TICK} tickFormatter={(v: string) => String(v).slice(2)} />
         <YAxis
           domain={["auto", "auto"]}
-          tick={{ fontSize: 11 }}
+          tick={AXIS_TICK_11}
           width={54}
           tickFormatter={(v: number) => `${Math.round(v)}`}
         />
         <Tooltip
           contentStyle={TOOLTIP_STYLE}
-          labelStyle={{ color: "#64748b" }}
+          labelStyle={TOOLTIP_LABEL_STYLE}
           formatter={(v: number | string, name: string) => [`${Number(v).toFixed(0)}`, name]}
         />
         <Legend />
         <Area
           type="monotone"
           dataKey="strategy"
-          stroke="#a8841f" // ทองของธีม Gold Ivory
+          stroke={CHART.gold} // ทองของธีม Gold Ivory
           strokeWidth={2}
           fill="url(#gtaaEq)"
           name="GTAA (เริ่ม 100)"
@@ -179,7 +172,7 @@ function EquityChart({ data }: { data: { month: string; strategy: number; benchm
         <Area
           type="monotone"
           dataKey="benchmark"
-          stroke="#94a3b8"
+          stroke={CHART.muted}
           strokeWidth={1.5}
           strokeDasharray="5 4"
           fill="transparent"
@@ -200,17 +193,17 @@ function DrawdownChart({ data }: { data: { month: string; ddStrategy: number; dd
   return (
     <ResponsiveContainer width="100%" height={220}>
       <AreaChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-        <CartesianGrid stroke="#e2e8f0" strokeDasharray="3 3" vertical={false} />
-        <XAxis dataKey="month" minTickGap={56} tick={{ fontSize: 10 }} tickFormatter={(v: string) => String(v).slice(2)} />
-        <YAxis tick={{ fontSize: 11 }} width={54} tickFormatter={(v: number) => `${v.toFixed(0)}%`} />
+        <CartesianGrid stroke={CHART.grid} strokeDasharray="3 3" vertical={false} />
+        <XAxis dataKey="month" minTickGap={56} tick={AXIS_TICK} tickFormatter={(v: string) => String(v).slice(2)} />
+        <YAxis tick={AXIS_TICK_11} width={54} tickFormatter={(v: number) => `${v.toFixed(0)}%`} />
         <Tooltip
           contentStyle={TOOLTIP_STYLE}
-          labelStyle={{ color: "#64748b" }}
+          labelStyle={TOOLTIP_LABEL_STYLE}
           formatter={(v: number | string, name: string) => [`${Number(v).toFixed(1)}%`, name]}
         />
         <Legend />
-        <Area type="monotone" dataKey="ddStrategy" stroke="#e11d48" strokeWidth={1.5} fill="#e11d48" fillOpacity={0.14} name="GTAA drawdown" dot={false} />
-        <Area type="monotone" dataKey="ddBenchmark" stroke="#94a3b8" strokeWidth={1.2} strokeDasharray="4 4" fill="transparent" name="SPY drawdown" dot={false} />
+        <Area type="monotone" dataKey="ddStrategy" stroke={CHART.rose} strokeWidth={1.5} fill={CHART.rose} fillOpacity={0.14} name="GTAA drawdown" dot={false} />
+        <Area type="monotone" dataKey="ddBenchmark" stroke={CHART.muted} strokeWidth={1.2} strokeDasharray="4 4" fill="transparent" name="SPY drawdown" dot={false} />
       </AreaChart>
     </ResponsiveContainer>
   )
@@ -320,10 +313,13 @@ function SensitivityGrid({ cells }: { cells: GridCell[] }) {
   const colorOf = (s: number) => {
     const t = max - min > 1e-9 ? (s - min) / (max - min) : 0.5
     // ต่ำ → rose อ่อน / สูง → emerald
-    return t < 0.5 ? `rgba(225,29,72,${0.08 + (0.5 - t) * 0.5})` : `rgba(5,150,105,${0.08 + (t - 0.5) * 0.6})`
+    const pct = (a: number) => `${Math.round(a * 100)}%`
+    return t < 0.5
+      ? `color-mix(in srgb, var(--heat-neg) ${pct(0.08 + (0.5 - t) * 0.5)}, transparent)`
+      : `color-mix(in srgb, var(--heat-pos) ${pct(0.08 + (t - 0.5) * 0.6)}, transparent)`
   }
   return (
-    <div className="overflow-x-auto">
+    <ScrollBox className="overflow-x-auto">
       <table className="w-full min-w-[420px] border-separate border-spacing-1">
         <thead>
           <tr>
@@ -360,7 +356,7 @@ function SensitivityGrid({ cells }: { cells: GridCell[] }) {
       <p className="mt-2 text-[11px] text-muted-foreground">
         เขียวเข้ม = Sharpe สูง — ตัวเลขคือ Sharpe (CAGR | MaxDD) · บนข้อมูลจริงมักชี้ว่า <span className="font-semibold">Top N คือปุ่มเสี่ยงหลัก ส่วนความยาว SMA แทบไม่มีผล</span>
       </p>
-    </div>
+    </ScrollBox>
   )
 }
 
@@ -460,11 +456,11 @@ function MonteCarloPanel({ mc }: { mc: MonteCarloBundle }) {
         <p className="mb-1 text-xs font-medium text-muted-foreground">การกระจาย CAGR — block bootstrap (แถบ p5–p95 แทนตัวเลขเดี่ยว)</p>
         <ResponsiveContainer width="100%" height={180}>
           <BarChart data={mc.bootstrap.histogram} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
-            <CartesianGrid stroke="#e2e8f0" strokeDasharray="3 3" vertical={false} />
-            <XAxis dataKey="bucket" tick={{ fontSize: 9 }} interval="preserveStartEnd" minTickGap={24} />
-            <YAxis tick={{ fontSize: 10 }} width={32} allowDecimals={false} />
-            <Tooltip contentStyle={TOOLTIP_STYLE} labelStyle={{ color: "#64748b" }} cursor={{ fill: "rgba(100,116,139,0.08)" }} />
-            <Bar dataKey="count" fill="#c9a227" fillOpacity={0.6} radius={[4, 4, 0, 0]} name="จำนวนรอบ" />
+            <CartesianGrid stroke={CHART.grid} strokeDasharray="3 3" vertical={false} />
+            <XAxis dataKey="bucket" tick={{ fontSize: 9, fill: CHART.axis }} interval="preserveStartEnd" minTickGap={24} />
+            <YAxis tick={AXIS_TICK} width={32} allowDecimals={false} />
+            <Tooltip contentStyle={TOOLTIP_STYLE} labelStyle={TOOLTIP_LABEL_STYLE} cursor={{ fill: CHART.cursor }} />
+            <Bar dataKey="count" fill={CHART.gold} fillOpacity={0.6} radius={[4, 4, 0, 0]} name="จำนวนรอบ" />
           </BarChart>
         </ResponsiveContainer>
       </div>
@@ -720,7 +716,7 @@ function DataCard({ onChanged }: { onChanged: () => void }) {
             value={csvText ? `${csvText.split(/\r?\n/).length} บรรทัดพร้อมอัปโหลด` : ""}
             placeholder="ยังไม่มีข้อมูล — เลือกไฟล์หรือวางในกล่องด้านล่าง"
             readOnly
-            className="h-9 border-border bg-white font-mono text-xs"
+            className="h-9 border-border bg-card font-mono text-xs"
           />
           <textarea
             id="gtaa-csv"
@@ -728,7 +724,7 @@ function DataCard({ onChanged }: { onChanged: () => void }) {
             onChange={(e) => setCsvText(e.target.value)}
             rows={3}
             placeholder={"Date,VTV,MTUM,VBR,…\n2013-05-31,74.21,31.55,88.10,…"}
-            className="w-full rounded-md border border-border bg-white px-3 py-2 font-mono text-[11px] outline-none focus:border-neon-cyan/50"
+            className="w-full rounded-md border border-border bg-card px-3 py-2 font-mono text-[11px] outline-none focus:border-neon-cyan/50"
           />
           <Button size="sm" onClick={doUpload} disabled={busy !== null || csvText.trim().length < 20} className="min-h-9">
             {busy === "upload" ? "กำลังตรวจ…" : "อัปโหลด + ตรวจ quality gate"}
@@ -1031,7 +1027,7 @@ function ChecklistCard({
             key={`auto-${i}`}
             className={cn(
               "flex min-h-11 items-start gap-2.5 rounded-md border px-3 py-2.5",
-              item.done ? "border-neon-green/30 bg-neon-green/[0.05]" : "border-border bg-white",
+              item.done ? "border-neon-green/30 bg-neon-green/[0.05]" : "border-border bg-card",
             )}
           >
             <Checkbox disabled checked={item.done} className="mt-0.5" aria-label={item.label} />
@@ -1051,7 +1047,7 @@ function ChecklistCard({
             key={i}
             className={cn(
               "flex min-h-11 cursor-pointer items-start gap-2.5 rounded-md border px-3 py-2.5 transition-colors",
-              checked[i] ? "border-neon-green/30 bg-neon-green/[0.05]" : "border-border bg-white hover:bg-foreground/[0.02]",
+              checked[i] ? "border-neon-green/30 bg-neon-green/[0.05]" : "border-border bg-card hover:bg-foreground/[0.02]",
             )}
           >
             <Checkbox checked={checked[i]} onCheckedChange={() => toggle(i)} className="mt-0.5" aria-label={item} />
@@ -1080,7 +1076,7 @@ function ConfigCard({
   persist: boolean
   onPersistChange: (v: boolean) => void
 }) {
-  const selCls = "h-9 border-border bg-white text-xs"
+  const selCls = "h-9 border-border bg-card text-xs"
   return (
     <Card className="min-w-0">
       <CardHeader className="pb-3">

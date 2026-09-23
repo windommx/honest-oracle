@@ -1,0 +1,95 @@
+# ============================================================
+# Thai Momentum Platform — docker compose (เว็บ + scheduler + volume ข้อมูล)
+#
+#   cp .env.example .env          # แล้วตั้ง TMP_AUTH_PASSWORD / TMP_AUTH_SECRET / TMP_API_TOKEN (บังคับ — ดูด้านล่าง)
+#   docker compose up -d --build
+#   curl -s http://127.0.0.1:3000/api/health
+#
+# app        เว็บ (node server.js) ฟังที่ 127.0.0.1:3000 ของเครื่อง host — เปิดสู่ภายนอกผ่าน reverse proxy ที่มี TLS เท่านั้น
+# scheduler  daily 18:30 จ.–ศ. (bun scripts/daily.ts) + backup ทุกคืน 02:30 (bun scripts/backup-db.ts) เวลาไทย
+#            แล้วอุ่น cache รายงานหนักของ app ด้วย Bearer TMP_API_TOKEN
+# volume     tmp-data → /data (app.db, backups/, gtaa/, runs/, feed/inbox/) — ครั้งแรก seed จาก demo DB ใน image
+#            (ไม่แตะ db/custom.db ของ repo เด็ดขาด)
+#
+# โหมด auth บังคับ: คำขอจาก browser บน host มาถึง container ผ่าน docker bridge (X-Forwarded-For = 172.x ไม่ใช่ loopback)
+# โหมด local (ไม่มีรหัสผ่าน) จึงตอบ 403 ทุกหน้า — compose จะไม่ยอมเริ่มถ้าไม่ได้ตั้ง TMP_AUTH_PASSWORD
+# ============================================================
+
+name: thai-momentum
+
+x-app-env: &app-env
+  DATABASE_URL: file:/data/app.db
+  TMP_BACKUP_DIR: /data/backups
+  TZ: Asia/Bangkok
+  TMP_AUTH_PASSWORD: ${TMP_AUTH_PASSWORD:?ตั้ง TMP_AUTH_PASSWORD ใน .env ก่อน (รหัสสุ่มยาว ≥ 12 ตัวอักษร)}
+  TMP_AUTH_SECRET: ${TMP_AUTH_SECRET:?ตั้ง TMP_AUTH_SECRET ใน .env ก่อน (openssl rand -hex 32)}
+  TMP_API_TOKEN: ${TMP_API_TOKEN:?ตั้ง TMP_API_TOKEN ใน .env ก่อน (openssl rand -hex 32) — scheduler ใช้เรียก API ของ app}
+
+services:
+  app:
+    build:
+      context: .
+      target: runtime
+      args:
+        TMP_GIT_SHA: ${TMP_GIT_SHA:-}
+    image: thai-momentum-platform:${TMP_IMAGE_TAG:-latest}
+    env_file:
+      - path: .env
+        required: true
+    environment:
+      <<: *app-env
+      PORT: "3000"
+      HOSTNAME: 0.0.0.0
+    ports:
+      # เฉพาะ loopback ของ host — เปิดสู่ LAN/อินเทอร์เน็ตผ่าน reverse proxy (Caddy/nginx) ที่ทำ TLS แล้วตั้ง
+      # TMP_ALLOWED_ORIGINS=https://โดเมน และ TMP_HSTS=1 (docs/ops.md หัวข้อ "เปิดให้เครื่องอื่นใช้")
+      - "127.0.0.1:${TMP_HOST_PORT:-3000}:3000"
+    volumes:
+      - tmp-data:/data
+    restart: unless-stopped
+    stop_grace_period: 20s
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.status===200?0:1),()=>process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      start_period: 40s
+      retries: 3
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "5" }
+
+  scheduler:
+    build:
+      context: .
+      target: tools
+      args:
+        TMP_GIT_SHA: ${TMP_GIT_SHA:-}
+    image: thai-momentum-platform-tools:${TMP_IMAGE_TAG:-latest}
+    env_file:
+      - path: .env
+        required: true
+    environment:
+      <<: *app-env
+      TMP_APP_URL: http://app:3000
+      TMP_SCHEDULER_HEARTBEAT: /tmp/scheduler.alive
+    volumes:
+      - tmp-data:/data
+    depends_on:
+      app:
+        condition: service_healthy
+    restart: unless-stopped
+    # งานที่รันอยู่ได้รับ SIGTERM ต่อจาก scheduler — ให้เวลาเขียน DB/ย้ายไฟล์ให้จบ
+    stop_grace_period: 120s
+    healthcheck:
+      # scheduler เขียน heartbeat ทุก ≤ 60 วินาที (ทั้งตอนรอและตอนรันงาน) — ไฟล์เก่ากว่า 5 นาที = loop ค้าง
+      test: ["CMD", "bun", "-e", "const f=require('fs');process.exit(Date.now()-f.statSync('/tmp/scheduler.alive').mtimeMs<300e3?0:1)"]
+      interval: 5m
+      timeout: 10s
+      start_period: 2m
+      retries: 2
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "5" }
+
+volumes:
+  tmp-data:

@@ -1,7 +1,8 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono, IBM_Plex_Sans_Thai } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
+import ThemeProvider from "@/components/platform/theme-provider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -26,18 +27,30 @@ export const metadata: Metadata = {
   keywords: ["Thai stocks", "momentum", "SET", "quant", "Jev AI", "backtest"],
 };
 
+// แถบเบราว์เซอร์มือถือสีตามธีม (Gold Ivory / Gold Night) · ปุ่มฟอร์มของเบราว์เซอร์สลับโทนตาม color-scheme
+export const viewport: Viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#faf7f0" },
+    { media: "(prefers-color-scheme: dark)", color: "#0d1320" },
+  ],
+  colorScheme: "light dark",
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
   return (
+    // suppressHydrationWarning: next-themes ใส่คลาส dark + style color-scheme บน <html> ก่อน React hydrate
     <html lang="th" suppressHydrationWarning>
       <body
         className={`${plexThai.variable} ${geistSans.variable} ${geistMono.variable} antialiased bg-background text-foreground`}
       >
-        {children}
-        <Toaster />
+        <ThemeProvider>
+          {children}
+          <Toaster />
+        </ThemeProvider>
       </body>
     </html>
   );

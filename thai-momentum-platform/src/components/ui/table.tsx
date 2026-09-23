@@ -2,13 +2,17 @@
 
 import * as React from "react"
 
+import { useScrollFocusable } from "@/hooks/use-scroll-focusable"
 import { cn } from "@/lib/utils"
 
 function Table({ className, ...props }: React.ComponentProps<"table">) {
+  // ตารางกว้างกว่าจอ (มือถือ) = กล่องเลื่อนแนวนอนต้องโฟกัสด้วยคีย์บอร์ดได้
+  const scrollRef = useScrollFocusable<HTMLDivElement>()
   return (
     <div
+      ref={scrollRef}
       data-slot="table-container"
-      className="relative w-full overflow-x-auto"
+      className="focus-visible:ring-ring/50 relative w-full overflow-x-auto rounded-[inherit] outline-none focus-visible:ring-[3px]"
     >
       <table
         data-slot="table"

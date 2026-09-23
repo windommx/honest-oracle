@@ -15,6 +15,7 @@ import { Map as MapIcon, Search, ShieldCheck, Trophy } from "lucide-react"
 import type { OverviewResponse, SignalMarketDay } from "@/lib/momentum/contracts"
 import { readBangkokClock, type SetPhase } from "@/lib/platform/market-session"
 import { cn } from "@/lib/utils"
+import { Term } from "./glossary"
 
 const PHASE_META: Record<SetPhase, { label: string; dot: string }> = {
   open: { label: "ตลาดเปิด", dot: "status-dot-live" },
@@ -69,7 +70,7 @@ function Donut({ value, caption }: { value: number | null; caption: string }) {
   return (
     <div className="relative size-[104px] shrink-0">
       <svg viewBox="0 0 104 104" className="size-full -rotate-90" aria-hidden>
-        <circle cx="52" cy="52" r={R} fill="none" stroke="#f1e7cc" strokeWidth="11" />
+        <circle cx="52" cy="52" r={R} fill="none" stroke="var(--hero-donut-track)" strokeWidth="11" />
         {v !== null && v > 0 ? (
           <circle
             cx="52"
@@ -91,7 +92,7 @@ function Donut({ value, caption }: { value: number | null; caption: string }) {
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center leading-none">
         <span className="text-xl font-extrabold tabular-nums text-foreground">{v === null ? "—" : `${Math.round(v * 100)}%`}</span>
-        <span className="mt-1 text-[9px] font-semibold text-muted-foreground">{caption}</span>
+        <span className="mt-1 text-[10px] font-semibold text-muted-foreground">{caption}</span>
       </div>
     </div>
   )
@@ -136,9 +137,10 @@ export default function CommandHero({
         {/* ---------- ซ้าย: ทักทาย + สรุป + ปุ่มลัด ---------- */}
         <div className="min-w-0">
           <p className="gold-kicker">Thai Momentum Platform · Command Center 4.0</p>
-          <h1 className="mt-2 text-[28px] leading-tight font-extrabold tracking-tight text-foreground sm:text-4xl">
+          {/* h1 ของหน้าอยู่บน header (ชื่อแท็บ) — คำทักทายเป็นหัวข้อระดับ 2 */}
+          <h2 className="mt-2 text-[28px] leading-tight font-extrabold tracking-tight text-foreground sm:text-4xl">
             {now?.greeting ?? "สวัสดี"} <span aria-hidden>👋</span>
-          </h1>
+          </h2>
           <p className="mt-2 text-sm text-muted-foreground">
             {now?.date ?? "—"} · <span className="font-semibold tabular-nums text-gold-ink">{now?.clock ?? "--:--:--"}</span>
           </p>
@@ -148,7 +150,7 @@ export default function CommandHero({
             <b className="tabular-nums">{ov.latestDate ?? "—"}</b> — ทุกการตัดสินใจเป็น PAPER MODE 100% ไม่ใช้เงินจริง
             <span className="hidden md:inline">
               {" "}
-              · กด <kbd className="rounded-md border border-[#ece3cf] bg-white px-1 font-mono text-[11px]">⌘K</kbd>{" "}
+              · กด <kbd className="rounded-md border border-chip-border bg-chip px-1 font-mono text-[11px]">⌘K</kbd>{" "}
               ค้นหาแท็บได้ทุกหน้า
             </span>
           </p>
@@ -183,9 +185,9 @@ export default function CommandHero({
         </div>
 
         {/* ---------- ขวา: ตลาด + นาฬิกา + breadth ---------- */}
-        <div className="min-w-0 rounded-3xl border border-white/80 bg-white/60 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)] backdrop-blur-sm sm:p-5 lg:w-[360px]">
+        <div className="hero-panel min-w-0 rounded-3xl p-4 backdrop-blur-sm sm:p-5 lg:w-[360px]">
           <div className="flex justify-center lg:justify-end">
-            <span className="inline-flex items-center gap-2 rounded-full border border-[#ece3cf] bg-white px-3 py-1 text-xs font-semibold text-foreground shadow-[0_1px_2px_rgba(120,90,20,0.06)]">
+            <span className="inline-flex items-center gap-2 rounded-full border border-chip-border bg-chip px-3 py-1 text-xs font-semibold text-foreground shadow-[0_1px_2px_rgba(120,90,20,0.06)]">
               <span className={cn("status-dot", now ? phase.dot : "status-dot-off")} aria-hidden />
               {phase.label} · เปิด จ.–ศ. 10:00–16:30
             </span>
@@ -200,7 +202,9 @@ export default function CommandHero({
           <div className="mt-3 flex items-center gap-4">
             <Donut value={market?.b20 ?? null} caption="เหนือ MA20" />
             <div className="min-w-0 text-sm">
-              <p className="font-bold text-foreground">Breadth ตลาด</p>
+              <p className="font-bold text-foreground">
+                <Term id="breadth">Breadth</Term> ตลาด
+              </p>
               <p className="mt-0.5 text-xs text-muted-foreground">
                 MA50 <b className="tabular-nums text-foreground/85">{pct(market?.b50)}</b> · MA200{" "}
                 <b className="tabular-nums text-foreground/85">{pct(market?.b200)}</b>

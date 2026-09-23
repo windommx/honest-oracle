@@ -63,17 +63,10 @@ import {
   XAxis,
   YAxis,
 } from "recharts"
+import { AXIS_TICK, AXIS_TICK_11, CHART, TOOLTIP_STYLE } from "../chart-theme"
+import ScrollBox from "../scroll-box"
 
 /* ────────────────────────────── TOOLTIP_STYLE — เดียวกับแท็บอื่น ────────────────────────────── */
-
-const TOOLTIP_STYLE = {
-  backgroundColor: "#ffffff",
-  border: "1px solid #ece3cf",
-  borderRadius: 9,
-  fontSize: 12,
-  color: "#0f172a",
-  boxShadow: "0 4px 12px rgba(16,24,40,0.08)",
-} as const
 
 /* ────────────────────────────── types ────────────────────────────── */
 
@@ -425,7 +418,7 @@ function _gateKillRec(g: unknown): { gate: string; kills: number } | null {
 function confBadgeCls(conf: number | null | undefined): string {
   if (conf === null || conf === undefined || !isFinite(conf)) return "border-border bg-foreground/5 text-muted-foreground"
   if (conf >= 0.8) return "border-neon-green/40 bg-neon-green/10 text-neon-green"
-  if (conf >= 0.6) return "border-neon-amber/40 bg-neon-amber/10 text-[#f59e0b]"
+  if (conf >= 0.6) return "border-neon-amber/40 bg-neon-amber/10 text-neon-amber"
   return "border-border bg-foreground/5 text-foreground/80"
 }
 
@@ -807,7 +800,7 @@ export default function LabTab() {
                       "text-[10px]",
                       stats.brier < 0.15
                         ? "border-neon-green/40 bg-neon-green/10 text-neon-green"
-                        : "border-neon-amber/40 bg-neon-amber/10 text-[#f59e0b]",
+                        : "border-neon-amber/40 bg-neon-amber/10 text-neon-amber",
                     )}
                   >
                     {stats.brier < 0.15 ? "ผ่านเกณฑ์ <0.15" : "ยังเกินเกณฑ์"}
@@ -860,7 +853,7 @@ export default function LabTab() {
                                   className={cn(
                                     "flex h-9 min-w-12 items-center justify-center rounded px-2 font-mono text-xs tabular-nums",
                                     diag ? "bg-neon-green/10 text-neon-green" : "bg-neon-rose/10 text-neon-rose",
-                                    v === null && "text-slate-600",
+                                    v === null && "text-muted-foreground",
                                   )}
                                   title={diag ? `${r} = ${c} (เห็นตรงกัน)` : `${r} ≠ ${c} (เห็นต่าง)`}
                                 >
@@ -885,7 +878,7 @@ export default function LabTab() {
                   <p className="text-xs font-medium text-muted-foreground">
                     เคสเห็นต่างล่าสุด ({disagreements.length} เคส) — ถูกคุมขังไว้จนกว่าสองกุญแจจะตรงกัน
                   </p>
-                  <div className={cn("max-h-72 space-y-1 overflow-y-auto pr-1", SCROLL_CLS)}>
+                  <ScrollBox className={cn("max-h-72 space-y-1 overflow-y-auto pr-1", SCROLL_CLS)} label="รายการที่กฎกับ Nimble เห็นต่าง (เลื่อนดูได้)">
                     {disagreements.map((x, i) => (
                       <div
                         key={x.id ?? `${x.date}-${x.asset}-${i}`}
@@ -901,7 +894,7 @@ export default function LabTab() {
                         </Badge>
                       </div>
                     ))}
-                  </div>
+                  </ScrollBox>
                 </div>
               )}
             </CardContent>
@@ -927,21 +920,21 @@ export default function LabTab() {
                 <div className="min-w-0">
                   <ResponsiveContainer width="100%" height={240}>
                     <BarChart data={calibData} margin={{ top: 8, right: 8, bottom: 4, left: 0 }}>
-                      <CartesianGrid stroke="rgba(100,116,139,0.18)" strokeDasharray="3 3" vertical={false} />
-                      <XAxis dataKey="name" tick={{ fontSize: 10, fill: "#64748b" }} />
+                      <CartesianGrid stroke={CHART.grid} strokeDasharray="3 3" vertical={false} />
+                      <XAxis dataKey="name" tick={AXIS_TICK} />
                       <YAxis
                         domain={[0, "auto"]}
-                        tick={{ fontSize: 10, fill: "#64748b" }}
+                        tick={AXIS_TICK}
                         tickFormatter={(v: number) => `${v.toFixed(0)}%`}
                         width={40}
                       />
                       <Tooltip
                         contentStyle={TOOLTIP_STYLE}
-                        cursor={{ fill: "rgba(100,116,139,0.12)" }}
+                        cursor={{ fill: CHART.cursor }}
                         formatter={(v: number, name: string) => [`${Number(v).toFixed(1)}%`, name === "pred" ? "conf ทำนาย" : "ชนะจริง"]}
                       />
-                      <Bar dataKey="pred" name="pred" fill="#db2777" radius={[3, 3, 0, 0]} maxBarSize={28} />
-                      <Bar dataKey="real" name="real" fill="#059669" radius={[3, 3, 0, 0]} maxBarSize={28} />
+                      <Bar dataKey="pred" name="pred" fill={CHART.magenta} radius={[3, 3, 0, 0]} maxBarSize={28} />
+                      <Bar dataKey="real" name="real" fill={CHART.green} radius={[3, 3, 0, 0]} maxBarSize={28} />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
@@ -977,26 +970,26 @@ export default function LabTab() {
                 <div className="min-w-0">
                   <ResponsiveContainer width="100%" height={240}>
                     <LineChart data={pnlData} margin={{ top: 8, right: 8, bottom: 4, left: 0 }}>
-                      <CartesianGrid stroke="rgba(100,116,139,0.18)" strokeDasharray="3 3" vertical={false} />
+                      <CartesianGrid stroke={CHART.grid} strokeDasharray="3 3" vertical={false} />
                       <XAxis
                         dataKey="date"
-                        tick={{ fontSize: 10, fill: "#64748b" }}
+                        tick={AXIS_TICK}
                         tickFormatter={(v: string) => String(v).slice(5)}
                         interval="preserveStartEnd"
                         minTickGap={24}
                       />
                       <YAxis
                         domain={["auto", "auto"]}
-                        tick={{ fontSize: 10, fill: "#64748b" }}
+                        tick={AXIS_TICK}
                         tickFormatter={(v: number) => `${v.toFixed(1)}R`}
                         width={44}
                       />
                       <Tooltip
                         contentStyle={TOOLTIP_STYLE}
-                        cursor={{ stroke: "rgba(100,116,139,0.35)" }}
+                        cursor={{ stroke: CHART.ref }}
                         formatter={(v: number) => fmtR(Number(v))}
                       />
-                      <Line type="monotone" dataKey="cumR" name="cumR" stroke="#059669" strokeWidth={1.5} dot={false} isAnimationActive={false} />
+                      <Line type="monotone" dataKey="cumR" name="cumR" stroke={CHART.green} strokeWidth={1.5} dot={false} isAnimationActive={false} />
                     </LineChart>
                   </ResponsiveContainer>
                 </div>
@@ -1024,15 +1017,15 @@ export default function LabTab() {
                 <div className="min-w-0">
                   <ResponsiveContainer width="100%" height={240}>
                     <BarChart data={gateKills} layout="vertical" margin={{ top: 8, right: 16, bottom: 4, left: 8 }}>
-                      <CartesianGrid stroke="rgba(100,116,139,0.18)" strokeDasharray="3 3" horizontal={false} />
-                      <XAxis type="number" allowDecimals={false} tick={{ fontSize: 10, fill: "#64748b" }} />
-                      <YAxis type="category" dataKey="gate" width={82} tick={{ fontSize: 11, fill: "#64748b" }} />
+                      <CartesianGrid stroke={CHART.grid} strokeDasharray="3 3" horizontal={false} />
+                      <XAxis type="number" allowDecimals={false} tick={AXIS_TICK} />
+                      <YAxis type="category" dataKey="gate" width={82} tick={AXIS_TICK_11} />
                       <Tooltip
                         contentStyle={TOOLTIP_STYLE}
-                        cursor={{ fill: "rgba(100,116,139,0.12)" }}
+                        cursor={{ fill: CHART.cursor }}
                         formatter={(v: number) => [`${v.toLocaleString()} setup`, "ถูกฆ่า"]}
                       />
-                      <Bar dataKey="kills" name="kills" fill="#e11d48" radius={[0, 4, 4, 0]} maxBarSize={18} />
+                      <Bar dataKey="kills" name="kills" fill={CHART.rose} radius={[0, 4, 4, 0]} maxBarSize={18} />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
@@ -1082,7 +1075,7 @@ export default function LabTab() {
                         size="sm"
                         onClick={() => openLabel(row)}
                         aria-label={`ติดป้ายเคส ${row.asset ?? ""} วันที่ ${row.date ?? ""}`}
-                        className="ml-auto h-11 shrink-0 border-neon-amber/40 bg-neon-amber/10 px-3 text-[#f59e0b] hover:bg-neon-amber/20 sm:h-8"
+                        className="ml-auto h-11 shrink-0 border-neon-amber/40 bg-neon-amber/10 px-3 text-neon-amber hover:bg-neon-amber/20 sm:h-8"
                       >
                         <Tag className="size-3.5" aria-hidden /> Label
                       </Button>
@@ -1119,7 +1112,7 @@ export default function LabTab() {
                         gutM?.pct == null
                           ? "border-border bg-foreground/5 text-muted-foreground"
                           : gutM.pct > 0.3
-                            ? "border-neon-amber/40 bg-neon-amber/10 text-[#f59e0b]"
+                            ? "border-neon-amber/40 bg-neon-amber/10 text-neon-amber"
                             : "border-neon-green/40 bg-neon-green/10 text-neon-green",
                     },
                     {
@@ -1132,7 +1125,7 @@ export default function LabTab() {
                         lrM?.pct == null
                           ? "border-border bg-foreground/5 text-muted-foreground"
                           : lrM.pct > 0.1
-                            ? "border-neon-amber/40 bg-neon-amber/10 text-[#f59e0b]"
+                            ? "border-neon-amber/40 bg-neon-amber/10 text-neon-amber"
                             : "border-neon-green/40 bg-neon-green/10 text-neon-green",
                     },
                     {
@@ -1151,7 +1144,7 @@ export default function LabTab() {
                           ? "border-border bg-foreground/5 text-muted-foreground"
                           : lnM.pct > 0.3 && (lrM?.pct ?? 1) <= 0.1
                             ? "border-neon-green/40 bg-neon-green/10 text-neon-green"
-                            : "border-neon-amber/40 bg-neon-amber/10 text-[#f59e0b]",
+                            : "border-neon-amber/40 bg-neon-amber/10 text-neon-amber",
                     },
                   ]
                   return rows.map((r) => (
@@ -1266,7 +1259,7 @@ export default function LabTab() {
             <Button
               onClick={submitLabel}
               disabled={!labelVal || labelBusy}
-              className="h-11 bg-neon-green text-white hover:bg-neon-green/85 sm:h-9"
+              className="h-11 bg-neon-green text-on-neon hover:bg-neon-green/85 sm:h-9"
             >
               {labelBusy && <Loader2 className="animate-spin" aria-hidden />}
               บันทึก label

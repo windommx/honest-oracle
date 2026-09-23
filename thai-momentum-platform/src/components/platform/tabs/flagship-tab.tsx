@@ -38,6 +38,8 @@ import {
   ToggleChip,
 } from "@/components/platform/feature-module"
 import { cn } from "@/lib/utils"
+import ScrollBox from "../scroll-box"
+import { Term } from "../glossary"
 
 // ---------- helpers ----------
 
@@ -369,25 +371,28 @@ export default function FlagshipTab() {
           <Trophy className="size-5" aria-hidden />
         </span>
         <div className="min-w-0 flex-1">
-          <h1 className="truncate text-base font-bold">FLAGSHIP — สัญญาณเรือธง อันดับ 1–10</h1>
+          {/* h1 ของหน้าอยู่บน header (ชื่อแท็บ) — หัวแท็บเป็นระดับ 2 */}
+          <h2 className="truncate text-base font-bold">FLAGSHIP — สัญญาณเรือธง อันดับ 1–10</h2>
           <p className="truncate text-[11px] text-muted-foreground">
             คัดกรองจากทุกกระบวนการของแพลตฟอร์ม 6 ด่าน · วันล่าสุด {data.meta.latestDate || "—"} ·{" "}
             คำนวณ {(data.meta.runtimeMs / 1000).toFixed(1)} วินาที
           </p>
         </div>
-        <div className="flex shrink-0 flex-wrap items-center gap-1.5">
+        <div className="flex min-w-0 max-w-full flex-wrap items-center gap-1.5">
           {modeBadge(data.meta.mode, data.meta.modeWhy)}
+          {/* ป้ายที่มาข้อมูลยาวได้ (เช่น MIXED — demo seed + feed: csv …) → ให้ตัดบรรทัดบนจอแคบ ไม่ดันหน้าล้น */}
           <Badge
-            className={
+            className={cn(
+              "h-auto max-w-full whitespace-normal text-left",
               data.meta.isSynthetic
                 ? "border-neon-amber/40 bg-neon-amber/10 text-neon-amber"
-                : "border-neon-green/40 bg-neon-green/10 text-neon-green"
-            }
+                : "border-neon-green/40 bg-neon-green/10 text-neon-green",
+            )}
             title="ที่มาข้อมูล — ตรวจจาก EventLog (seed vs ingest)"
           >
             {data.meta.dataLabel}
           </Badge>
-          <Button size="sm" variant="outline" onClick={refetch} className="min-h-9 sm:min-h-8" aria-label="รีเฟรช">
+          <Button size="sm" variant="outline" onClick={refetch} className="min-h-9 sm:min-h-8" aria-label="รีเฟรชสัญญาณเรือธง">
             <RefreshCw className={cn("size-3.5", loading && "animate-spin")} aria-hidden />
           </Button>
         </div>
@@ -407,6 +412,12 @@ export default function FlagshipTab() {
         code="F1 · FUNNEL"
         title="สายพานคัดกรอง 6 ด่าน — จากทุกเอนจินของแพลตฟอร์ม"
         desc="G1 ข้อมูล+สภาพคล่อง → G2 โมเมนตัม → G3 กลุ่มอุตสาหกรรม → G4 Confluence 3 ชั้น → จัดอันดับด้วย ReliabilityScore"
+        descNode={
+          <>
+            G1 ข้อมูล+สภาพคล่อง → G2 <Term id="momentum">โมเมนตัม</Term> → G3 กลุ่มอุตสาหกรรม → G4{" "}
+            <Term id="confluence">Confluence 3 ชั้น</Term> → จัดอันดับด้วย ReliabilityScore
+          </>
+        }
         icon={Filter}
         hue="cyan"
         status={{ kind: data.ranked.length ? "ready" : "warn", text: data.ranked.length ? "ผ่านแล้ว" : "ไม่มีผ่าน" }}
@@ -546,7 +557,7 @@ export default function FlagshipTab() {
         status={{ kind: totalVeto > 0 ? "ready" : "warn", text: totalVeto > 0 ? `${totalVeto} รายการ` : "ไม่มี" }}
         dense
       >
-        <div className="grid max-h-96 gap-2 overflow-y-auto pr-1 md:grid-cols-2">
+        <ScrollBox className="grid max-h-96 gap-2 overflow-y-auto pr-1 md:grid-cols-2" label="ด่านคัดกรองที่ตัดหุ้นออก (เลื่อนดูได้)">
           {data.vetoStages.map((v) => (
             <div key={v.stage} className="min-w-0 rounded-lg border border-border/60 bg-foreground/[0.02] p-2.5">
               <div className="flex min-w-0 items-center gap-2">
@@ -575,7 +586,7 @@ export default function FlagshipTab() {
               )}
             </div>
           ))}
-        </div>
+        </ScrollBox>
       </FeatureModule>
 
       {/* ---------- F4 เกณฑ์ลงทะเบียน ---------- */}
@@ -613,7 +624,7 @@ export default function FlagshipTab() {
             <ul className="mt-1.5 grid gap-1 text-[11px] text-muted-foreground">
               <li>· <span className="font-medium text-foreground">G1</span> ราคา ≥ 1.00 ฿ · มูลค่าเฉลี่ย 20 วัน ≥ 1 ล้าน · ประวัติ ≥ 60 วัน</li>
               <li>· <span className="font-medium text-foreground">G2</span> โมเมนตัมครึ่งบน (percentile ≥ 50%) · MFD &lt; 0.45 (เกณฑ์เดียวกับ Signals Engine)</li>
-              <li>· <span className="font-medium text-foreground">G3</span> กลุ่มไม่อยู่ 2 อันดับท้ายของตลาด (เกณฑ์เดียวกับ GATES.blockSectorBottom)</li>
+              <li>· <span className="font-medium text-foreground">G3</span> กลุ่มไม่อยู่ 2 อันดับท้ายของตลาด (เกณฑ์เดียวกับ GATES.blockSectorBottom — ใช้เมื่อข้อมูลมีมากกว่า 2 กลุ่ม ถ้ามี ≤ 2 กลุ่ม ด่านนี้ไม่ตัด)</li>
               <li>· <span className="font-medium text-foreground">G4</span> Confluence ≥ 45 (verdict กลางขึ้นไป) — ตรวจทุกตัวที่ผ่าน G3 จากข้อมูล OHLC ในฐานข้อมูล (ไม่จำกัด watchlist)</li>
             </ul>
             <p className="mt-2 text-[11px] font-semibold text-muted-foreground">หมายเหตุของรอบนี้</p>

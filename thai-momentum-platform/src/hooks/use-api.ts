@@ -70,6 +70,24 @@ export async function postJson<T>(url: string, body: unknown): Promise<T> {
   return j as T
 }
 
+/**
+ * POST JSON แบบคืนสถานะ HTTP (ไม่ throw เมื่อ 4xx/5xx) — ใช้กับ endpoint ที่ต้อง "ยืนยัน" ก่อนเขียนทับข้อมูล
+ * เช่น /api/seed ({confirm:"RESET"}) หรือ feed replaceDemo ({confirm:"REPLACE"}) ที่ตอบ 409 เมื่อยังไม่ยืนยัน
+ * throw เฉพาะเมื่อเครือข่ายล้ม (fetch reject)
+ */
+export async function postJsonWithStatus<T>(
+  url: string,
+  body: unknown,
+): Promise<{ ok: boolean; status: number; data: (T & { error?: string; message?: string }) | null }> {
+  const r = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  })
+  const j = (await readJson(r)) as (T & { error?: string; message?: string }) | null
+  return { ok: r.ok && j !== null, status: r.status, data: j }
+}
+
 export function fmtPct(x: number | null | undefined, digits = 1): string {
   if (x === null || x === undefined || !isFinite(x)) return "—"
   return `${x >= 0 ? "+" : ""}${x.toFixed(digits)}%`

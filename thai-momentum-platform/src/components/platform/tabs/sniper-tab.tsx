@@ -271,8 +271,11 @@ export default function SniperTab() {
               {briefing.leadlag.slice(0, 3).map((row) => (
                 <div key={row.asset} title={row.note} className="truncate text-[11px] text-muted-foreground">
                   <span className="font-mono">{row.asset}</span>{" "}
-                  {row.direction === "leads" ? `นำ ${row.bestLag} วัน` : "เคลื่อนพร้อมกัน"} (r{" "}
-                  {fmtNum(row.bestCorr, 2)})
+                  {row.direction === "leads"
+                    ? `นำ ${row.bestLag} วัน (r ${fmtNum(row.bestCorr, 2)})`
+                    : row.direction === "flat"
+                      ? "ยังไม่มีนัยสำคัญ (|r| < 2/√n)"
+                      : `เคลื่อนพร้อมกัน (r ${fmtNum(row.corr0, 2)})`}
                 </div>
               ))}
               {briefing.leadlag.length === 0 && <span className="text-[11px] text-muted-foreground">—</span>}

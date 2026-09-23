@@ -1,0 +1,12 @@
+# 18:30 เวลาไทย จันทร์–ศุกร์ (SET ปิด 16:40 · ข้อมูล EOD พร้อม 17:30) — วันหยุด SET: daily.ts ตรวจปฏิทินเองแล้วข้าม
+# Persistent=true: เครื่องปิดอยู่ตอนถึงเวลา → รันทันทีเมื่อเปิดเครื่อง · timezone ใน OnCalendar ต้องใช้ systemd ≥ 239
+[Unit]
+Description=Thai Momentum Platform — daily pipeline 18:30 Asia/Bangkok Mon–Fri
+
+[Timer]
+OnCalendar=Mon..Fri *-*-* 18:30:00 Asia/Bangkok
+Persistent=true
+Unit=thai-momentum-daily.service
+
+[Install]
+WantedBy=timers.target

@@ -23,6 +23,7 @@ browser จึงผ่านได้ ส่วน server ของแพลต
 ผลลัพธ์:
   - CSV รูปแบบเดียวกับการ์ดนำเข้า: date,symbol,open,high,low,close,val  (+ ไฟล์ sectors .json ข้าง ๆ)
   - --post: ส่ง JSON เข้า POST /api/feed/ingest เป็นชุดละ 20,000 แถว (replaceDemo เฉพาะชุดแรก)
+  - เซิร์ฟเวอร์ตั้ง TMP_AUTH_PASSWORD ไว้: ตั้ง env TMP_API_TOKEN (ค่าเดียวกับฝั่งเซิร์ฟเวอร์) → ส่ง Authorization: Bearer ให้เอง
 
 ธรรมเนียม: ทุกอย่างที่ไม่มีข้อมูล = ว่าง/None (ไม่เดาแทน) · สคริปต์พิมพ์รายงานรายตัวก่อนส่งเสมอ
 """
@@ -32,6 +33,7 @@ import argparse
 import asyncio
 import csv
 import json
+import os
 import sys
 import urllib.error
 import urllib.request
@@ -184,6 +186,15 @@ def write_csv(rows: list[dict], sectors: dict[str, str], out: Path) -> None:
     out.with_suffix(".sectors.json").write_text(json.dumps(sectors, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
+def api_headers() -> dict[str, str]:
+    """header ของ POST เข้าแพลตฟอร์ม — แนบ Bearer token เมื่อเซิร์ฟเวอร์ตั้งรหัสผ่าน (env TMP_API_TOKEN ตรงกับฝั่งเซิร์ฟเวอร์)"""
+    headers = {"Content-Type": "application/json"}
+    token = os.environ.get("TMP_API_TOKEN", "").strip()
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+    return headers
+
+
 def post_rows(base: str, rows: list[dict], sectors: dict[str, str], replace_demo: bool, chunk: int = 20000) -> None:
     url = base.rstrip("/") + "/api/feed/ingest"
     for i in range(0, len(rows), chunk):
@@ -193,13 +204,18 @@ def post_rows(base: str, rows: list[dict], sectors: dict[str, str], replace_demo
             "sectors": sectors,
             "replaceDemo": replace_demo and i == 0,
         }
-        req = urllib.request.Request(url, data=json.dumps(body).encode("utf-8"), headers={"Content-Type": "application/json"})
+        if replace_demo and i == 0:
+            # ใส่ --replace-demo เอง = ยืนยันการล้างข้อมูลเดิม (เซิร์ฟเวอร์สำรอง DB ไว้ที่ data/backups ก่อนลบ)
+            body["confirm"] = "REPLACE"
+        req = urllib.request.Request(url, data=json.dumps(body).encode("utf-8"), headers=api_headers())
         try:
             with urllib.request.urlopen(req, timeout=600) as resp:  # noqa: S310
                 j = json.loads(resp.read().decode("utf-8"))
                 print(f"📥 ชุด {i // chunk + 1}: {j.get('message')}")
         except urllib.error.HTTPError as e:
             print(f"❌ ชุด {i // chunk + 1}: HTTP {e.code} {e.read().decode('utf-8', 'ignore')[:300]}", file=sys.stderr)
+            if e.code in (401, 403):
+                print("   ℹ️ เซิร์ฟเวอร์ตั้งรหัสผ่านไว้ — ตั้ง env TMP_API_TOKEN ให้ตรงกับฝั่งเซิร์ฟเวอร์แล้วรันใหม่", file=sys.stderr)
             sys.exit(2)
         except (urllib.error.URLError, TimeoutError) as e:  # เชื่อมต่อไม่ได้ (server ไม่ได้รัน/URL ผิด) — CSV เขียนไว้แล้ว
             print(f"❌ ชุด {i // chunk + 1}: ส่งไม่สำเร็จ ({e}) — ตรวจว่าแพลตฟอร์มรันอยู่ที่ {base} แล้วนำเข้า CSV ผ่านการ์ดแทนได้", file=sys.stderr)

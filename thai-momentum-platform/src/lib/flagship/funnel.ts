@@ -9,7 +9,8 @@
 // ด่านคัดกรอง (ทุกด่านบันทึกเหตุผลการคัดออก — ห้ามหาย):
 //   G1 Data & Liquidity : ราคา ≥ 1฿ · มูลค่าซื้อขายเฉลี่ย 20 วัน ≥ 1 ล้าน · ประวัติ ≥ 60 วัน
 //   G2 Momentum         : percentile ครึ่งบนของตลาด · MFD < 0.45 (ไม่แรงขายกระจาย)
-//   G3 Sector           : กลุ่มไม่อยู่ท้ายตาราง (2 กลุ่มสุดท้ายออก)
+//   G3 Sector           : กลุ่มไม่อยู่ท้ายตาราง (2 กลุ่มสุดท้ายออก — ใช้เมื่อข้อมูลมี > 2 กลุ่มเท่านั้น
+//                         ≤ 2 กลุ่ม = ด่านนี้ไม่ตัด เพราะ "2 กลุ่มท้าย" กินทั้งตลาด · เกณฑ์เดียวกับตัวกรองของ Jev)
 //   G4 Confluence       : ผ่านเกณฑ์ 3 ชั้นของ SET Sniper (Location×Value×Behavior ≥ 45)
 //
 // น้ำหนักคะแนน ReliabilityScore (ลงทะเบียนล่วงหน้า — รวม 100):
@@ -71,6 +72,19 @@ interface Candidate {
 }
 
 let _cache: { key: string; res: FlagshipResponse } | null = null
+
+/**
+ * G3 — ตัด "กลุ่มท้ายตาราง" (sectorRank 1 = แรงสุด): ใช้เมื่อจำนวนกลุ่ม > blockSectorBottom เท่านั้น
+ * ≤ 2 กลุ่ม → ไม่ตัด (เดิม sectorCut = nSectors − 2 ≤ 0 ตัดทุกตัวรวมกลุ่มอันดับ 1) — เกณฑ์เดียวกับ
+ * ตัวกรอง sector ของ Jev (`nSec > GATES.blockSectorBottom && rank > nSec − blockSectorBottom`)
+ */
+export function sectorBottomVeto(
+  sectorRank: number,
+  nSectors: number,
+  bottom: number = GATE.blockSectorBottom,
+): boolean {
+  return nSectors > bottom && sectorRank > nSectors - bottom
+}
 
 const sma = (xs: number[], w: number, at: number): number => {
   if (at + 1 < w) return NaN
@@ -239,20 +253,21 @@ export async function runFlagshipFunnel(): Promise<FlagshipResponse> {
   // ---------- G3 — Sector ----------
   const vetoG3: { symbol: string; reason: string }[] = []
   const passG3: Candidate[] = []
-  const sectorCut = nSectors - GATE.blockSectorBottom
   for (const c of passG2) {
-    if (c.sectorRank > sectorCut) {
+    if (sectorBottomVeto(c.sectorRank, nSectors)) {
       vetoG3.push({
         symbol: c.symbol,
-        // ข้อมูลมีกลุ่มไม่เกินจำนวนที่ตัด = เกณฑ์คัดออกทุกกลุ่ม (รวมอันดับ 1) — บอกตรง ๆ แทน "อยู่ท้ายตาราง (อันดับ 1/1)"
-        reason:
-          nSectors <= GATE.blockSectorBottom
-            ? `ข้อมูลมีเพียง ${nSectors} กลุ่ม — เกณฑ์ตัด ${GATE.blockSectorBottom} กลุ่มท้ายคัดออกทุกกลุ่ม (กลุ่ม ${c.sector} อันดับ ${c.sectorRank}/${nSectors})`
-            : `กลุ่ม ${c.sector} อยู่ท้ายตาราง (อันดับ ${c.sectorRank}/${nSectors} — ${GATE.blockSectorBottom} กลุ่มสุดท้ายออก)`,
+        reason: `กลุ่ม ${c.sector} อยู่ท้ายตาราง (อันดับ ${c.sectorRank}/${nSectors} — ${GATE.blockSectorBottom} กลุ่มสุดท้ายออก)`,
       })
       continue
     }
     passG3.push(c)
+  }
+  if (nSectors <= GATE.blockSectorBottom && passG2.length > 0) {
+    // บอกตรง ๆ ว่าด่านนี้ไม่ได้คัดกรองอะไรในรอบนี้ (ไม่ใช่ "ผ่านเพราะกลุ่มแข็งแรง")
+    notes.push(
+      `ข้อมูลมีเพียง ${nSectors} กลุ่ม — ไม่ใช้เกณฑ์ตัด ${GATE.blockSectorBottom} กลุ่มท้าย (ต้องมีมากกว่า ${GATE.blockSectorBottom} กลุ่ม) ด่าน G3 จึงไม่คัดออกรอบนี้`,
+    )
   }
 
   // ---------- G4 — Confluence (SET Sniper 3 ชั้น) ----------
@@ -528,7 +543,16 @@ export async function runFlagshipFunnel(): Promise<FlagshipResponse> {
     mkStage("G0", "Universe (โผวันนี้)", "หุ้นที่ติดโผ snapshot ของวันล่าสุด", universeCount, todays, []),
     mkStage("G1", "Data & Liquidity", "ราคา ≥ 1฿ · มูลค่าเฉลี่ย 20 วัน ≥ 1 ล้าน · ประวัติ ≥ 60 วัน", todays.length, passG1, vetoG1),
     mkStage("G2", "Momentum", "ครึ่งบนของตลาด · ไม่แรงขายกระจาย (MFD < 0.45)", passG1.length, passG2, vetoG2),
-    mkStage("G3", "Sector", "กลุ่มไม่อยู่ 2 อันดับท้าย", passG2.length, passG3, vetoG3),
+    mkStage(
+      "G3",
+      "Sector",
+      nSectors > GATE.blockSectorBottom
+        ? `กลุ่มไม่อยู่ ${GATE.blockSectorBottom} อันดับท้าย`
+        : `ข้อมูลมี ${nSectors} กลุ่ม (≤ ${GATE.blockSectorBottom}) — ไม่ใช้เกณฑ์ตัดกลุ่มท้าย`,
+      passG2.length,
+      passG3,
+      vetoG3,
+    ),
     mkStage("G4", "Confluence", "ตรวจ 3 ชั้น SET Sniper ทุกตัวจากข้อมูล OHLC (Location×Value×Behavior ≥ 45)", passG3.length, passG4, vetoG4),
     mkStage("G5", "Rank 1–10", "จัดอันดับด้วย ReliabilityScore — ผู้ผ่านครบก่อน แล้วเติมด้วยกองเฝ้าดู", passedRows.length + watchRows.length, ranked, []),
   ]

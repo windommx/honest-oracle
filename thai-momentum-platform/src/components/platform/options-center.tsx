@@ -14,15 +14,18 @@
 
 import { useMemo, useState, type ReactNode } from "react"
 import {
+  BookOpen,
   ChevronDown,
   ChevronUp,
   LayoutGrid,
+  Library,
   Plus,
   RotateCcw,
   Rows3,
   Search,
   Trash2,
 } from "lucide-react"
+import { useTheme } from "next-themes"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -38,6 +41,8 @@ import {
   type DashboardPrefs,
 } from "@/lib/platform/dashboard-prefs"
 import { BUILTIN_PRESETS, type DashboardPreset } from "@/lib/platform/dashboard-presets"
+import { useUiMode } from "@/hooks/use-ui-prefs"
+import { hiddenTabCount, type UiMode } from "./nav-config"
 
 function Kbd({ children }: { children: string }) {
   return (
@@ -78,6 +83,10 @@ export interface OptionsCenterProps {
   onApplyPreset: (p: DashboardPreset) => void
   onDeletePreset: (id: string) => void
   onResetAll: () => void
+  /** เปิดคู่มือเริ่มต้น (first-run guide) อีกครั้ง */
+  onOpenGuide?: () => void
+  /** เปิดแผงอภิธานศัพท์ */
+  onOpenGlossary?: () => void
 }
 
 export default function OptionsCenter({
@@ -90,9 +99,14 @@ export default function OptionsCenter({
   onApplyPreset,
   onDeletePreset,
   onResetAll,
+  onOpenGuide,
+  onOpenGlossary,
 }: OptionsCenterProps) {
   const [query, setQuery] = useState("")
   const [presetName, setPresetName] = useState("")
+  // ค่าระดับแอป (ไม่ใช่ของแดชบอร์ด) — ใช้ store เดียวกับ header/sidebar จึงสลับพร้อมกันทุกที่
+  const { theme, setTheme } = useTheme()
+  const [uiMode, setUiMode] = useUiMode()
 
   const visibleCount = FEATURE_IDS.filter((id) => prefs.modules[id]).length
   const q = query.trim().toLowerCase()
@@ -161,6 +175,32 @@ export default function OptionsCenter({
           {/* ================= จัดวาง ================= */}
           <TabsContent value="layout" className="mt-0 min-h-0 flex-1 overflow-y-auto px-4 py-2">
             <div className="divide-y divide-border/70">
+              <Field label="ธีมสี" desc="สว่าง = Gold Ivory · มืด = Gold Night · ตามระบบ = สลับเองตามอุปกรณ์">
+                <Segmented
+                  value={(theme ?? "system") as "light" | "dark" | "system"}
+                  onChange={(v) => setTheme(v)}
+                  items={[
+                    { value: "light", label: "สว่าง", aria: "ธีมสว่าง Gold Ivory" },
+                    { value: "dark", label: "มืด", aria: "ธีมมืด Gold Night" },
+                    { value: "system", label: "ระบบ", aria: "ธีมตามระบบ" },
+                  ]}
+                  ariaLabel="ธีมสี"
+                />
+              </Field>
+              <Field
+                label="มุมมองเมนู"
+                desc={`ง่าย = เฉพาะแท็บหลัก (ซ่อน ${hiddenTabCount("simple")} แท็บวิจัย) · Pro = ครบทุกแท็บ`}
+              >
+                <Segmented
+                  value={uiMode}
+                  onChange={(v: UiMode) => setUiMode(v)}
+                  items={[
+                    { value: "simple", label: "ง่าย", aria: "โหมดง่าย (Simple)" },
+                    { value: "pro", label: "Pro", aria: "โหมดมืออาชีพ (Pro)" },
+                  ]}
+                  ariaLabel="มุมมองเมนู"
+                />
+              </Field>
               <Field label="เลย์เอาต์" desc="2 คอลัมน์ใช้ได้บนจอกว้าง (xl) — โมดูลกว้างครอบเต็มแถว">
                 <Segmented
                   value={prefs.layout}
@@ -210,6 +250,25 @@ export default function OptionsCenter({
               ตัวเลือกของแต่ละโมดูล (ช่วงเวลา/จำนวน/มุมมอง) ยังอยู่ครบที่แถบ options ใต้หัวโมดูล
               เมื่อปิดโหมดอ่าน — ระบบไม่ลืมค่าที่เคยเลือกไว้
             </p>
+            {onOpenGuide || onOpenGlossary ? (
+              <div className="mt-3 space-y-2 border-t border-border/70 pt-3">
+                <p className="text-xs font-semibold">ช่วยเหลือ</p>
+                <div className="grid grid-cols-2 gap-2">
+                  {onOpenGuide ? (
+                    <Button variant="outline" size="sm" className="h-10 justify-start gap-2 sm:h-9" onClick={onOpenGuide}>
+                      <BookOpen className="size-3.5 text-gold-ink" aria-hidden />
+                      คู่มือเริ่มต้น
+                    </Button>
+                  ) : null}
+                  {onOpenGlossary ? (
+                    <Button variant="outline" size="sm" className="h-10 justify-start gap-2 sm:h-9" onClick={onOpenGlossary}>
+                      <Library className="size-3.5 text-gold-ink" aria-hidden />
+                      อภิธานศัพท์
+                    </Button>
+                  ) : null}
+                </div>
+              </div>
+            ) : null}
           </TabsContent>
 
           {/* ================= โมดูล ================= */}
@@ -229,10 +288,10 @@ export default function OptionsCenter({
                 เห็นอยู่ {visibleCount}/{FEATURE_IDS.length} โมดูล · ลากลำดับได้ด้วยปุ่ม ▲▼
               </span>
               <div className="flex shrink-0 gap-1">
-                <Button variant="outline" size="sm" className="h-7 px-2 text-[11px]" onClick={() => setAllVisible(true)}>
+                <Button variant="outline" size="sm" className="h-9 px-2 text-[11px] sm:h-7" onClick={() => setAllVisible(true)}>
                   แสดงทั้งหมด
                 </Button>
-                <Button variant="outline" size="sm" className="h-7 px-2 text-[11px]" onClick={() => setAllVisible(false)}>
+                <Button variant="outline" size="sm" className="h-9 px-2 text-[11px] sm:h-7" onClick={() => setAllVisible(false)}>
                   ซ่อนทั้งหมด
                 </Button>
               </div>

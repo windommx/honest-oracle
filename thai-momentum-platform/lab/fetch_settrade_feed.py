@@ -9,6 +9,7 @@ fetch_settrade_feed.py — เทมเพลตดึงข้อมูลจ�
 สิ่งที่ต้องกรอก (อย่า commit ค่าจริง): SETTRADE_APP_ID, SETTRADE_APP_SECRET, SETTRADE_BROKER_ID, SETTRADE_APP_CODE
 ตั้งเป็น environment variable แล้วรัน:
   python fetch_settrade_feed.py --symbols PTT,KBANK --limit 500 --post http://localhost:3000
+เซิร์ฟเวอร์ตั้ง TMP_AUTH_PASSWORD ไว้: ตั้ง env TMP_API_TOKEN (ค่าเดียวกับฝั่งเซิร์ฟเวอร์) → สคริปต์ส่ง Authorization: Bearer ให้เอง
 
 ทำไมแหล่งนี้คุ้มค่า: เป็นข้อมูลทางการทั้ง SET และ TFEX (S50 futures/options → ตาราง FuturesDaily/OptionsDaily
 ที่โมดูล Basis/Parity/VRP รออยู่) — เมื่อทดสอบผ่านแล้วให้ย้ายเป็นแหล่งหลักแทน Yahoo/settfex
@@ -30,6 +31,15 @@ from datetime import datetime, timedelta, timezone
 BKK = timezone(timedelta(hours=7), "Asia/Bangkok")
 # ชื่อดัชนี ไม่ใช่หุ้น — ส่งเข้า --symbols จะได้แท่งของดัชนีปนเข้ามาเป็น "หุ้น"
 INDEX_NAMES = {"SET", "SET50", "SET100", "SETHD", "SSET", "MAI", "SETESG", "SETCLMV", "SETWB"}
+
+
+def api_headers() -> dict[str, str]:
+    """header ของ POST เข้าแพลตฟอร์ม — แนบ Bearer token เมื่อเซิร์ฟเวอร์ตั้งรหัสผ่าน (env TMP_API_TOKEN ตรงกับฝั่งเซิร์ฟเวอร์)"""
+    headers = {"Content-Type": "application/json"}
+    token = os.environ.get("TMP_API_TOKEN", "").strip()
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+    return headers
 
 
 def get_client():
@@ -129,16 +139,22 @@ def main() -> None:
         out = f"settrade-{datetime.now():%Y%m%d}.json"
         with open(out, "w", encoding="utf-8") as f:
             json.dump({"source": "settrade", "rows": all_rows}, f, ensure_ascii=False)
-        print(f"💾 {out} — ส่งด้วย --post หรือ curl -X POST {'{URL}'}/api/feed/ingest -d @{out}")
+        auth = ' -H "Authorization: Bearer $TMP_API_TOKEN"' if os.environ.get("TMP_API_TOKEN", "").strip() else ""
+        print(f"💾 {out} — ส่งด้วย --post หรือ curl -X POST {'{URL}'}/api/feed/ingest -H \"Content-Type: application/json\"{auth} -d @{out}")
         return
     url = args.post.rstrip("/") + "/api/feed/ingest"
     body = {"source": "settrade", "rows": all_rows, "replaceDemo": args.replace_demo}
-    req = urllib.request.Request(url, data=json.dumps(body).encode("utf-8"), headers={"Content-Type": "application/json"})
+    if args.replace_demo:
+        # ใส่ --replace-demo เอง = ยืนยันการล้างข้อมูลเดิม (เซิร์ฟเวอร์สำรอง DB ไว้ที่ data/backups ก่อนลบ)
+        body["confirm"] = "REPLACE"
+    req = urllib.request.Request(url, data=json.dumps(body).encode("utf-8"), headers=api_headers())
     try:
         with urllib.request.urlopen(req, timeout=600) as resp:  # noqa: S310
             print("📥", json.loads(resp.read().decode("utf-8")).get("message"))
     except urllib.error.HTTPError as e:
         print(f"❌ HTTP {e.code} {e.read().decode('utf-8', 'ignore')[:300]}", file=sys.stderr)
+        if e.code in (401, 403):
+            print("   ℹ️ เซิร์ฟเวอร์ตั้งรหัสผ่านไว้ — ตั้ง env TMP_API_TOKEN ให้ตรงกับฝั่งเซิร์ฟเวอร์แล้วรันใหม่", file=sys.stderr)
         sys.exit(2)
 
 

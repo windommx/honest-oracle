@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { db } from "@/lib/db"
 import { emitEvent } from "@/lib/research/events"
+import { mayPersistOnGet } from "@/lib/security/request-principal"
 import { computeRegimeState } from "@/lib/momentum/core"
 import {
   evaluateStopPositions,
@@ -26,6 +27,7 @@ function parseBucket(v: string | null): StopBucket {
 // GET /api/stops?bucket=pooled|auto|human
 // → posterior T/R + walk-forward 3 arms (fixed10 | bayesT | bayesR) + adoption ตามกติกาที่ล็อกไว้
 //   + ตำแหน่งเปิดแต่ละตัวบน curve — บันทึก policy ลง Setting.stops_policy เมื่อผล "เปลี่ยน" เท่านั้น
+//   และเฉพาะผู้ดูแลที่เรียกจากหน้าเว็บนี้/สคริปต์ (ผู้ชมหรือเว็บอื่นที่พามาเปิดลิงก์ได้ผลคำนวณแต่ไม่บันทึก)
 export async function GET(req: Request) {
   const t0 = Date.now()
   try {
@@ -56,7 +58,8 @@ export async function GET(req: Request) {
     const hasMarket = arms.equityCurves.length > 0
     const prev = await readStopPolicy()
     const changed = hasMarket && (!prev || prev.arm !== winner || prev.adopted !== passed)
-    if (changed) {
+    const saved = changed && mayPersistOnGet(req)
+    if (saved) {
       const payload = JSON.stringify({
         arm: winner,
         adopted: passed,
@@ -101,6 +104,11 @@ export async function GET(req: Request) {
     const { rows: positions, stale, noPrice } = await evaluateStopPositions(livePosterior)
     for (const p of positions) p.regime = regime?.action ?? "-"
     const liveS = liveBackstop(livePosterior)
+    // fill="close" (2026-09-23): เทรดที่ไม่มี path รายวันไม่ได้เครดิต stop — บอกเหตุผลเมื่อ s* = "—" เพราะข้อมูลไม่พอ
+    const fillNote =
+      livePosterior.nNoPathEvidence > 0
+        ? ` · stop ขายที่ราคาปิดวันที่ทะลุ (ไม่ใช่ระดับ stop พอดี) — ${livePosterior.nNoPathEvidence} เทรดไม่มี path รายวันจึงไม่ให้เครดิต stop`
+        : ""
     const priceNote =
       (stale.length > 0 ? ` · ราคาไม่ใช่วันล่าสุด (หยุดซื้อขาย?): ${stale.join(", ")}` : "") +
       (noPrice.length > 0 ? ` · ไม่มีราคาในระบบ (ประเมินไม่ได้): ${noPrice.join(", ")}` : "")
@@ -124,7 +132,7 @@ export async function GET(req: Request) {
         rule: ADOPTION_RULE,
         sharpeDelta,
         maxDDDelta,
-        saved: changed,
+        saved,
       },
       positions,
       costRT: 0.014,
@@ -134,7 +142,7 @@ export async function GET(req: Request) {
       message:
         (bp.nTrades === 0
           ? "ยังไม่มีประวัติเทรด — รัน seed (ข้อมูลตัวอย่าง) หรือให้ Jev ปิดสถานะจริงก่อน"
-          : `posterior จาก ${bp.nTrades} เทรด (bucket=${bp.pooled && bucket !== "pooled" ? "pooled (fallback)" : bucket}) · live mode=${mode} · s_live=${liveS !== null ? `${(liveS * 100).toFixed(1)}%` : "—"} · policy=${policy?.arm ?? winner}`) +
+          : `posterior จาก ${bp.nTrades} เทรด (bucket=${bp.pooled && bucket !== "pooled" ? "pooled (fallback)" : bucket}) · live mode=${mode} · s_live=${liveS !== null ? `${(liveS * 100).toFixed(1)}%` : "—"} · policy=${policy?.arm ?? winner}${fillNote}`) +
         priceNote,
     }
     return NextResponse.json(resp)

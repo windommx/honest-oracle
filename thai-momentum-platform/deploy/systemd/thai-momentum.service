@@ -1,0 +1,43 @@
+# ============================================================
+# systemd — เว็บ (Next.js standalone) บน Linux ที่ไม่ใช้ Docker · ขั้นตอนเต็ม: docs/ops.md หัวข้อ "ติดตั้งแบบ systemd"
+#   โค้ด  /opt/thai-momentum-platform (ผู้ใช้ tmp · bun run build แล้ว)
+#   ข้อมูล /var/lib/thai-momentum-platform (StateDirectory — app.db, backups/) · ไฟล์ที่แอปเขียน /opt/thai-momentum-platform/data
+#         (ต้องมี symlink .next/standalone/data → ../../data หลังทุก build — server.js chdir ไป .next/standalone)
+#   env   /etc/thai-momentum-platform.env (DATABASE_URL=file:/var/lib/thai-momentum-platform/app.db, TMP_AUTH_* ...)
+# server รันด้วย node (Bun 1.3.11 รัน standalone ของ Next 16.3.6 ไม่ได้) และ bind เฉพาะ 127.0.0.1 — เปิดออกนอกเครื่องผ่าน
+# reverse proxy ที่ทำ TLS เท่านั้น
+# ============================================================
+[Unit]
+Description=Thai Momentum Platform (web)
+Documentation=file:///opt/thai-momentum-platform/docs/ops.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=tmp
+Group=tmp
+WorkingDirectory=/opt/thai-momentum-platform
+EnvironmentFile=/etc/thai-momentum-platform.env
+Environment=NODE_ENV=production PORT=3000 HOSTNAME=127.0.0.1
+Environment=TMP_BACKUP_DIR=/var/lib/thai-momentum-platform/backups
+ExecStart=/usr/bin/node .next/standalone/server.js
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=20
+StateDirectory=thai-momentum-platform
+StateDirectoryMode=0750
+# hardening — เขียนได้เฉพาะ StateDirectory, data/ ของแอป และ cache ของ Next
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/thai-momentum-platform/data -/opt/thai-momentum-platform/.next/standalone/.next/cache
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+
+[Install]
+WantedBy=multi-user.target

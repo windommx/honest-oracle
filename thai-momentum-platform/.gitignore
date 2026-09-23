@@ -19,3 +19,8 @@ lab/evidence_report.json
 lab/context.json
 data/feed/*.csv
 data/feed/*.json
+# สำเนาสำรองฐานข้อมูล (src/lib/ops/backup.ts) — มีข้อมูลทั้งหมด ห้าม commit
+data/backups/
+# ไฟล์ที่ระบบเขียนตอนรัน (docs/ops.md · scripts/daily.ts) — ของเครื่องนั้น ๆ ห้าม commit
+data/runs/
+data/feed/inbox/

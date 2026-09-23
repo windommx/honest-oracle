@@ -33,7 +33,7 @@ import {
 } from "@/lib/momentum/stops/engine"
 import { liveExit, liveBackstop, type Posterior } from "@/lib/momentum/stops/bayes"
 import { lastKnownIndex } from "@/lib/portfolio/returns"
-import { legacyExitDecision } from "@/lib/jev/exit"
+import { applyTimeExit, exitKind, legacyExitDecision, noPriceStreak } from "@/lib/jev/exit"
 
 export const dynamic = "force-dynamic"
 export const maxDuration = 120
@@ -155,7 +155,8 @@ async function runJev() {
       const si = pivot.symIdx.get(sym)
       return si === undefined ? NaN : pivot.px[pi][si]
     }
-    // ราคาปิดล่าสุดที่มีจริง ณ/ก่อนวันล่าสุด (หุ้นพัก/หยุดซื้อขายไม่มีแถววันล่าสุด) — ใช้เขียนเหตุผลเท่านั้น
+    // ราคาปิดล่าสุดที่มีจริง ณ/ก่อนวันล่าสุด (หุ้นพัก/หยุดซื้อขายไม่มีแถววันล่าสุด) — ใช้เขียนเหตุผล และเป็นราคา
+    // ของการบังคับปิดเมื่อไม่มีราคาติดกันครบ NO_PRICE_EXIT_DAYS วัน (persistClosedTrade fillAtLastKnown ใช้ราคาเดียวกัน)
     const lastKnownOf = (sym: string): { px: number; date: string } | null => {
       const si = pivot.symIdx.get(sym)
       if (pi === undefined || si === undefined) return null
@@ -235,6 +236,10 @@ async function runJev() {
     // ---- Bayesian stop layer (Zambelli): ทำงานเมื่อ policy adopt bayes arm เท่านั้น ----
     //   ถือต่อเมื่อ EV_hold > 0 · ปิดเมื่อ ≤ 0 หรือ dd ≥ s_live = 0.85·s* · pL > 0.60 → tighten
     //   (dd = 0 = ยังไม่ติดลบ → ใช้กฎ legacy ปกติ) — policy = fixed10 / ไม่มีข้อมูล → legacy ทั้งหมด
+    // ---- กฎปิดที่ตัดสินเมื่อ 2026-09-23 (src/lib/jev/exit.ts · docs/research/methodology.md) ----
+    //   ไม่มีราคาติดกัน ≥ NO_PRICE_EXIT_DAYS วันทำการ → exit ที่ราคาปิดล่าสุดที่มี (Trade บันทึกด้วยราคานั้น)
+    //   ถือครบ TH.holdDefault วันทำการ → time exit (ตรง runBacktest) — ใช้หลังกฎอื่น: exit ของ Bayes/legacy
+    //   คงเหตุผลเดิม (stop มาก่อน time) · hold/tighten ที่ครบกำหนด → exit · ไม่มีราคาวันนี้ → ยังออกไม่ได้
     const stopPolicy = await readStopPolicy().catch(() => null)
     let bayesPost: Posterior | null = null
     if (
@@ -256,7 +261,10 @@ async function runJev() {
     const exitDecs: Dec[] = []
     for (const p of posRows) {
       const lp = lastPxOf(p.symbol)
-      let dec: Dec
+      // วันทำการที่ถือแล้วตามปฏิทินข้อมูล (index วันล่าสุด − index วันเข้า) — นิยามเดียวกับ `i − ei` ของ runBacktest
+      const eiPos = pivot.dateIdx.get(p.entryDate)
+      const heldDays = pi !== undefined && eiPos !== undefined ? pi - eiPos : null
+      let dec: Dec | null = null
       if (bayesPost && isFinite(lp)) {
         const dNow = Math.max(0, 1 - lp / p.entryPx)
         if (dNow > 0.005) {
@@ -290,14 +298,24 @@ async function runJev() {
               reason: `bayes: dd=${(dNow * 100).toFixed(1)}% EV_hold=${evTxt}% pL=${pLTxt} > 0 [${stopPolicy?.arm}] → ถือต่อ`,
             }
           }
-          exitDecs.push(dec)
-          continue
         }
       }
-      // กฎ legacy (src/lib/jev/exit.ts): ไม่มีราคา → hold พร้อมราคาล่าสุดที่มีจริง · หลุด stop ที่บันทึกไว้ → exit
-      // · กำไร > 25% → exit · หลุดโผ & กำไร → tighten · ≤ −6% → exit · อื่น ๆ → hold
-      dec = legacyExitDecision(p, lp, latestSet.has(p.symbol), isFinite(lp) ? null : lastKnownOf(p.symbol))
-      exitDecs.push(dec)
+      if (!dec) {
+        // กฎ legacy (src/lib/jev/exit.ts): ไม่มีราคา → ไม่มีราคาติดกัน ≥ 10 วันทำการ = exit ที่ราคาปิดล่าสุด
+        // ไม่งั้น hold พร้อมราคาล่าสุดที่มีจริง · หลุด stop ที่บันทึกไว้ → exit · กำไร > 25% → exit
+        // · หลุดโผ & กำไร → tighten · ≤ −6% → exit · อื่น ๆ → hold
+        const si = pivot.symIdx.get(p.symbol)
+        const noPriceDays = !isFinite(lp) && si !== undefined && pi !== undefined ? noPriceStreak(pivot.px, si, pi) : null
+        dec = legacyExitDecision(
+          p,
+          lp,
+          latestSet.has(p.symbol),
+          isFinite(lp) ? null : lastKnownOf(p.symbol),
+          noPriceDays
+        )
+      }
+      // time exit (TH.holdDefault — config-as-data) หลังกฎอื่นทั้งหมด: stop/Bayes exit มาก่อน
+      exitDecs.push(applyTimeExit(dec, heldDays, TH.holdDefault, isFinite(lp)))
     }
 
     // ---------- 3) orchestrate (PAPER mode: ทุก decision ลง Decision source='lite') ----------
@@ -680,16 +698,23 @@ async function runJev() {
     }
 
     // Q_EXIT
+    let nTimeExit = 0
+    let nNoPriceExit = 0
     for (const dec of exitDecs) {
       if ((dec.action === "exit" || dec.action === "tighten") && dec.conf >= TH_CONF.Q_EXIT) {
         if (dec.action === "exit") {
           const pos = posRows.find((p) => p.symbol === dec.target)
           if (pos) {
             // บันทึกเทรดที่ปิดเข้า Trade log → posterior ของ Bayesian stop เรียนรู้จากเทรดจริงของตัวเอง
-            await persistClosedTrade(pos, latest, regimeAction).catch(() => null)
+            // หุ้นไม่มีราคาวันนี้ (บังคับปิดเพราะหยุดซื้อขาย) → บันทึกด้วยราคาปิดล่าสุดที่มี (วันออก = วันนี้)
+            const noPxToday = !isFinite(lastPxOf(dec.target))
+            await persistClosedTrade(pos, latest, regimeAction, { fillAtLastKnown: noPxToday }).catch(() => null)
             await db.position.deleteMany({ where: { symbol: dec.target } })
             posSymbols.delete(dec.target)
           }
+          const kind = exitKind(dec)
+          if (kind === "time") nTimeExit++
+          else if (kind === "no_price") nNoPriceExit++
         } else {
           const pos = posRows.find((p) => p.symbol === dec.target)
           if (pos) await db.position.update({ where: { symbol: dec.target }, data: { stop: pos.entryPx * 1.02 } })
@@ -716,7 +741,10 @@ async function runJev() {
       ? ` | v2: composite=${marketNow.regimeScore.toFixed(2)} gross×${marketNow.grossMult.toFixed(2)} riskBlocked=${riskBlocked} shadow=${shadowLogged}${v2Alpha ? ` alpha=[${[...promoted].join(",")}]` : " alpha=OFF"}`
       : ""
     const revPart = TH.reversalEnabled ? ` | rev: hits=${reversalHits} queued=${reversalQueued}` : ""
-    const message = `regime=${regimeAction} | ซื้ออัตโนมัติ ${nBuy} | รออนุมัติ ${gated.length} | ถูก gate ${blocked.length} | exit ${nExit}${v2Part}${revPart}`
+    // แยกนับ exit ตามกฎที่ตัดสินเมื่อ 2026-09-23 (แสดงเฉพาะเมื่อเกิด — message รอบปกติคงรูปเดิม)
+    const exitKindsPart =
+      nTimeExit + nNoPriceExit > 0 ? ` (time ${nTimeExit} · หยุดซื้อขาย ${nNoPriceExit})` : ""
+    const message = `regime=${regimeAction} | ซื้ออัตโนมัติ ${nBuy} | รออนุมัติ ${gated.length} | ถูก gate ${blocked.length} | exit ${nExit}${exitKindsPart}${v2Part}${revPart}`
     await emitEvent("jev_run", v2Alpha ? "jev_lite+v2" : "jev_lite", {
       date: latest,
       regime: regimeAction,
@@ -725,6 +753,8 @@ async function runJev() {
       gated: gated.length,
       blocked: blocked.length,
       exit: nExit,
+      timeExit: nTimeExit,
+      noPriceExit: nNoPriceExit,
       sectorRejected: constraint.rejected.length,
       sectorDownsized: constraint.downsized.length,
       sectorBreached,

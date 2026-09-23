@@ -2,15 +2,19 @@ import { NextResponse } from "next/server"
 import { db } from "@/lib/db"
 import { outcomeRIfResolved } from "@/lib/lab/outcome"
 import { GATE_NAMES, type Gates } from "@/lib/lab/state"
+import { mayPersistOnGet } from "@/lib/security/request-principal"
 
 export const dynamic = "force-dynamic"
 
 // ------------------------------------------------------------
 // GET /api/lab/dashboard — ห้องเฝ้าดูแล็บเงาทั้งหมด
 // 1) outcome filler (panel logs ที่ยังไม่มีผล) → 2) สถิติ matrix/calibration/pnl
+// บันทึก outcomeR ลง DB เฉพาะผู้ดูแลที่เรียกจากหน้าเว็บนี้/สคริปต์ — ผู้ชม/เว็บอื่นได้ผลคำนวณในหน่วยความจำ (ตัวเลขเท่ากัน)
 // ------------------------------------------------------------
-export async function GET() {
+export async function GET(req: Request) {
   try {
+    const persist = mayPersistOnGet(req)
+    const computed = new Map<string, number>()
     // ============ 1) shadow outcome filler — 3-bar trail ฉบับ close-proxy ============
     const pending = await db.shadowLog.findMany({
       where: { outcomeR: null, origin: "panel", entryPx: { not: null }, stopPx: { not: null } },
@@ -40,7 +44,8 @@ export async function GET() {
         // บันทึกเฉพาะผลที่สรุปแล้ว (โดน stop/trail หรือครบ 20 บาร์) — ไม้ที่ยังเปิดอยู่ห้ามให้คะแนนถาวร
         const r = outcomeRIfResolved(future, log.entryPx as number, log.stopPx as number, 20)
         if (r === null) continue
-        await db.shadowLog.update({ where: { key: log.key }, data: { outcomeR: r } })
+        if (persist) await db.shadowLog.update({ where: { key: log.key }, data: { outcomeR: r } })
+        else computed.set(log.key, r)
         log.outcomeR = r
       }
     }
@@ -50,6 +55,10 @@ export async function GET() {
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],
       take: 2000,
     })
+    for (const l of logs) {
+      const r = computed.get(l.key)
+      if (l.outcomeR === null && r !== undefined) l.outcomeR = r
+    }
 
     const labelsAll = await db.edgeLabel.findMany({
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],

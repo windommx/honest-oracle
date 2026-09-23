@@ -1,9 +1,9 @@
 "use client"
 
-import { useState, type ChangeEvent } from "react"
+import { useId, useState, type ChangeEvent } from "react"
 import { CheckCircle2, Loader2, Upload, XCircle } from "lucide-react"
 
-import { useApi, postJson } from "@/hooks/use-api"
+import { useApi, postJson, postJsonWithStatus } from "@/hooks/use-api"
 import FeedCard from "@/components/platform/feed-card"
 import { useToast } from "@/hooks/use-toast"
 import type {
@@ -57,20 +57,42 @@ type ApiResult<T> = ReturnType<typeof useApi<T>>
 
 // ---------- Card 1: Demo seed ----------
 
-function DemoSeedCard({ onSeeded }: { onSeeded?: () => void }) {
+/** คำยืนยันที่ API ต้องการก่อนลบข้อมูลเดิมทั้งหมด (seed บนฐานข้อมูลที่มีข้อมูลแล้ว — ไม่ส่ง = 409) */
+const SEED_CONFIRM = "RESET"
+
+function DemoSeedCard({ onSeeded, hasData }: { onSeeded?: () => void; hasData: boolean }) {
   const { toast } = useToast()
   const [days, setDays] = useState(520)
   const [symbols, setSymbols] = useState(240)
   const [seeding, setSeeding] = useState(false)
+  const [confirmOpen, setConfirmOpen] = useState(false)
+  const [typed, setTyped] = useState("")
+  const daysId = useId()
+  const symbolsId = useId()
+  const typedId = useId()
+  // มีข้อมูลอยู่แล้ว = ต้องพิมพ์ RESET ให้ตรงก่อน (กันกดพลาดลบพอร์ต/การตัดสินใจทั้งหมด)
+  const confirmReady = !hasData || typed.trim().toUpperCase() === SEED_CONFIRM
 
   async function handleSeed() {
     if (seeding) return
     setSeeding(true)
     try {
-      const res = await postJson<SeedResponse>("/api/seed", { days, symbols })
+      const r = await postJsonWithStatus<SeedResponse>("/api/seed", { days, symbols, confirm: SEED_CONFIRM })
+      if (r.status === 409) {
+        toast({
+          variant: "destructive",
+          title: "ต้องยืนยันก่อนลบข้อมูลเดิม",
+          description: r.data?.error ?? "ระบบมีข้อมูลอยู่แล้ว — กด “สร้าง / สร้างใหม่” แล้วพิมพ์ RESET เพื่อยืนยันอีกครั้ง",
+        })
+        return
+      }
+      if (!r.ok || !r.data) throw new Error(r.data?.error ?? `HTTP ${r.status}`)
+      const res = r.data
+      // API สำรอง DB ก่อนลบเสมอเมื่อมีข้อมูลเดิม — บอกผู้ใช้ว่าไฟล์สำรองอยู่ที่ไหน
+      const backup = (res as SeedResponse & { backup?: { file: string } | null }).backup
       toast({
         title: "สร้างข้อมูลตัวอย่างสำเร็จ 🎲",
-        description: `raw ${res.rawRows.toLocaleString()} แถว · snapshot ${res.snapRows.toLocaleString()} แถว · ใช้เวลา ${(res.tookMs / 1000).toFixed(1)} วินาที`,
+        description: `raw ${res.rawRows.toLocaleString()} แถว · snapshot ${res.snapRows.toLocaleString()} แถว · ใช้เวลา ${(res.tookMs / 1000).toFixed(1)} วินาที${backup?.file ? ` · สำรองข้อมูลเดิมไว้ที่ ${backup.file}` : ""}`,
       })
       // ข้อมูลเปลี่ยนทั้งชุด → ให้การ์ดวันที่ + DQ โหลดใหม่ (เดิมค้างค่าก่อน seed จนรีเฟรชหน้า)
       onSeeded?.()
@@ -82,6 +104,7 @@ function DemoSeedCard({ onSeeded }: { onSeeded?: () => void }) {
       })
     } finally {
       setSeeding(false)
+      setTyped("")
     }
   }
 
@@ -97,9 +120,9 @@ function DemoSeedCard({ onSeeded }: { onSeeded?: () => void }) {
       <CardContent className="space-y-4">
         <div className="flex flex-wrap items-end gap-4">
           <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">จำนวนวัน</Label>
+            <Label htmlFor={daysId} className="text-xs text-muted-foreground">จำนวนวัน</Label>
             <Select value={String(days)} onValueChange={(v) => setDays(Number(v))} disabled={seeding}>
-              <SelectTrigger className="w-[120px]">
+              <SelectTrigger id={daysId} className="w-[120px]" aria-label="จำนวนวันของข้อมูลตัวอย่าง">
                 <SelectValue placeholder="เลือกวัน" />
               </SelectTrigger>
               <SelectContent>
@@ -110,9 +133,9 @@ function DemoSeedCard({ onSeeded }: { onSeeded?: () => void }) {
             </Select>
           </div>
           <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">จำนวนหุ้น</Label>
+            <Label htmlFor={symbolsId} className="text-xs text-muted-foreground">จำนวนหุ้น</Label>
             <Select value={String(symbols)} onValueChange={(v) => setSymbols(Number(v))} disabled={seeding}>
-              <SelectTrigger className="w-[120px]">
+              <SelectTrigger id={symbolsId} className="w-[120px]" aria-label="จำนวนหุ้นของข้อมูลตัวอย่าง">
                 <SelectValue placeholder="เลือกหุ้น" />
               </SelectTrigger>
               <SelectContent>
@@ -122,7 +145,13 @@ function DemoSeedCard({ onSeeded }: { onSeeded?: () => void }) {
               </SelectContent>
             </Select>
           </div>
-          <AlertDialog>
+          <AlertDialog
+            open={confirmOpen}
+            onOpenChange={(v) => {
+              setConfirmOpen(v)
+              if (!v) setTyped("")
+            }}
+          >
             <AlertDialogTrigger asChild>
               <Button disabled={seeding}>
                 {seeding ? (
@@ -141,12 +170,36 @@ function DemoSeedCard({ onSeeded }: { onSeeded?: () => void }) {
                 <AlertDialogDescription>
                   การดำเนินการนี้จะลบข้อมูลเดิมทั้งหมดในระบบ รวมถึงพอร์ตกระดาษ การตัดสินใจของ
                   Jev และ Gate ที่รออนุมัติ แล้วสร้างชุดข้อมูลใหม่ {days} วัน × {symbols} หุ้น
-                  แทนที่ (ใช้เวลาประมาณ 10 วินาที) คุณแน่ใจหรือไม่?
+                  แทนที่ (ใช้เวลาประมาณ 10 วินาที) — ระบบสำรองฐานข้อมูลให้อัตโนมัติก่อนลบ
                 </AlertDialogDescription>
               </AlertDialogHeader>
+              {hasData ? (
+                <div className="space-y-1.5">
+                  <Label htmlFor={typedId} className="text-sm">
+                    พิมพ์ <span className="rounded bg-muted px-1.5 py-0.5 font-mono font-bold text-neon-rose">{SEED_CONFIRM}</span>{" "}
+                    เพื่อยืนยันการลบข้อมูลเดิม
+                  </Label>
+                  <Input
+                    id={typedId}
+                    value={typed}
+                    onChange={(e) => setTyped(e.target.value)}
+                    autoComplete="off"
+                    autoCapitalize="characters"
+                    spellCheck={false}
+                    placeholder={SEED_CONFIRM}
+                    className="h-10 font-mono"
+                  />
+                </div>
+              ) : null}
               <AlertDialogFooter>
                 <AlertDialogCancel>ยกเลิก</AlertDialogCancel>
-                <AlertDialogAction onClick={handleSeed}>ยืนยัน สร้างข้อมูล</AlertDialogAction>
+                <AlertDialogAction
+                  onClick={handleSeed}
+                  disabled={!confirmReady}
+                  className="bg-destructive text-white hover:bg-destructive/90 dark:bg-destructive/60"
+                >
+                  ยืนยัน ลบและสร้างข้อมูลใหม่
+                </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
@@ -224,7 +277,8 @@ function CsvIngestCard({ onIngested }: { onIngested?: () => void }) {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <pre className="overflow-x-auto rounded bg-muted p-3 text-[11px] leading-4">
+        {/* tabIndex: เลื่อนดูแนวนอนด้วยคีย์บอร์ดได้ (WCAG 2.1.1 — scrollable region ต้องโฟกัสได้) */}
+        <pre tabIndex={0} aria-label="ฟอร์แมต CSV ที่รองรับ" className="overflow-x-auto rounded bg-muted p-3 text-[11px] leading-4">
           {CSV_FORMATS}
         </pre>
         <Input
@@ -232,11 +286,13 @@ function CsvIngestCard({ onIngested }: { onIngested?: () => void }) {
           accept=".csv,text/csv"
           onChange={handleFile}
           disabled={importing}
+          aria-label="เลือกไฟล์ CSV จากเครื่อง"
         />
         <Textarea
           value={csvText}
           onChange={(e) => setCsvText(e.target.value)}
           placeholder="วางข้อมูล CSV ที่นี่… (หัวคอลัมน์ 1 บรรทัด + ข้อมูล 1 แถวต่อหุ้นต่อวัน)"
+          aria-label="ข้อความ CSV ที่จะนำเข้า"
           className="h-40 font-mono text-xs"
           disabled={importing}
         />
@@ -404,6 +460,8 @@ export default function DataTab() {
   // ยก dates/dq ขึ้นมาที่นี่ — ingest สำเร็จแล้ว refetch ที่เดียว ทุกการ์ดอัปเดต
   const dates = useApi<DatesResponse>("/api/dates")
   const dq = useApi<DqResponse>("/api/dq")
+  // ยังโหลดไม่เสร็จ = ถือว่ามีข้อมูล (ขอคำยืนยันแบบเข้มไว้ก่อน)
+  const hasData = dates.data ? dates.data.count > 0 : true
   const reload = () => {
     dates.refetch()
     dq.refetch()
@@ -412,7 +470,7 @@ export default function DataTab() {
   return (
     <div className="space-y-6">
       <div className="grid gap-6 lg:grid-cols-2">
-        <DemoSeedCard onSeeded={reload} />
+        <DemoSeedCard onSeeded={reload} hasData={hasData} />
         <CsvIngestCard onIngested={reload} />
         <FeedCard onIngested={reload} />
         <DqCard dq={dq} />

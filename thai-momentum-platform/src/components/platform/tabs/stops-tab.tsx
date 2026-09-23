@@ -27,16 +27,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-
-const TOOLTIP_STYLE = {
-  backgroundColor: "#ffffff",
-  border: "1px solid #ece3cf",
-  borderRadius: 12,
-  fontSize: 12,
-  color: "#0f172a",
-  boxShadow: "0 4px 10px rgba(16,24,40,0.08)",
-} as const
+import { AXIS_TICK, CHART, TOOLTIP_STYLE } from "../chart-theme"
+import ScrollBox from "../scroll-box"
+import { Segmented } from "../feature-module"
+import { Term } from "../glossary"
 
 const BUCKET_LABEL: Record<StopBucket, string> = {
   pooled: "รวมทั้งหมด",
@@ -216,9 +210,12 @@ export default function StopsTab() {
       {/* ---------- 2. 3-Arm Walk-Forward A/B ---------- */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">⚔️ 3-Arm Walk-Forward A/B — fixed −10% vs bayesT vs bayesR</CardTitle>
+          <CardTitle className="text-base">
+            ⚔️ 3-Arm <Term id="walk-forward">Walk-Forward</Term> A/B — fixed −10% vs bayesT vs bayesR
+          </CardTitle>
           <CardDescription>
-            จำลองเทรดแบบ walk-forward 3 แข่ง: แถวเขียว = arm ที่ชนะตามกติกา adoption · {METHOD_FOOTNOTE}
+            จำลองเทรดแบบ walk-forward 3 แข่ง: แถวเขียว = arm ที่ชนะตามกติกา adoption · ทุก arm ขายที่ราคาปิดวันแรกที่ทะลุ stop (ตรง
+            live) · {METHOD_FOOTNOTE}
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-6 lg:grid-cols-2">
@@ -261,24 +258,24 @@ export default function StopsTab() {
           <div className="min-w-0">
             <ResponsiveContainer width="100%" height={280}>
               <LineChart data={equity} margin={{ top: 8, right: 8, bottom: 4, left: 0 }}>
-                <CartesianGrid stroke="rgba(100,116,139,0.18)" strokeDasharray="3 3" vertical={false} />
+                <CartesianGrid stroke={CHART.grid} strokeDasharray="3 3" vertical={false} />
                 <XAxis
                   dataKey="date"
-                  tick={{ fontSize: 10, fill: "#64748b" }}
+                  tick={AXIS_TICK}
                   tickFormatter={(v: string) => String(v).slice(5)}
                   interval={eqInterval}
                 />
                 <YAxis
                   domain={["auto", "auto"]}
-                  tick={{ fontSize: 10, fill: "#64748b" }}
+                  tick={AXIS_TICK}
                   tickFormatter={(v: number) => `${((v - 1) * 100).toFixed(0)}%`}
                   width={44}
                 />
                 <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v: number) => `${((Number(v) - 1) * 100).toFixed(1)}%`} />
                 <Legend wrapperStyle={{ fontSize: 11 }} />
-                <Line type="monotone" dataKey="fixed10" name="fixed −10%" stroke="#64748b" strokeWidth={1.5} dot={false} isAnimationActive={false} />
-                <Line type="monotone" dataKey="bayesT" name="bayes T" stroke="#059669" strokeWidth={1.5} dot={false} isAnimationActive={false} />
-                <Line type="monotone" dataKey="bayesR" name="bayes R" stroke="#d97706" strokeWidth={1.5} dot={false} isAnimationActive={false} />
+                <Line type="monotone" dataKey="fixed10" name="fixed −10%" stroke={CHART.slate} strokeWidth={1.5} dot={false} isAnimationActive={false} />
+                <Line type="monotone" dataKey="bayesT" name="bayes T" stroke={CHART.green} strokeWidth={1.5} dot={false} isAnimationActive={false} />
+                <Line type="monotone" dataKey="bayesR" name="bayes R" stroke={CHART.amber} strokeWidth={1.5} dot={false} isAnimationActive={false} />
               </LineChart>
             </ResponsiveContainer>
             <p className="mt-1 text-center text-[11px] text-muted-foreground">
@@ -292,17 +289,19 @@ export default function StopsTab() {
       <Card>
         <CardHeader>
           <CardTitle className="flex flex-wrap items-center justify-between gap-2 text-base">
-            <span>🎲 Posterior — Winners vs Losers บน drawdown (mode {mode})</span>
-            <Tabs value={mode} onValueChange={(v) => setModeOverride(v as StopMode)}>
-              <TabsList className="h-9">
-                <TabsTrigger value="T" className="h-7 px-3 text-xs">
-                  T · 1 obs/เทรด
-                </TabsTrigger>
-                <TabsTrigger value="R" className="h-7 px-3 text-xs">
-                  R · ทุกบาร์
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
+            <span>
+              🎲 <Term id="posterior">Posterior</Term> — Winners vs Losers บน drawdown (mode {mode})
+            </span>
+            {/* ตัวเลือกโหมดข้อมูล = radiogroup (เดิมเป็น Tabs ที่ไม่มีแผงเนื้อหา → aria-controls ชี้ไปที่ว่าง) */}
+            <Segmented<StopMode>
+              value={mode}
+              onChange={(v) => setModeOverride(v)}
+              items={[
+                { value: "T", label: "T · 1 obs/เทรด" },
+                { value: "R", label: "R · ทุกบาร์" },
+              ]}
+              ariaLabel="โหมดข้อมูล posterior"
+            />
           </CardTitle>
           <CardDescription>
             แท่ง = density ของ MAE (winners เขียว / losers แดง) · เส้นส้ม = P(Loser|dd) · เส้นเทา = EV ถือต่อ · จุด = ตำแหน่งเปิดวันนี้บน curve · {METHOD_FOOTNOTE}
@@ -315,16 +314,25 @@ export default function StopsTab() {
               { label: "เทรด (n)", value: post.nTrades.toLocaleString() },
               { label: "obs", value: post.nObs.toLocaleString() },
               { label: "P(win)", value: pct(post.pW) },
-              { label: "s* (optimal stop)", value: pct(post.sOpt) },
+              { label: "s* (optimal stop)", term: "s-star", value: pct(post.sOpt) },
               { label: "EV ที่ s*", value: fmtPct(post.evOpt === null ? null : post.evOpt * 100, 2) },
               { label: "EV baseline (ไม่มี stop)", value: fmtPct(post.evNoStop * 100, 2) },
             ].map((s) => (
               <div key={s.label} className="rounded-lg border border-border/60 px-3 py-2">
-                <div className="text-[11px] text-muted-foreground">{s.label}</div>
+                <div className="text-[11px] text-muted-foreground">
+                  {"term" in s && s.term ? <Term id={s.term}>{s.label}</Term> : s.label}
+                </div>
                 <div className="font-mono text-sm font-bold">{s.value}</div>
               </div>
             ))}
           </div>
+          {(post.nNoPathEvidence ?? 0) > 0 && (
+            <p className="text-xs text-muted-foreground">
+              ไม่มี path รายวัน {post.nNoPathEvidence?.toLocaleString()} เทรด — ไม่ให้เครดิต stop กับเทรดเหล่านี้ (ขายที่ราคาปิดวันแรกที่ทะลุ
+              stop ไม่ใช่ราคา stop พอดี)
+              {post.sOpt === null ? " · s* จึงเป็น — จนกว่าจะมีเทรดที่มีราคารายวันครบพอ" : ""}
+            </p>
+          )}
           {post.pooled && (
             <Alert className="border-neon-amber/40 bg-neon-amber/10 text-neon-amber">
               <TriangleAlert />
@@ -333,71 +341,78 @@ export default function StopsTab() {
               </AlertDescription>
             </Alert>
           )}
-          <ResponsiveContainer width="100%" height={300}>
-            <ComposedChart data={hist} margin={{ top: 12, right: 8, bottom: 4, left: 0 }}>
-              <CartesianGrid stroke="rgba(100,116,139,0.18)" strokeDasharray="3 3" vertical={false} />
-              <XAxis
-                type="number"
-                dataKey="x"
-                domain={[(post.bins[0] ?? 0) - post.bin / 2, (post.bins[post.bins.length - 1] ?? 0.3) + post.bin]}
-                ticks={xTicks}
-                tickFormatter={(v: number) => `${(v * 100).toFixed(0)}%`}
-                tick={{ fontSize: 10, fill: "#64748b" }}
-              />
-              <YAxis
-                yAxisId="left"
-                domain={[0, 1]}
-                tickFormatter={(v: number) => v.toFixed(1)}
-                tick={{ fontSize: 10, fill: "#64748b" }}
-                width={36}
-              />
-              <YAxis
-                yAxisId="right"
-                orientation="right"
-                domain={[-0.1, 0.1]}
-                ticks={[-0.1, -0.05, 0, 0.05, 0.1]}
-                tickFormatter={(v: number) => `${(v * 100).toFixed(0)}%`}
-                tick={{ fontSize: 10, fill: "#64748b" }}
-                width={44}
-              />
-              <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v: number) => Number(v).toFixed(3)} labelFormatter={(l: number) => `dd ${(l * 100).toFixed(1)}%`} />
-              <Legend wrapperStyle={{ fontSize: 11 }} />
-              {sOptX !== null && (
-                <ReferenceLine
+          {/* กราฟเป็นภาพประกอบ (จุดตำแหน่งของ Recharts มี role="img" ไม่มีชื่อ) — ซ่อนจาก screen reader แล้วสรุปเป็นข้อความแทน */}
+          <p className="sr-only">
+            กราฟ posterior: s* = {pct(post.sOpt)} · P(win) = {pct(post.pW)} · ตำแหน่งเปิดที่ควรออก {exitedPoints.length} ตำแหน่ง · ถือต่อ{" "}
+            {holdingPoints.length} ตำแหน่ง
+          </p>
+          <div aria-hidden="true">
+            <ResponsiveContainer width="100%" height={300}>
+              <ComposedChart data={hist} margin={{ top: 12, right: 8, bottom: 4, left: 0 }}>
+                <CartesianGrid stroke={CHART.grid} strokeDasharray="3 3" vertical={false} />
+                <XAxis
+                  type="number"
+                  dataKey="x"
+                  domain={[(post.bins[0] ?? 0) - post.bin / 2, (post.bins[post.bins.length - 1] ?? 0.3) + post.bin]}
+                  ticks={xTicks}
+                  tickFormatter={(v: number) => `${(v * 100).toFixed(0)}%`}
+                  tick={AXIS_TICK}
+                />
+                <YAxis
                   yAxisId="left"
-                  x={sOptX}
-                  stroke="#059669"
-                  strokeDasharray="4 4"
-                  label={{ value: `s* = ${pct(post.sOpt)}`, position: "top", fill: "#059669", fontSize: 11 }}
+                  domain={[0, 1]}
+                  tickFormatter={(v: number) => v.toFixed(1)}
+                  tick={AXIS_TICK}
+                  width={36}
                 />
-              )}
-              <Bar yAxisId="left" dataKey="histW" name="Winners" fill="#059669" fillOpacity={0.55} barSize={12} isAnimationActive={false} />
-              <Bar yAxisId="left" dataKey="histL" name="Losers" fill="#e11d48" fillOpacity={0.55} barSize={12} isAnimationActive={false} />
-              {/* P(L|dd) เป็นความน่าจะเป็น 0..1 → แกนซ้าย (แกนขวา ±10% เป็นของ EV ถือต่อ) */}
-              <Line yAxisId="left" type="monotone" dataKey="pL" name="P(L|dd)" stroke="#d97706" strokeWidth={2} dot={false} isAnimationActive={false} />
-              <Line yAxisId="right" type="monotone" dataKey="evHold" name="EV ถือต่อ" stroke="#64748b" strokeWidth={1.5} dot={false} isAnimationActive={false} />
-              {exitedPoints.length > 0 && (
-                <Scatter
+                <YAxis
                   yAxisId="right"
-                  name="ตำแหน่งปัจจุบัน — EV≤0 → ออก"
-                  data={exitedPoints}
-                  dataKey="y"
-                  fill="#e11d48"
-                  isAnimationActive={false}
+                  orientation="right"
+                  domain={[-0.1, 0.1]}
+                  ticks={[-0.1, -0.05, 0, 0.05, 0.1]}
+                  tickFormatter={(v: number) => `${(v * 100).toFixed(0)}%`}
+                  tick={AXIS_TICK}
+                  width={44}
                 />
-              )}
-              {holdingPoints.length > 0 && (
-                <Scatter
-                  yAxisId="right"
-                  name="ตำแหน่งปัจจุบัน — ถือต่อ"
-                  data={holdingPoints}
-                  dataKey="y"
-                  fill="#d97706"
-                  isAnimationActive={false}
-                />
-              )}
-            </ComposedChart>
-          </ResponsiveContainer>
+                <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v: number) => Number(v).toFixed(3)} labelFormatter={(l: number) => `dd ${(l * 100).toFixed(1)}%`} />
+                <Legend wrapperStyle={{ fontSize: 11 }} />
+                {sOptX !== null && (
+                  <ReferenceLine
+                    yAxisId="left"
+                    x={sOptX}
+                    stroke={CHART.green}
+                    strokeDasharray="4 4"
+                    label={{ value: `s* = ${pct(post.sOpt)}`, position: "top", fill: CHART.green, fontSize: 11 }}
+                  />
+                )}
+                <Bar yAxisId="left" dataKey="histW" name="Winners" fill={CHART.green} fillOpacity={0.55} barSize={12} isAnimationActive={false} />
+                <Bar yAxisId="left" dataKey="histL" name="Losers" fill={CHART.rose} fillOpacity={0.55} barSize={12} isAnimationActive={false} />
+                {/* P(L|dd) เป็นความน่าจะเป็น 0..1 → แกนซ้าย (แกนขวา ±10% เป็นของ EV ถือต่อ) */}
+                <Line yAxisId="left" type="monotone" dataKey="pL" name="P(L|dd)" stroke={CHART.amber} strokeWidth={2} dot={false} isAnimationActive={false} />
+                <Line yAxisId="right" type="monotone" dataKey="evHold" name="EV ถือต่อ" stroke={CHART.slate} strokeWidth={1.5} dot={false} isAnimationActive={false} />
+                {exitedPoints.length > 0 && (
+                  <Scatter
+                    yAxisId="right"
+                    name="ตำแหน่งปัจจุบัน — EV≤0 → ออก"
+                    data={exitedPoints}
+                    dataKey="y"
+                    fill={CHART.rose}
+                    isAnimationActive={false}
+                  />
+                )}
+                {holdingPoints.length > 0 && (
+                  <Scatter
+                    yAxisId="right"
+                    name="ตำแหน่งปัจจุบัน — ถือต่อ"
+                    data={holdingPoints}
+                    dataKey="y"
+                    fill={CHART.amber}
+                    isAnimationActive={false}
+                  />
+                )}
+              </ComposedChart>
+            </ResponsiveContainer>
+          </div>
         </CardContent>
       </Card>
 
@@ -414,22 +429,22 @@ export default function StopsTab() {
             <AreaChart data={evData} margin={{ top: 12, right: 8, bottom: 4, left: 0 }}>
               <defs>
                 <linearGradient id="stopEvFill" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#059669" stopOpacity={0.35} />
-                  <stop offset="100%" stopColor="#059669" stopOpacity={0.02} />
+                  <stop offset="0%" stopColor={CHART.green} stopOpacity={0.35} />
+                  <stop offset="100%" stopColor={CHART.green} stopOpacity={0.02} />
                 </linearGradient>
               </defs>
-              <CartesianGrid stroke="rgba(100,116,139,0.18)" strokeDasharray="3 3" vertical={false} />
+              <CartesianGrid stroke={CHART.grid} strokeDasharray="3 3" vertical={false} />
               <XAxis
                 type="number"
                 dataKey="s"
                 domain={["dataMin", "dataMax"]}
                 tickCount={8}
                 tickFormatter={(v: number) => `${v.toFixed(0)}%`}
-                tick={{ fontSize: 10, fill: "#64748b" }}
+                tick={AXIS_TICK}
               />
               <YAxis
                 tickFormatter={(v: number) => `${v >= 0 ? "+" : ""}${v.toFixed(1)}%`}
-                tick={{ fontSize: 10, fill: "#64748b" }}
+                tick={AXIS_TICK}
                 width={48}
               />
               <Tooltip
@@ -440,22 +455,22 @@ export default function StopsTab() {
               {post.sOpt !== null && (
                 <ReferenceLine
                   x={Math.round(post.sOpt * 10000) / 100}
-                  stroke="#059669"
+                  stroke={CHART.green}
                   strokeDasharray="4 4"
-                  label={{ value: `s* = ${pct(post.sOpt)}`, position: "top", fill: "#059669", fontSize: 11 }}
+                  label={{ value: `s* = ${pct(post.sOpt)}`, position: "top", fill: CHART.green, fontSize: 11 }}
                 />
               )}
               <ReferenceLine
                 y={Math.round(post.evNoStop * 10000) / 100}
-                stroke="rgba(100,116,139,0.35)"
+                stroke={CHART.ref}
                 strokeDasharray="6 4"
-                label={{ value: "baseline ไม่มี stop", position: "insideTopRight", fill: "#64748b", fontSize: 10 }}
+                label={{ value: "baseline ไม่มี stop", position: "insideTopRight", fill: CHART.axis, fontSize: 10 }}
               />
               <Area
                 type="monotone"
                 dataKey="ev"
                 name="E[R|s] (% ต่อเทรด)"
-                stroke="#059669"
+                stroke={CHART.green}
                 strokeWidth={2}
                 fill="url(#stopEvFill)"
                 dot={false}
@@ -483,7 +498,7 @@ export default function StopsTab() {
           {data.positions.length === 0 ? (
             <div className="flex h-20 items-center justify-center text-sm text-muted-foreground">ไม่มีสถานะเปิด</div>
           ) : (
-            <div className="max-h-96 overflow-y-auto">
+            <ScrollBox className="max-h-96 overflow-y-auto" label="ตารางตำแหน่งเปิด (เลื่อนดูได้)">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -522,7 +537,7 @@ export default function StopsTab() {
                   ))}
                 </TableBody>
               </Table>
-            </div>
+            </ScrollBox>
           )}
           <p className="mt-2 text-xs text-muted-foreground">
             s_live = 0.85 × s* ({liveSOpt !== null ? pct(liveSOpt * 0.85) : "—"}) — เขตกัน noise ก่อนตัดจริง
@@ -549,10 +564,13 @@ function HeaderControls({
       <div>
         <h2 className="flex items-center gap-2 text-lg font-bold">
           <ShieldAlert className="h-5 w-5 text-neon-green" aria-hidden />
-          Bayes Stop — Stop-Loss เชิงเบย์ (Zambelli)
+          <span>
+            <Term id="bayes-stop">Bayes Stop</Term> — Stop-Loss เชิงเบย์ (Zambelli)
+          </span>
         </h2>
         <p className="text-xs text-muted-foreground">
-          เรียนรู้จาก MAE ของเทรดจริง → posterior P(Loser|dd) → s* = argmax E[R|s] → แข่งกับ fixed −10% แบบ walk-forward
+          เรียนรู้จาก MAE ของเทรดจริง → <Term id="posterior">posterior</Term> P(Loser|dd) → <Term id="s-star">s*</Term> = argmax E[R|s] →
+          แข่งกับ fixed −10% แบบ <Term id="walk-forward">walk-forward</Term>
         </p>
       </div>
       <div className="flex items-center gap-2">

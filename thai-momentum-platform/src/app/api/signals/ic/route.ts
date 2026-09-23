@@ -4,6 +4,7 @@ import { getPanelCached, loadAll, DEFAULT_W } from "@/lib/momentum/signals/io"
 import { crossIC, timingCorr, promote } from "@/lib/momentum/signals/engine"
 import { learnWeights, type SignalWeights } from "@/lib/momentum/signals/weights"
 import { emitEvent } from "@/lib/research/events"
+import { mayPersistOnGet } from "@/lib/security/request-principal"
 import type { IcResponse, SignalIcSummary } from "@/lib/momentum/contracts"
 
 export const dynamic = "force-dynamic"
@@ -21,6 +22,8 @@ function verdict(r: SignalIcSummary, sign: 1 | -1): "PROMOTE" | "FLIP-CHECK" | "
 // GET /api/signals/ic?hold=10
 // สอบสัญญาณด้วย cross-sectional IC (Spearman รายวัน vs forward return) + timing corr
 // ผลบันทึกเป็น pre-registered policy (Setting.signals_policy) + Decision Q_SIGNAL/policy
+// บันทึกเฉพาะผู้ดูแลที่เรียกจากหน้าเว็บนี้/สคริปต์ — hold มาจาก query string: ถ้าไม่กัน ผู้ชมหรือเว็บอื่น
+// ที่พา browser มาเปิด ?hold=60 จะเปลี่ยนสัญญาณ/น้ำหนักที่ Jev ใช้ได้ (ได้ผลคำนวณแต่ policySaved=false)
 export async function GET(req: Request) {
   const t0 = Date.now()
   try {
@@ -57,7 +60,7 @@ export async function GET(req: Request) {
     // ---------- เขียน policy (กติกาล็อกไว้ก่อนเห็นผล ตาม pre-registered policy) ----------
     const latest = panel.dates[panel.dates.length - 1] ?? ""
     let policySaved = false
-    if (latest) {
+    if (latest && mayPersistOnGet(req)) {
       const stats: Record<string, SignalIcSummary> = {}
       for (const k of SIGNAL_KEYS) stats[k] = ic[k]
       const policy = {

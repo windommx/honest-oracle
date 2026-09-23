@@ -36,6 +36,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { cn } from "@/lib/utils"
 import CpcvCharts from "../cpcv-charts"
+import { Term } from "../glossary"
 
 // ---------- helpers ----------
 
@@ -91,10 +92,10 @@ function NumField({
 
 function verdictStyle(v: string): string {
   if (v === "GO")
-    return "border-neon-green/40 bg-neon-green/10 text-[#10b981] shadow-[0_1px_2px_rgba(16,24,40,0.06)]"
+    return "border-neon-green/40 bg-neon-green/10 text-neon-green shadow-[0_1px_2px_rgba(16,24,40,0.06)]"
   if (v === "WEAK")
-    return "border-neon-amber/40 bg-neon-amber/10 text-[#f59e0b] shadow-[0_1px_2px_rgba(16,24,40,0.06)]"
-  return "border-neon-rose/40 bg-neon-rose/10 text-[#f43f5e] shadow-[0_1px_2px_rgba(16,24,40,0.06)]"
+    return "border-neon-amber/40 bg-neon-amber/10 text-neon-amber shadow-[0_1px_2px_rgba(16,24,40,0.06)]"
+  return "border-neon-rose/40 bg-neon-rose/10 text-neon-rose shadow-[0_1px_2px_rgba(16,24,40,0.06)]"
 }
 
 function verdictText(v: string): string {
@@ -113,7 +114,7 @@ function CriterionRow({ c }: { c: Criterion }) {
           <XCircle className="mt-0.5 size-4 shrink-0 text-neon-rose" aria-hidden />
         )}
         <div className="min-w-0">
-          <p className={cn("text-sm font-medium", c.pass ? "text-[#10b981]" : "text-[#f43f5e]")}>
+          <p className={cn("text-sm font-medium", c.pass ? "text-neon-green" : "text-neon-rose")}>
             {c.label}
           </p>
           <p className="text-xs text-muted-foreground">{c.detail}</p>
@@ -239,10 +240,12 @@ export default function ResearchTab() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Lock className="size-4 text-neon-amber" aria-hidden />
-            Pre-registration — ล็อกกติกาก่อนเห็นผล
+            <span>
+              <Term id="prereg">Pre-registration</Term> — ล็อกกติกาก่อนเห็นผล
+            </span>
           </CardTitle>
           <CardDescription>
-            ห้ามแก้กติกาหลังรัน (กัน curve-fitting) — ทุก trial จะใช้กติกาที่ freeze ด้วย sha256 เท่านั้น
+            ห้ามแก้กติกาหลังรัน (กัน <Term id="overfitting">curve-fitting</Term>) — ทุก trial จะใช้กติกาที่ freeze ด้วย sha256 เท่านั้น
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
@@ -256,7 +259,7 @@ export default function ResearchTab() {
           ) : pr ? (
             <div className="space-y-2">
               <div className="flex flex-wrap items-center gap-2">
-                <Badge variant="outline" className="border-neon-amber/40 bg-neon-amber/10 text-[#f59e0b]">
+                <Badge variant="outline" className="border-neon-amber/40 bg-neon-amber/10 text-neon-amber">
                   🔒 ล็อกแล้ว
                 </Badge>
                 <span className="font-mono text-xs text-muted-foreground">
@@ -309,7 +312,7 @@ export default function ResearchTab() {
           </CardTitle>
           <CardDescription>
             Backtest กลยุทธ์ vs naive baseline (Top-N โดย ret20) + time-half split + bootstrap CI +
-            cost sensitivity + meta-model CPCV → เช็กลิสต์ 7 เกณฑ์
+            cost sensitivity + <Term id="meta-labeling">meta-model</Term> <Term id="cpcv">CPCV</Term> → เช็กลิสต์ 7 เกณฑ์
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -374,7 +377,7 @@ export default function ResearchTab() {
                   </TableHeader>
                   <TableBody>
                     <TableRow>
-                      <TableCell className="font-medium text-[#10b981]">กลยุทธ์โมเมนตัม</TableCell>
+                      <TableCell className="font-medium text-neon-green">กลยุทธ์โมเมนตัม</TableCell>
                       <TableCell className="text-right tabular-nums">{pct(trial.strategy.cagr)}</TableCell>
                       <TableCell className="text-right tabular-nums text-neon-rose">{pct(trial.strategy.maxDD, 1, false)}</TableCell>
                       <TableCell className="text-right tabular-nums">{fmtNum(trial.strategy.sharpe, 2)}</TableCell>
@@ -431,11 +434,13 @@ export default function ResearchTab() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <ShieldCheck className="size-4 text-neon-purple" aria-hidden />
-            CPCV — ทดสอบ meta-model แบบทน leakage
+            <span>
+              <Term id="cpcv">CPCV</Term> — ทดสอบ <Term id="meta-labeling">meta-model</Term> แบบทน leakage
+            </span>
           </CardTitle>
           <CardDescription>
-            Combinatorial Purged CV: แบ่งข้อมูลเป็นกลุ่ม เลือก test ทุก combination + purge/embargo
-            → ดูการกระจายของ hit rate และ Long−Short gap ข้ามช่วงเวลา
+            Combinatorial Purged CV: แบ่งข้อมูลเป็นกลุ่ม เลือก test ทุก combination + <Term id="purge-embargo">purge/embargo</Term>
+            → ดูการกระจายของ <Term id="hit-rate">hit rate</Term> และ Long−Short gap ข้ามช่วงเวลา
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -454,7 +459,7 @@ export default function ResearchTab() {
             <Button type="button" variant="secondary" size="sm" className="h-7 border border-neon-cyan/30 bg-neon-cyan/10 text-xs text-neon-cyan hover:bg-neon-cyan/20" onClick={applySpecPreset}>
               <Sparkles className="size-3" aria-hidden /> สเปกมาตรฐาน 6/2/10/10
             </Button>
-            <Button type="button" variant="secondary" size="sm" className="h-7 border border-neon-purple/30 bg-neon-purple/10 text-xs text-[#8b5cf6] hover:bg-neon-purple/20" onClick={applyAutoPreset}>
+            <Button type="button" variant="secondary" size="sm" className="h-7 border border-neon-purple/30 bg-neon-purple/10 text-xs text-neon-purple hover:bg-neon-purple/20" onClick={applyAutoPreset}>
               ผูก horizon (auto: purge=hold · embargo=hold/2)
             </Button>
           </div>
@@ -465,7 +470,7 @@ export default function ResearchTab() {
               {cpcvRunning ? "กำลังรัน CPCV..." : "รัน CPCV"}
             </Button>
             {cpcv?.metaPass && (
-              <Button onClick={() => runCpcv(true)} disabled={cpcvRunning} className="bg-neon-purple text-white hover:bg-neon-purple/85">
+              <Button onClick={() => runCpcv(true)} disabled={cpcvRunning} className="bg-neon-purple text-on-neon hover:bg-neon-purple/85">
                 <ShieldCheck className="size-4" aria-hidden /> เปิดใช้ meta-sizing (deploy โมเดล)
               </Button>
             )}
@@ -475,7 +480,7 @@ export default function ResearchTab() {
               </Button>
             )}
             {model?.enabled ? (
-              <Badge variant="outline" className="border-neon-purple/40 bg-neon-purple/10 text-[#8b5cf6]">
+              <Badge variant="outline" className="border-neon-purple/40 bg-neon-purple/10 text-neon-purple">
                 โมเดลเปิดใช้ · hold {model.hold}d · AUC {model.auc?.toFixed(3)} · {fmtTime(model.trainedAt ?? "")}
               </Badge>
             ) : (
@@ -493,10 +498,10 @@ export default function ResearchTab() {
           {cpcv && (
             <div className="space-y-3">
               <div className="flex flex-wrap items-center gap-2">
-                <Badge variant="outline" className={cpcv.metaPass ? "border-neon-green/40 text-[#10b981]" : "border-neon-rose/40 text-[#f43f5e]"}>
+                <Badge variant="outline" className={cpcv.metaPass ? "border-neon-green/40 text-neon-green" : "border-neon-rose/40 text-neon-rose"}>
                   {cpcv.metaPass ? "ผ่านเกณฑ์ meta-model" : "ไม่ผ่านเกณฑ์ meta-model"}
                 </Badge>
-                {cpcv.deployed && <Badge className="bg-neon-purple text-white">deployed → Jev sizing ×0.5–1.5</Badge>}
+                {cpcv.deployed && <Badge className="bg-neon-purple text-on-neon">deployed → Jev sizing ×0.5–1.5</Badge>}
                 <span className="text-xs text-muted-foreground">
                   panel {cpcv.panelN.toLocaleString()} แถว · {cpcv.paths} paths · {cpcv.tookMs} ms
                   {cpcv.skipped > 0 ? ` · ข้าม ${cpcv.skipped} path` : ""}
@@ -617,7 +622,7 @@ export default function ResearchTab() {
           ) : audit.data ? (
             <>
               <div className="flex flex-wrap items-center gap-2">
-                <Badge variant="outline" className={audit.data.ok ? "border-neon-green/40 bg-neon-green/10 text-[#10b981]" : "border-neon-rose/40 bg-neon-rose/10 text-[#f43f5e]"}>
+                <Badge variant="outline" className={audit.data.ok ? "border-neon-green/40 bg-neon-green/10 text-neon-green" : "border-neon-rose/40 bg-neon-rose/10 text-neon-rose"}>
                   {audit.data.ok ? "✓ chain ครบถ้วน" : `✗ chain พังที่ event #${audit.data.brokenAt}`}
                 </Badge>
                 <span className="text-xs text-muted-foreground">รวม {audit.data.total} เหตุการณ์</span>
@@ -628,7 +633,7 @@ export default function ResearchTab() {
                     {audit.data.events.map((e) => (
                       <div key={e.id} className="rounded border border-border/60 px-2 py-1">
                         <span className="text-muted-foreground">#{e.id}</span>{" "}
-                        <span className="text-[#f59e0b]">{e.kind}</span>{" "}
+                        <span className="text-neon-amber">{e.kind}</span>{" "}
                         <span className="text-muted-foreground">({e.actor})</span>{" "}
                         <span className="text-neon-cyan">{e.payload.slice(0, 110)}{e.payload.length > 110 ? "…" : ""}</span>{" "}
                         <span className="text-muted-foreground">{fmtTime(e.ts)}</span>

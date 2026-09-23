@@ -46,15 +46,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-
-const TOOLTIP_STYLE = {
-  backgroundColor: "#ffffff",
-  border: "1px solid #ece3cf",
-  borderRadius: 9,
-  fontSize: 12,
-  color: "#0f172a",
-  boxShadow: "0 4px 12px rgba(16,24,40,0.08)",
-} as const
+import { AXIS_TICK_11, CHART, TOOLTIP_LABEL_STYLE, TOOLTIP_STYLE } from "../chart-theme"
 
 const ZERO_BUCKET: StatsBucket = { n: 0, mean: 0, median: 0, winRate: 0 }
 
@@ -312,6 +304,7 @@ export default function AnalyticsTab() {
                     <Progress
                       value={Math.min(100, Math.max(0, g.rate * 100))}
                       className="flex-1"
+                      aria-label={`อัตราที่โผ ${g.from} วันขึ้นไปโผ ${g.to} วัน`}
                     />
                     <span className="w-14 shrink-0 text-right text-xs tabular-nums text-muted-foreground">
                       {(g.rate * 100).toFixed(1)}%
@@ -366,36 +359,36 @@ export default function AnalyticsTab() {
                   dataKey="date"
                   tickFormatter={(v: string) => String(v).slice(5)}
                   minTickGap={40}
-                  tick={{ fontSize: 11 }}
+                  tick={AXIS_TICK_11}
                 />
-                <YAxis width={44} tick={{ fontSize: 11 }} />
+                <YAxis width={44} tick={AXIS_TICK_11} />
                 <YAxis
                   yAxisId="right"
                   orientation="right"
                   width={44}
-                  tick={{ fontSize: 11 }}
+                  tick={AXIS_TICK_11}
                 />
                 <Tooltip
                   contentStyle={TOOLTIP_STYLE}
-                  labelStyle={{ color: "#64748b" }}
-                  cursor={{ stroke: "rgba(100,116,139,0.35)", strokeDasharray: "3 3" }}
+                  labelStyle={TOOLTIP_LABEL_STYLE}
+                  cursor={{ stroke: CHART.ref, strokeDasharray: "3 3" }}
                 />
                 <Legend />
                 <ReferenceLine
                   y={0}
                   yAxisId="right"
-                  stroke="rgba(100,116,139,0.35)"
+                  stroke={CHART.ref}
                   strokeDasharray="4 4"
                 />
                 <Line
                   dataKey="repeatZ"
-                  stroke="#d97706"
+                  stroke={CHART.amber}
                   dot={false}
                   name="repeat z-score"
                 />
                 <Line
                   dataKey="mktFwd10"
-                  stroke="#059669"
+                  stroke={CHART.green}
                   dot={false}
                   name="ตลาดอีก 10 วัน (%)"
                   yAxisId="right"

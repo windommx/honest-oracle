@@ -14,6 +14,7 @@ import {
   type MouseEvent as ReactMouseEvent,
 } from "react"
 import { Search } from "lucide-react"
+import { useTheme } from "next-themes"
 
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -21,6 +22,17 @@ import { Switch } from "@/components/ui/switch"
 import type { MapColumn } from "@/lib/momentum/contracts"
 import { SINGLETON_COLOR } from "@/lib/palette"
 import { cn } from "@/lib/utils"
+import { CHART } from "./chart-theme"
+import ScrollBox from "./scroll-box"
+
+/** ผสมสี hex กับขาว (0..1) — ใช้ยกความสว่างของพาเลตต์ Momentum Map ในธีมมืด */
+function mixWithWhite(hex: string, amount: number): string {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim())
+  if (!m) return hex
+  const n = parseInt(m[1], 16)
+  const ch = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((v) => Math.round(v + (255 - v) * amount))
+  return `#${ch.map((v) => v.toString(16).padStart(2, "0")).join("")}`
+}
 
 export interface MomentumMapProps {
   columns: MapColumn[] // [{tf:5, items:[{symbol,rank,ret}]}, ...] always 7 columns
@@ -172,7 +184,12 @@ export default function MomentumMap({
     transition: "opacity .15s",
   })
 
-  const colorOf = (sym: string) => colors[sym] ?? SINGLETON_COLOR
+  // ธีมมืด: ผสมสีขาวเข้าไปให้จุด/ป้ายชื่อบนการ์ดมืดยังอ่านออก (ป้าย ≥ 4.5:1 · จุด ≥ 3:1) — hue เดิม ความหมายเดิม
+  const { resolvedTheme } = useTheme()
+  const dark = resolvedTheme === "dark"
+  const baseColor = (sym: string) => colors[sym] ?? SINGLETON_COLOR
+  const colorOf = (sym: string) => (dark ? mixWithWhite(baseColor(sym), 0.28) : baseColor(sym))
+  const labelColorOf = (sym: string) => (dark ? mixWithWhite(colors[sym] ?? SINGLETON_COLOR, 0.42) : (colors[sym] ?? SINGLETON_COLOR))
 
   const showTip = (e: ReactMouseEvent<SVGCircleElement>, sym: string, p: MapPoint) => {
     const rect = wrapRef.current?.getBoundingClientRect()
@@ -280,10 +297,11 @@ export default function MomentumMap({
       )}
 
       {/* ---------- svg chart ---------- */}
-      <div
+      <ScrollBox
         className={
           compact ? "max-h-[440px] overflow-x-auto overflow-y-auto" : "overflow-x-auto"
         }
+        label="Momentum Map (เลื่อนดูได้)"
       >
         <svg
           width={svgWidth}
@@ -306,7 +324,7 @@ export default function MomentumMap({
               textAnchor="middle"
               fontSize={geo.fontHeader}
               fontWeight={600}
-              fill="#64748b"
+              fill={CHART.axis}
             >
               {col.tf}D
             </text>
@@ -318,7 +336,7 @@ export default function MomentumMap({
             y1={geo.headerH}
             x2={svgWidth}
             y2={geo.headerH}
-            stroke="rgba(100,116,139,0.22)"
+            stroke={CHART.ref}
             strokeWidth={1}
           />
 
@@ -332,7 +350,7 @@ export default function MomentumMap({
                 y1={0}
                 x2={x}
                 y2={svgHeight}
-                stroke="rgba(100,116,139,0.1)"
+                stroke={CHART.grid}
                 strokeWidth={1}
               />
             )
@@ -358,7 +376,7 @@ export default function MomentumMap({
           </g>
 
           {/* dots */}
-          <g stroke="rgba(255,255,255,0.95)" strokeWidth={1}>
+          <g stroke={CHART.dotRing} strokeWidth={1}>
             {renderList.map(([sym, pts]) =>
               pts.map((p) => (
                 <circle
@@ -386,7 +404,7 @@ export default function MomentumMap({
                     y={p.y + 3.5}
                     textAnchor={rightmost ? "end" : "start"}
                     fontSize={geo.fontLabel}
-                    fill={colors[sym] ?? "#94a3b8"}
+                    fill={labelColorOf(sym)}
                     pointerEvents="none"
                     style={dimStyle(sym)}
                   >
@@ -423,7 +441,7 @@ export default function MomentumMap({
             )}
           </g>
         </svg>
-      </div>
+      </ScrollBox>
 
       {/* ---------- tooltip ---------- */}
       {tip && (
