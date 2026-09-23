@@ -9,7 +9,8 @@ export const maxDuration = 300
 // POST /api/seed  { days?, symbols? } → สร้างข้อมูลตัวอย่าง (wipe ของเดิมทั้งหมด)
 export async function POST(req: Request) {
   try {
-    const body = await req.json().catch(() => ({}))
+    const parsed: unknown = await req.json().catch(() => null)
+    const body = (parsed && typeof parsed === "object" ? parsed : {}) as { days?: unknown; symbols?: unknown }
     const stats = await seedDemoData({
       days: typeof body.days === "number" ? body.days : undefined,
       symbols: typeof body.symbols === "number" ? body.symbols : undefined,

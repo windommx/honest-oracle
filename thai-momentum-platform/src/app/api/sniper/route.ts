@@ -1,7 +1,7 @@
 // GET /api/sniper — รายงาน SET Sniper ทั้งชุด
 // ประกอบจาก: briefing (regime + GTAA + market) · circuit breaker · sector rotation ·
 //            cross-asset lead-lag · confluence 3 ชั้น (Location × Value × Behavior) · structure feed
-// ทุกชั้นคำนวณสดจาก RawDaily (OHLC + มูลค่าซื้อขาย) — cache ตาม dataKey เดียวกับระบบ
+// ทุกชั้นคำนวณสดจาก RawDaily (OHLC + มูลค่าซื้อขาย) — cache ตาม sniperKey (dataKey ของระบบ + Trade/Position/CrossAsset/GTAA)
 
 import { NextResponse } from "next/server"
 import { runSniperReport } from "@/lib/sniper/report"

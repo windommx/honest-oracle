@@ -34,15 +34,21 @@ const cum = (x: number[]): number[] => {
   let s = 0
   return x.map((v) => (s += Number.isFinite(v) ? v : 0))
 }
-/** percentile ของค่าปัจจุบันในหน้าต่างย้อนหลัง (รวมตัวเอง) */
+/**
+ * percentile ของค่าปัจจุบันในหน้าต่างย้อนหลัง (รวมตัวเอง)
+ * ต้องมี ≥ 20 จุดเหมือน zts — percentile จาก 1 จุดได้ 1.0 เสมอ (หุ้น IPO ใหม่ถูกตีเป็น vol สูงสุด)
+ * ข้อมูลไม่พอ → NaN แล้วผู้ใช้ nz(…, 0.5) เป็นค่ากลาง
+ */
 const pctOwn = (x: number[]): number[] =>
   x.map((v, i) => {
     if (!Number.isFinite(v)) return NaN
     const win = x.slice(Math.max(0, i - 250), i + 1).filter(Number.isFinite)
-    return win.filter((u) => u <= v).length / (win.length || 1)
+    if (win.length < 20) return NaN
+    return win.filter((u) => u <= v).length / win.length
   })
-/** z-score ตามเวลา (ต้องมีหน้าต่าง ≥ 20 จุดจึงมีความหมาย ไม่งั้นคืน 0) */
+/** z-score ตามเวลา (ต้องมีหน้าต่าง ≥ 20 จุดจึงมีความหมาย ไม่งั้นคืน 0 · ค่าวันนี้วัดไม่ได้ (NaN) = 0 ไม่มีข้อมูล) */
 const zts = (x: number[], i: number, w = 250): number => {
+  if (!Number.isFinite(x[i])) return 0
   const win = x.slice(Math.max(0, i - w), i + 1).filter(Number.isFinite)
   if (win.length < 20) return 0
   const m = mean(win)
@@ -57,12 +63,18 @@ const zcs = (x: number[]): number[] => {
   const sd = std(ok) || 1e-9
   return x.map((v) => (Number.isFinite(v) ? (v - m) / sd : NaN))
 }
-/** average-rank cross-sectional (0..1), NaN ทิ้ง */
+/** average-rank cross-sectional (0..1), NaN ทิ้ง — ค่าที่เท่ากันได้ rank เฉลี่ยของกลุ่ม (ไม่ตัดสินเสมอตามลำดับชื่อหุ้น) */
 const rankcs = (x: number[]): number[] => {
   const ok = x.map((v, i) => [v, i] as const).filter(([v]) => Number.isFinite(v))
   ok.sort((a, b) => a[0] - b[0])
   const r = new Array<number>(x.length).fill(NaN)
-  ok.forEach(([, i], k) => (r[i] = (k + 1) / ok.length))
+  for (let k = 0; k < ok.length; ) {
+    let j = k
+    while (j + 1 < ok.length && ok[j + 1][0] === ok[k][0]) j++
+    const avg = (k + j + 2) / 2 / ok.length // rank (1-based) เฉลี่ยของตำแหน่ง k..j
+    for (let t = k; t <= j; t++) r[ok[t][1]] = avg
+    k = j + 1
+  }
   return r
 }
 export const pearson = (a: number[], b: number[]): number => {
@@ -75,7 +87,11 @@ export const pearson = (a: number[], b: number[]): number => {
   const cov = xa.reduce((s, v, i) => s + (v - mx) * (ya[i] - my), 0)
   return cov / ((Math.sqrt(xa.reduce((s, v) => s + (v - mx) ** 2, 0)) * Math.sqrt(ya.reduce((s, v) => s + (v - my) ** 2, 0))) || 1e-9)
 }
-export const spearman = (a: number[], b: number[]): number => pearson(rankcs(a), rankcs(b))
+/** Spearman = Pearson ของ rank — จัด rank ภายในคู่ที่ใช้ได้ทั้งสองฝั่งเท่านั้น (NaN ฝั่งเดียวต้องไม่ขยับ rank อีกฝั่ง) */
+export const spearman = (a: number[], b: number[]): number => {
+  const p = a.map((v, i) => [v, b[i]] as const).filter(([x, y]) => Number.isFinite(x) && Number.isFinite(y))
+  return pearson(rankcs(p.map((q) => q[0])), rankcs(p.map((q) => q[1])))
+}
 
 // ---------- index ----------
 interface Sym {
@@ -112,7 +128,13 @@ function symFeat(s: Sym) {
   const flow = ret1.map((d, i) => (Number.isFinite(d) ? Math.sign(d) * s.val[i] : 0))
   const cF = cum(flow)
   const cV = cum(s.val)
-  const flowRatio = flow.map((_, i) => (i < 20 ? NaN : (cF[i] - cF[i - 20]) / (cV[i] - cV[i - 20] || 1)))
+  // Σval = 0 (ไม่มีมูลค่าซื้อขาย เช่นไฟล์นำเข้าไม่มีคอลัมน์ val) = ไม่มีข้อมูลเงินไหล → NaN
+  // (เดิม 0/1 = 0 ทำให้ทุกตัวเสมอกัน แล้ว flowRank/MFD ถูกตัดสินตามลำดับชื่อหุ้น)
+  const flowRatio = flow.map((_, i) => {
+    if (i < 20) return NaN
+    const v = cV[i] - cV[i - 20]
+    return v > 0 ? (cF[i] - cF[i - 20]) / v : NaN
+  })
   const vol20 = roll(ret1, 20, std).map((v) => v * Math.sqrt(252))
   return { ret1, ret20, flowRatio, symVolPct: pctOwn(vol20) }
 }
@@ -227,12 +249,20 @@ export function buildPanel(
   for (const sec of sectors) {
     share20.set(sec, roll(secVal.get(sec) ?? [], 20, mean).map((v, i) => v / (mv20[i] || 1)))
     share60.set(sec, roll(secVal.get(sec) ?? [], 60, mean).map((v, i) => v / (mv60[i] || 1)))
-    secRet.set(sec, dates.map((d) => mean(secDates.get(d)?.get(sec)?.r ?? [NaN])))
+    secRet.set(
+      sec,
+      dates.map((d) => {
+        const r = secDates.get(d)?.get(sec)?.r
+        return r && r.length > 0 ? mean(r) : NaN // ไม่มี ret20 เลย = ไม่มีข้อมูล (เดิม mean([]) = 0)
+      })
+    )
   }
   const rotByDate = new Map<string, Map<string, { rotZ: number; rank: number }>>()
   dates.forEach((d, i) => {
     const sr = sectors.map((sec) => secRet.get(sec)![i])
-    const dl = sectors.map((sec) => nz(share20.get(sec)![i]) - nz(share60.get(sec)![i]))
+    // Δshare ต้องมีทั้ง share20 และ share60 — เดิม nz(share60)=0 ช่วง 60 วันแรก ทำให้ Δshare = share20
+    // (จัดอันดับ sector ตามขนาดล้วน ๆ สำหรับผู้ใช้ที่มีประวัติสั้น) → ขาดข้อมูล = NaN (zcs ไม่นับ)
+    const dl = sectors.map((sec) => share20.get(sec)![i] - share60.get(sec)![i])
     const z1 = zcs(sr)
     const z2 = zcs(dl)
     const rot = sectors.map((sec, k) => 0.6 * nz(z1[k]) + 0.4 * nz(z2[k]))
@@ -336,12 +366,18 @@ export function buildPanel(
 }
 
 // breadth: % หุ้นเหนือ MA20/50/200 ต่อวัน + thrust5 = b20(d) − b20(d−5)
+// ตัวหารนับเฉพาะหุ้นที่มี MA ของหน้าต่างนั้นแล้ว — หุ้น IPO ที่ประวัติยังไม่ถึง w วัน
+// ไม่มีทั้ง "เหนือ" และ "ใต้" MA จึงต้องไม่ถูกนับเป็นหุ้นใต้เส้น (เดิมดึง breadth ลง)
+// ยังไม่มีหุ้นตัวไหนมี MA ของหน้าต่างนั้นเลย (ช่วง warm-up / ประวัติสั้นกว่า 200 วัน) = NaN "วัดไม่ได้"
+// ไม่ใช่ 0% — เดิมเลข 0 ปลอมทาสีแดงทั้งคอลัมน์และไหลเข้าหน้าต่าง z-score ของ breadthZ ไปอีกเกือบปี
 function breadthArrays(
   idx: Map<string, Sym>,
   dates: string[],
   dPos: Map<string, number>
 ): { b20: number[]; b50: number[]; b200: number[]; thrust: number[] } {
-  const n = dates.map(() => 0)
+  const n20 = dates.map(() => 0)
+  const n50 = dates.map(() => 0)
+  const n200 = dates.map(() => 0)
   const a20 = dates.map(() => 0)
   const a50 = dates.map(() => 0)
   const a200 = dates.map(() => 0)
@@ -350,21 +386,29 @@ function breadthArrays(
     s.dates.forEach((d, i) => {
       const p = dPos.get(d)
       if (p === undefined) return
-      n[p]++
-      a20[p] += s.close[i] > ma[0][i] ? 1 : 0
-      a50[p] += s.close[i] > ma[1][i] ? 1 : 0
-      a200[p] += s.close[i] > ma[2][i] ? 1 : 0
+      if (Number.isFinite(ma[0][i])) {
+        n20[p]++
+        a20[p] += s.close[i] > ma[0][i] ? 1 : 0
+      }
+      if (Number.isFinite(ma[1][i])) {
+        n50[p]++
+        a50[p] += s.close[i] > ma[1][i] ? 1 : 0
+      }
+      if (Number.isFinite(ma[2][i])) {
+        n200[p]++
+        a200[p] += s.close[i] > ma[2][i] ? 1 : 0
+      }
     })
   }
-  const f = (x: number[]): number[] => x.map((v, i) => v / (n[i] || 1))
-  const B20 = f(a20)
-  const B50 = f(a50)
-  const B200 = f(a200)
+  const f = (x: number[], n: number[]): number[] => x.map((v, i) => (n[i] > 0 ? v / n[i] : NaN))
+  const B20 = f(a20, n20)
+  const B50 = f(a50, n50)
+  const B200 = f(a200, n200)
   return {
     b20: B20,
     b50: B50,
     b200: B200,
-    thrust: B20.map((v, i) => (i >= 5 ? v - B20[i - 5] : 0)),
+    thrust: B20.map((v, i) => (i >= 5 && Number.isFinite(v) && Number.isFinite(B20[i - 5]) ? v - B20[i - 5] : NaN)),
   }
 }
 
@@ -447,11 +491,13 @@ export interface IcSummary {
 export const summarize = (ics: number[]): IcSummary => {
   const ok = ics.filter(Number.isFinite)
   const m = mean(ok)
-  const sd = std(ok) || 1e-9
+  const sd = std(ok)
+  // ICIR ต้องมี ≥ 2 จุดและ sd > 0 — เดิม sd=0 → หาร 1e-9 ได้ ICIR/t ระดับ 1e8 (n=1 ก็แสดงเลขมหาศาล)
+  const ir = ok.length >= 2 && sd > 1e-12 ? m / sd : 0
   return {
     meanIC: m,
-    ICIR: m / sd,
-    t: (m / sd) * Math.sqrt(ok.length),
+    ICIR: ir,
+    t: ir * Math.sqrt(ok.length),
     n: ok.length,
     hit: mean(ok.map((v) => (v > 0 ? 1 : 0))),
   }
@@ -460,6 +506,34 @@ export const summarize = (ics: number[]): IcSummary => {
 /** เกณฑ์โปรโมตตาม pre-registered policy: |IC|>0.02, |ICIR|>0.25, n≥120, เครื่องหมายตรง */
 export const promote = (r: IcSummary, sign: 1 | -1): boolean =>
   Math.abs(r.meanIC) > 0.02 && Math.abs(r.ICIR) > 0.25 && r.n >= 120 && Math.sign(r.meanIC) === sign
+
+/**
+ * forward return ตามปฏิทินตลาด: close ของ "วันทำการที่ +hold" ใน dates (ปฏิทินรวมของ panel)
+ * หุ้นที่ไม่มีราคาในวันปลายทาง (พักการซื้อขาย / เลิกเทรด) = ไม่มี forward return
+ * (เดิมเลื่อน hold "แถว" ของหุ้นตัวนั้น → ข้ามช่วงพักการซื้อขายไปไกลกว่า hold วันทำการ)
+ * คืน Map date → (symbol → ret)
+ */
+function fwdByDate(dates: string[], rows: Row[], hold: number): Map<string, Map<string, number>> {
+  const out = new Map<string, Map<string, number>>()
+  const h = Math.floor(hold)
+  if (!(h >= 1)) return out
+  const dPos = new Map(dates.map((d, i) => [d, i]))
+  const px = new Map<string, number>()
+  for (const r of rows) px.set(r.date + "|" + r.symbol, r.close)
+  for (const r of rows) {
+    const p = dPos.get(r.date)
+    if (p === undefined || p + h >= dates.length || !(r.close > 0)) continue
+    const c1 = px.get(dates[p + h] + "|" + r.symbol)
+    if (c1 === undefined || !Number.isFinite(c1)) continue
+    let m = out.get(r.date)
+    if (!m) {
+      m = new Map<string, number>()
+      out.set(r.date, m)
+    }
+    m.set(r.symbol, c1 / r.close - 1)
+  }
+  return out
+}
 
 /**
  * Cross-sectional IC รายวัน: signal ของตัวที่ติดโผวัน d เทียบ forward return
@@ -471,27 +545,20 @@ export function crossIC(
   hold: number,
   rows: Row[]
 ): IcSummary {
-  const idx = indexBySymbol(rows)
-  const fwdRaw = new Map<string, number>()
-  for (const s of idx.values())
-    s.close.forEach((v, i) => {
-      if (i + hold < s.close.length) fwdRaw.set(s.dates[i] + "|" + s.symbol, s.close[i + hold] / v - 1)
-    })
-  const per = new Map<string, number[]>()
-  for (const [k, v] of fwdRaw) {
-    const d = k.split("|")[0]
-    const a = per.get(d) ?? []
-    a.push(v)
-    per.set(d, a)
-  }
-  const dayMean = new Map<string, number>([...per].map(([d, a]) => [d, mean(a)]))
+  const fwd = fwdByDate(panel.dates, rows, hold)
   const ics: number[] = []
   for (const d of panel.dates) {
     const list = panel.byDateStock.get(d) ?? []
     if (list.length < 5) continue
+    const fm = fwd.get(d)
+    if (!fm) continue
+    const dayMean = mean([...fm.values()])
     const sig = list.map(get)
-    const fwd = list.map((s) => nz(fwdRaw.get(d + "|" + s.symbol) ?? NaN, NaN) - (dayMean.get(d) ?? 0))
-    const ic = spearman(sig, fwd)
+    const fr = list.map((s) => {
+      const v = fm.get(s.symbol)
+      return v === undefined ? NaN : v - dayMean
+    })
+    const ic = spearman(sig, fr)
     if (Number.isFinite(ic)) ics.push(ic)
   }
   return summarize(ics)
@@ -504,25 +571,14 @@ export function timingCorr(
   hold: number,
   rows: Row[]
 ): { corr: number; n: number; t: number } {
-  const idx = indexBySymbol(rows)
-  const mkt = new Map<string, number[]>()
-  for (const s of idx.values())
-    s.close.forEach((v, i) => {
-      if (i + hold < s.close.length) {
-        const d = s.dates[i]
-        const r = s.close[i + hold] / v - 1
-        const a = mkt.get(d) ?? []
-        a.push(r)
-        mkt.set(d, a)
-      }
-    })
+  const fwd = fwdByDate(panel.dates, rows, hold)
   const xs: number[] = []
   const ys: number[] = []
   for (const m of panel.market) {
-    const f = mkt.get(m.date)
-    if (!f) continue
+    const f = fwd.get(m.date)
+    if (!f || f.size === 0) continue
     xs.push(get(m))
-    ys.push(mean(f))
+    ys.push(mean([...f.values()]))
   }
   const r = pearson(xs, ys)
   return {

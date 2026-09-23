@@ -309,7 +309,10 @@ def market_context(df_all: pd.DataFrame, date: str) -> dict:
         return {"breadth": 0.5, "mkt_ret20": 0.0, "vol_pct": 1.0}
     ret = close.pct_change(fill_method=None)
     ret20 = close / close.shift(20) - 1.0
-    last = ret20.iloc[-1]
+    # เฉพาะหุ้นที่มีค่า ret20 จริง — หุ้นพักการซื้อขาย/IPO ใหม่ (NaN) ห้ามนับเป็น "ลง" (เดิมกด breadth จนพลิกเป็น risk_off ได้)
+    last = ret20.iloc[-1].dropna()
+    if last.empty:
+        return {"breadth": 0.5, "mkt_ret20": 0.0, "vol_pct": 1.0}
     breadth = float((last > 0).mean())
     mkt_ret20 = float(last.mean())
     mkt_daily = ret.mean(axis=1).dropna().tail(20)
@@ -428,9 +431,17 @@ def main() -> int:
         df = load_db()
         source, synth = "db:RawDaily", True
 
+    if df.empty:
+        print("[ERROR] ไม่มีข้อมูลราคาเลย — นำเข้า RawDaily หรือใช้ --csv ก่อน", file=sys.stderr)
+        return 2
     date = args.date or str(df["date"].max())
     if date not in set(df["date"]):
-        print(f"[WARN] วันที่ {date} ไม่มีในข้อมูล — ใช้วันล่าสุดก่อนหน้าแทน")
+        prior = df.loc[df["date"] <= date, "date"]
+        if prior.empty:
+            print(f"[ERROR] ไม่มีข้อมูลก่อนหรือเท่ากับวันที่ {date}", file=sys.stderr)
+            return 2
+        print(f"[WARN] วันที่ {date} ไม่มีในข้อมูล (วันหยุด/ยังไม่ปิดตลาด) — ใช้วันล่าสุดก่อนหน้าแทน: {prior.max()}")
+        date = str(prior.max())
 
     watch = [s.strip().upper() for s in args.watchlist.split(",") if s.strip()] \
         if args.watchlist else None
@@ -457,7 +468,7 @@ def main() -> int:
         if d.empty:
             print(f"  [ข้าม] {sym}: ไม่มีข้อมูล")
             continue
-        st = build(sym, df, mkt, date, ctx=ctx,
+        st = build(sym, d, mkt, date, ctx=ctx,  # d = แถวของหุ้นตัวนี้เท่านั้น (เดิมส่ง df ทั้งตลาด → ได้แท่งของหุ้นตัวท้ายตาราง)
                    levels_override=levels_all.get(sym), source=source,
                    synthetic_ohlc=synth)
         path = out_dir / f"{date}_{sym}.json"

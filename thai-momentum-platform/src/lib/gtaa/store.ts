@@ -59,11 +59,10 @@ export async function persistSignalSnapshot(
     configHash: hash,
   }
 
-  const saved = await db.gtaaSignal.upsert({
-    where: { decisionMonth_configHash: { decisionMonth, configHash: hash } },
-    create: data,
-    update: data,
-  })
+  const where = { decisionMonth_configHash: { decisionMonth, configHash: hash } }
+  // updated = มีแถวเดือน×config นี้อยู่แล้ว (upsert ทับ) — ไม่ใช่ true ตายตัว
+  const existing = await db.gtaaSignal.findUnique({ where, select: { id: true } })
+  const saved = await db.gtaaSignal.upsert({ where, create: data, update: data })
 
   await emitEvent("gtaa", opts.actor ?? "user", {
     type: "signal_snapshot",
@@ -76,7 +75,7 @@ export async function persistSignalSnapshot(
     failedCount: failed.length,
   })
 
-  return { id: saved.id, decisionMonth, configHash: hash, updated: true }
+  return { id: saved.id, decisionMonth, configHash: hash, updated: existing !== null }
 }
 
 /** บันทึกผลรัน backtest เข้า tracking log (config เดิม = ผลเดิม → ตรวจย้อนหลังได้) */

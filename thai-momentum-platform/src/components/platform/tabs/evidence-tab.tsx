@@ -15,7 +15,7 @@ import {
   SlidersHorizontal,
   TrendingDown,
 } from "lucide-react"
-import { postJson, useApi } from "@/hooks/use-api"
+import { fmtPct, postJson, useApi } from "@/hooks/use-api"
 import { toast } from "@/hooks/use-toast"
 import GlobalEnginesPanel from "./global-engines-panel"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
@@ -149,6 +149,7 @@ const SOURCE_LABEL: Record<string, string> = {
 }
 
 const GATE_ICIR = 0.25
+const TOM_GATE_T = 2 // H3 PASS เมื่อ t > 2 (ด้านเดียว)
 
 // สีเดียวกับ Recharts ของแท็บอื่น (emerald-600 / rose-600 — ใช้แบบ rgba เมื่อต้อง map alpha)
 const NEON_GREEN_RGB = "5, 150, 105"
@@ -228,6 +229,8 @@ function scanCells(report: EvidenceReport | null): ScanCell[] {
 }
 
 function cellIcir(c: ScanCell | undefined): number | null {
+  // n = 0 → ไม่มีวันที่วัดได้ (ICIR 0 ใน API เป็นค่าเติม ไม่ใช่ผลวัด) → แสดง "—"
+  if (c?.n === 0) return null
   const v = c?.ICIR ?? c?.icir
   return typeof v === "number" && isFinite(v) ? v : null
 }
@@ -291,6 +294,8 @@ function HypothesisCard({
           {best?.n != null && <span className="text-muted-foreground"> · n {best.n}</span>}
         </>
       )
+    } else if (id === "H2" && h?.n === 0) {
+      stat = <>ไม่มีสัญญาณเข้าเกณฑ์ (n 0) — ยังไม่มีไม้ให้วัด win/edge</>
     } else if (id === "H2") {
       stat = (
         <>
@@ -304,25 +309,29 @@ function HypothesisCard({
           {h?.stopPct != null && <span className="text-muted-foreground"> · stop {pctFrac(h.stopPct)}</span>}
         </>
       )
+    } else if (id === "H3" && h?.nIn === 0) {
+      stat = <>ข้อมูลไม่พอ — ไม่มีวันในหน้าต่าง turn-of-month (nIn 0)</>
     } else if (id === "H3") {
+      // insideMean/outsideMean จาก API เป็นหน่วย % อยู่แล้ว (thai-fit คูณ 100 ให้) — ห้ามคูณซ้ำ
       stat = (
         <>
-          ในเดือน <span className="font-mono">{pctFrac(h?.insideMean, 2)}</span>/วัน vs นอกเดือน{" "}
-          <span className="font-mono">{pctFrac(h?.outsideMean, 2)}</span>/วัน · t{" "}
-          <span className={cn("font-mono", Math.abs(h?.t ?? 0) >= 2 ? "text-neon-green" : "text-neon-rose")}>{fmt2(h?.t)}</span>
+          ในเดือน <span className="font-mono">{fmtPct(h?.insideMean, 3)}</span>/วัน vs นอกเดือน{" "}
+          <span className="font-mono">{fmtPct(h?.outsideMean, 3)}</span>/วัน · t{" "}
+          <span className={cn("font-mono", (h?.t ?? 0) > TOM_GATE_T ? "text-neon-green" : "text-neon-rose")}>{fmt2(h?.t)}</span>
           {h?.nIn != null && <span className="text-muted-foreground"> · nIn {h.nIn}</span>}
         </>
       )
     } else {
       const cells = h?.longCells ?? []
-      const pos = cells.length || (h?.nPositive ?? null)
+      // นับ long cell ที่ "ยังมีชีวิต" ตามเกณฑ์ H4 (ICIR > 0.25 และวัดได้จริง) — H4 PASS ⇔ 0
+      const alive = cells.length > 0 ? cells.filter((c) => (cellIcir(c) ?? 0) > GATE_ICIR).length : (h?.nPositive ?? null)
       stat = (
         <>
-          long cells ที่ยังบวก{" "}
-          <span className={cn("font-mono font-semibold", pos != null && pos > 0 ? "text-neon-rose" : "text-neon-green")}>{pos ?? "—"}</span>
+          long cells ที่ยังมีชีวิต (ICIR&gt;{GATE_ICIR}){" "}
+          <span className={cn("font-mono font-semibold", alive != null && alive > 0 ? "text-neon-rose" : "text-neon-green")}>{alive ?? "—"}</span>
           {cells.length > 0 && (
             <span className="block pt-0.5 font-mono text-[10px] text-muted-foreground">
-              {cells.map((c) => `${c.form}×${c.hold} ICIR ${fmt2(c.ICIR ?? c.icir)}`).join(" · ")}
+              {cells.map((c) => `${c.form}×${c.hold} ICIR ${fmt2(cellIcir(c))}`).join(" · ")}
             </span>
           )}
         </>
@@ -473,15 +482,32 @@ export default function EvidenceTab() {
   const [mode, setMode] = useState("all")
   const [running, setRunning] = useState(false)
   const [runError, setRunError] = useState<string | null>(null)
-  const [cfgDraft, setCfgDraft] = useState<EvidenceConfig | null>(null)
+  // optimistic draft ผูกกับ cfgApi.data ชุดที่ใช้ตอนกด — ใช้ได้จนกว่าข้อมูลสดชุดใหม่จะมาถึง
+  // (กันสวิตช์เด้งกลับค่าเก่าระหว่างรอ refetch / ค้างค่าเก่าถ้า refetch ล้มทั้งที่ server บันทึกแล้ว)
+  const [cfgDraft, setCfgDraft] = useState<{ cfg: EvidenceConfig; base: ConfigResponse | null } | null>(null)
   const [cfgPending, setCfgPending] = useState(false)
 
   const report = ev.data?.report ?? null
   const cfg = useMemo(
-    () => cfgDraft ?? normalizeConfig(cfgApi.data) ?? normalizeConfig(ev.data?.config),
+    () =>
+      (cfgDraft && cfgDraft.base === cfgApi.data ? cfgDraft.cfg : null) ??
+      normalizeConfig(cfgApi.data) ??
+      normalizeConfig(ev.data?.config),
     [cfgApi.data, cfgDraft, ev.data],
   )
   const cells = useMemo(() => scanCells(report), [report])
+  // longCells ของ H4 ไม่มี n — เติมจากตาราง scan เพื่อแยก "วัดไม่ได้" (n=0) ออกจาก ICIR 0 จริง
+  const h4 = useMemo<Hypothesis | null>(() => {
+    const h = report?.h4
+    if (!h) return null
+    return {
+      ...h,
+      longCells: h.longCells?.map((c) => ({
+        ...c,
+        n: c.n ?? cells.find((s) => s.form === c.form && s.hold === c.hold)?.n ?? null,
+      })),
+    }
+  }, [report, cells])
 
   async function runEvidence(m: string) {
     setRunning(true)
@@ -506,7 +532,7 @@ export default function EvidenceTab() {
   async function toggleConfig(key: "calendarOverlay" | "reversalEnabled") {
     if (!cfg || cfgPending) return
     const next: EvidenceConfig = { ...cfg, [key]: !cfg[key] }
-    setCfgDraft(next) // optimistic
+    setCfgDraft({ cfg: next, base: cfgApi.data }) // optimistic
     setCfgPending(true)
     try {
       await putJson<unknown>("/api/config/th", {
@@ -519,7 +545,7 @@ export default function EvidenceTab() {
         title: "บันทึก config v1 แล้ว",
         description: `${key === "calendarOverlay" ? "calendarOverlay" : "reversalEnabled"} → ${next[key] ? "เปิด" : "ปิด"} (config as data — ใช้ตั้งแต่รอบถัดไป)`,
       })
-      setCfgDraft(null)
+      // คง draft (= ค่าที่ server ยืนยันแล้ว) ไว้จนข้อมูลสดชุดใหม่มาถึง — draft หมดอายุเองเมื่อ cfgApi.data เปลี่ยน
       cfgApi.refetch()
     } catch (e) {
       setCfgDraft(null) // revert
@@ -690,7 +716,7 @@ export default function EvidenceTab() {
           id="H4"
           icon={TrendingDown}
           title="โมเมนตัมยาวตายตามวรรณกรรม"
-          h={report?.h4 ?? null}
+          h={h4}
           action={report?.actions?.H4 ?? report?.h4?.action ?? null}
         />
       </div>
@@ -821,7 +847,8 @@ export default function EvidenceTab() {
                         const chips = verdictChips(h.verdict ?? h.verdicts)
                         return (
                           <li
-                            key={h.ts ?? h.at ?? h.ranAt ?? i}
+                            // ts เป็นวินาที — บันทึก 2 ครั้งในวินาทีเดียวกันได้ จึงต่อ index กัน key ชน
+                            key={`${h.ts ?? h.at ?? h.ranAt ?? "h"}-${i}`}
                             className="flex flex-wrap items-center gap-2 rounded-lg border border-border/60 px-2.5 py-1.5 text-xs"
                           >
                             <span className="font-mono text-[10px] text-muted-foreground">{fmtTime(h.ts ?? h.at ?? h.ranAt)}</span>
@@ -869,7 +896,7 @@ export default function EvidenceTab() {
                       <TableHead>Source</TableHead>
                       <TableHead className="text-right">n</TableHead>
                       <TableHead className="text-right">Win rate</TableHead>
-                      <TableHead className="text-right">Avg net</TableHead>
+                      <TableHead className="text-right">Avg outcome</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -884,7 +911,8 @@ export default function EvidenceTab() {
                           <span className={(b.winRate ?? 0) >= 0.5 ? "text-neon-green" : "text-neon-rose"}>{pctFrac(b.winRate)}</span>
                         </TableCell>
                         <TableCell className="text-right tabular-nums">
-                          <span className={(b.avg ?? 0) >= 0 ? "text-neon-green" : "text-neon-rose"}>{pctFrac(b.avg, 2)}</span>
+                          {/* avg = ค่าเฉลี่ย Decision.outcome ซึ่งเป็นหน่วย % อยู่แล้ว (verify คูณ 100) — ห้ามคูณซ้ำ */}
+                          <span className={(b.avg ?? 0) >= 0 ? "text-neon-green" : "text-neon-rose"}>{fmtPct(b.avg, 2)}</span>
                         </TableCell>
                       </TableRow>
                     ))}

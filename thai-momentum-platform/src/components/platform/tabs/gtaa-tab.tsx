@@ -192,9 +192,14 @@ function EquityChart({ data }: { data: { month: string; strategy: number; benchm
 }
 
 function DrawdownChart({ data }: { data: { month: string; ddStrategy: number; ddBenchmark: number }[] }) {
+  // engine ส่ง drawdown เป็นทศนิยม (−0.149) — แปลงเป็น % ก่อน ไม่งั้นแกน/tooltip แสดง "−0%" / "−0.1%"
+  const chartData = useMemo(
+    () => data.map((p) => ({ month: p.month, ddStrategy: p.ddStrategy * 100, ddBenchmark: p.ddBenchmark * 100 })),
+    [data],
+  )
   return (
     <ResponsiveContainer width="100%" height={220}>
-      <AreaChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+      <AreaChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
         <CartesianGrid stroke="#e2e8f0" strokeDasharray="3 3" vertical={false} />
         <XAxis dataKey="month" minTickGap={56} tick={{ fontSize: 10 }} tickFormatter={(v: string) => String(v).slice(2)} />
         <YAxis tick={{ fontSize: 11 }} width={54} tickFormatter={(v: number) => `${v.toFixed(0)}%`} />
@@ -254,7 +259,7 @@ function SignalTable({ rows, decisionMonth }: { rows: SignalRow[]; decisionMonth
                 </TableCell>
                 <TableCell className="text-right font-mono text-xs tabular-nums">{r.close.toFixed(2)}</TableCell>
                 <TableCell className="text-right">
-                  {Number.isFinite(r.sma) ? (
+                  {r.sma != null && Number.isFinite(r.sma) ? (
                     <span
                       className={cn(
                         "font-mono text-xs font-semibold",
@@ -517,6 +522,17 @@ interface DataStatus {
   quality: { ok: boolean; months: number; tickers: number; lastMonth: string; issues: { ticker: string; type: string; detail: string }[] }
 }
 
+/** ขนาดไฟล์ CSV สูงสุด (ตัวอักษร) — ตรงกับเพดานของ POST /api/gtaa/data */
+const MAX_CSV_CHARS = 4_000_000
+
+/** รายการ quality issue ที่ทำให้ไม่ผ่าน gate (route ส่งกลับมากับ 422) — แสดงเหตุผลให้ครบตาม docs §6 */
+function qualityIssuesText(q: DataStatus["quality"] | undefined): string {
+  const blocking = (q?.issues ?? []).filter((i) => i.type === "hole" || i.type === "nonpositive" || i.type === "jump")
+  if (blocking.length === 0) return ""
+  const head = blocking.slice(0, 6).map((i) => `[${i.type}] ${i.ticker}: ${i.detail}`).join(" · ")
+  return ` — ${head}${blocking.length > 6 ? ` · และอีก ${blocking.length - 6} รายการ` : ""}`
+}
+
 function DataCard({ onChanged }: { onChanged: () => void }) {
   const { data, refetch } = useApi<DataStatus>("/api/gtaa/data")
   const [busy, setBusy] = useState<string | null>(null)
@@ -528,10 +544,16 @@ function DataCard({ onChanged }: { onChanged: () => void }) {
     setMsg(null)
     try {
       const r = await fetch("/api/gtaa/fetch", { method: "POST" })
-      const j = (await r.json()) as { ok?: boolean; attempts?: { source: string; detail: string }[]; hint?: string; error?: string }
+      const j = (await r.json()) as {
+        ok?: boolean
+        attempts?: { source: string; detail: string }[]
+        hint?: string
+        error?: string
+        quality?: DataStatus["quality"]
+      }
       if (!r.ok || !j.ok) {
         const attempts = (j.attempts ?? []).map((a) => `${a.source}: ${a.detail}`).join(" · ")
-        setMsg({ tone: "err", text: `ดึงข้อมูลจริงไม่สำเร็จ (${attempts}) — ${j.hint ?? j.error ?? ""}` })
+        setMsg({ tone: "err", text: `ดึงข้อมูลจริงไม่สำเร็จ (${attempts}) — ${j.hint ?? j.error ?? ""}${qualityIssuesText(j.quality)}` })
       } else {
         setMsg({ tone: "ok", text: "ดึงข้อมูลจริงสำเร็จ บันทึก panel.json แล้ว" })
         refetch()
@@ -548,14 +570,20 @@ function DataCard({ onChanged }: { onChanged: () => void }) {
     setBusy("upload")
     setMsg(null)
     try {
-      const r = await postJson<{ saved?: boolean; quality?: DataStatus["quality"]; error?: string }>("/api/gtaa/data", { csv: csvText })
-      if (r.saved) {
+      // อ่าน body เองแม้สถานะไม่ใช่ 2xx — 422 ส่ง quality report มาด้วย (postJson ทิ้งส่วนนี้)
+      const res = await fetch("/api/gtaa/data", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ csv: csvText }),
+      })
+      const r = (await res.json()) as { saved?: boolean; quality?: DataStatus["quality"]; error?: string }
+      if (res.ok && r.saved) {
         setMsg({ tone: "ok", text: `อัปโหลดสำเร็จ — ${r.quality?.months} เดือน × ${r.quality?.tickers} ตัว ผ่าน quality gate` })
         setCsvText("")
         refetch()
         onChanged()
       } else {
-        setMsg({ tone: "err", text: r.error ?? "อัปโหลดไม่สำเร็จ" })
+        setMsg({ tone: "err", text: `${r.error ?? `อัปโหลดไม่สำเร็จ (HTTP ${res.status})`}${qualityIssuesText(r.quality)}` })
       }
     } catch (e) {
       setMsg({ tone: "err", text: e instanceof Error ? e.message : String(e) })
@@ -568,10 +596,13 @@ function DataCard({ onChanged }: { onChanged: () => void }) {
     setBusy("reset")
     setMsg(null)
     try {
-      await fetch("/api/gtaa/data", { method: "DELETE" })
+      const r = await fetch("/api/gtaa/data", { method: "DELETE" })
+      if (!r.ok) throw new Error(`ลบไฟล์ข้อมูลไม่สำเร็จ (HTTP ${r.status})`)
       setMsg({ tone: "ok", text: "ลบไฟล์ข้อมูลแล้ว — กลับไปใช้ synthetic seed 42" })
       refetch()
       onChanged()
+    } catch (e) {
+      setMsg({ tone: "err", text: e instanceof Error ? e.message : String(e) })
     } finally {
       setBusy(null)
     }
@@ -580,7 +611,13 @@ function DataCard({ onChanged }: { onChanged: () => void }) {
   const onFile = async (file: File | null) => {
     if (!file) return
     const text = await file.text()
-    setCsvText(text.slice(0, 4_000_000))
+    // ไม่ตัดไฟล์เงียบ ๆ — ตัดท้ายไฟล์ = ข้อมูลเดือนล่าสุดหาย/บรรทัดสุดท้ายขาดครึ่ง
+    if (text.length > MAX_CSV_CHARS) {
+      setMsg({ tone: "err", text: `ไฟล์ใหญ่เกินไป (${text.length.toLocaleString()} ตัวอักษร · จำกัด ${MAX_CSV_CHARS.toLocaleString()}) — ใช้ราคารายเดือนแทนรายวัน` })
+      return
+    }
+    setMsg(null)
+    setCsvText(text)
   }
 
   const q = data?.quality
@@ -622,6 +659,15 @@ function DataCard({ onChanged }: { onChanged: () => void }) {
               quality {q?.ok ? "PASS" : `${q?.issues.length ?? 0} issues`}
             </Badge>
           </div>
+        )}
+
+        {/* หมายเหตุของแหล่งข้อมูล — เช่น BIL/SPY ชุดแทนจากการอัปโหลด หรือ panel.json เสียจนต้องใช้ synthetic */}
+        {data && Array.isArray(data.meta.notes) && data.meta.notes.length > 0 && (
+          <ul className="space-y-0.5 text-[10px] leading-4 text-muted-foreground">
+            {data.meta.notes.map((n, k) => (
+              <li key={k}>• {n}</li>
+            ))}
+          </ul>
         )}
 
         {q && !q.ok && (
@@ -744,8 +790,11 @@ function TrackingCard({
   const doDelete = async (id: number) => {
     setBusy(true)
     try {
-      await fetch(`/api/gtaa/snapshot?id=${id}`, { method: "DELETE" })
+      const r = await fetch(`/api/gtaa/snapshot?id=${id}`, { method: "DELETE" })
+      if (!r.ok) throw new Error(`ลบ snapshot #${id} ไม่สำเร็จ (HTTP ${r.status})`)
       onSaved()
+    } catch (e) {
+      setMsg({ tone: "err", text: e instanceof Error ? e.message : String(e) })
     } finally {
       setBusy(false)
     }
@@ -941,15 +990,18 @@ function ChecklistCard({
     let alive = true
     Promise.resolve().then(() => {
       if (!alive) return
+      // เดือนใหม่ที่ยังไม่เคยบันทึก (หรือค่าเสีย) = เริ่มว่าง — ไม่พาเครื่องหมายของเดือนก่อนติดมา
+      let next: boolean[] = CHECKLIST_ITEMS.map(() => false)
       try {
         const raw = localStorage.getItem(storageKey)
         if (raw) {
-          const arr = JSON.parse(raw) as boolean[]
-          if (Array.isArray(arr) && arr.length === CHECKLIST_ITEMS.length) setChecked(arr)
+          const arr = JSON.parse(raw) as unknown
+          if (Array.isArray(arr) && arr.length === CHECKLIST_ITEMS.length && arr.every((v) => typeof v === "boolean")) next = arr
         }
       } catch {
-        /* localStorage ไม่พร้อมใช้ — ข้าม */
+        /* localStorage ไม่พร้อมใช้ / JSON เสีย — ข้าม */
       }
+      setChecked(next)
     })
     return () => {
       alive = false
@@ -1174,7 +1226,9 @@ export default function GtaaTab() {
         persist,
       })
       setRunRes(res)
-      if (res.runId) hist.refetch()
+      if (res.runId || res.snapshotId) hist.refetch()
+      // snapshot ใหม่อาจยกระดับ readiness (certified) — badge หัวแท็บอ่านจาก overview
+      if (res.snapshotId) refetch()
     } catch (e) {
       setRunErr(e instanceof Error ? e.message : String(e))
     } finally {
@@ -1475,12 +1529,20 @@ export default function GtaaTab() {
       </Card>
 
       {/* Tracking Log — สัญญาณที่บันทึก + ผลตรวจย้อนหลัง */}
-      <TrackingCard hist={hist.data} activeCfg={activeCfg} onSaved={() => hist.refetch()} />
+      <TrackingCard
+        hist={hist.data}
+        activeCfg={activeCfg}
+        onSaved={() => {
+          hist.refetch()
+          refetch() // readiness (certified) บนหัวแท็บขึ้นกับ snapshot เดือนล่าสุด
+        }}
+      />
 
       {/* Checklist + Data */}
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
         <ChecklistCard monthKey={activeRun.lastDecisionMonth} autoItems={autoItems} />
-        <DataCard onChanged={() => { setRunRes(null); void refetch() }} />
+        {/* ข้อมูลเปลี่ยน → tracking log ต้องประเมินใหม่กับ panel ใหม่ด้วย ไม่ใช่แค่ overview */}
+        <DataCard onChanged={() => { setRunRes(null); void refetch(); hist.refetch() }} />
       </div>
     </div>
   )

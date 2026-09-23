@@ -7,10 +7,30 @@
 
 import type { FvgEvent, KeyLevel, OhlcBar, SweepEvent } from "./types"
 
+/**
+ * แท่งที่มี high/low จริง — แถวที่ไม่มี open/high/low ถูกเติม 0 ตอนโหลด (report/funnel)
+ * ห้ามใช้ 0 นั้นเป็น "ราคา" (ไม่งั้นเกิด FVG/sweep ผี, Low 20 วันหาย, โปรไฟล์ยืดถึง 0)
+ */
+export function hasHighLow(b: OhlcBar): boolean {
+  return b.high > 0 && b.low > 0 && b.high >= b.low
+}
+
+/** แท่งที่มี OHLC ครบจริง (open ด้วย) — ใช้กับ body/mid ของแท่ง */
+export function isOhlcBar(b: OhlcBar): boolean {
+  return b.open > 0 && hasHighLow(b)
+}
+
+/** fractal ต้องเห็นครบ 5 แท่ง (i-2..i+2) ที่มี high/low จริง — แท่งไม่มีข้อมูลไม่ถูกนับเป็นเพื่อนบ้านที่ "ต่ำกว่า/สูงกว่า" */
+function fractalWindowOk(bars: OhlcBar[], i: number): boolean {
+  for (let k = i - 2; k <= i + 2; k++) if (!hasHighLow(bars[k])) return false
+  return true
+}
+
 /** 5-แท่ง fractal swing: ต่ำสุดของหน้าต่าง i-2..i+2 */
 function swingLows(bars: OhlcBar[]): { i: number; price: number }[] {
   const out: { i: number; price: number }[] = []
   for (let i = 2; i < bars.length - 2; i++) {
+    if (!fractalWindowOk(bars, i)) continue
     const p = bars[i].low
     if (p <= bars[i - 1].low && p <= bars[i - 2].low && p < bars[i + 1].low && p < bars[i + 2].low) {
       out.push({ i, price: p })
@@ -22,6 +42,7 @@ function swingLows(bars: OhlcBar[]): { i: number; price: number }[] {
 function swingHighs(bars: OhlcBar[]): { i: number; price: number }[] {
   const out: { i: number; price: number }[] = []
   for (let i = 2; i < bars.length - 2; i++) {
+    if (!fractalWindowOk(bars, i)) continue
     const p = bars[i].high
     if (p >= bars[i - 1].high && p >= bars[i - 2].high && p > bars[i + 1].high && p > bars[i + 2].high) {
       out.push({ i, price: p })
@@ -52,6 +73,7 @@ export function detectSweeps(bars: OhlcBar[], maxBarsAgo = 15): SweepEvent[] {
     const barsAgo = T - 1 - i
     if (barsAgo > maxBarsAgo) continue
     const bar = bars[i]
+    if (!hasHighLow(bar)) continue // ไม่มี high/low จริง = ตัดสินไม่ได้ว่าแทงทะลุ (low ที่เติม 0 ไม่ใช่ sweep)
     // bullish sweep: แทงหลุด swing low ที่เกิดก่อนหน้า (ย้อนหลังสุด 60 แท่ง) แล้วปิดกลับมาเหนือระดับ
     const candidates = lows.filter((s) => s.i < i - 1 && s.i >= i - 60)
     if (candidates.length > 0) {
@@ -109,6 +131,8 @@ export function detectFvgs(bars: OhlcBar[], maxBarsAgo = 15): FvgEvent[] {
     if (barsAgo > maxBarsAgo) continue
     const b1 = bars[i - 2]
     const b3 = bars[i]
+    // ขอบ gap มาจาก high/low ของแท่ง 1 และ 3 — ต้องเป็นราคาจริงทั้งคู่ (แท่งที่ไม่มี OHLC ไม่สร้าง FVG)
+    if (!hasHighLow(b1) || !hasHighLow(b3)) continue
     // bullish FVG: ช่องว่างระหว่าง high ของแท่งแรก กับ low ของแท่งสุดท้าย
     if (b3.low > b1.high) {
       const bottom = b1.high
@@ -116,9 +140,11 @@ export function detectFvgs(bars: OhlcBar[], maxBarsAgo = 15): FvgEvent[] {
       const sizePct = ((top - bottom) / bottom) * 100
       if (sizePct < 0.25) continue // เล็กเกิน = noise
       // mitigate = แท่งหลังจากนี้ลงมาแตะโซน (low ≤ top)
+      // แท่งที่ไม่มี low จริง: low ≤ close เสมอ → นับว่าแตะเมื่อ close ≤ top เท่านั้น (แน่นอน ไม่เดา)
       let mitigated = false
       for (let k = i + 1; k < T; k++) {
-        if (bars[k].low <= top) {
+        const lowK = hasHighLow(bars[k]) ? bars[k].low : bars[k].close
+        if (lowK <= top) {
           mitigated = true
           break
         }
@@ -133,7 +159,8 @@ export function detectFvgs(bars: OhlcBar[], maxBarsAgo = 15): FvgEvent[] {
       if (sizePct < 0.25) continue
       let mitigated = false
       for (let k = i + 1; k < T; k++) {
-        if (bars[k].high >= bottom) {
+        const highK = hasHighLow(bars[k]) ? bars[k].high : bars[k].close // high ≥ close เสมอ
+        if (highK >= bottom) {
           mitigated = true
           break
         }
@@ -159,15 +186,20 @@ export function keyLevels(bars: OhlcBar[]): KeyLevel[] {
     if (!Number.isFinite(price) || price <= 0) return
     raw.push({ kind, price, gapPct: (c / price - 1) * 100, note })
   }
-  push("PDH", prev.high, "High เมื่อวาน")
-  push("PDL", prev.low, "Low เมื่อวาน")
-  if (win20.length >= 10) {
-    push("H20", Math.max(...win20.map((b) => b.high)), "High 20 วัน")
-    push("L20", Math.min(...win20.map((b) => b.low)), "Low 20 วัน")
+  if (hasHighLow(prev)) {
+    push("PDH", prev.high, "High เมื่อวาน")
+    push("PDL", prev.low, "Low เมื่อวาน")
   }
-  if (win250.length >= 60) {
-    push("H52W", Math.max(...win250.map((b) => b.high)), "High ~52 สัปดาห์")
-    push("L52W", Math.min(...win250.map((b) => b.low)), "Low ~52 สัปดาห์")
+  // สูง/ต่ำสุดของหน้าต่าง — นับเฉพาะแท่งที่มี high/low จริง (low ที่เติม 0 จะทำให้ Low หายทั้งระดับ)
+  const ohlc20 = win20.filter(hasHighLow)
+  const ohlc250 = win250.filter(hasHighLow)
+  if (ohlc20.length >= 10) {
+    push("H20", Math.max(...ohlc20.map((b) => b.high)), "High 20 วัน")
+    push("L20", Math.min(...ohlc20.map((b) => b.low)), "Low 20 วัน")
+  }
+  if (ohlc250.length >= 60) {
+    push("H52W", Math.max(...ohlc250.map((b) => b.high)), "High ~52 สัปดาห์")
+    push("L52W", Math.min(...ohlc250.map((b) => b.low)), "Low ~52 สัปดาห์")
   }
   // เลขสวยใกล้สุด 2 ระดับ (บน/ล่าง)
   const step = roundStep(c)
@@ -183,5 +215,5 @@ export function keyLevels(bars: OhlcBar[]): KeyLevel[] {
 
 export function hasOhlc(bars: OhlcBar[]): boolean {
   const b = bars[bars.length - 1]
-  return !!b && b.open > 0 && b.high > 0 && b.low > 0
+  return !!b && isOhlcBar(b)
 }

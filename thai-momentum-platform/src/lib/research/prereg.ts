@@ -89,24 +89,29 @@ export function parseTrialParams(body: Record<string, unknown>): { params?: Tria
   const d = DEFAULT_TRIAL_PARAMS
   const p: TrialParams = { ...d, costsGrid: [...d.costsGrid] }
   const errors: string[] = []
-  const num = (key: keyof TrialParams, min: number, max: number, label: string) => {
+  // integer = นับเป็นจำนวน (วัน/สถานะ/กลุ่ม/รอบ) — ค่าเศษทำให้ CPCV วนไม่จบ, px[i + hold] พัง, maxPos เศษ = leverage
+  const num = (key: keyof TrialParams, min: number, max: number, label: string, integer = false) => {
     const raw = body[key]
     if (raw === undefined || raw === null || raw === "") return
     const v = typeof raw === "number" ? raw : Number(raw)
     if (!isFinite(v)) errors.push(`${label} ต้องเป็นตัวเลข`)
     else if (v < min || v > max) errors.push(`${label} ต้องอยู่ระหว่าง ${min}-${max}`)
-    else (p[key] as number) = v
+    else (p[key] as number) = integer ? Math.round(v) : v
   }
-  num("k", 1, 7, "k")
-  num("hold", 1, 60, "hold")
+  num("k", 1, 7, "k", true)
+  num("hold", 1, 60, "hold", true)
   num("stopPct", 0.02, 0.5, "stopPct")
-  num("maxPos", 1, 30, "maxPos")
+  num("maxPos", 1, 30, "maxPos", true)
   num("costBps", 0, 500, "costBps")
-  num("bootN", 200, 10000, "bootN")
-  num("seed", 0, 1e9, "seed")
+  num("bootN", 200, 10000, "bootN", true)
+  num("seed", 0, 1e9, "seed", true)
   num("hitGate", 0.5, 0.8, "hitGate")
-  num("nGroups", 4, 10, "nGroups")
-  num("nTestGroups", 1, 4, "nTestGroups")
-  num("purge", 3, 60, "purge")
+  num("nGroups", 4, 10, "nGroups", true)
+  num("nTestGroups", 1, 4, "nTestGroups", true)
+  num("purge", 3, 60, "purge", true)
+  // CPCV ต้องเหลือกลุ่ม train ≥ 2 (เงื่อนไขเดียวกับ runCpcv) — ไม่งั้นทุก trial ได้ 0 path ตลอดการทดลอง
+  const maxTest = Math.min(4, p.nGroups - 2)
+  if (errors.length === 0 && p.nTestGroups > maxTest)
+    errors.push(`nTestGroups ต้องไม่เกิน ${maxTest} (nGroups − 2 และไม่เกิน 4)`)
   return errors.length > 0 ? { errors } : { params: p, errors }
 }

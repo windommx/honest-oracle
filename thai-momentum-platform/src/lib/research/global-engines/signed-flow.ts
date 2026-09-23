@@ -27,7 +27,8 @@ export function signedFlowSig(piv: ThaiPivots, rets: Mat): Mat {
         const r = rets[t]?.[j]
         if (v === undefined || v <= 0) continue
         sVal += v
-        sFlow += v * (r === undefined ? 0 : r > 0 ? 1 : -1)
+        // sign(r): วันราคานิ่ง (r = 0 — พบบ่อยในหุ้นไทยเพราะช่วงราคา) = 0 ไม่ใช่แรงขาย
+        sFlow += v * (r === undefined ? 0 : Math.sign(r))
         cnt++
       }
       if (cnt >= Math.ceil(K * 0.6) && sVal > 1e-9) row[j] = sFlow / sVal
@@ -42,7 +43,7 @@ export function evalSignedFlow(piv: ThaiPivots, rets: Mat): EngineEval {
   const rows = icAcross(piv, sig, [3, 5, 10])
   const best = bestIc(rows)
   const ic = best?.ic ?? { meanIC: 0, ICIR: 0, t: 0, n: 0 }
-  const { verdict, why } = alphaVerdict(ic.meanIC, ic.ICIR, ic.t)
+  const { verdict, why } = alphaVerdict(ic.meanIC, ic.ICIR, ic.t, ic.n)
 
   const stats: EngineStats = {
     bestHold: best?.hold ?? 0,

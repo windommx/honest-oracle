@@ -12,6 +12,7 @@ import {
   CommandSeparator,
   CommandShortcut,
 } from "@/components/ui/command"
+import { paletteFilter } from "@/lib/platform/palette"
 import { NAV_GROUPS, type NavItem } from "./nav-config"
 
 /**
@@ -32,7 +33,8 @@ export default function CommandPalette({
   // ผูกคีย์ลัด ⌘K / Ctrl+K ระดับเอกสาร
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
-      if (e.key.toLowerCase() === "k" && (e.metaKey || e.ctrlKey)) {
+      // e.key อาจไม่มี (keydown สังเคราะห์จาก autofill ของเบราว์เซอร์) — กัน TypeError ใน listener ระดับเอกสาร
+      if (typeof e.key === "string" && e.key.toLowerCase() === "k" && (e.metaKey || e.ctrlKey)) {
         e.preventDefault()
         onOpenChange(!open)
       }
@@ -67,6 +69,7 @@ export default function CommandPalette({
       onOpenChange={onOpenChange}
       title="Command Palette — ไปที่แท็บอย่างรวดเร็ว"
       description="พิมพ์เพื่อค้นหาแท็บหรือทางลัดของระบบ"
+      filter={paletteFilter}
     >
       <CommandInput placeholder="ค้นหาแท็บ / ฟังก์ชัน…" aria-label="ค้นหาแท็บหรือฟังก์ชัน" />
       <CommandList className="max-h-[min(60vh,420px)]">
@@ -79,7 +82,9 @@ export default function CommandPalette({
                 return (
                   <CommandItem
                     key={item.value}
-                    value={`${item.label} ${item.value} ${group.label}`}
+                    // value = ป้ายแท็บล้วน (ใช้จัดอันดับ "ตรงเป๊ะ" ใน paletteFilter) · รหัส/กลุ่มเป็น keywords ให้ค้นเจอเหมือนเดิม
+                    value={item.label}
+                    keywords={[item.value, group.label]}
                     onSelect={() => pick(item)}
                     className="gap-2.5 aria-selected:bg-neon-green/10 aria-selected:text-neon-green"
                   >

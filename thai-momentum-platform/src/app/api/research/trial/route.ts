@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { db } from "@/lib/db"
-import { runProfitEngine } from "@/lib/research/profit-engine"
+import { InsufficientDataError, runProfitEngine } from "@/lib/research/profit-engine"
 import type { BacktestStats, TrialListResponse, TrialResponse } from "@/lib/momentum/contracts"
 
 export const dynamic = "force-dynamic"
@@ -12,7 +12,8 @@ export async function POST() {
     const result = await runProfitEngine()
     return NextResponse.json<TrialResponse>(result)
   } catch (e) {
-    return NextResponse.json({ error: (e as Error).message }, { status: 500 })
+    const status = e instanceof InsufficientDataError ? 400 : 500
+    return NextResponse.json({ error: (e as Error).message }, { status })
   }
 }
 

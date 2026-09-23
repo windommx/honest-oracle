@@ -19,13 +19,26 @@ context.json ที่ได้ (state_gen.py / nimble_runner ใช้ต่อ
 
 import argparse
 import json
+import math
 import sys
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 LAB = Path(__file__).resolve().parent
 DEFAULT_JOURNAL = LAB / "journal.jsonl"
 DEFAULT_CONTEXT = LAB / "context.json"
+BKK = timezone(timedelta(hours=7))   # เวลาตลาด SET — ไทยไม่มี DST (UTC+7 ตายตัว ไม่ต้องพึ่ง tzdata)
+
+
+def market_today(now: datetime | None = None) -> str:
+    """วันที่ "วันนี้" ตามเวลาตลาด (Asia/Bangkok) — วันที่ใน journal เป็นวันทำการไทย
+    (ใช้วันที่ UTC ช่วง 00:00–07:00 น. เวลาไทยจะได้เมื่อวาน → day/week P&L ผิดวัน ผิดสัปดาห์)"""
+    return (now or datetime.now(timezone.utc)).astimezone(BKK).strftime("%Y-%m-%d")
+
+
+def _finite_r(v) -> bool:
+    """r ต้องเป็นตัวเลขจริงที่จำกัด (bool ไม่นับ, NaN/Infinity ทำให้ผลรวมเป็น NaN → กฎ R6.1 ไม่ทำงาน)"""
+    return isinstance(v, (int, float)) and not isinstance(v, bool) and math.isfinite(v)
 
 
 def load_trades(journal_path: Path) -> list[dict]:
@@ -43,8 +56,12 @@ def load_trades(journal_path: Path) -> list[dict]:
             except json.JSONDecodeError:
                 print(f"[WARN] ข้ามบรรทัดเสีย: {line[:80]}", file=sys.stderr)
                 continue
-            if row.get("type") == "trade" and isinstance(row.get("r"), (int, float)):
+            if not isinstance(row, dict) or row.get("type") != "trade":
+                continue
+            if _finite_r(row.get("r")):
                 trades.append(row)
+            else:
+                print(f"[WARN] ข้ามไม้ที่ r ไม่ใช่ตัวเลขจำกัด: {line[:80]}", file=sys.stderr)
     trades.sort(key=lambda r: str(r.get("date", "")))
     return trades
 
@@ -97,8 +114,8 @@ def main() -> int:
     ap = argparse.ArgumentParser(description="journal.jsonl → context.json")
     ap.add_argument("--journal", default=str(DEFAULT_JOURNAL))
     ap.add_argument("--context", default=str(DEFAULT_CONTEXT))
-    ap.add_argument("--date", default=datetime.now(timezone.utc).strftime("%Y-%m-%d"),
-                    help="วันที่สรุป (default: วันนี้)")
+    ap.add_argument("--date", default=market_today(),
+                    help="วันที่สรุป (default: วันนี้ตามเวลาไทย)")
     args = ap.parse_args()
 
     journal_path, context_path = Path(args.journal), Path(args.context)

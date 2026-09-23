@@ -106,8 +106,18 @@ async def build_universe(args, cfg):
     return syms, sectors
 
 
+def _get_chart_quotation():
+    """settfex ไม่ export get_chart_quotation ที่ระดับบนสุด (ตรวจกับ 0.24.2: `from settfex import get_chart_quotation`
+    → ImportError ทุกตัว = ไม่ได้ข้อมูลเลย) — ฟังก์ชันอยู่ที่ settfex.services.set"""
+    try:
+        from settfex.services.set import get_chart_quotation
+    except ImportError:  # เผื่อเวอร์ชันที่ย้ายไป export ที่ระดับบนสุด
+        from settfex import get_chart_quotation  # type: ignore[attr-defined,no-redef]
+    return get_chart_quotation
+
+
 async def fetch_symbol(sym: str, period: str, cfg):
-    from settfex import get_chart_quotation
+    get_chart_quotation = _get_chart_quotation()
 
     cq = await get_chart_quotation(sym, period=period, accumulated=False, config=cfg)
     by_date: dict[str, dict] = {}
@@ -191,6 +201,9 @@ def post_rows(base: str, rows: list[dict], sectors: dict[str, str], replace_demo
         except urllib.error.HTTPError as e:
             print(f"❌ ชุด {i // chunk + 1}: HTTP {e.code} {e.read().decode('utf-8', 'ignore')[:300]}", file=sys.stderr)
             sys.exit(2)
+        except (urllib.error.URLError, TimeoutError) as e:  # เชื่อมต่อไม่ได้ (server ไม่ได้รัน/URL ผิด) — CSV เขียนไว้แล้ว
+            print(f"❌ ชุด {i // chunk + 1}: ส่งไม่สำเร็จ ({e}) — ตรวจว่าแพลตฟอร์มรันอยู่ที่ {base} แล้วนำเข้า CSV ผ่านการ์ดแทนได้", file=sys.stderr)
+            sys.exit(2)
 
 
 async def main_async(args) -> int:
@@ -199,7 +212,8 @@ async def main_async(args) -> int:
     except ImportError:
         print("❌ ต้องติดตั้งก่อน: pip install \"settfex>=0.24\" (Python 3.11+)", file=sys.stderr)
         return 1
-    cfg = FetcherConfig(rate_limit_delay=args.delay, max_retries=3)
+    # FetcherConfig รับ rate_limit_delay 0–10 วินาที (นอกช่วง = ValidationError ทั้งสคริปต์ล้ม)
+    cfg = FetcherConfig(rate_limit_delay=min(max(args.delay, 0.0), 10.0), max_retries=3)
 
     symbols, sectors = await build_universe(args, cfg)
     if not symbols:

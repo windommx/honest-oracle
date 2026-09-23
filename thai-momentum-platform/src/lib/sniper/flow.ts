@@ -5,6 +5,7 @@
 // ป้ายความจริงใจ: นี่คือ proxy รายวัน — เทียบเท่า Delta จริงไม่ได้ เชื่อได้เฉพาะทิศทางหยาบ
 
 import type { OhlcBar, FlowProxy } from "./types"
+import { isOhlcBar } from "./structure"
 
 export function flowProxy(bars: OhlcBar[]): FlowProxy {
   const T = bars.length
@@ -17,14 +18,18 @@ export function flowProxy(bars: OhlcBar[]): FlowProxy {
   // clamp ±9 กันหน้าต่างคงที่ (sd≈0) ทำ z ระเบิด
   const valZ = sd < 1e-6 ? 0 : Math.max(-9, Math.min(9, (last.val - m) / sd))
 
-  const range = Math.max(last.high - last.low, 1e-9)
-  const bodyPct = Math.abs(last.close - last.open) / range
-  const closePosBar = (last.close - last.low) / range
+  // แท่งต้องมี OHLC จริงและมีช่วงราคา (high > low) จึงอ่าน body/ตำแหน่งปิดได้ —
+  // แท่งไม่มี OHLC (เติม 0) หรือแท่งแบน (high = low เช่นติดซิลลิ่ง/ฟลอร์ทั้งวัน) "ไม่ได้ปิดแข็งฝั่งใด":
+  // body 0 · ตำแหน่งปิดกลาง 0.5 · ไม่นับ absorption (เดิม range 1e-9 ทำให้แท่งแบนกลายเป็น "ฝั่งขาย")
+  const hasRange = isOhlcBar(last) && last.high > last.low
+  const range = hasRange ? last.high - last.low : 0
+  const bodyPct = hasRange ? Math.abs(last.close - last.open) / range : 0
+  const closePosBar = hasRange ? (last.close - last.low) / range : 0.5
 
   // absorption: effort สูง (valZ ≥ 1) + ผลลัพธ์เล็ก (body < 35% ของ range)
   let side: "buy" | "sell" | null = null
   let score = 0
-  if (valZ >= 1 && bodyPct < 0.35) {
+  if (hasRange && valZ >= 1 && bodyPct < 0.35) {
     // ปิดใกล้ high = ฝั่งซื้อดูดซับการขาย · ปิดใกล้ low = ฝั่งขายดูดซับการซื้อ
     side = closePosBar >= 0.6 ? "buy" : closePosBar <= 0.4 ? "sell" : null
     if (side) {

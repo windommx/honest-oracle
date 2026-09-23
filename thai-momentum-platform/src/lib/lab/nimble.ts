@@ -19,12 +19,17 @@ export const GENERIC_PROMPT =
 // ค่าความมั่นใจขั้นต่ำที่ wouldExecute จะเกิดจริง (double-key: rule ✓ + Nimble ✓ + conf ≥ 0.75)
 export const CONF_MIN = 0.75
 
+// เพดานเวลาต่อการเรียก LLM 1 ครั้ง — SDK ไม่มี timeout เอง (fetch ค้างได้ไม่รู้จบ)
+export const LLM_TIMEOUT_MS = 30_000
+
 export interface NimbleDecision {
   action: 'ENTER_LONG' | 'NO_TRADE'
   confidence: number
   gates: Gates
   edgeCaseNote?: string
   error?: string
+  // true = ไม่ได้คำตอบจากโมเดลเลย (config/SDK/เครือข่าย/timeout/429) — ห้ามบันทึกหรือนับเป็นการตัดสินใจ
+  unavailable?: boolean
 }
 
 const ZERO_GATES: Gates = { regime: 0, selection: 0, level: 0, trigger: 0, risk: 0 }
@@ -34,9 +39,21 @@ let zaiPromise: Promise<ZAI> | null = null
 
 function getZAI(): Promise<ZAI> {
   if (!zaiPromise) {
-    zaiPromise = ZAI.create()
+    zaiPromise = ZAI.create().catch((e: unknown) => {
+      // อย่าแคช error (เช่นยังไม่มี .z-ai-config) — ครั้งถัดไปต้องอ่าน config ใหม่ ไม่ต้องรีสตาร์ท server
+      zaiPromise = null
+      throw e
+    })
   }
   return zaiPromise
+}
+
+function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error(`nimble_timeout_${Math.round(ms / 1000)}s`)), ms)
+  })
+  return Promise.race([p, timeout]).finally(() => clearTimeout(timer))
 }
 
 // ---------------- response parsing ----------------
@@ -78,10 +95,14 @@ function normalize(obj: Record<string, unknown> | null, rawError?: string): Nimb
   }
 
   // grammar check — ใช้ตัด gate 4 ของ eval: action/confidence/gates ต้องครบและไม่มี error
-  const confOk =
+  const rawConf =
     typeof obj.confidence === 'number'
-      ? Number.isFinite(obj.confidence)
-      : typeof obj.confidence === 'string' && obj.confidence.trim() !== '' && Number.isFinite(Number(obj.confidence)) // โมเดลบางครั้งส่ง "0.85" — ยอมรับได้
+      ? obj.confidence
+      : typeof obj.confidence === 'string' && obj.confidence.trim() !== '' // โมเดลบางครั้งส่ง "0.85" — ยอมรับได้
+        ? Number(obj.confidence)
+        : NaN
+  // นอกช่วง 0..1 (เช่น 85 = เปอร์เซ็นต์) ไม่ใช่ความน่าจะเป็นตามสัญญา — ห้าม clamp แล้วนับเป็นคำตอบสมบูรณ์
+  const confOk = Number.isFinite(rawConf) && rawConf >= 0 && rawConf <= 1
   const complete =
     typeof obj.action === 'string' &&
     (obj.action === 'ENTER_LONG' || obj.action === 'NO_TRADE') &&
@@ -101,7 +122,10 @@ function normalize(obj: Record<string, unknown> | null, rawError?: string): Nimb
 
 // ---------------- main API ----------------
 
-export async function decide(state: StatePacket, opts?: { genericPrompt?: boolean }): Promise<NimbleDecision> {
+export async function decide(
+  state: StatePacket,
+  opts?: { genericPrompt?: boolean; timeoutMs?: number }
+): Promise<NimbleDecision> {
   try {
     const zai = await getZAI()
     const messages = [
@@ -113,12 +137,15 @@ export async function decide(state: StatePacket, opts?: { genericPrompt?: boolea
     let lastErr = ""
     for (let attempt = 0; attempt < 3; attempt++) {
       try {
-        const completion = await zai.chat.completions.create({
-          messages,
-          thinking: { type: "disabled" },
-          temperature: 0,
-          maxTokens: 300,
-        })
+        const completion = await withTimeout(
+          zai.chat.completions.create({
+            messages,
+            thinking: { type: "disabled" },
+            temperature: 0,
+            maxTokens: 300,
+          }),
+          opts?.timeoutMs ?? LLM_TIMEOUT_MS
+        )
         const raw = extractContent(completion)
         if (!raw.trim()) {
           return { action: "NO_TRADE", confidence: 0, gates: { ...ZERO_GATES }, error: "empty_response" }
@@ -153,6 +180,7 @@ export async function decide(state: StatePacket, opts?: { genericPrompt?: boolea
       confidence: 0,
       gates: { ...ZERO_GATES },
       error: lastErr || "unknown_error",
+      unavailable: true,
     }
   } catch (e) {
     return {
@@ -160,24 +188,48 @@ export async function decide(state: StatePacket, opts?: { genericPrompt?: boolea
       confidence: 0,
       gates: { ...ZERO_GATES },
       error: (e as Error).message,
+      unavailable: true,
     }
   }
 }
 
 // รันชุดด้วย concurrency 6 (คงลำดับเดิมของ input)
+// โมเดลติดต่อไม่ได้ครั้งแรก (unavailable) → หยุดส่งตัวที่เหลือ (กันรอ timeout ซ้ำทีละรอบ)
+// ตัวที่ไม่ได้ถามจะติดธง unavailable ชัด ๆ — ไม่ปลอมเป็น NO_TRADE ที่ "ตัดสินแล้ว"
 export async function decideBatch(
   states: StatePacket[],
-  opts?: { genericPrompt?: boolean }
+  opts?: { genericPrompt?: boolean; timeoutMs?: number }
 ): Promise<NimbleDecision[]> {
   const out: NimbleDecision[] = new Array(states.length)
   let next = 0
+  let halted: string | null = null
   const workers = Array.from({ length: Math.min(6, Math.max(1, states.length)) }, async () => {
     for (;;) {
+      if (halted !== null) return
       const i = next++
       if (i >= states.length) return
-      out[i] = await decide(states[i], opts)
+      const d = await decide(states[i], opts)
+      out[i] = d
+      if (d.unavailable && halted === null) halted = d.error ?? "unavailable"
     }
   })
   await Promise.all(workers)
+  for (let i = 0; i < states.length; i++) {
+    if (!out[i]) {
+      out[i] = {
+        action: "NO_TRADE",
+        confidence: 0,
+        gates: { ...ZERO_GATES },
+        error: `skipped: ${halted ?? "unavailable"}`,
+        unavailable: true,
+      }
+    }
+  }
   return out
+}
+
+// error ตัวแรกของคำตอบที่ "ไม่ได้มาจากโมเดล" (null = โมเดลตอบครบทุกตัว)
+export function firstUnavailable(decisions: NimbleDecision[]): string | null {
+  for (const d of decisions) if (d.unavailable) return d.error ?? "unavailable"
+  return null
 }

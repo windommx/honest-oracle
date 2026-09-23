@@ -62,7 +62,9 @@ export function backtestReturns(
 
     for (let k = 0; k < K; k++) {
       const W = trancheW[k]
-      const isRebalance = (t - start - k) % K === 0
+      // ทุก tranche ลงทุนตั้งแต่เดือนแรก (ไม่งั้น tranche ที่ยังไม่ถึงรอบถือเงินเปล่า 0% — ไม่ใช่แม้แต่ BIL)
+      // จากนั้นรีบาลานซ์เหลื่อมกันทุก K เดือน
+      const isRebalance = t === start || (t - start - k) % K === 0
       let rK = 0
 
       if (isRebalance) {
@@ -87,11 +89,14 @@ export function backtestReturns(
           valid = true
         }
         rK = (valid ? gross : 0) - costK
-        // เริ่มจาก target แล้ว drift
+        // เริ่มจาก target แล้ว drift — แทนที่ทั้ง tranche: ตัวที่ขายออกต้องหายไป (ไม่งั้นน้ำหนักเก่าค้าง ถูกนับ "ขาย"
+        // ซ้ำทุกรอบ + ยังได้ผลตอบแทนในเดือนที่ไม่รีบาลานซ์) · หารด้วย 1+gross ให้น้ำหนักหลัง drift รวม = 1 พอดี
+        const drifted: Record<string, number> = {}
         for (const [ticker, w] of Object.entries(target)) {
           const r = monthReturn(panel.closes[ticker] ?? [], t) ?? 0
-          W[ticker] = (w * (1 + r)) / (1 + rK)
+          drifted[ticker] = (w * (1 + r)) / (1 + gross)
         }
+        trancheW[k] = drifted
       } else {
         // เดือนไม่รีบาลานซ์ — ถือน้ำหนักเดิมที่ลอยแล้ว
         let gross = 0

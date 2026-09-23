@@ -108,11 +108,18 @@ export function scanPairs(
     o.val.push(r.val)
     bySym.set(r.symbol, o)
   }
+  // วันทำการล่าสุดของตลาด — ขาที่ไม่มีราคาวันนี้ (พักการซื้อขาย/เลิกเทรด) ให้ z ของ "วันนี้" ไม่ได้
+  let lastDate = ""
+  for (const o of bySym.values()) {
+    const d = o.dates[o.dates.length - 1]
+    if (d > lastDate) lastDate = d
+  }
   // จำกัดหน้าต่าง lookback + กรองสภาพคล่อง + จำนวนจุดขั้นต่ำ
   const cands: { sym: string; sector: string; logc: number[]; dates: string[]; retMap: Map<string, number> }[] = []
   for (const [sym, o] of bySym) {
     const n0 = o.dates.length
     if (n0 < lookback + 30) continue
+    if (o.dates[n0 - 1] !== lastDate) continue
     const start = n0 - lookback - 1
     const recentVal = o.val.slice(-60)
     const avgVal = recentVal.reduce((a, b) => a + b, 0) / (recentVal.length || 1)
@@ -164,12 +171,19 @@ export function scanPairs(
 
   const out: ScanResult["pairs"] = []
   for (const c of tested) {
-    const logA = c.a.logc
-    const logB = c.b.logc
-    const n = Math.min(logA.length, logB.length)
+    // จับคู่ราคาตาม "วันที่เดียวกัน" — เดิมจับตามลำดับแถว ทำให้ขาที่มีวันพักการซื้อขาย
+    // เลื่อนวันกันทั้งชุด (spread/β/half-life/z ผิดหมด)
+    const posB = new Map(c.b.dates.map((d, i) => [d, i]))
+    const A: number[] = []
+    const B: number[] = []
+    c.a.dates.forEach((d, i) => {
+      const j = posB.get(d)
+      if (j === undefined) return
+      A.push(c.a.logc[i])
+      B.push(c.b.logc[j])
+    })
+    const n = A.length
     if (n < 120) continue
-    const A = logA.slice(-n)
-    const B = logB.slice(-n)
     const beta = olsBeta(A, B)
     const stats = cointOK(A, B, beta)
     if (!stats) continue

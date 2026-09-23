@@ -18,7 +18,7 @@ import { Search } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
-import { TOPN, type MapColumn } from "@/lib/momentum/contracts"
+import type { MapColumn } from "@/lib/momentum/contracts"
 import { SINGLETON_COLOR } from "@/lib/palette"
 import { cn } from "@/lib/utils"
 
@@ -149,7 +149,9 @@ export default function MomentumMap({
     return new Set(Array.from(pool).filter((s) => s.toLowerCase().includes(q)))
   }, [q, allSymbols, repeated])
 
-  const activeSymbol = pinned ?? hovered ?? (q ? SEARCH_SENTINEL : null)
+  // หุ้นที่ปักหมุดไว้ไม่มีในวันที่เลือกใหม่ → ไม่ต้องหรี่ทั้งแผนที่ (เดิมทุกจุดจางเหลือ 0.15 และไม่มีปุ่มให้ยกเลิก)
+  const pinnedActive = pinned !== null && symbolPoints.has(pinned) ? pinned : null
+  const activeSymbol = pinnedActive ?? hovered ?? (q ? SEARCH_SENTINEL : null)
 
   // แสดงเฉพาะหุ้นซ้ำเมื่อเปิดสวิตช์ (singleton ถูกตัดออกทั้งหมด)
   const renderList = useMemo(
@@ -199,7 +201,11 @@ export default function MomentumMap({
 
   const nCols = Math.max(1, columns.length)
   const svgWidth = geo.leftPad + geo.colW * nCols + geo.rightPad
-  const svgHeight = geo.headerH + TOPN * geo.rowH + 12
+  // ความสูงตามอันดับสูงสุดที่มีจริง — TOPN ใน contracts (30) ≠ จำนวนอันดับที่ระบบสร้างจริง (TH_TOP_N)
+  // เดิมเหลือแถวว่างท้ายกราฟ และถ้าอันดับเกิน 30 จุดจะล้นกรอบ svg (มองไม่เห็น)
+  let maxRank = 1
+  for (const pts of symbolPoints.values()) for (const p of pts) if (p.rank > maxRank) maxRank = p.rank
+  const svgHeight = geo.headerH + maxRank * geo.rowH + 12
 
   return (
     <div ref={wrapRef} className={cn("relative", className)}>
@@ -268,7 +274,7 @@ export default function MomentumMap({
           </div>
 
           <span className="text-xs text-muted-foreground">
-            หุ้นซ้ำ {repeated.length} ตัว — สีตามความถี่ · หุ้นไม่ซ้ำ = ขาว
+            หุ้นซ้ำ {repeated.length} ตัว — สีตามความถี่ · หุ้นไม่ซ้ำ = เทา
           </span>
         </div>
       )}

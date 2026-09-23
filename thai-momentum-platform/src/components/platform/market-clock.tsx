@@ -1,58 +1,50 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { readBangkokClock, type SetPhase } from "@/lib/platform/market-session"
 
 /**
  * MarketClock — นาฬิกาเรียลไทม์เขตเวลา Asia/Bangkok + สถานะตลาดหลักทรัพย์ฯ (SET)
- * เวลาทำการ SET (สินทรัพย์หลัก): จันทร์–ศุกร์ 10:00–16:30 ICT (continuous)
- * ก่อนเปิด 09:00–09:59 = พรีเปิด · นอกช่วงนี้ = ปิดตลาด
+ * เวลาทำการ SET (จ.–ศ.): พรีเปิด 09:30–10:00 · เช้า 10:00–12:30 · พักกลางวัน 12:30–13:30
+ * · พรีเปิดบ่าย 13:30–14:00 · บ่าย 14:00–16:30 · Pre-close (ATC) 16:30–16:40 · นอกนั้น = ปิดตลาด
+ * (ตารางเวลาอยู่ที่ lib/platform/market-session.ts ที่เดียว — วันหยุดตลาดไม่ได้นับรวม)
  * แสดงผลเฉพาะหลัง mount เพื่อเลี่ยง hydration mismatch ระหว่าง server/client
  */
 
-type MarketState = "open" | "pre" | "closed"
-
 interface IctNow {
   clock: string
-  state: MarketState
+  state: SetPhase
 }
 
 function readIct(): IctNow {
-  const parts = new Intl.DateTimeFormat("en-GB", {
-    timeZone: "Asia/Bangkok",
-    hour12: false,
-    weekday: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-  }).formatToParts(new Date())
-  const get = (t: string) => parts.find((p) => p.type === t)?.value ?? ""
-  const wd = get("weekday")
-  const h = Number(get("hour") === "24" ? "00" : get("hour"))
-  const m = Number(get("minute"))
-  const minuteOfDay = h * 60 + m
-
-  let state: MarketState = "closed"
-  const isWeekend = wd === "Sat" || wd === "Sun"
-  if (!isWeekend) {
-    if (minuteOfDay >= 540 && minuteOfDay < 600) state = "pre" // 09:00–09:59
-    else if (minuteOfDay >= 600 && minuteOfDay <= 990) state = "open" // 10:00–16:30
-  }
-
-  return { clock: `${get("hour")}:${get("minute")}:${get("second")}`, state }
+  const now = readBangkokClock()
+  return { clock: now.clock, state: now.phase }
 }
 
-const STATE_META: Record<MarketState, { label: string; dot: string; text: string; title: string }> = {
+const STATE_META: Record<SetPhase, { label: string; dot: string; text: string; title: string }> = {
   open: {
     label: "SET เปิด",
     dot: "status-dot-live",
     text: "text-neon-green",
-    title: "ตลาดหลักทรัพย์ไทยเปิดทำการ (10:00–16:30 น. จ.–ศ.)",
+    title: "ตลาดหลักทรัพย์ไทยเปิดทำการ (10:00–12:30 · 14:00–16:30 น. จ.–ศ.)",
   },
   pre: {
     label: "พรีเปิด",
     dot: "status-dot-pre",
     text: "text-neon-amber",
-    title: "ช่วงพรีเปิดตลาด (09:00–10:00 น.)",
+    title: "ช่วงพรีเปิดตลาด (09:30–10:00 · 13:30–14:00 น.)",
+  },
+  break: {
+    label: "พักกลางวัน",
+    dot: "status-dot-pre",
+    text: "text-neon-amber",
+    title: "พักการซื้อขายช่วงกลางวัน (12:30–13:30 น.) — ช่วงบ่ายเริ่มพรีเปิด 13:30 น.",
+  },
+  preclose: {
+    label: "Pre-close",
+    dot: "status-dot-pre",
+    text: "text-neon-amber",
+    title: "ช่วง Pre-close — จับคู่ราคาปิด ATC (16:30–16:40 น.)",
   },
   closed: {
     label: "ปิดตลาด",

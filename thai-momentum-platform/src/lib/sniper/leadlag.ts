@@ -1,7 +1,7 @@
 // leadlag.ts — Cross-Asset Lead-Lag (เวอร์ชัน DAILY PROXY)
 // เอกสารต้นทางใช้ futures (S50) เป็นเรดาร์ + Granger causality — ข้อมูลเรามี
 // CrossAsset: SPX / USDTHB / GOLD รายวัน จึงคำนวณ lag-correlation แทน:
-//   corr(asset t+k, market t) ที่ k = 0..5 — ถ้า |corr| สูงสุดที่ k ≥ 1
+//   corr(asset t, market t+k) ที่ k = 0..5 — ถ้า |corr| สูงสุดที่ k ≥ 1
 //   แปลว่า asset "นำ" ตลาดไทย k วัน (correlation ไม่ใช่เหตุ-ผล — แจ้งใน note เสมอ)
 
 import type { LeadLagRow } from "./types"
@@ -51,6 +51,8 @@ export function crossAssetLeadLag(
     }
 
     const corr0 = corrAt(0)
+    // วันที่ของ asset กับตลาดไทยทับกันไม่พอ (< 60 คู่) = วัดไม่ได้ — ไม่ออกแถว (เดิมออก r=0 ปลอม + โน้ต "r=NaN")
+    if (!Number.isFinite(corr0)) continue
     let bestLag = 0
     let bestCorr = corr0
     for (let k = 1; k <= 5; k++) {

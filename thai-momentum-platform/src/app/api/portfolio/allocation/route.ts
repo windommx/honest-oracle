@@ -23,6 +23,7 @@ import type {
 import { runHRP } from "@/lib/portfolio/hrp"
 import { blackLittermanIdzorek } from "@/lib/portfolio/blacklitterman"
 import { matvec } from "@/lib/portfolio/linalg"
+import { observedReturns } from "@/lib/portfolio/returns"
 
 export const dynamic = "force-dynamic"
 
@@ -72,6 +73,7 @@ export async function GET(req: NextRequest) {
     const lbRaw = lbParam === null ? NaN : Number(lbParam)
     const lookback = Math.min(250, Math.max(20, Number.isFinite(lbRaw) ? Math.round(lbRaw) : 60))
 
+    // ไม่มีน้ำหนัก → ไม่อ้าง "น้ำหนักรวม 1.00" (weights ว่าง รวมได้ 0)
     const emptyResponse = (why: string): NextResponse =>
       NextResponse.json<AllocationResponse>({
         mode,
@@ -83,7 +85,7 @@ export async function GET(req: NextRequest) {
         views: null,
         tau: TAU,
         riskAversion: RISK_AVERSION,
-        notes: [...notes, why, "น้ำหนักรวม 1.00"],
+        notes: [...notes, why],
         tookMs: Date.now() - t0,
       })
 
@@ -144,13 +146,8 @@ export async function GET(req: NextRequest) {
         noPrice.push(s)
         continue
       }
-      const col: number[] = []
-      for (let i = priceStart + 1; i <= endIdx; i++) {
-        const a = pivot.px[i - 1][si]
-        const b = pivot.px[i][si]
-        col.push(isFinite(a) && isFinite(b) && a > 0 ? b / a - 1 : NaN)
-      }
-      rets.set(s, col)
+      // วันที่กลับมาเทรดเทียบราคาปิดล่าสุดที่มี (เดิมคู่ NaN→ราคา ถูกทิ้ง ทำให้ gap ช่วงพักหายจาก vol/corr)
+      rets.set(s, observedReturns(pivot.px, si, priceStart + 1, endIdx))
     }
     if (noPrice.length > 0) notes.push(`ไม่มีราคาในระบบ: ${noPrice.join(", ")}`)
 

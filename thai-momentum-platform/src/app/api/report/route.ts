@@ -10,19 +10,24 @@ export async function GET(req: Request) {
   try {
     const url = new URL(req.url)
     let date = url.searchParams.get("date")
-    const dates = (
-      await db.snapshot.findMany({ select: { date: true }, distinct: ["date"], orderBy: { date: "desc" }, take: 800 })
-    ).map((r) => r.date)
-    if (!date) date = dates[0] ?? null
+    if (!date) date = (await db.snapshot.aggregate({ _max: { date: true } }))._max.date
     if (!date) return NextResponse.json({ error: "ยังไม่มีข้อมูล snapshot" }, { status: 404 })
 
-    const idx = dates.indexOf(date)
-    const prevDate = idx >= 0 && idx + 1 < dates.length ? dates[idx + 1] : null
+    const cur = await db.snapshot.findMany({ where: { date } })
+    // วันที่ไม่มี snapshot = ไม่มีข้อมูล (404 เหมือน /api/map) — เดิมตอบ 200 เป็นรายงาน "ติดโผรวม 0 ตัว"
+    if (cur.length === 0) return NextResponse.json({ error: `ไม่พบข้อมูลของวันที่ ${date}` }, { status: 404 })
 
-    const [cur, prv] = await Promise.all([
-      db.snapshot.findMany({ where: { date } }),
-      prevDate ? db.snapshot.findMany({ where: { date: prevDate } }) : Promise.resolve([]),
-    ])
+    // วันก่อนหน้า = snapshot date ล่าสุดที่ < date (เดิมค้นใน 800 วันล่าสุดเท่านั้น → ประวัติยาว
+    // กว่านั้น prevDate = null แล้วรายงานว่าทุกตัว "ใหม่")
+    const prevDate =
+      (
+        await db.snapshot.findFirst({
+          where: { date: { lt: date } },
+          orderBy: { date: "desc" },
+          select: { date: true },
+        })
+      )?.date ?? null
+    const prv = prevDate ? await db.snapshot.findMany({ where: { date: prevDate } }) : []
 
     const curByTf = new Map<number, Set<string>>()
     const prvByTf = new Map<number, Set<string>>()
@@ -45,8 +50,8 @@ export async function GET(req: Request) {
 
     const countBy = new Map<string, number>()
     for (const s of cur) countBy.set(s.symbol, (countBy.get(s.symbol) ?? 0) + 1)
-    const multi = [...countBy.entries()]
-      .filter(([, c]) => c >= 2)
+    const repeated = [...countBy.entries()].filter(([, c]) => c >= 2)
+    const multi = repeated
       .sort((a, b) => b[1] - a[1])
       .slice(0, 10)
       .map(([symbol, count]) => ({ symbol, count }))
@@ -55,7 +60,8 @@ export async function GET(req: Request) {
     for (const s of cur) allCur.add(s.symbol)
 
     const L = [
-      `📊 Momentum Map ${date} | ติดโผรวม ${allCur.size} ตัว | ซ้ำข้ามโผ ${multi.length} ตัว`,
+      // จำนวนหุ้นซ้ำข้ามโผทั้งหมด (เดิมนับหลัง slice top-10 → ขึ้น "10 ตัว" ทุกวันที่ซ้ำเกิน 10)
+      `📊 Momentum Map ${date} | ติดโผรวม ${allCur.size} ตัว | ซ้ำข้ามโผ ${repeated.length} ตัว`,
       "",
       ...rows.map(
         (r) =>

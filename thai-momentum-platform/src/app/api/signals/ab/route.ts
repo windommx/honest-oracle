@@ -87,10 +87,18 @@ export async function GET(req: Request) {
     }
 
     const readyToPromote = paired.n >= 100 && paired.meanDiff > 0
+    // ถังว่างแต่มี decision อยู่แล้ว = ยังวัดผลไม่ได้ (ยังไม่ครบ hold วัน / ไม่มีราคาอ้างอิง) — ไม่ใช่ "ยังไม่ได้รัน Jev"
+    const nOf = (src: string): number => rows.filter((d) => d.source === src).length
+    const waiting = (n: number, who: string): string =>
+      `มี decision ${who} ${n} แถวแล้ว แต่ยังคำนวณผลไม่ได้ — ต้องรอครบ ${hold} วันทำการ (หรือไม่มีราคาของหุ้น/วันนั้น)`
     const message = !v1
-      ? "ยังไม่มีถัง v1 (รัน Jev ก่อนเพื่อสร้าง decisions)"
+      ? nOf("lite") > 0
+        ? waiting(nOf("lite"), "กฎเดิม (v1)")
+        : "ยังไม่มีถัง v1 (รัน Jev ก่อนเพื่อสร้าง decisions)"
       : !v2
-        ? "ยังไม่มีถัง shadow — รัน Jev เมื่อเปิด Signals v2 แล้วระบบจะ log คู่ขนานให้เอง"
+        ? nOf("lite+v2-shadow") > 0
+          ? waiting(nOf("lite+v2-shadow"), "shadow (v2)")
+          : "ยังไม่มีถัง shadow — รัน Jev เมื่อเปิด Signals v2 แล้วระบบจะ log คู่ขนานให้เอง"
         : readyToPromote
           ? "ผ่านเกณฑ์โปรโมท → เปิด SIGNALS_V2 ถาวรได้"
           : `รอสะสมผล: paired ${paired.n}/100 · meanDiff ${paired.meanDiff.toFixed(2)}% (ต้อง > 0)`

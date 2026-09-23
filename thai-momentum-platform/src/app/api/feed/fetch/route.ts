@@ -6,7 +6,7 @@
 import { NextResponse } from "next/server"
 import { fetchYahooBatch, YAHOO_RANGES } from "@/lib/feed/yahoo"
 import { flagStale } from "@/lib/feed/quality"
-import { ingestFeed } from "@/lib/feed/ingest"
+import { CROSS_ASSET_CLEARED_NOTE, ingestFeed } from "@/lib/feed/ingest"
 import { parseSymbolList } from "@/lib/feed/universe"
 import { DEFAULT_FEED_RANGE } from "@/lib/feed/sources"
 import type { FeedFetchRequest, FeedFetchResponse, FeedRange } from "@/lib/momentum/contracts"
@@ -15,12 +15,19 @@ export const dynamic = "force-dynamic"
 export const maxDuration = 300
 
 const MAX_SYMBOLS = 300
+// งบเวลาช่วงดึง (เหลือเวลาให้ ingest ภายใน maxDuration) — ตัวที่ดึงไม่ทันถูกรายงานว่า "ข้าม" ไม่ใช่ timeout ทั้งคำขอ
+const FETCH_BUDGET_MS = 220_000
 
 export async function POST(req: Request) {
   const t0 = Date.now()
   try {
-    const body = (await req.json().catch(() => ({}))) as Partial<FeedFetchRequest> & { symbols?: string[] | string }
-    const text = Array.isArray(body.symbols) ? body.symbols.join(",") : typeof body.symbols === "string" ? body.symbols : ""
+    const parsed: unknown = await req.json().catch(() => null)
+    const body = (parsed && typeof parsed === "object" ? parsed : {}) as Partial<FeedFetchRequest> & { symbols?: unknown }
+    const text = Array.isArray(body.symbols)
+      ? body.symbols.filter((s): s is string => typeof s === "string").join(",")
+      : typeof body.symbols === "string"
+        ? body.symbols
+        : ""
     const { symbols, invalid } = parseSymbolList(text)
     if (symbols.length === 0) {
       return NextResponse.json({ error: "ต้องระบุรายชื่อหุ้นอย่างน้อย 1 ตัว (เช่น PTT, KBANK หรือ SET50)" }, { status: 400 })
@@ -33,7 +40,7 @@ export async function POST(req: Request) {
     const replaceDemo = body.replaceDemo === true
     const sectors = body.sectors && typeof body.sectors === "object" ? body.sectors : undefined
 
-    const batch = await fetchYahooBatch(symbols, range, { adjusted })
+    const batch = await fetchYahooBatch(symbols, range, { adjusted, deadline: t0 + FETCH_BUDGET_MS })
     const reports = flagStale(batch.reports)
     const failed = reports.filter((r) => !r.ok)
     const notes: string[] = [
@@ -70,6 +77,7 @@ export async function POST(req: Request) {
     }
 
     const res = await ingestFeed({ rows: batch.rows, source: "yahoo", actor: "human", replaceDemo, sectors })
+    if (res.clearedCrossAsset) notes.push(CROSS_ASSET_CLEARED_NOTE)
     const okCount = reports.filter((r) => r.ok).length
     return NextResponse.json<FeedFetchResponse>({
       ok: true,

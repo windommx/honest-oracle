@@ -26,6 +26,7 @@ import { useApi } from "@/hooks/use-api"
 import type { OverviewResponse } from "@/lib/momentum/contracts"
 import { ALL_TABS, NAV_GROUPS, findTab, type NavItem } from "./nav-config"
 import CommandPalette from "./command-palette"
+import { ErrorBoundary } from "./error-boundary"
 import MarketClock from "./market-clock"
 import TickerTape from "./ticker-tape"
 import OverviewTab from "./tabs/overview-tab"
@@ -305,25 +306,28 @@ function ShellInner() {
           aria-label="เนื้อหาหลักของแท็บที่เลือก"
           className="mx-auto w-full max-w-7xl flex-1 px-3 py-4 sm:px-4 sm:py-6"
         >
-          {/* ทรานซิชันเปลี่ยนแท็บนุ่มนวล — key ต่อแท็บเพื่อ replay animation */}
+          {/* ทรานซิชันเปลี่ยนแท็บนุ่มนวล — key ต่อแท็บเพื่อ replay animation
+              ErrorBoundary อยู่ใต้ key เดียวกัน → แท็บพังแท็บเดียว shell ยังใช้ได้ และสลับแท็บ = รีเซ็ต */}
           <div key={tab} className="animate-in fade-in slide-in-from-bottom-2 duration-300">
-            {tab === "overview" && <OverviewTab onGoTo={setTab} />}
-            {tab === "map" && <MapTab />}
-            {tab === "analytics" && <AnalyticsTab />}
-            {tab === "flagship" && <FlagshipTab />}
-            {tab === "signals" && <SignalsTab />}
-            {tab === "stops" && <StopsTab />}
-            {tab === "backtest" && <BacktestTab />}
-            {tab === "research" && <ResearchTab />}
-            {tab === "evidence" && <EvidenceTab />}
-            {tab === "alpha" && <AlphaTab />}
-            {tab === "lab" && <LabTab />}
-            {tab === "jev" && <JevTab />}
-            {tab === "portfolio" && <PortfolioTab />}
-            {tab === "gtaa" && <GtaaTab />}
-            {tab === "sniper" && <SniperTab />}
-            {tab === "skills" && <SkillsTab onGoTo={setTab} />}
-            {tab === "data" && <DataTab />}
+            <ErrorBoundary label={currentTab.label} variant="tab">
+              {tab === "overview" && <OverviewTab onGoTo={setTab} />}
+              {tab === "map" && <MapTab />}
+              {tab === "analytics" && <AnalyticsTab />}
+              {tab === "flagship" && <FlagshipTab />}
+              {tab === "signals" && <SignalsTab />}
+              {tab === "stops" && <StopsTab />}
+              {tab === "backtest" && <BacktestTab />}
+              {tab === "research" && <ResearchTab />}
+              {tab === "evidence" && <EvidenceTab />}
+              {tab === "alpha" && <AlphaTab />}
+              {tab === "lab" && <LabTab />}
+              {tab === "jev" && <JevTab />}
+              {tab === "portfolio" && <PortfolioTab />}
+              {tab === "gtaa" && <GtaaTab />}
+              {tab === "sniper" && <SniperTab />}
+              {tab === "skills" && <SkillsTab onGoTo={setTab} />}
+              {tab === "data" && <DataTab />}
+            </ErrorBoundary>
           </div>
         </section>
 

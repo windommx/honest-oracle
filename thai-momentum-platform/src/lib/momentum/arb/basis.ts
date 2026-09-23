@@ -39,8 +39,10 @@ export function calendarSignal(
     z,
     fair,
     observed,
+    // STOP ต้องเช็คก่อน (เหมือน pairSignal) — เดิม |z|>3.5 ตกเข้า z>2 / z<−2 ก่อนเสมอ → STOP ไม่เคยเกิด
+    // และแนะนำ "เปิดสถานะ" ทั้งที่ spread หลุดกรอบหยุดขาดทุนไปแล้ว
     action:
-      z > 2 ? "SHORT_SPREAD" : z < -2 ? "LONG_SPREAD" : Math.abs(z) < 0.5 ? "EXIT" : Math.abs(z) > 3.5 ? "STOP" : "HOLD",
+      Math.abs(z) > 3.5 ? "STOP" : z > 2 ? "SHORT_SPREAD" : z < -2 ? "LONG_SPREAD" : Math.abs(z) < 0.5 ? "EXIT" : "HOLD",
   }
 }
 

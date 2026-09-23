@@ -3,6 +3,7 @@ import { emitEvent } from "@/lib/research/events"
 import {
   freezePrereg,
   getPrereg,
+  paramsHash,
   parseTrialParams,
   resetPrereg,
 } from "@/lib/research/prereg"
@@ -27,7 +28,9 @@ export async function POST(req: Request) {
   try {
     let body: Record<string, unknown> = {}
     try {
-      body = (await req.json()) as Record<string, unknown>
+      const parsed: unknown = await req.json()
+      // JSON ที่ไม่ใช่ object (null, ตัวเลข, array) → ถือเป็น body ว่าง แทนที่จะพังเป็น 500
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) body = parsed as Record<string, unknown>
     } catch {
       body = {}
     }
@@ -40,6 +43,16 @@ export async function POST(req: Request) {
     const { params, errors } = parseTrialParams(raw)
     if (!params) {
       return NextResponse.json({ error: `พารามิเตอร์ไม่ถูกต้อง: ${errors.join(", ")}` }, { status: 400 })
+    }
+    // ล็อกแล้วห้ามเปลี่ยนกติกาเงียบ ๆ (ต้อง reset ก่อน — เป็นการเริ่มการทดลองใหม่ที่ audit เห็น)
+    // กติกาเดิมซ้ำ → คืนของเดิม (idempotent: ไม่เลื่อน frozenAt / ไม่ emit ซ้ำ)
+    const existing = await getPrereg()
+    if (existing) {
+      if (existing.hash === paramsHash(params)) return NextResponse.json<PreregResponse>({ prereg: existing })
+      return NextResponse.json(
+        { error: `กติกาถูกล็อกไว้แล้ว (sha256 ${existing.hash.slice(0, 12)}…) — ต้อง reset ก่อนจึงล็อกกติกาใหม่ได้` },
+        { status: 409 }
+      )
     }
     const prereg = await freezePrereg(params)
     await emitEvent("research", "human", {

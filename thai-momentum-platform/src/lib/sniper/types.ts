@@ -155,8 +155,10 @@ export interface SniperBriefing {
   latestDate: string
   generatedAt: string
   regime: { label: string; score: number } | null
-  gtaa: { stance: string; cashPct: number; asOfMonth: string; source: string } | null
-  mkt: { ret1d: number; ret5d: number; breadth20: number; note: string }
+  /** staleMonths > 0 = ข้อมูล GTAA เลยรอบรีบาลานซ์แล้ว (docs/research/gtaa-faber.md §8.4 — ห้ามใช้ตัดสินใจ) */
+  gtaa: { stance: string; cashPct: number; asOfMonth: string; source: string; staleMonths: number } | null
+  /** ทศนิยม (0.01 = 1%) · null = วัดไม่ได้ (ไม่มีข้อมูล/ข้อมูลไม่พอ) — ห้ามเติมค่าเดา */
+  mkt: { ret1d: number | null; ret5d: number | null; breadth20: number | null; note: string }
   rotation: SectorRow[]
   leadlag: LeadLagRow[]
   notes: string[]

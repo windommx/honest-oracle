@@ -24,6 +24,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { cn } from "@/lib/utils"
 
 const TOOLTIP_STYLE = {
   backgroundColor: "#ffffff",
@@ -50,6 +51,11 @@ function verdictBadge(v: string) {
   return <Badge variant="secondary">KILL</Badge>
 }
 
+// สัดส่วน 0..1 → "NN%" · null/NaN = วัดไม่ได้ → "—"
+function fmtShare(v: number | null | undefined): string {
+  return v != null && Number.isFinite(v) ? `${(v * 100).toFixed(0)}%` : "—"
+}
+
 // ---------- Breadth Heatmap: 60 วัน × [>MA20, >MA50, >MA200, thrust5] ----------
 function BreadthHeatmap({ market }: { market: SignalsResponse["market"] }) {
   const rows = market.slice(-60)
@@ -65,14 +71,19 @@ function BreadthHeatmap({ market }: { market: SignalsResponse["market"] }) {
         {rows.map((d) => (
           <Fragment key={d.date}>
             <div className="bg-card px-2 py-0.5 font-mono text-[10px] text-muted-foreground">{d.date.slice(5)}</div>
-            {[d.b20, d.b50, d.b200, 0.5 + d.thrust * 4].map((v, i) => (
-              <div
-                key={i}
-                title={v.toFixed(2)}
-                className={`h-4 ${v > 0.5 ? "bg-neon-green" : "bg-neon-rose"}`}
-                style={{ opacity: 0.12 + 0.88 * Math.min(1, Math.abs(v - 0.5) * 2) }}
-              />
-            ))}
+            {[d.b20, d.b50, d.b200, d.thrust == null ? null : 0.5 + d.thrust * 4].map((v, i) =>
+              // ค่าที่วัดไม่ได้ (null — ประวัติยังไม่ถึงหน้าต่าง MA) = ช่องเทา ไม่ใช่ 0% สีแดงปลอม
+              v != null && Number.isFinite(v) ? (
+                <div
+                  key={i}
+                  title={v.toFixed(2)}
+                  className={`h-4 ${v > 0.5 ? "bg-neon-green" : "bg-neon-rose"}`}
+                  style={{ opacity: 0.12 + 0.88 * Math.min(1, Math.abs(v - 0.5) * 2) }}
+                />
+              ) : (
+                <div key={i} title="ยังคำนวณไม่ได้" className="h-4 bg-foreground/[0.06]" />
+              ),
+            )}
           </Fragment>
         ))}
       </div>
@@ -192,7 +203,21 @@ export default function SignalsTab() {
 
   const d = sig.data
   const last = d.market[d.market.length - 1]
+  // ฐานข้อมูลว่าง (ติดตั้งใหม่ / ยังไม่ ingest) → market = [] — ห้ามอ่าน field ของ last
+  if (!last)
+    return (
+      <Alert>
+        <Activity className="h-4 w-4" aria-hidden />
+        <AlertTitle>ยังไม่มีข้อมูลสัญญาณ</AlertTitle>
+        <AlertDescription>
+          ยังไม่มีข้อมูลราคาในระบบ — สร้างข้อมูลตัวอย่างหรือนำเข้าข้อมูลจริงก่อน แล้ว Regime Composite · MFD · Sector
+          Rotation · IC Report จะคำนวณให้อัตโนมัติ
+        </AlertDescription>
+      </Alert>
+    )
   const topSectors = [...d.sectors].sort((a, b) => a.rank - b.rank)
+  // sector ท้าย 2 ต้องไม่ซ้ำกับกลุ่มแรงสุด 3 อันดับ (มี sector น้อย เช่น 1-4 กลุ่ม → เดิมขึ้นชื่อเดียวกันทั้งสองฝั่ง)
+  const bottomSectors = topSectors.slice(Math.max(3, topSectors.length - 2))
   const icKeys = ic.data ? Object.keys(ic.data.ic) : []
   const timingKeys = ic.data ? Object.keys(ic.data.timing) : []
 
@@ -219,13 +244,17 @@ export default function SignalsTab() {
             <span>crossZ {last.crossZ.toFixed(2)}</span>
             <span>volPct {last.volPct.toFixed(2)}</span>
             <span>overlapZ {last.overlapZ.toFixed(2)}</span>
-            <span>&gt;MA20 {(last.b20 * 100).toFixed(0)}%</span>
-            <span>&gt;MA50 {(last.b50 * 100).toFixed(0)}%</span>
-            <span>&gt;MA200 {(last.b200 * 100).toFixed(0)}%</span>
-            <span>thrust5 {last.thrust.toFixed(3)}</span>
+            <span>&gt;MA20 {fmtShare(last.b20)}</span>
+            <span>&gt;MA50 {fmtShare(last.b50)}</span>
+            <span>&gt;MA200 {fmtShare(last.b200)}</span>
+            <span>thrust5 {last.thrust != null && Number.isFinite(last.thrust) ? last.thrust.toFixed(3) : "—"}</span>
           </div>
           {d.policy && (
-            <Badge variant={d.policy.v2 ? "default" : "secondary"} className={d.policy.v2 ? "bg-neon-green/20 text-neon-green" : ""}>
+            <Badge
+              variant={d.policy.v2 ? "default" : "secondary"}
+              // ข้อความยาว (น้ำหนักทุกสัญญาณ) — ให้ตัดบรรทัดได้ ไม่ดันหน้าจอมือถือจนล้นแนวนอน
+              className={cn("h-auto max-w-full whitespace-normal break-words text-left", d.policy.v2 && "bg-neon-green/20 text-neon-green")}
+            >
               policy: {d.policy.v2 ? `alpha ON [${d.policy.promoted.join(",")}]` : "alpha OFF"} · น้ำหนัก{" "}
               {Object.entries(d.policy.weights)
                 .filter(([, v]) => v > 0)
@@ -255,9 +284,14 @@ export default function SignalsTab() {
           <CardHeader className="pb-2">
             <CardTitle className="text-base">🌊 Sector Rotation (share20, 180 วัน)</CardTitle>
             <CardDescription>
-              วันนี้: {topSectors.slice(0, 3).map((s) => `${s.name} (#${s.rank})`).join(" · ")} แรงสุด ·{" "}
-              {topSectors.slice(-2).map((s) => `${s.name} (#${s.rank})`).join(" · ")} ท้ายสุด — ห้ามซื้อหุ้น sector ท้าย 2
-              ที่เงินไหลออก
+              วันนี้: {topSectors.slice(0, 3).map((s) => `${s.name} (#${s.rank})`).join(" · ") || "—"} แรงสุด
+              {bottomSectors.length > 0 && (
+                <>
+                  {" "}
+                  · {bottomSectors.map((s) => `${s.name} (#${s.rank})`).join(" · ")} ท้ายสุด — ห้ามซื้อหุ้น sector ท้าย 2
+                  ที่เงินไหลออก
+                </>
+              )}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -352,10 +386,12 @@ export default function SignalsTab() {
                 {timingKeys.map((k) => {
                   const v = ic.data!.timing[k]
                   const use = ic.data!.timingVerdicts[k] === "USE"
+                  // corr = NaN (จุดไม่พอ < 8 วัน) ถูก serialize เป็น null → แสดง "—" แทน .toFixed ที่ throw
+                  const corr = typeof v.corr === "number" && Number.isFinite(v.corr) ? v.corr : null
                   return (
                     <Badge key={k} variant={use ? "default" : "secondary"} className={use ? "bg-neon-green/20 text-neon-green" : ""}>
-                      {k}: corr {v.corr >= 0 ? "+" : ""}
-                      {v.corr.toFixed(3)} (n={v.n}) {use ? "USE" : "KILL"}
+                      {k}: corr {corr === null ? "—" : `${corr >= 0 ? "+" : ""}${corr.toFixed(3)}`} (n={v.n}){" "}
+                      {use ? "USE" : "KILL"}
                     </Badge>
                   )
                 })}

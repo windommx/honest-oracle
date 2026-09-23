@@ -22,41 +22,31 @@ export interface ValPivot {
   val: number[][] // dates × symbols (NaN = ไม่มีข้อมูล)
 }
 
-let _valCache: { key: string; val: ValPivot } | null = null
+// cache ผูกกับ object ของ closePivot: invalidateDataCache() (ทุก ingest/seed/replace-demo) สร้าง pivot ใหม่
+// → val สร้างใหม่ตาม แม้จำนวนแถว/วันล่าสุดไม่เปลี่ยน (เช่น แก้แท่งล่าสุดทับของเดิม)
+// และใช้ index ของ pivot เดียวกัน → val[i][s] ตรงกับ px[i][s] เสมอ
+let _valCache: { pivot: Pivot; val: ValPivot } | null = null
 
-export async function valuePivot(): Promise<ValPivot> {
-  const [count, last] = await Promise.all([
-    db.rawDaily.count(),
-    db.rawDaily.aggregate({ _max: { date: true } }),
-  ])
-  const key = `${count}:${last._max.date ?? ""}`
-  if (_valCache && _valCache.key === key) return _valCache.val
+export async function valuePivot(pivotIn?: Pivot): Promise<ValPivot> {
+  const pivot = pivotIn ?? (await closePivot())
+  if (_valCache && _valCache.pivot === pivot) return _valCache.val
 
   const rows = await db.rawDaily.findMany({
-    orderBy: [{ date: "asc" }, { symbol: "asc" }],
     select: { date: true, symbol: true, val: true },
   })
-  const dates: string[] = []
-  const symbols: string[] = []
-  const dateIdx = new Map<string, number>()
-  const symIdx = new Map<string, number>()
-  for (const r of rows) {
-    if (!dateIdx.has(r.date)) {
-      dateIdx.set(r.date, dates.length)
-      dates.push(r.date)
-    }
-    if (!symIdx.has(r.symbol)) {
-      symIdx.set(r.symbol, symbols.length)
-      symbols.push(r.symbol)
-    }
-  }
+  const { dates, symbols, dateIdx, symIdx } = pivot
   const val: number[][] = Array.from({ length: dates.length }, () =>
     new Array<number>(symbols.length).fill(NaN)
   )
-  for (const r of rows) val[dateIdx.get(r.date) as number][symIdx.get(r.symbol) as number] = r.val
+  for (const r of rows) {
+    const i = dateIdx.get(r.date)
+    const s = symIdx.get(r.symbol)
+    if (i === undefined || s === undefined) continue // แถวที่เพิ่งเข้ามาหลังสร้าง pivot
+    val[i][s] = r.val
+  }
 
   const vp: ValPivot = { dates, symbols, val }
-  _valCache = { key, val: vp }
+  _valCache = { pivot, val: vp }
   return vp
 }
 
@@ -80,7 +70,8 @@ export async function buildMomentumSignals(k: number): Promise<Map<string, Set<s
 
 // Naive baseline: Top-N โดย ret20 รายวัน ในหุ้นที่มูลค่าซื้อขาย > 1 ล้านบาท 5 วันติด
 export async function buildNaiveSignals(topN: number): Promise<Map<string, Set<string>>> {
-  const [pivot, vp] = await Promise.all([closePivot(), valuePivot()])
+  const pivot = await closePivot()
+  const vp = await valuePivot(pivot)
   const { dates, symbols, px } = pivot
   const signals = new Map<string, Set<string>>()
   for (let i = 20; i < dates.length; i++) {
@@ -247,7 +238,11 @@ export async function runBacktest(
   }
   const lastEq = equity[equity.length - 1]
   const totalRet = lastEq - 1
-  const cagr = lastEq > 0 ? Math.pow(lastEq, 252 / N) - 1 : -1
+  // equity มี N จุด = ผลตอบแทนรายวัน N−1 ช่วง → ปีที่ผ่านไป = (N−1)/252 (ข้อมูล < 2 วัน → 0 ไม่ใช่ NaN)
+  const periods = N - 1
+  const annualize = (last: number) =>
+    periods > 0 ? (last > 0 ? Math.pow(last, 252 / periods) - 1 : -1) : 0
+  const cagr = annualize(lastEq)
 
   let cummax = equity[0]
   let maxDD = 0
@@ -278,9 +273,9 @@ export async function runBacktest(
     cagr: r4(cagr),
     maxDD: r4(maxDD),
     sharpe: r2(sharpe),
-    exposure: r3(exposureSum / (N - 1)),
+    exposure: r3(periods > 0 ? exposureSum / periods : 0),
     benchTotal: r4(lastBench - 1),
-    benchCagr: r4(lastBench > 0 ? Math.pow(lastBench, 252 / N) - 1 : -1),
+    benchCagr: r4(annualize(lastBench)),
   }
 
   const step = Math.max(1, Math.ceil(N / 400))
@@ -288,7 +283,7 @@ export async function runBacktest(
   for (let i = 0; i < N; i += step) {
     eqPts.push({ date: dates[i], strategy: r4(equity[i]), benchmark: r4(bench[i]) })
   }
-  if (eqPts.length === 0 || eqPts[eqPts.length - 1].date !== dates[N - 1]) {
+  if (N > 0 && (eqPts.length === 0 || eqPts[eqPts.length - 1].date !== dates[N - 1])) {
     eqPts.push({ date: dates[N - 1], strategy: r4(lastEq), benchmark: r4(lastBench) })
   }
 

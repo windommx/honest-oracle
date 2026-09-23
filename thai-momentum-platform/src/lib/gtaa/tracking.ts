@@ -6,6 +6,7 @@
 //
 // pure — ไม่แตะ DB/fs — import ฝั่ง client ได้
 
+import { currentMonthLabel, monthDiff, nextMonthLabel } from "./macro"
 import type { GtaaPanel, GtaaStance, TrackedSignalRow } from "./types"
 
 /** รูปแบบแถวดิบจาก DB (Prisma) ก่อนผ่านการประเมิน */
@@ -36,20 +37,30 @@ function fwdReturn(closes: (number | null)[], i: number): number | null {
 /**
  * ประเมิน snapshot ทุกแถวเทียบ panel:
  * - เจอ decisionMonth ใน panel + มีข้อมูลเดือนถัดไป → state "scored" (หรือ missing-data ถ้าราคาตัวใดขาด)
- * - ยังไม่มีเดือนถัดไป → realized = null (รอผล)
- * - ไม่เจอ decisionMonth เลย → state "missing-data" (ข้อมูล panel เปลี่ยนชุด)
+ * - ยังไม่มีเดือนถัดไป หรือเดือนที่ใช้ยังไม่ปิดตามปฏิทิน (UTC) → realized = null (รอผล)
+ *   (panel จาก Yahoo มีแท่งของเดือนที่กำลังเดิน — ห้ามให้คะแนนจากราคากลางเดือน)
+ * - ไม่เจอ decisionMonth เลย / panel เปลี่ยนชุด (จริง↔สังเคราะห์) → state "missing-data"
+ * พอร์ตที่ประเมิน = holdings + ส่วนที่เหลือถือตัวเงินสด (cashTicker) — holdings ที่บันทึกเก็บเฉพาะ universe
  */
-export function evaluateTracking(panel: GtaaPanel, rows: StoredSignalLike[]): TrackedSignalRow[] {
+export function evaluateTracking(panel: GtaaPanel, rows: StoredSignalLike[], now: Date = new Date()): TrackedSignalRow[] {
   const out: TrackedSignalRow[] = []
   const T = panel.dates.length
+  const lastMonth = panel.dates[T - 1] ?? ""
+  const nowMonth = currentMonthLabel(now)
+  // แท่งเดือนใน panel สมบูรณ์เมื่อดึง/อัปโหลดหลังเดือนนั้นปิด — fetchedAt อ่านไม่ได้ = อิงนาฬิกาอย่างเดียว
+  const fetchedAt = new Date(panel.meta.fetchedAt)
+  const fetchedMonth = Number.isNaN(fetchedAt.getTime()) ? null : currentMonthLabel(fetchedAt)
+  const panelSynthetic = panel.meta.source === "synthetic"
   const indexOfMonth = new Map<string, number>()
   for (let i = 0; i < T; i++) indexOfMonth.set(panel.dates[i], i)
 
   for (const row of rows) {
     let holdings: { ticker: string; weight: number }[] = []
+    let holdingsOk = false
     try {
       const parsed = JSON.parse(row.holdings) as unknown
       if (Array.isArray(parsed)) {
+        holdingsOk = true
         holdings = parsed
           .map((h) => h as { ticker?: unknown; weight?: unknown })
           .filter((h) => typeof h.ticker === "string" && typeof h.weight === "number" && h.weight > 0)
@@ -81,18 +92,36 @@ export function evaluateTracking(panel: GtaaPanel, rows: StoredSignalLike[]): Tr
       realized: null,
     }
 
+    const appliesMonth = nextMonthLabel(row.decisionMonth)
+    if (monthDiff(appliesMonth, nowMonth) < 1 || (fetchedMonth !== null && monthDiff(appliesMonth, fetchedMonth) < 1)) {
+      // เดือนที่ใช้สัญญาณยังไม่ปิด (ปฏิทิน UTC — นาฬิกาเดียวกับ staleness) หรือ panel ถูกดึงก่อนเดือนนั้นปิด
+      // (แท่งเดือนนั้นยังเป็นราคากลางเดือน) → รอผล จนกว่าจะอัปเดตข้อมูลหลังปิดเดือน
+      out.push(base)
+      continue
+    }
     const i = indexOfMonth.get(row.decisionMonth)
-    if (i === undefined || i >= T - 1) {
-      // ไม่เจอเดือนตัดสินใจใน panel หรือยังไม่มีเดือนถัดไปให้วัด → รอผล
+    const dataSetChanged = panelSynthetic !== (row.dataSource === "synthetic")
+    if (!dataSetChanged && (i === undefined ? row.decisionMonth > lastMonth : i >= T - 1)) {
+      // ข้อมูลเดือนที่ใช้ยังมาไม่ถึง panel → รอผล
+      out.push(base)
+      continue
+    }
+    if (dataSetChanged || i === undefined || panel.dates[i + 1] !== appliesMonth) {
+      // panel เปลี่ยนชุด (สัญญาณจริงห้ามตรวจกับราคาสังเคราะห์) / ไม่เจอเดือนตัดสินใจ / กริดเดือนขาด → ตรวจผลไม่ได้
+      base.realized = { state: "missing-data", portfolioRet: null, spyRet: null, delta: null, hit: null, missing: [] }
       out.push(base)
       continue
     }
 
     // ประเมิน: พอร์ต = Σ w·r ของตัวถือ (รวมตัวเงินสด) เดือน i → i+1
+    // holdings ที่บันทึกมีเฉพาะ universe — ส่วนที่เหลือคือเงินสดของสัญญาณ (เช่น BIL) ต้องนับรวม ไม่งั้น exposure พองเกินจริง
+    const legs = [...holdings]
+    const heldW = holdings.reduce((a, h) => a + h.weight, 0)
+    if (holdingsOk && heldW < 1 - 1e-6 && row.cashTicker) legs.push({ ticker: row.cashTicker, weight: 1 - heldW })
     const missing: string[] = []
     let portfolioRet = 0
     let wSum = 0
-    for (const h of holdings) {
+    for (const h of legs) {
       const r = fwdReturn(panel.closes[h.ticker] ?? [], i)
       if (r === null) {
         missing.push(h.ticker)
@@ -146,7 +175,8 @@ export function trackingSummary(signals: TrackedSignalRow[]): {
   const wins = scored.filter((s) => s.realized?.hit).length
   const deltas = scored.map((s) => s.realized?.delta ?? 0)
   return {
-    saved: signals.length,
+    // "บันทึกกี่เดือน" (docs §8.2 / การ์ดแสดงหน่วย "เดือน") — หลาย config ในเดือนเดียวกันนับเป็น 1 เดือน
+    saved: new Set(signals.map((s) => s.decisionMonth)).size,
     scored: scored.length,
     wins,
     hitRate: scored.length > 0 ? wins / scored.length : null,

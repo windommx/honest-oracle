@@ -21,6 +21,7 @@ import type { CSSProperties, ReactNode } from "react"
 import { EyeOff, Maximize2, SlidersHorizontal, type LucideIcon } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
+import { ErrorBoundary } from "./error-boundary"
 
 export type Hue = "cyan" | "magenta" | "green" | "purple" | "amber"
 
@@ -374,8 +375,12 @@ export function FeatureModule({
       {/* ---- .options strip ---- */}
       {options && !hideOptions ? <div className={cn(dense && "[&>.options]:py-1.5")}>{options}</div> : null}
 
-      {/* ---- body ---- */}
-      <div className={cn("min-w-0 p-4 pt-3", dense && "p-3 pt-2.5", bodyClassName)}>{children}</div>
+      {/* ---- body ---- (ErrorBoundary: body ของโมดูลนี้พัง = โชว์การ์ดแจ้งในโมดูล โมดูลอื่นไม่กระทบ) */}
+      <div className={cn("min-w-0 p-4 pt-3", dense && "p-3 pt-2.5", bodyClassName)}>
+        <ErrorBoundary label={`${code} · ${title}`} variant="module">
+          {children}
+        </ErrorBoundary>
+      </div>
     </section>
   )
 }

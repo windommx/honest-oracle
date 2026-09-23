@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { db } from "@/lib/db"
-import { outcomeRFromCloses } from "@/lib/lab/outcome"
+import { outcomeRIfResolved } from "@/lib/lab/outcome"
 import { GATE_NAMES, type Gates } from "@/lib/lab/state"
 
 export const dynamic = "force-dynamic"
@@ -37,7 +37,9 @@ export async function GET() {
         const start = dates.findIndex((d) => d > log.date)
         if (start < 0) continue // ยังเปิดสถานะ — ยังไม่มีบาร์อนาคต ปล่อย outcomeR = null รอรอบหน้า
         const future = closes.slice(start, start + 20)
-        const r = outcomeRFromCloses(future, log.entryPx as number, log.stopPx as number, 20)
+        // บันทึกเฉพาะผลที่สรุปแล้ว (โดน stop/trail หรือครบ 20 บาร์) — ไม้ที่ยังเปิดอยู่ห้ามให้คะแนนถาวร
+        const r = outcomeRIfResolved(future, log.entryPx as number, log.stopPx as number, 20)
+        if (r === null) continue
         await db.shadowLog.update({ where: { key: log.key }, data: { outcomeR: r } })
         log.outcomeR = r
       }
@@ -184,6 +186,7 @@ export async function GET() {
       den > 0 ? Math.round((num / den) * 1000) / 10 : null
     const weekly = {
       n: weeklyN,
+      gutN: gutDen, // ตัวหารของ gutRulePct (เฉพาะ label ที่ตอบ gut)
       gutRulePct: pct(gutDiff, gutDen),
       labelRulePct: pct(labelRuleDiff, weeklyN),
       labelNimblePct: pct(labelNimbleDiff, weeklyN),
@@ -207,6 +210,7 @@ export async function GET() {
       disagreements,
       calibration,
       brier,
+      brierN, // จำนวนแถวที่มี outcome (เกณฑ์ G3 ของ eval ต้อง ≥10 ถึงจะนับ)
       pnl,
       expectancy,
       executedN,

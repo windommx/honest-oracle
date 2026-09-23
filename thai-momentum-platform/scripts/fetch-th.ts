@@ -45,7 +45,8 @@ if (symbols.length === 0) {
 }
 const range: FeedRange = YAHOO_RANGES.includes(values.range as FeedRange) ? (values.range as FeedRange) : "2y"
 const adjusted = !values.raw
-const delayMs = Math.max(0, Number(values.delay) || 150)
+const delayArg = Number(values.delay)
+const delayMs = Number.isFinite(delayArg) ? Math.max(0, delayArg) : 150 // --delay 0 ต้องได้ 0 (เดิม 0 || 150 = 150)
 
 console.log(`🌐 Yahoo Finance (.BK) — ${symbols.length} ตัว · range ${range} · ${adjusted ? "adjusted (adjclose)" : "ราคาดิบ"}`)
 const t0 = Date.now()
@@ -82,10 +83,11 @@ if (values.csv) {
 }
 
 // นำเข้า DB (import แบบ lazy — ไม่ต้องมี DB เมื่อใช้ --csv)
-const { ingestFeed } = await import("../src/lib/feed/ingest")
+const { ingestFeed, CROSS_ASSET_CLEARED_NOTE } = await import("../src/lib/feed/ingest")
 const res = await ingestFeed({ rows: batch.rows, source: "yahoo", actor: "system", replaceDemo: values["replace-demo"] === true })
 console.log(
   `📥 นำเข้า ${res.ingest.insertedRaw.toLocaleString()} แถว · indicator ${res.ingest.updatedRows.toLocaleString()} แถว · โผ ${res.ingest.snapDates.length} วัน (ล่าสุด ${res.latestDate ?? "—"}) · sector ${res.sectorRows} ตัว${res.replacedDemo ? " · ล้าง demo แล้ว" : ""}`,
 )
+if (res.clearedCrossAsset) console.log(`ℹ️ ${CROSS_ASSET_CLEARED_NOTE}`)
 console.log(`⏱ รวม ${((Date.now() - t0) / 1000).toFixed(1)}s`)
 process.exit(0)

@@ -56,15 +56,19 @@ export function evalVolManaged(piv: ThaiPivots, rets: Mat): EngineEval {
     strat.push(mean(top.map((c) => c.r)))
   }
 
-  const vols = ewmaVol(strat)
+  const vols = ewmaVol(strat) // vols[k] รวม strat[k]² แล้ว = รู้หลังปิดวัน k เท่านั้น
+  const weightOf = (sig: number | undefined) =>
+    Math.min(W_MAX, Math.max(W_MIN, TARGET_DAILY / (sig || TARGET_DAILY)))
   const managed: number[] = []
   const weights: number[] = []
   for (let k = 0; k < strat.length; k++) {
-    const sig = vols[k] ?? TARGET_DAILY
-    const w = Math.min(W_MAX, Math.max(W_MIN, TARGET_DAILY / (sig || TARGET_DAILY)))
+    // น้ำหนักของวัน k ต้องตั้งก่อนรู้ผลวัน k → ใช้ σ̂ ถึงวัน k−1 (กัน look-ahead; วันแรก w = 1)
+    const w = k > 0 ? weightOf(vols[k - 1]) : 1
     weights.push(w)
     managed.push((strat[k] ?? 0) * w)
   }
+  // w สำหรับรอบถัดไป (live) = σ̂ ล่าสุดที่รวมวันสุดท้ายแล้ว
+  const liveWeight = vols.length > 0 ? weightOf(vols[vols.length - 1]) : 1
 
   const sRaw = sharpe(strat)
   const sMan = sharpe(managed)
@@ -76,7 +80,11 @@ export function evalVolManaged(piv: ThaiPivots, rets: Mat): EngineEval {
   // เกณฑ์ลงทะเบียน: PASS = Sharpe เพิ่ม ≥ 0.15 และ MDD ดีขึ้น; WEAK = Sharpe ไม่แย่ลง; else FAIL
   let verdict: EngineEval["verdict"] = "FAIL"
   let why = `Sharpe หลังสเกล ${sMan.toFixed(2)} < ก่อนสเกล ${sRaw.toFixed(2)} — overlay ไม่ช่วยบนข้อมูลชุดนี้`
-  if (sMan >= sRaw + 0.15 && ddMan < ddRaw) {
+  if (strat.length < 2) {
+    // ไม่มีตัวอย่างพอคำนวณ Sharpe (std ต้อง ≥2 จุด) — Sharpe 0 → 0 ไม่ใช่หลักฐานว่า "ไม่แย่ลง"
+    verdict = "INFO"
+    why = `ข้อมูลไม่พอ — ตะกร้า winners มีผลตอบแทนเพียง ${strat.length} วัน (ต้องมีหุ้น liquid ≥20 ตัวและประวัติ >${WARMUP} วัน) จึงยังตัดสินไม่ได้`
+  } else if (sMan >= sRaw + 0.15 && ddMan < ddRaw) {
     verdict = "PASS"
     why = `Sharpe ${sRaw.toFixed(2)} → ${sMan.toFixed(2)} (+${(sMan - sRaw).toFixed(2)} ≥ 0.15) และ MDD ${(ddRaw * 100).toFixed(1)}% → ${(ddMan * 100).toFixed(1)}% (เกณฑ์ลงทะเบียน)`
   } else if (sMan >= sRaw) {
@@ -92,7 +100,7 @@ export function evalVolManaged(piv: ThaiPivots, rets: Mat): EngineEval {
     worstDayRaw: Math.round(worstRaw * 10000) / 10000,
     worstDayManaged: Math.round(worstMan * 10000) / 10000,
     avgWeight: Math.round(mean(weights) * 100) / 100,
-    lastWeight: Math.round((weights[weights.length - 1] ?? 1) * 100) / 100,
+    lastWeight: Math.round(liveWeight * 100) / 100,
     targetDaily: TARGET_DAILY,
     nDays: strat.length,
   }

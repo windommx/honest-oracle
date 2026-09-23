@@ -38,7 +38,7 @@ export function evalCsad(rets: (number | undefined)[][], mkt: number[]): EngineE
     pct = valid.length > 0 ? lo / valid.length : 0
   }
 
-  // fwd 10 วันของตลาด: mkt[i+10..i+19] รวม (log-sum approx ด้วยผลคูณ)
+  // fwd 10 วันของตลาด: ทบต้น mkt[i+1..i+10] (หลังวันที่รู้ CSAD — ไม่มี look-ahead)
   const fwd10: number[] = []
   for (let i = 0; i < nD - 10; i++) {
     let cum = 1
@@ -78,7 +78,11 @@ export function evalCsad(rets: (number | undefined)[][], mkt: number[]): EngineE
   // เกณฑ์ลงทะเบียน: PASS = t ≤ −2 (CSAD สูง → ตลาดหน้าอ่อนจริง); WEAK = t ≤ −1.5
   let verdict: EngineEval["verdict"] = "FAIL"
   let why = `t = ${tStat.toFixed(2)} > −1.5 — CSAD สูงไม่ทำนายตลาดอ่อนบนข้อมูลชุดนี้ (honest)`
-  if (tStat <= -2) {
+  if (hiFwd.length < 2 || loFwd.length < 2) {
+    // t ต้องมี ≥2 จุดต่อกลุ่ม — t = 0 จากกลุ่มว่างไม่ใช่หลักฐาน
+    verdict = "INFO"
+    why = `ข้อมูลไม่พอ — กลุ่ม CSAD สูง ${hiFwd.length} วัน / ปกติ ${loFwd.length} วัน (ต้อง ≥2 ต่อกลุ่ม) จึงยังตัดสินไม่ได้`
+  } else if (tStat <= -2) {
     verdict = "PASS"
     why = `CSAD top-20% → fwd10 ตลาด ${((mHi - mLo) * 100).toFixed(2)}pp ต่ำกว่ากลุ่มปกติ (t = ${tStat.toFixed(2)} ≤ −2, เกณฑ์ลงทะเบียน)`
   } else if (tStat <= -1.5) {

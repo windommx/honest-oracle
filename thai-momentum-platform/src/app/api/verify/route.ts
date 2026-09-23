@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { db } from "@/lib/db"
 import { closePivot } from "@/lib/momentum/core"
 import type { VerifyBucket, VerifyResponse } from "@/lib/momentum/contracts"
+import { forwardReturnPct } from "@/lib/portfolio/returns"
 
 export const dynamic = "force-dynamic"
 
@@ -25,11 +26,11 @@ export async function GET(req: Request) {
       const i = pivot.dateIdx.get(d.date)
       const s = pivot.symIdx.get(d.target)
       if (i === undefined || s === undefined) continue
-      if (i + hold >= pivot.dates.length) continue
-      const p0 = pivot.px[i][s]
-      const p1 = pivot.px[i + hold][s]
-      if (!isFinite(p0) || !isFinite(p1) || p0 <= 0) continue
-      const outcome = round3((p1 / p0 - 1) * 100)
+      // ราคาปลายทาง = ราคาปิดล่าสุดที่มีจริงภายใน (i, i+hold] — หุ้นพักการซื้อขายวันครบกำหนด
+      // หรือหยุดซื้อขายกลางทางเคยไม่ถูกวัดผลตลอดไป (calibration เอียงแบบ survivorship)
+      const fwd = forwardReturnPct(pivot.px, i, s, hold)
+      if (fwd === null) continue
+      const outcome = round3(fwd)
       await db.decision.update({ where: { id: d.id }, data: { outcome } })
     }
 

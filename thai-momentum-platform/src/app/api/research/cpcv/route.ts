@@ -2,7 +2,7 @@ import { NextResponse } from "next/server"
 import { db } from "@/lib/db"
 import { emitEvent } from "@/lib/research/events"
 import { buildMetaPanel } from "@/lib/research/features"
-import { runCpcv, DEFAULT_CPCV, type CpcvParams } from "@/lib/research/cpcv"
+import { runCpcv, DEFAULT_CPCV, MIN_PANEL_ROWS, type CpcvParams } from "@/lib/research/cpcv"
 import { fitLogistic, auc, predictProba } from "@/lib/research/logistic"
 import type { CpcvListResponse, CpcvResponse, MetaModelStatus } from "@/lib/momentum/contracts"
 
@@ -74,7 +74,9 @@ export async function POST(req: Request) {
   try {
     let body: Record<string, unknown> = {}
     try {
-      body = (await req.json()) as Record<string, unknown>
+      const parsed: unknown = await req.json()
+      // JSON ที่ไม่ใช่ object (null, ตัวเลข, array) → ถือเป็น body ว่าง แทนที่จะพังเป็น 500
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) body = parsed as Record<string, unknown>
     } catch {
       body = {}
     }
@@ -100,7 +102,8 @@ export async function POST(req: Request) {
       if (!isFinite(v) || v < min || v > max) return d
       return v
     }
-    const hold = num("hold", 10, 2, 60)
+    // hold = จำนวนวันทำการ — ค่าเศษทำให้ buildMetaPanel อ่าน px[i + hold] ไม่ได้ (500)
+    const hold = Math.round(num("hold", 10, 2, 60))
     const params: CpcvParams = {
       nGroups: Math.round(num("nGroups", DEFAULT_CPCV.nGroups, 4, 10)),
       nTestGroups: Math.round(num("nTestGroups", DEFAULT_CPCV.nTestGroups, 1, 4)),
@@ -108,9 +111,28 @@ export async function POST(req: Request) {
       embargo: Math.round(num("embargo", Math.round(hold / 2), 0, 60)),
       hitGate: num("hitGate", DEFAULT_CPCV.hitGate, 0.5, 0.8),
     }
+    // ต้องเหลือกลุ่ม train ≥ 2 (เงื่อนไขของ runCpcv) — ไม่งั้นได้ 0 path แล้วถูกบันทึกเป็น FAIL ทั้งที่ไม่ได้ทดสอบ
+    const maxTest = Math.min(4, params.nGroups - 2)
+    if (params.nTestGroups > maxTest) {
+      return NextResponse.json(
+        { error: `test groups (k) ต้องไม่เกิน ${maxTest} เมื่อ N = ${params.nGroups} (N − 2 และไม่เกิน 4)` },
+        { status: 400 }
+      )
+    }
 
     const panel = await buildMetaPanel(hold)
     const cpcv = runCpcv(panel, params)
+    if (cpcv.paths === 0) {
+      // ไม่มี path ที่วัดผลได้ → ไม่บันทึกผล/ไม่ emit (hit 0% · AUC 0 เป็นตัวเลขสมมติ ไม่ใช่ผลทดสอบ)
+      const why =
+        panel.rows.length < MIN_PANEL_ROWS
+          ? `panel มี ${panel.rows.length} แถว (ต้องมีอย่างน้อย ${MIN_PANEL_ROWS})`
+          : `ทุก path (${cpcv.skipped}) มีแถว train/test ไม่พอ`
+      return NextResponse.json(
+        { error: `ข้อมูลไม่พอสำหรับ CPCV — ${why} · นำเข้าข้อมูลย้อนหลังเพิ่มก่อน` },
+        { status: 400 }
+      )
+    }
 
     // deploy: เทรนโมเดลสุดท้ายบน panel ทั้งชุด แล้วเก็บ weights ไว้ให้ Jev ใช้ sizing
     let deployed = false

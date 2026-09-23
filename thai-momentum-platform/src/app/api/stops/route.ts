@@ -52,8 +52,10 @@ export async function GET(req: Request) {
     const winner: StopArm = passed ? bestBayes : "fixed10"
 
     // ---------- persist policy เมื่อผลเปลี่ยน ----------
+    // ไม่มีข้อมูลตลาดเลย (DB ใหม่) → ยังไม่มีอะไรให้ตัดสิน — ไม่เขียน policy/Decision ที่ไม่มีวันที่
+    const hasMarket = arms.equityCurves.length > 0
     const prev = await readStopPolicy()
-    const changed = !prev || prev.arm !== winner || prev.adopted !== passed
+    const changed = hasMarket && (!prev || prev.arm !== winner || prev.adopted !== passed)
     if (changed) {
       const payload = JSON.stringify({
         arm: winner,
@@ -96,9 +98,12 @@ export async function GET(req: Request) {
     }
 
     // ---------- ตำแหน่งเปิดบน curve (posterior ตาม policy mode) ----------
-    const positions = await evaluateStopPositions(livePosterior)
+    const { rows: positions, stale, noPrice } = await evaluateStopPositions(livePosterior)
     for (const p of positions) p.regime = regime?.action ?? "-"
     const liveS = liveBackstop(livePosterior)
+    const priceNote =
+      (stale.length > 0 ? ` · ราคาไม่ใช่วันล่าสุด (หยุดซื้อขาย?): ${stale.join(", ")}` : "") +
+      (noPrice.length > 0 ? ` · ไม่มีราคาในระบบ (ประเมินไม่ได้): ${noPrice.join(", ")}` : "")
 
     const resp: StopsResponse = {
       latest: arms.equityCurves[arms.equityCurves.length - 1]?.date ?? "",
@@ -127,9 +132,10 @@ export async function GET(req: Request) {
       refitDays: 60,
       tookMs: Date.now() - t0,
       message:
-        bp.nTrades === 0
+        (bp.nTrades === 0
           ? "ยังไม่มีประวัติเทรด — รัน seed (ข้อมูลตัวอย่าง) หรือให้ Jev ปิดสถานะจริงก่อน"
-          : `posterior จาก ${bp.nTrades} เทรด (bucket=${bp.pooled && bucket !== "pooled" ? "pooled (fallback)" : bucket}) · live mode=${mode} · s_live=${liveS !== null ? `${(liveS * 100).toFixed(1)}%` : "—"} · policy=${policy?.arm ?? winner}`,
+          : `posterior จาก ${bp.nTrades} เทรด (bucket=${bp.pooled && bucket !== "pooled" ? "pooled (fallback)" : bucket}) · live mode=${mode} · s_live=${liveS !== null ? `${(liveS * 100).toFixed(1)}%` : "—"} · policy=${policy?.arm ?? winner}`) +
+        priceNote,
     }
     return NextResponse.json(resp)
   } catch (e) {

@@ -24,7 +24,12 @@ import os
 import sys
 import urllib.error
 import urllib.request
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
+
+# เวลาตลาดไทย (UTC+7 ไม่มี DST) — วันที่ของแท่งต้องไม่ขึ้นกับ timezone ของเครื่องที่รันสคริปต์
+BKK = timezone(timedelta(hours=7), "Asia/Bangkok")
+# ชื่อดัชนี ไม่ใช่หุ้น — ส่งเข้า --symbols จะได้แท่งของดัชนีปนเข้ามาเป็น "หุ้น"
+INDEX_NAMES = {"SET", "SET50", "SET100", "SETHD", "SSET", "MAI", "SETESG", "SETCLMV", "SETWB"}
 
 
 def get_client():
@@ -60,10 +65,21 @@ def to_rows(symbol: str, candles) -> list[dict]:
         return []
     times = candles.get("time") or candles.get("datetime") or []
     rows = []
+
+    def get(k: str, i: int):
+        arr = candles.get(k)
+        if not isinstance(arr, (list, tuple)) or i >= len(arr) or arr[i] is None:
+            return None
+        try:
+            return float(arr[i])
+        except (TypeError, ValueError):
+            return None
+
     for i, t in enumerate(times):
         try:
             if isinstance(t, (int, float)):
-                d = datetime.fromtimestamp(float(t), tz=timezone.utc).astimezone().strftime("%Y-%m-%d")
+                # epoch → วันที่ตามเวลาตลาดไทย (เดิม .astimezone() ใช้ TZ ของเครื่อง → เครื่องนอก UTC+7 ได้วันที่เลื่อน)
+                d = datetime.fromtimestamp(float(t), tz=timezone.utc).astimezone(BKK).strftime("%Y-%m-%d")
             else:
                 d = str(t)[:10]
             close = float(candles["close"][i])
@@ -71,14 +87,13 @@ def to_rows(symbol: str, candles) -> list[dict]:
             continue
         if close <= 0:
             continue
-        get = lambda k: (float(candles[k][i]) if k in candles and candles[k][i] is not None else None)  # noqa: E731
         rows.append({
             "date": d,
             "symbol": symbol,
-            "open": get("open"), "high": get("high"), "low": get("low"),
+            "open": get("open", i), "high": get("high", i), "low": get("low", i),
             "close": close,
-            "val": get("value"),
-            "volume": get("volume"),
+            "val": get("value", i),
+            "volume": get("volume", i),
         })
     return rows
 
@@ -95,6 +110,9 @@ def main() -> None:
     mkt = get_client()
     all_rows: list[dict] = []
     for sym in [s.strip().upper() for s in args.symbols.split(",") if s.strip()]:
+        if sym in INDEX_NAMES:
+            print(f"  ⚠️ {sym}: เป็นชื่อดัชนี ไม่ใช่หุ้น — ข้าม (ใส่รายชื่อหุ้นเอง เช่น PTT,KBANK,CPALL)", file=sys.stderr)
+            continue
         try:
             candles = mkt.get_candlestick(symbol=sym, interval=args.interval, limit=args.limit, normalized=True)
         except Exception as e:  # noqa: BLE001

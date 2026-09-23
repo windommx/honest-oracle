@@ -19,7 +19,9 @@ function verdict(r: IcSummary, sign: 1 | -1): string {
   return "KILL"
 }
 
-const hold = Number(process.argv[2] ?? 10)
+// clamp เหมือน GET /api/signals/ic (5..60) — ค่าไม่ใช่ตัวเลข/≤0 เดิมให้ n=0 หรือ "forward" ย้อนหลัง
+const holdRaw = Number(process.argv[2] ?? 10)
+const hold = Number.isFinite(holdRaw) ? Math.min(60, Math.max(5, Math.round(holdRaw))) : 10
 
 const { rows, snap, crossZ } = await loadAll()
 if (rows.length === 0) {

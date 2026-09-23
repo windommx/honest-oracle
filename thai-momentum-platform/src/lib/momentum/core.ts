@@ -8,6 +8,7 @@
 // - runDataQualityChecks : ตรวจสุขภาพข้อมูล
 // ============================================================
 
+import type { Prisma } from "@prisma/client"
 import { db } from "@/lib/db"
 import { TH_MIN_PRICE, TH_MIN_VALUE_5D, TH_TOP_N } from "@/lib/config/thai"
 
@@ -20,6 +21,10 @@ export const MIN_PRICE = TH_MIN_PRICE
 export const MIN_VALUE = TH_MIN_VALUE_5D
 
 export const CHUNK = 2500
+const DAY_MS = 86_400_000
+
+/** Setting ที่บอกที่มาของตาราง CrossAsset: "synthetic" (seed) | "yahoo" (bun run fetch:cross) */
+export const CROSS_ASSET_SOURCE_KEY = "cross_asset_source"
 
 // ---------------- helpers ----------------
 
@@ -30,15 +35,70 @@ export function fmtDate(d: Date): string {
   return `${y}-${m}-${day}`
 }
 
-export function normalizeDate(s: string): string | null {
+/** วันที่ (YYYY-MM-DD) ตามเวลาตลาดไทยของ instant — Asia/Bangkok = UTC+7 คงที่ (ไม่มี DST) จึงไม่ขึ้นกับ TZ ของ server */
+export function bangkokDate(d: Date): string {
+  return new Date(d.getTime() + 7 * 3_600_000).toISOString().slice(0, 10)
+}
+
+// ปี พ.ศ. → ค.ศ. (Windows/AmiBroker ภาษาไทยส่งออกปีพุทธศักราช เช่น 2569 = 2026) + ตรวจว่าเป็นวันที่มีจริง
+function ymdOrNull(y: number, m: number, d: number): string | null {
+  if (y >= 2400) y -= 543
+  if (y < 1900 || y > 2200 || m < 1 || m > 12 || d < 1 || d > 31) return null
+  const dt = new Date(Date.UTC(y, m - 1, d))
+  if (dt.getUTCMonth() !== m - 1 || dt.getUTCDate() !== d) return null // เช่น 2026-02-30
+  return `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`
+}
+
+/** ลำดับวัน/เดือนของวันที่แบบ a/b/yyyy — ค่าเริ่มต้นตามธรรมเนียมไทย (วัน/เดือน/ปี) */
+export type DateOrder = "dmy" | "mdy"
+
+const TIME_SUFFIX = String.raw`(?:[T ]\d{1,2}:\d{2}(?::\d{2}(?:\.\d+)?)?)?`
+const RE_YMD = new RegExp(String.raw`^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})${TIME_SUFFIX}$`)
+const RE_AB_Y = new RegExp(String.raw`^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})${TIME_SUFFIX}$`)
+// เวลาที่มี timezone กำกับ (Z, +07:00, GMT…) → ต้องแปลงเป็นวันที่ตลาดไทย ไม่ใช่เวลาท้องถิ่นของ server
+const RE_ZONED = /\d{1,2}:\d{2}(?::\d{2}(?:\.\d+)?)?\s*(?:Z|[+-]\d{2}:?\d{2}|GMT|UTC)(?:[+-]\d{2}:?\d{2})?(?:\s*\([^)]*\))?$/i
+
+/**
+ * แปลงข้อความวันที่ → YYYY-MM-DD (null = ไม่รู้จัก/ไม่ใช่วันที่จริง — ไม่เดาแทน)
+ * รองรับ YYYY-MM-DD · YYYY/M/D · YYYYMMDD · D/M/YYYY (ไทย) หรือ M/D/YYYY (ส่วนที่เกิน 12 ตัดสิน, กำกวมใช้ order)
+ * · ปี พ.ศ. · เวลาต่อท้าย (ไม่มี timezone = ใช้วันที่ตามที่เขียน, มี timezone = วันที่ตามเวลาตลาดไทย)
+ */
+export function normalizeDate(s: string, order: DateOrder = "dmy"): string | null {
   const t = s.trim()
-  let m = /^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/.exec(t)
-  if (m) return `${m[1]}-${m[2].padStart(2, "0")}-${m[3].padStart(2, "0")}`
+  if (!t) return null
+  let m = RE_YMD.exec(t)
+  if (m) return ymdOrNull(+m[1], +m[2], +m[3])
   m = /^(\d{4})(\d{2})(\d{2})$/.exec(t)
-  if (m) return `${m[1]}-${m[2]}-${m[3]}`
+  if (m) return ymdOrNull(+m[1], +m[2], +m[3])
+  m = RE_AB_Y.exec(t)
+  if (m) {
+    const a = +m[1]
+    const b = +m[2]
+    const dayFirst = a > 12 ? true : b > 12 ? false : order === "dmy"
+    return dayFirst ? ymdOrNull(+m[3], b, a) : ymdOrNull(+m[3], a, b)
+  }
+  // ข้อความอื่น (เช่น "Sep 18, 2026", ISO ที่มี timezone) ต้องมีปี 4 หลัก + เลขวัน — ตัวเลขล้วน (Excel serial 46283)
+  // และปี-เดือนเฉย ๆ ("2026-09", "Sep 2026") ไม่ใช่วันที่ — ไม่เดา
+  if (/^\d+$/.test(t) || /^\d{4}[-/.]\d{1,2}$/.test(t) || !/\d{4}/.test(t)) return null
+  if (!/(?:^|\D)\d{1,2}(?:\D|$)/.test(t.replace(/\d{4}/, ""))) return null
   const d = new Date(t)
-  if (!isNaN(d.getTime())) return fmtDate(d)
-  return null
+  if (isNaN(d.getTime())) return null
+  const [y, mo, day] = (RE_ZONED.test(t) ? bangkokDate(d) : fmtDate(d)).split("-").map(Number)
+  return ymdOrNull(y, mo, day)
+}
+
+/** เดาลำดับวัน/เดือนของทั้งไฟล์จากค่าที่ไม่กำกวม (ส่วนแรก > 12 = วัน/เดือน, ส่วนที่สอง > 12 = เดือน/วัน) */
+export function detectDateOrder(values: string[]): DateOrder {
+  let dmy = false
+  let mdy = false
+  for (const v of values) {
+    const m = /^\s*"?(\d{1,2})[-/.](\d{1,2})[-/.]\d{4}/.exec(v)
+    if (!m) continue
+    if (+m[1] > 12) dmy = true
+    else if (+m[2] > 12) mdy = true
+    if (dmy && mdy) break
+  }
+  return mdy && !dmy ? "mdy" : "dmy"
 }
 
 export function pctChange(close: number[], i: number, n: number): number | null {
@@ -74,17 +134,67 @@ export interface ParsedCsv {
   rows: ParsedCsvRow[]
 }
 
+// แยก 1 บรรทัด CSV ตามตัวคั่น — รองรับช่องในเครื่องหมายคำพูด ("1,234,567" / "a ""b""") แบบ Excel
+function splitCsvLine(line: string, delim: string): string[] {
+  if (!line.includes('"')) return line.split(delim)
+  const out: string[] = []
+  let cur = ""
+  let quoted = false
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i]
+    if (quoted) {
+      if (ch !== '"') cur += ch
+      else if (line[i + 1] === '"') {
+        cur += '"'
+        i++
+      } else quoted = false
+    } else if (ch === '"') quoted = true
+    else if (ch === delim) {
+      out.push(cur)
+      cur = ""
+    } else cur += ch
+  }
+  out.push(cur)
+  return out
+}
+
+// ตัวเลขจาก CSV — ตัดตัวคั่นหลักพัน (12,345,678) ที่ Excel ใส่ให้เมื่อจัดรูปแบบตัวเลข
+function csvNum(s: string | undefined): number {
+  const t = (s ?? "").trim()
+  return parseFloat(/^-?\d{1,3}(,\d{3})+(\.\d+)?$/.test(t) ? t.replace(/,/g, "") : t)
+}
+
+// ชื่อคอลัมน์ที่ยอมรับ (ตัวแรกคือชื่อมาตรฐาน) — "Ticker,Date/Time" คือ header ของ AmiBroker Exploration export
+const CSV_COLUMNS: Record<string, string[]> = {
+  date: ["date", "date/time", "datetime"],
+  symbol: ["symbol", "ticker"],
+  close: ["close"],
+  val: ["val", "value"],
+  volume: ["volume", "vol"],
+  open: ["open"],
+  high: ["high"],
+  low: ["low"],
+}
+
 // รองรับ 2 ฟอร์แมต:
 // 1) date,symbol,close,val,liq5,ret5,ret10,ret20,ret40,ret80,ret160,ret300  (daily export)
 // 2) date,symbol,close,volume  (history backfill)
+// ตัวคั่น , / tab (วางจาก Excel) / ; · ขึ้นบรรทัดแบบ LF / CRLF / CR · วันที่ตาม normalizeDate (ลำดับวัน/เดือนเดาทั้งไฟล์)
 export function parseSnapshotCsv(csv: string): ParsedCsv {
   const lines = csv
-    .split(/\r?\n/)
-    .map((l) => l.trim())
-    .filter((l) => l.length > 0)
+    .split(/\r\n|\r|\n/)
+    .map((l) => l.replace(/^﻿/, "").replace(/^ +| +$/g, "")) // ไม่ trim tab — ช่องว่างหัว/ท้ายของ TSV ต้องคงตำแหน่งคอลัมน์
+    .filter((l) => l.trim().length > 0)
   if (lines.length < 2) throw new Error("ไฟล์ CSV ว่างเปล่าหรือมีแค่ header")
-  const header = lines[0].split(",").map((h) => h.trim().toLowerCase())
-  const idx = (name: string) => header.indexOf(name)
+  const delim = lines[0].includes(",") ? "," : lines[0].includes("\t") ? "\t" : lines[0].includes(";") ? ";" : ","
+  const header = splitCsvLine(lines[0], delim).map((h) => h.trim().toLowerCase())
+  const idx = (name: string) => {
+    for (const alias of CSV_COLUMNS[name]) {
+      const i = header.indexOf(alias)
+      if (i >= 0) return i
+    }
+    return -1
+  }
   const iDate = idx("date")
   const iSym = idx("symbol")
   const iClose = idx("close")
@@ -100,32 +210,35 @@ export function parseSnapshotCsv(csv: string): ParsedCsv {
   const hasOhlc = iOpen >= 0 && iHigh >= 0 && iLow >= 0
   const kind: "snapshot" | "history" = hasVal || header.some((h) => h.startsWith("ret")) ? "snapshot" : "history"
 
+  const table = lines.slice(1).map((l) => splitCsvLine(l, delim))
+  const order = detectDateOrder(table.map((p) => p[iDate] ?? ""))
   const rows: ParsedCsvRow[] = []
-  for (let li = 1; li < lines.length; li++) {
-    const parts = lines[li].split(",")
+  for (const parts of table) {
     if (parts.length < header.length - 1) continue
-    const date = normalizeDate(parts[iDate])
-    const symbol = parts[iSym].trim().toUpperCase()
-    const close = parseFloat(parts[iClose])
-    if (!date || !symbol || !isFinite(close)) continue
+    const date = normalizeDate(parts[iDate] ?? "", order)
+    const symbol = (parts[iSym] ?? "").trim().toUpperCase().replace(/\.BK$/, "") // "PTT.BK" (Yahoo) = PTT เหมือนท่อ feed
+    const close = csvNum(parts[iClose])
+    if (!date || !symbol || !isFinite(close) || close <= 0) continue // ราคาปิด 0 = ไม่มีการซื้อขาย ไม่ใช่ราคา
     let val = 0
-    if (hasVal) val = parseFloat(parts[iVal]) || 0
-    else if (hasVol) val = close * (parseFloat(parts[iVol]) || 0)
+    if (hasVal) val = csvNum(parts[iVal]) || 0
+    else if (hasVol) val = close * (csvNum(parts[iVol]) || 0)
+    if (!(val > 0)) val = 0
     // open/high/low เสริม (SET Sniper) — ไม่มีก็ผ่านได้ (null)
     let open: number | null = null
     let high: number | null = null
     let low: number | null = null
     if (hasOhlc) {
-      open = parseFloat(parts[iOpen])
-      high = parseFloat(parts[iHigh])
-      low = parseFloat(parts[iLow])
+      open = csvNum(parts[iOpen])
+      high = csvNum(parts[iHigh])
+      low = csvNum(parts[iLow])
       open = isFinite(open) && open > 0 ? open : null
       high = isFinite(high) && high > 0 ? high : null
       low = isFinite(low) && low > 0 ? low : null
     }
     rows.push({ date, symbol, close, open, high, low, val })
   }
-  if (rows.length === 0) throw new Error("ไม่พบแถวข้อมูลที่ถูกต้องใน CSV")
+  if (rows.length === 0)
+    throw new Error("ไม่พบแถวข้อมูลที่ถูกต้องใน CSV (ตรวจวันที่ เช่น 2026-09-18, 18/09/2026, 20260918 และราคาปิด > 0)")
   return { kind, rows }
 }
 
@@ -138,97 +251,195 @@ export interface IngestSummary {
 }
 
 export async function ingestRows(rows: ParsedCsvRow[]): Promise<IngestSummary> {
-  // 1) upsert raw rows (เก็บ close/val + OHLC ถ้ามี — indicator คำนวณใหม่เสมอ)
-  let inserted = 0
-  const dates = new Set<string>()
-  const symbols = new Set<string>()
-  for (let i = 0; i < rows.length; i += CHUNK) {
-    const chunk = rows.slice(i, i + CHUNK)
-    await db.$transaction(
-      chunk.map((r) => {
-        dates.add(r.date)
-        symbols.add(r.symbol)
-        // OHLC: มีค่าใหม่ = ทับ, ไม่มี = คงของเดิม (CSV แบบ close-only ต้องไม่ลบของที่เคย ingest มา)
-        const ohlcUpdate: Record<string, number> = {}
-        if (r.open != null) ohlcUpdate.open = r.open
-        if (r.high != null) ohlcUpdate.high = r.high
-        if (r.low != null) ohlcUpdate.low = r.low
-        return db.rawDaily.upsert({
-          where: { date_symbol: { date: r.date, symbol: r.symbol } },
-          create: { date: r.date, symbol: r.symbol, close: r.close, open: r.open ?? null, high: r.high ?? null, low: r.low ?? null, val: r.val },
-          update: { close: r.close, val: r.val, ...ohlcUpdate },
-        })
-      })
-    )
+  // 1) จัดกลุ่มต่อหุ้น (date,symbol ซ้ำในชุดเดียว = แถวหลังชนะ เหมือน upsert ทีละแถว)
+  const bySym = new Map<string, Map<string, ParsedCsvRow>>()
+  for (const r of rows) {
+    let m = bySym.get(r.symbol)
+    if (!m) bySym.set(r.symbol, (m = new Map()))
+    m.set(r.date, r)
   }
-  inserted = rows.length
 
-  // 2) recompute indicators เฉพาะหุ้นที่กระทบ (diff-based)
+  // 2) merge + recompute indicator ทั้งประวัติของหุ้นที่กระทบ (เขียนเฉพาะแถวใหม่/แถวที่ค่าเปลี่ยน)
+  // วันที่กระทบ = วันที่ในไฟล์ ∪ วันที่ที่ retN/liq5 เปลี่ยน — backfill ประวัติเก่า/แก้ราคาย้อนหลังทำให้
+  // retN ของวันถัดไป (สูงสุด 300 แท่ง) เปลี่ยนด้วย โผของวันเหล่านั้นต้องสร้างใหม่ ไม่งั้นค้างค่าเก่า
+  const affected = new Set<string>()
   let updated = 0
-  for (const sym of symbols) updated += await recomputeSymbol(sym)
-
-  // 3) rebuild snapshot เฉพาะวันที่กระทบ
-  const snapDates: string[] = []
-  for (const d of [...dates].sort()) {
-    await rebuildSnapshotsForDate(d)
-    snapDates.push(d)
+  for (const [symbol, incoming] of bySym) {
+    for (const d of incoming.keys()) affected.add(d)
+    try {
+      updated += await mergeSymbol(symbol, incoming, affected)
+    } catch (e) {
+      // มีผู้เขียนอีกทางสร้างแถวเดียวกันระหว่างนี้ (unique date+symbol) → อ่านใหม่แล้ว merge อีกรอบ
+      if ((e as { code?: string }).code !== "P2002") throw e
+      updated += await mergeSymbol(symbol, incoming, affected)
+    }
   }
-  invalidateDataCache()
-  return { insertedRaw: inserted, updatedRows: updated, snapDates }
+
+  // 3) rebuild snapshot ของทุกวันที่กระทบ
+  const snapDates = [...affected].sort()
+  await rebuildSnapshotsForDates(snapDates)
+  await markDataChanged()
+  return { insertedRaw: rows.length, updatedRows: updated, snapDates }
+}
+
+type RetKey = `ret${(typeof TFS)[number]}`
+const RET_KEYS = TFS.map((tf) => `ret${tf}` as RetKey)
+
+// merge แถวใหม่เข้ากับประวัติของหุ้น 1 ตัว แล้วคำนวณ retN + liq5 ใหม่ทั้งประวัติ
+// - close/val: ทับเสมอ · OHLC: มีค่าใหม่ = ทับ, ไม่มี = คงของเดิม (CSV แบบ close-only ต้องไม่ลบของที่เคย ingest มา)
+// - คืนจำนวนแถวที่ indicator เปลี่ยน และเติมวันที่ของแถวเหล่านั้นลง affected
+async function mergeSymbol(symbol: string, incoming: Map<string, ParsedCsvRow>, affected: Set<string>): Promise<number> {
+  const existing = await db.rawDaily.findMany({ where: { symbol }, orderBy: { date: "asc" } })
+  interface Work {
+    id: number | null
+    date: string
+    close: number
+    open: number | null
+    high: number | null
+    low: number | null
+    val: number
+    liq5: number
+    rets: (number | null)[]
+    baseChanged: boolean
+  }
+  const byDate = new Map<string, Work>()
+  for (const e of existing) {
+    byDate.set(e.date, {
+      id: e.id,
+      date: e.date,
+      close: e.close,
+      open: e.open,
+      high: e.high,
+      low: e.low,
+      val: e.val,
+      liq5: e.liq5,
+      rets: RET_KEYS.map((k) => e[k] ?? null),
+      baseChanged: false,
+    })
+  }
+  for (const r of incoming.values()) {
+    const w = byDate.get(r.date)
+    if (!w) {
+      byDate.set(r.date, {
+        id: null,
+        date: r.date,
+        close: r.close,
+        open: r.open ?? null,
+        high: r.high ?? null,
+        low: r.low ?? null,
+        val: r.val,
+        liq5: 0,
+        rets: RET_KEYS.map(() => null),
+        baseChanged: true,
+      })
+      continue
+    }
+    const open = r.open ?? w.open
+    const high = r.high ?? w.high
+    const low = r.low ?? w.low
+    if (w.close !== r.close || w.val !== r.val || w.open !== open || w.high !== high || w.low !== low) {
+      Object.assign(w, { close: r.close, val: r.val, open, high, low, baseChanged: true })
+    }
+  }
+  const all = [...byDate.values()].sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0))
+  const closes = all.map((w) => w.close)
+  const vals = all.map((w) => w.val)
+  const creates: Prisma.RawDailyCreateManyInput[] = []
+  const updates: { id: number; data: Prisma.RawDailyUpdateInput }[] = []
+  let changed = 0
+  for (let i = 0; i < all.length; i++) {
+    const w = all[i]
+    const rets = TFS.map((tf) => {
+      const nv = pctChange(closes, i, tf)
+      return nv === null ? null : Math.round(nv * 100) / 100
+    })
+    const liq = liq5Flag(vals, i) ? 1 : 0
+    const indChanged = liq !== w.liq5 || rets.some((v, k) => v !== w.rets[k])
+    if (indChanged) {
+      changed++
+      affected.add(w.date)
+    }
+    const ind = {
+      liq5: liq,
+      ret5: rets[0],
+      ret10: rets[1],
+      ret20: rets[2],
+      ret40: rets[3],
+      ret80: rets[4],
+      ret160: rets[5],
+      ret300: rets[6],
+    }
+    if (w.id === null) {
+      creates.push({ date: w.date, symbol, close: w.close, open: w.open, high: w.high, low: w.low, val: w.val, ...ind })
+    } else if (indChanged || w.baseChanged) {
+      const data: Prisma.RawDailyUpdateInput = indChanged ? { ...ind } : {}
+      if (w.baseChanged) Object.assign(data, { close: w.close, val: w.val, open: w.open, high: w.high, low: w.low })
+      updates.push({ id: w.id, data })
+    }
+  }
+  const ops: Prisma.PrismaPromise<unknown>[] = []
+  for (let i = 0; i < creates.length; i += CHUNK) ops.push(db.rawDaily.createMany({ data: creates.slice(i, i + CHUNK) }))
+  for (const u of updates) ops.push(db.rawDaily.update({ where: { id: u.id }, data: u.data }))
+  if (ops.length > 0) await db.$transaction(ops)
+  return changed
 }
 
 // คำนวณ retN + liq5 ใหม่ทั้งประวัติของหุ้น 1 ตัว แล้ว update เฉพาะแถวที่ค่าเปลี่ยน
+// (ไม่ rebuild snapshot ให้ — ผู้เรียกต้อง rebuild วันที่กระทบเอง หรือใช้ ingestRows)
 export async function recomputeSymbol(symbol: string): Promise<number> {
-  const rows = await db.rawDaily.findMany({ where: { symbol }, orderBy: { date: "asc" } })
-  if (rows.length === 0) return 0
-  const closes = rows.map((r) => r.close)
-  const vals = rows.map((r) => r.val)
-  const updates: { id: number; data: Record<string, number | null> }[] = []
-  for (let i = 0; i < rows.length; i++) {
-    const data: Record<string, number | null> = {}
-    let changed = false
-    for (const tf of TFS) {
-      const nv = pctChange(closes, i, tf)
-      const nvR = nv === null ? null : Math.round(nv * 100) / 100
-      const cur = (rows[i] as unknown as Record<string, number | null>)[`ret${tf}`] ?? null
-      if (nvR !== cur) {
-        data[`ret${tf}`] = nvR
-        changed = true
-      }
-    }
-    const liq = liq5Flag(vals, i) ? 1 : 0
-    if (liq !== rows[i].liq5) {
-      data.liq5 = liq
-      changed = true
-    }
-    if (changed) updates.push({ id: rows[i].id, data })
-  }
-  if (updates.length === 0) return 0
-  await db.$transaction(
-    updates.map((u) => db.rawDaily.update({ where: { id: u.id }, data: u.data }))
-  )
-  return updates.length
+  return mergeSymbol(symbol, new Map(), new Set())
 }
 
-// สร้าง snapshot (top-30 ต่อ timeframe) ใหม่สำหรับวันที่เดียว
-export async function rebuildSnapshotsForDate(date: string): Promise<number> {
-  const rows = await db.rawDaily.findMany({ where: { date } })
-  await db.snapshot.deleteMany({ where: { date } })
-  const creates: { date: string; timeframe: number; rank: number; symbol: string; ret: number }[] = []
+// เลือกโผ Top-N ต่อ timeframe ของวันเดียว (กรองราคา > MIN_PRICE, liq5, มี retN)
+type SnapCreate = { date: string; timeframe: number; rank: number; symbol: string; ret: number }
+type SnapSource = { symbol: string; close: number; liq5: number } & Record<RetKey, number | null>
+function snapshotRowsFor(date: string, rows: SnapSource[]): SnapCreate[] {
+  const creates: SnapCreate[] = []
   for (const tf of TFS) {
-    const key = `ret${tf}` as const
+    const key = `ret${tf}` as RetKey
     const eligible = rows
-      .filter((r) => r.close > MIN_PRICE && r.liq5 === 1 && (r[key] as number | null) !== null)
+      .filter((r) => r.close > MIN_PRICE && r.liq5 === 1 && r[key] !== null)
       .sort((a, b) => (b[key] as number) - (a[key] as number))
       .slice(0, TOPN)
     eligible.forEach((r, idx) => {
       creates.push({ date, timeframe: tf, rank: idx + 1, symbol: r.symbol, ret: r[key] as number })
     })
   }
-  for (let i = 0; i < creates.length; i += CHUNK) {
-    await db.snapshot.createMany({ data: creates.slice(i, i + CHUNK) })
+  return creates
+}
+
+const SNAP_DATE_BATCH = 60
+
+// สร้าง snapshot (Top-N ต่อ timeframe) ใหม่สำหรับหลายวัน — อ่าน/ลบ/เขียนเป็นชุด (ลบ+เขียนใน transaction เดียว
+// ผู้อ่านจึงไม่เห็นวันที่โผว่างระหว่าง rebuild)
+export async function rebuildSnapshotsForDates(dates: string[]): Promise<number> {
+  const uniq = [...new Set(dates)].sort()
+  let total = 0
+  for (let i = 0; i < uniq.length; i += SNAP_DATE_BATCH) {
+    const batch = uniq.slice(i, i + SNAP_DATE_BATCH)
+    const rows = await db.rawDaily.findMany({
+      where: { date: { in: batch } },
+      select: { date: true, symbol: true, close: true, liq5: true, ret5: true, ret10: true, ret20: true, ret40: true, ret80: true, ret160: true, ret300: true },
+      orderBy: [{ date: "asc" }, { symbol: "asc" }],
+    })
+    const byDate = new Map<string, SnapSource[]>()
+    for (const r of rows) {
+      let a = byDate.get(r.date)
+      if (!a) byDate.set(r.date, (a = []))
+      a.push(r)
+    }
+    const creates = batch.flatMap((d) => snapshotRowsFor(d, byDate.get(d) ?? []))
+    const ops: Prisma.PrismaPromise<unknown>[] = [db.snapshot.deleteMany({ where: { date: { in: batch } } })]
+    for (let j = 0; j < creates.length; j += CHUNK) ops.push(db.snapshot.createMany({ data: creates.slice(j, j + CHUNK) }))
+    await db.$transaction(ops)
+    total += creates.length
   }
-  return creates.length
+  return total
+}
+
+// สร้าง snapshot (Top-N ต่อ timeframe) ใหม่สำหรับวันที่เดียว
+export async function rebuildSnapshotsForDate(date: string): Promise<number> {
+  return rebuildSnapshotsForDates([date])
 }
 
 // ---------------- demo seed (deterministic) ----------------
@@ -338,17 +549,19 @@ export interface SeedStats {
 
 export async function seedDemoData(opts: { days?: number; symbols?: number } = {}): Promise<SeedStats> {
   const t0 = Date.now()
-  const days = Math.min(Math.max(opts.days ?? 520, 120), 900)
-  const nSym = Math.min(Math.max(opts.symbols ?? 240, 40), 400)
+  // จำนวนเต็มเสมอ (days=300.5 ทำให้ index ท้ายชุดเป็นทศนิยม → สถานะเปิด/เทรดค้างไม่ถูกสร้าง/ปิด)
+  const days = Math.round(Math.min(Math.max(opts.days ?? 520, 120), 900))
+  const nSym = Math.round(Math.min(Math.max(opts.symbols ?? 240, 40), 400))
   _seedState = 20260920 // deterministic reset
 
-  // วันทำการย้อนหลัง (ข้ามเสาร์-อาทิตย์) จบที่วันนี้
+  // วันทำการย้อนหลัง (ข้ามเสาร์-อาทิตย์) จบที่ "วันนี้ของตลาดไทย" — นับวันด้วย UTC ล้วน
+  // (เดิมใช้เวลาท้องถิ่น − 24 ชม. → ใน TZ ที่เปลี่ยน DST วันธรรมดา วันทำการหายไป 1 วัน)
   const dates: string[] = []
-  let d = new Date()
+  let dayT = Date.parse(`${bangkokDate(new Date())}T00:00:00Z`)
   while (dates.length < days) {
-    const dow = d.getDay()
-    if (dow !== 0 && dow !== 6) dates.unshift(fmtDate(d))
-    d = new Date(d.getTime() - 86400000)
+    const dow = new Date(dayT).getUTCDay()
+    if (dow !== 0 && dow !== 6) dates.unshift(new Date(dayT).toISOString().slice(0, 10))
+    dayT -= DAY_MS
   }
 
   const symbols = buildSymbolPool(nSym)
@@ -459,9 +672,13 @@ export async function seedDemoData(opts: { days?: number; symbols?: number } = {
   for (const sym of symbols) {
     const closes = closesBySym.get(sym) ?? []
     const vals = valsBySym.get(sym) ?? []
+    // indicator คำนวณจากค่าที่ "เก็บจริง" (close ปัด 3 ตำแหน่ง, val ปัดเต็มบาท) ให้ตรงกับที่ ingest/recompute
+    // คำนวณซ้ำจาก DB — เดิมคำนวณจากราคาไม่ปัด ทำให้ ingest หุ้น demo ตัวเดียวเขียน retN ทับครึ่งประวัติ (±0.01)
+    const closesR = closes.map((c) => Math.round(c * 1000) / 1000)
+    const valsR = vals.map((v) => Math.round(v))
     for (let i = 0; i < days; i++) {
       const rets: (number | null)[] = TFS.map((tf) => {
-        const v = pctChange(closes, i, tf)
+        const v = pctChange(closesR, i, tf)
         return v === null ? null : Math.round(v * 100) / 100
       })
       // OHLC จำลอง (deterministic): open มี gap ข้ามคืนจาก close เมื่อวาน, wick จาก |gauss()|
@@ -472,12 +689,12 @@ export async function seedDemoData(opts: { days?: number; symbols?: number } = {
       const lowV = Math.min(openV, closes[i]) * (1 - Math.abs(gauss()) * 0.008)
       const row: MemRow = {
         symbol: sym,
-        close: Math.round(closes[i] * 1000) / 1000,
+        close: closesR[i],
         open: Math.round(openV * 1000) / 1000,
         high: Math.round(highV * 1000) / 1000,
         low: Math.round(lowV * 1000) / 1000,
-        val: Math.round(vals[i]),
-        liq5: liq5Flag(vals, i),
+        val: valsR[i],
+        liq5: liq5Flag(valsR, i),
         rets,
       }
       const arr = byDate.get(dates[i]) || []
@@ -598,6 +815,12 @@ export async function seedDemoData(opts: { days?: number; symbols?: number } = {
   for (let i = 0; i < crossCreates.length; i += CHUNK) {
     await db.crossAsset.createMany({ data: crossCreates.slice(i, i + CHUNK) })
   }
+  // ป้ายที่มา: CrossAsset ชุดนี้สังเคราะห์จากตลาดจำลอง — ล้าง demo (feed replaceDemo) ต้องล้างตามไปด้วย
+  await db.setting.upsert({
+    where: { key: CROSS_ASSET_SOURCE_KEY },
+    create: { key: CROSS_ASSET_SOURCE_KEY, value: "synthetic" },
+    update: { value: "synthetic" },
+  })
 
   // ------------------------------------------------------------
   // pass 4: ประวัติเทรดจำลอง (paper trade log) — ฐานข้อมูลของ Bayesian
@@ -692,6 +915,10 @@ export async function seedDemoData(opts: { days?: number; symbols?: number } = {
       if (1 - p >= TRADE_BACKSTOP || i - t.ei >= TRADE_HOLD) {
         simOpen.delete(sym)
         simTrades.push(closeSim(t, i, closes))
+      } else {
+        // path รายวันจริงระหว่างถือ — MAE / R-method / walk-forward ของ Bayes Stop ต้องเห็น drawdown ระหว่างทาง
+        // (เดิมเก็บแค่วันเข้า + วันออก: MAE ของไม้ชนะเป็น 0 เสมอ → demo adopt stop 1% ที่ไม่สมจริง)
+        t.path.push({ d: dates[i], p: Math.round(p * 10000) / 10000 })
       }
     }
     // (2) entries T+1 (สัญญาณจากวันก่อน) — ไม่เพิ่มสถานะใน risk_off
@@ -753,7 +980,7 @@ export async function seedDemoData(opts: { days?: number; symbols?: number } = {
   }
   if (positionCreates.length > 0) await db.position.createMany({ data: positionCreates })
 
-  invalidateDataCache()
+  await markDataChanged()
   return {
     rawRows: rawCreates.length,
     snapRows: snapCreates.length,
@@ -782,12 +1009,34 @@ export function invalidateDataCache() {
   _pivotCache = null
 }
 
-export async function closePivot(): Promise<Pivot> {
-  const [count, last] = await Promise.all([
-    db.rawDaily.count(),
-    db.rawDaily.aggregate({ _max: { date: true } }),
+const DATA_VERSION_KEY = "data_version"
+
+/**
+ * ตราเวอร์ชันข้อมูลตลาดลง DB (Setting.data_version) — ผู้เขียน RawDaily ทุกทาง (ingest / seed / ล้าง demo)
+ * เรียกหลังเขียนเสร็จ ทำให้ cache ของ process อื่น (เช่น server ขณะ cron `bun run fetch:th` เขียน DB)
+ * รู้ว่าข้อมูลเปลี่ยน แม้จำนวนแถว/วันล่าสุดเท่าเดิม (แก้ราคาย้อนหลัง, adjclose ถูกปรับหลังปันผล)
+ */
+export async function markDataChanged(): Promise<void> {
+  invalidateDataCache()
+  const value = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+  try {
+    await db.setting.upsert({ where: { key: DATA_VERSION_KEY }, create: { key: DATA_VERSION_KEY, value }, update: { value } })
+  } catch (e) {
+    console.error("[core] data_version bump failed:", (e as Error).message)
+  }
+}
+
+/** ลายนิ้วมือข้อมูลตลาดสำหรับ key ของ cache: จำนวนแถว · วันล่าสุด · id ล่าสุด · เวอร์ชันที่ผู้เขียนตราไว้ */
+export async function dataFingerprint(): Promise<string> {
+  const [agg, ver] = await Promise.all([
+    db.rawDaily.aggregate({ _count: { _all: true }, _max: { date: true, id: true } }),
+    db.setting.findUnique({ where: { key: DATA_VERSION_KEY } }).catch(() => null),
   ])
-  const key = `${count}:${last._max.date ?? ""}`
+  return `${agg._count._all}:${agg._max.date ?? ""}:${agg._max.id ?? 0}:${ver?.value ?? ""}`
+}
+
+export async function closePivot(): Promise<Pivot> {
+  const key = await dataFingerprint()
   if (_pivotCache && _pivotCache.key === key) return _pivotCache.pivot
 
   const rows = await db.rawDaily.findMany({
@@ -902,41 +1151,98 @@ export function zScore(series: number[], idx: number): number {
 
 // ---------------- data quality ----------------
 
+/**
+ * SET ปิดทำการติดกันยาวสุดตามปฏิทินปกติ ≈ 4 วันทำการ (สงกรานต์ + วันหยุดพิเศษ เช่น 12–15 เม.ย. 2564)
+ * ช่วงหยุด 3 วันทำการ (สงกรานต์/ปีใหม่) เกิดแทบทุกปี — ช่องว่างที่ยาวกว่านี้ = ข้อมูลหายจริง
+ */
+export const SET_MAX_HOLIDAY_RUN = 4
+
+/** จำนวนวันทำการ (จ.–ศ.) ที่หายไประหว่างวันที่สองวันที่ติดกันในชุดข้อมูล — คิดด้วย UTC จึงไม่ขึ้นกับ TZ ของ server */
+export function missingWeekdays(a: string, b: string): number {
+  const ta = Date.parse(`${a}T00:00:00Z`)
+  const tb = Date.parse(`${b}T00:00:00Z`)
+  if (!isFinite(ta) || !isFinite(tb)) return 0
+  let n = 0
+  for (let t = ta + DAY_MS; t < tb; t += DAY_MS) {
+    const dow = new Date(t).getUTCDay()
+    if (dow !== 0 && dow !== 6) n++
+  }
+  return n
+}
+
+export interface DateBreak {
+  from: string
+  to: string
+  missing: number // จำนวนวันทำการที่ไม่มีข้อมูล
+}
+
+/** gaps = ขาดเกิน SET_MAX_HOLIDAY_RUN วันทำการ (ข้อมูลหาย) · longBreaks = ปิดยาว 3–4 วันทำการ (วันหยุดยาวปกติของ SET) */
+export function dateGapReport(dates: string[]): { gaps: DateBreak[]; longBreaks: DateBreak[] } {
+  const gaps: DateBreak[] = []
+  const longBreaks: DateBreak[] = []
+  for (let i = 1; i < dates.length; i++) {
+    const missing = missingWeekdays(dates[i - 1], dates[i])
+    const br = { from: dates[i - 1], to: dates[i], missing }
+    if (missing > SET_MAX_HOLIDAY_RUN) gaps.push(br)
+    else if (missing >= 3) longBreaks.push(br)
+  }
+  return { gaps, longBreaks }
+}
+
+/**
+ * นับจุดที่ราคาปิดเปลี่ยนเกิน limit เทียบราคาปิด "ล่าสุดที่มี" ของหุ้นตัวเดียวกัน — ข้ามช่องว่าง (พักการซื้อขาย/
+ * วันที่ไม่มีแถว) ไปเทียบกับราคาก่อนหน้า ตามกติกา ceiling/floor ของ SET ที่อิงราคาปิดล่าสุด
+ * (corporate action มักเกิดคู่กับการพักซื้อขาย — เทียบเฉพาะวันติดกันจะพลาดจุดเหล่านี้)
+ */
+export function countPriceJumps(px: number[][], nSymbols: number, limit = 0.35): number {
+  let jumps = 0
+  for (let s = 0; s < nSymbols; s++) {
+    let last = NaN
+    for (let i = 0; i < px.length; i++) {
+      const b = px[i][s]
+      if (!isFinite(b)) continue
+      if (last > 0 && Math.abs(b / last - 1) > limit) jumps++
+      if (b > 0) last = b
+    }
+  }
+  return jumps
+}
+
+const fmtBreaks = (xs: DateBreak[]) => xs.slice(0, 3).map((g) => `${g.from}→${g.to} ขาด ${g.missing} วันทำการ`).join(", ")
+
 export async function runDataQualityChecks() {
   const checks: { name: string; ok: boolean; detail: string }[] = []
 
-  const dup = await db.$queryRaw<{ n: number }[]>`
+  const pivot = await closePivot()
+  // DB ว่าง (ติดตั้งใหม่) — ยังไม่มีอะไรให้ตรวจ: คืนรายการว่าง ไม่ใช่ "ผ่านทั้งหมด" ที่ไม่มีข้อมูลรองรับ
+  if (pivot.dates.length === 0) return { flags: [] as string[], checks }
+
+  const dup = await db.$queryRaw<{ n: number | bigint }[]>`
     SELECT COUNT(*) as n FROM (
       SELECT date, symbol, COUNT(*) as c FROM "RawDaily" GROUP BY date, symbol HAVING c > 1
     )`
+  const dupN = Number(dup[0]?.n ?? 0)
   checks.push({
     name: "ความซ้ำของแถว",
-    ok: Number(dup[0].n) === 0,
-    detail: Number(dup[0].n) === 0 ? "ไม่มี (date,symbol) ซ้ำ" : `พบ ${dup[0].n} กลุ่มซ้ำ`,
+    ok: dupN === 0,
+    detail: dupN === 0 ? "ไม่มี (date,symbol) ซ้ำ" : `พบ ${dupN} กลุ่มซ้ำ`,
   })
 
-  const pivot = await closePivot()
-  let gapDays = 0
-  for (let i = 1; i < pivot.dates.length; i++) {
-    const a = new Date(pivot.dates[i - 1]).getTime()
-    const b = new Date(pivot.dates[i]).getTime()
-    if ((b - a) / 86400000 > 5) gapDays++
-  }
+  // ช่องว่างวันที่ — วัดเป็น "วันทำการที่หายไป" (จ.–ศ.) ไม่ใช่วันปฏิทิน: วันหยุดยาวปกติของ SET ไม่ถูกนับเป็นปัญหา
+  const { gaps, longBreaks } = dateGapReport(pivot.dates)
   checks.push({
     name: "ช่องว่างวันที่",
-    ok: gapDays === 0,
-    detail: gapDays === 0 ? "ต่อเนื่องดี (ไม่มีช่องว่าง > 5 วัน)" : `พบ ${gapDays} ช่องว่าง`,
+    ok: gaps.length === 0,
+    detail:
+      gaps.length > 0
+        ? `พบ ${gaps.length} ช่องว่างเกิน ${SET_MAX_HOLIDAY_RUN} วันทำการ (${fmtBreaks(gaps)})`
+        : longBreaks.length > 0
+          ? `ต่อเนื่องดี — มีช่วงปิดยาว 3–${SET_MAX_HOLIDAY_RUN} วันทำการ ${longBreaks.length} ครั้ง (วันหยุดยาวปกติของ SET เช่น สงกรานต์/ปีใหม่: ${fmtBreaks(longBreaks)})`
+          : `ต่อเนื่องดี (ไม่มีช่วงขาดเกิน ${SET_MAX_HOLIDAY_RUN} วันทำการ)`,
   })
 
-  // ราคากระโดด > 35% (นอกเหนือ limit ของ SET)
-  let jumps = 0
-  for (let s = 0; s < pivot.symbols.length; s++) {
-    for (let i = 1; i < pivot.dates.length; i++) {
-      const a = pivot.px[i - 1][s]
-      const b = pivot.px[i][s]
-      if (isFinite(a) && isFinite(b) && a > 0 && Math.abs(b / a - 1) > 0.35) jumps++
-    }
-  }
+  // ราคากระโดด > 35% (นอกเหนือ limit ของ SET) — เทียบกับราคาปิดล่าสุดที่มี (ข้ามวันพักการซื้อขาย)
+  const jumps = countPriceJumps(pivot.px, pivot.symbols.length, 0.35)
   checks.push({
     name: "ราคากระโดดผิดปกติ",
     ok: jumps === 0,
@@ -944,14 +1250,15 @@ export async function runDataQualityChecks() {
   })
 
   // filter รั่ว: snapshot มีหุ้นที่ close <= MIN_PRICE หรือ liq5 != 1
-  const leak = await db.$queryRaw<{ n: number }[]>`
+  const leak = await db.$queryRaw<{ n: number | bigint }[]>`
     SELECT COUNT(*) as n FROM "Snapshot" s
     JOIN "RawDaily" r ON r.date = s.date AND r.symbol = s.symbol
     WHERE r.close <= ${MIN_PRICE} OR r.liq5 != 1`
+  const leakN = Number(leak[0]?.n ?? 0)
   checks.push({
     name: "ตัวกรองหลุด",
-    ok: Number(leak[0].n) === 0,
-    detail: Number(leak[0].n) === 0 ? "snapshot เป็นไปตามเงื่อนไขทั้งหมด" : `รั่ว ${leak[0].n} แถว`,
+    ok: leakN === 0,
+    detail: leakN === 0 ? "snapshot เป็นไปตามเงื่อนไขทั้งหมด" : `รั่ว ${leakN} แถว`,
   })
 
   const flags = checks.filter((c) => !c.ok).map((c) => `${c.name}: ${c.detail}`)

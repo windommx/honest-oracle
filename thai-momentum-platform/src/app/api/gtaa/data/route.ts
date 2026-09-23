@@ -9,6 +9,9 @@ import { checkQuality } from "@/lib/gtaa/quality"
 
 export const dynamic = "force-dynamic"
 
+/** CSV ใหญ่สุดที่รับ (ตัวอักษร) — เท่ากับที่แท็บยอมให้เลือกไฟล์ · รายวัน 15 ตัว × 30 ปี ≈ 3.4 ล้านตัวอักษร */
+const MAX_CSV_CHARS = 4_000_000
+
 export async function GET() {
   try {
     const { panel, fromFile } = await loadPanel()
@@ -28,10 +31,18 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
-    const body = (await req.json().catch(() => ({}))) as { csv?: string }
-    if (!body.csv || typeof body.csv !== "string" || body.csv.trim().length < 20) {
+    const tooLarge = () =>
+      NextResponse.json(
+        { error: `ไฟล์ CSV ใหญ่เกินไป (จำกัด ${MAX_CSV_CHARS.toLocaleString()} ตัวอักษร) — ใช้ข้อมูลรายเดือนแทนรายวัน` },
+        { status: 413 },
+      )
+    if (Number(req.headers.get("content-length") ?? 0) > MAX_CSV_CHARS * 2) return tooLarge()
+    const raw = (await req.json().catch(() => null)) as unknown
+    const body = (raw && typeof raw === "object" ? raw : {}) as { csv?: unknown }
+    if (typeof body.csv !== "string" || body.csv.trim().length < 20) {
       return NextResponse.json({ error: "ไม่พบเนื้อหา CSV ที่ส่งมา" }, { status: 400 })
     }
+    if (body.csv.length > MAX_CSV_CHARS) return tooLarge()
     const parsed = parseCsvPanel(body.csv)
     if (!parsed.panel) {
       return NextResponse.json(

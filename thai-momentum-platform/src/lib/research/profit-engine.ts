@@ -14,7 +14,7 @@ import { TH_STRATEGY } from "@/lib/config/thai"
 import { buildNaiveSignals, buildMomentumSignals, runBacktest } from "@/lib/momentum/engine"
 import type { BacktestStats } from "@/lib/momentum/contracts"
 import { buildMetaPanel } from "./features"
-import { runCpcv, type CpcvParams } from "./cpcv"
+import { MIN_PANEL_ROWS, runCpcv, type CpcvParams } from "./cpcv"
 import { mulberry32 } from "./logistic"
 import { getPrereg, paramsHash, type TrialParams } from "./prereg"
 
@@ -58,6 +58,9 @@ export interface TrialResult {
   tookMs: number
 }
 
+// ข้อมูลไม่พอให้ตัดสิน — route แปลงเป็น 400 (ไม่บันทึก verdict ที่ไม่ได้มาจากการทดสอบจริง)
+export class InsufficientDataError extends Error {}
+
 // เปอร์เซ็นไทล์จาก array (linear interp ไม่จำเป็น — ใช้ nearest rank)
 function percentile(sorted: number[], q: number): number {
   if (sorted.length === 0) return 0
@@ -94,6 +97,11 @@ export async function runProfitEngine(overrides?: Partial<TrialParams>): Promise
     buildMomentumSignals(params.k),
     buildNaiveSignals(params.maxPos),
   ])
+  // เงื่อนไขเดียวกับ /api/backtest — DB ว่าง/ข้อมูล < 2 วัน ไม่มีอะไรให้ทดสอบ
+  // (เดิมได้ CAGR NaN → null, bootstrap null → หน้าห้องวิจัยพัง และบันทึก NO-GO ที่ MaxDD 0% "ผ่าน")
+  if (strategySignals.size < 2) {
+    throw new InsufficientDataError("ข้อมูลราคาไม่พอสำหรับ Profit Engine (ต้องมีอย่างน้อย 2 วัน) — นำเข้าข้อมูลก่อน")
+  }
   const [strategy, naive] = await Promise.all([
     runBacktest(btParams, strategySignals),
     runBacktest(btParams, naiveSignals),
@@ -206,7 +214,9 @@ export async function runProfitEngine(overrides?: Partial<TrialParams>): Promise
       pass: cpcv.metaPass && cpcv.paths > 0,
       detail:
         cpcv.paths === 0
-          ? "ข้อมูลไม่พอสร้าง panel"
+          ? cpcv.panelN < MIN_PANEL_ROWS
+            ? `ข้อมูลไม่พอสร้าง panel (${cpcv.panelN} แถว · ต้อง ≥ ${MIN_PANEL_ROWS})`
+            : `CPCV ไม่มี path ที่ใช้ได้ (panel ${cpcv.panelN} แถว · ข้าม ${cpcv.skipped} path)`
           : `hit ${(cpcv.meanHit * 100).toFixed(1)}% · paths>${(params.hitGate * 100).toFixed(0)}%: ${(cpcv.pctAbove * 100).toFixed(0)}% · L−S gap ${cpcv.avgGap.toFixed(2)}%`,
     },
   ]

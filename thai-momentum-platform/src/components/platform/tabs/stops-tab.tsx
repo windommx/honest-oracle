@@ -61,6 +61,13 @@ function indexOfSOpt(bins: number[], sOpt: number | null): number {
   return idx
 }
 
+// ตำแหน่ง x ของจุด = bin ของ dd ปัจจุบันบน posterior "ที่กำลังแสดง" — p.bin จาก server เป็น index ของ
+// posterior ตาม policy mode (T bin 1% / R bin 1.5%) ใช้ข้าม mode ไม่ได้
+function xOfDd(dNow: number, bins: number[], bin: number): number {
+  const i = Math.min(bins.length - 1, Math.max(0, Math.floor(Math.max(0, dNow) / bin)))
+  return bins[i] ?? 0
+}
+
 export default function StopsTab() {
   const [bucket, setBucket] = useState<StopBucket>("pooled")
   // mode = ค่าที่ผู้ใช้เลือก (override) — ถ้ายังไม่แตะ default ตาม policy arm ของระบบ
@@ -95,29 +102,27 @@ export default function StopsTab() {
 
   const exitedPoints = useMemo(() => {
     if (!data || !post) return []
-    return data.positions
-      .filter((p) => p.exitNow)
-      .map((p) => {
-        const x = p.bin !== null && post.bins[p.bin] !== undefined ? post.bins[p.bin] : Math.floor(p.dNow / post.bin) * post.bin
-        return { x: Math.max(0, x), y: 0 }
-      })
+    return data.positions.filter((p) => p.exitNow).map((p) => ({ x: xOfDd(p.dNow, post.bins, post.bin), y: 0 }))
   }, [data, post])
 
   const holdingPoints = useMemo(() => {
     if (!data || !post) return []
-    return data.positions
-      .filter((p) => !p.exitNow)
-      .map((p) => {
-        const x = p.bin !== null && post.bins[p.bin] !== undefined ? post.bins[p.bin] : Math.floor(p.dNow / post.bin) * post.bin
-        return { x: Math.max(0, x), y: 0 }
-      })
+    return data.positions.filter((p) => !p.exitNow).map((p) => ({ x: xOfDd(p.dNow, post.bins, post.bin), y: 0 }))
   }, [data, post])
 
   const equity = data?.equityCurves ?? []
   const eqInterval = Math.max(0, Math.ceil(equity.length / 6) - 1)
 
+  // evCurve[0] = "ไม่มี stop" (engine วางไว้ที่ maxDD) — แสดงเป็นเส้น baseline แยกแล้ว จึงไม่ใส่ในเส้นกราฟ
+  // (ใส่แล้วเส้นจะลากย้อนจาก x=maxDD กลับมา x=bin แรก) · หน่วย: ทศนิยม → % (×100 ทั้ง s และ ev)
   const evData = useMemo(
-    () => (post ? post.evCurve.map((p) => ({ s: Math.round(p.s * 10000) / 100, ev: Math.round(p.ev * 100000) / 100 })) : []),
+    () =>
+      post
+        ? post.evCurve
+            .slice(1)
+            .map((p) => ({ s: Math.round(p.s * 10000) / 100, ev: Math.round(p.ev * 10000) / 100 }))
+            .sort((a, b) => a.s - b.s)
+        : [],
     [post],
   )
 
@@ -368,7 +373,8 @@ export default function StopsTab() {
               )}
               <Bar yAxisId="left" dataKey="histW" name="Winners" fill="#059669" fillOpacity={0.55} barSize={12} isAnimationActive={false} />
               <Bar yAxisId="left" dataKey="histL" name="Losers" fill="#e11d48" fillOpacity={0.55} barSize={12} isAnimationActive={false} />
-              <Line yAxisId="right" type="monotone" dataKey="pL" name="P(L|dd)" stroke="#d97706" strokeWidth={2} dot={false} isAnimationActive={false} />
+              {/* P(L|dd) เป็นความน่าจะเป็น 0..1 → แกนซ้าย (แกนขวา ±10% เป็นของ EV ถือต่อ) */}
+              <Line yAxisId="left" type="monotone" dataKey="pL" name="P(L|dd)" stroke="#d97706" strokeWidth={2} dot={false} isAnimationActive={false} />
               <Line yAxisId="right" type="monotone" dataKey="evHold" name="EV ถือต่อ" stroke="#64748b" strokeWidth={1.5} dot={false} isAnimationActive={false} />
               {exitedPoints.length > 0 && (
                 <Scatter
@@ -440,7 +446,7 @@ export default function StopsTab() {
                 />
               )}
               <ReferenceLine
-                y={Math.round(post.evNoStop * 100000) / 100}
+                y={Math.round(post.evNoStop * 10000) / 100}
                 stroke="rgba(100,116,139,0.35)"
                 strokeDasharray="6 4"
                 label={{ value: "baseline ไม่มี stop", position: "insideTopRight", fill: "#64748b", fontSize: 10 }}

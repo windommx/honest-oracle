@@ -120,6 +120,9 @@ export function loadUserPresets(): DashboardPreset[] {
     if (!Array.isArray(arr)) return []
     const out: DashboardPreset[] = []
     for (const p of arr.slice(0, MAX_USER_PRESETS)) {
+      // แถวเสีย (null/ไม่ใช่ object) = ข้ามแถวนั้น — ห้าม throw จน catch ด้านล่างทิ้งพรีเซ็ตดีทั้งหมด
+      // (แล้ว saveUserPreset ครั้งถัดไปจะเขียนทับจนหายถาวร)
+      if (p === null || typeof p !== "object") continue
       const j = p as Partial<DashboardPreset>
       if (typeof j.id !== "string" || typeof j.name !== "string" || !j.snapshot) continue
       const s = j.snapshot as Partial<PresetSnapshot>

@@ -49,7 +49,7 @@ export function evalFrogInPan(piv: ThaiPivots, rets: Mat): EngineEval {
   const rows = icAcross(piv, sig, [3, 5, 10, 20])
   const best = bestIc(rows)
   const ic = best?.ic ?? { meanIC: 0, ICIR: 0, t: 0, n: 0 }
-  const { verdict, why } = alphaVerdict(ic.meanIC, ic.ICIR, ic.t)
+  const { verdict, why } = alphaVerdict(ic.meanIC, ic.ICIR, ic.t, ic.n)
 
   const stats: EngineStats = {
     bestHold: best?.hold ?? 0,

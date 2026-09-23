@@ -196,7 +196,7 @@ function SyntheticCard() {
             เลือก: {res.preferred === "synthetic" ? "SYNTHETIC" : "DIRECT FUTURES"}
           </Badge>
           <Badge variant="outline" className="font-mono">
-            edge {res.edgeBps.toFixed(1)} bps
+            edge {Number.isFinite(res.edgeBps) ? res.edgeBps.toFixed(1) : "—"} bps
           </Badge>
           {res.pinRiskZone && (
             <Badge className="border-neon-rose/40 bg-neon-rose/10 text-neon-rose">⚠ pin risk zone</Badge>

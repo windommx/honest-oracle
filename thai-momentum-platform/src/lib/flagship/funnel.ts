@@ -16,15 +16,16 @@
 //   engine 35 (โมเมนตัม percentile) · confluence 25 · trend 15 ·
 //   evidence 15 (accumulation + ผู้นำกลุ่ม + ร่องรอย sweep/FVG) · risk 10 (vol ต่ำได้เปรียบ)
 //
-// ความจริงใจ: ชั้น Confluence ครอบคลุมเฉพาะ watchlist สภาพคล่องสูงสุด
-// 24 ตัว (ข้อจำกัดเดิมของโมดูล SET Sniper) — ตัวนอกนั้นถูกคัดออกพร้อมเหตุผล
+// ความจริงใจ: ชั้น Confluence คำนวณใหม่จาก OHLC ในฐานข้อมูลสำหรับ "ทุกตัวที่ผ่าน G3"
+// (ไม่จำกัด watchlist 24 ตัวของ SET Sniper) — ตัวที่แท่งไม่พอ/ไม่มี OHLC ถูกคัดออกพร้อมเหตุผล
 // ============================================================
 
 import { db } from "@/lib/db"
-import { dataKey, getPanelCached, loadAll, readSignalsPolicy } from "@/lib/momentum/signals/io"
+import { getPanelCached, loadAll, readSignalsPolicy } from "@/lib/momentum/signals/io"
 import { computeRegimeState, runDataQualityChecks } from "@/lib/momentum/core"
-import { runSniperReport } from "@/lib/sniper/report"
+import { runSniperReport, sniperKey } from "@/lib/sniper/report"
 import { evaluateSymbol } from "@/lib/sniper/confluence"
+import { hasOhlc } from "@/lib/sniper/structure"
 import type { ConfluenceRow, OhlcBar } from "@/lib/sniper/types"
 import type {
   FlagshipMode,
@@ -80,10 +81,56 @@ const sma = (xs: number[], w: number, at: number): number => {
 const r1 = (x: number): number => Math.round(x * 10) / 10
 const clamp01 = (x: number): number => Math.min(1, Math.max(0, x))
 
+/**
+ * ที่มาข้อมูล (provenance) จาก EventLog — pure เพื่อทดสอบได้
+ * - seed = ล้างทุกอย่างแล้วสร้างข้อมูลจำลองใหม่ทั้งชุด
+ * - ingest = เพิ่มข้อมูลจริง: CSV (payload.kind snapshot|history) หรือ feed (payload.kind "feed", source)
+ *   feed ที่ replacedDemo = true ล้างข้อมูลตลาดเดิมทั้งหมดก่อนนำเข้า
+ * ingest หลัง seed โดยไม่มีการล้าง demo = ข้อมูลจริงปนหุ้นจำลอง → ห้ามติดป้าย REAL
+ * isSynthetic = true หมายถึง "ยังยืนยันไม่ได้ว่าเป็นข้อมูลจริงล้วน" (ป้ายสีเตือน)
+ */
+export function classifyProvenance(
+  events: { id: number; kind: string; payload: string }[],
+  rawRows: number,
+): { isSynthetic: boolean; dataLabel: string } {
+  if (rawRows === 0) return { isSynthetic: true, dataLabel: "NO DATA — ยังไม่มีข้อมูลตลาด" }
+  const sorted = [...events].sort((a, b) => a.id - b.id)
+  let lastSeed = -1
+  for (const e of sorted) if (e.kind === "seed") lastSeed = e.id
+  const ingests = sorted
+    .filter((e) => e.kind === "ingest" && e.id > lastSeed)
+    .map((e) => {
+      try {
+        const p = JSON.parse(e.payload) as unknown
+        return p && typeof p === "object" ? (p as { kind?: unknown; source?: unknown; replacedDemo?: unknown }) : {}
+      } catch {
+        return {}
+      }
+    })
+  if (ingests.length === 0) {
+    return lastSeed >= 0
+      ? { isSynthetic: true, dataLabel: "SYNTHETIC (demo seed)" }
+      : { isSynthetic: true, dataLabel: "UNKNOWN — ไม่พบบันทึก seed/ingest" }
+  }
+  const latest = ingests[ingests.length - 1]
+  const src =
+    latest.kind === "feed"
+      ? `feed: ${typeof latest.source === "string" && latest.source ? latest.source : "?"}`
+      : latest.kind === "snapshot" || latest.kind === "history"
+        ? "CSV ingest"
+        : "ingest"
+  if (lastSeed >= 0 && !ingests.some((p) => p.replacedDemo === true)) {
+    return { isSynthetic: true, dataLabel: `MIXED — demo seed + ${src} (ยังมีหุ้นจำลองปน)` }
+  }
+  return { isSynthetic: false, dataLabel: `REAL (${src})` }
+}
+
 export async function runFlagshipFunnel(): Promise<FlagshipResponse> {
   const t0 = Date.now()
   const policy = await readSignalsPolicy()
-  const key = `${await dataKey()}|${policy?.updatedAt ?? ""}`
+  // sniperKey = dataKey + Trade/Position/CrossAsset/GTAA — สายพานใช้ breaker/GTAA/rotation ของ Sniper
+  // (key เดิมมีแค่ dataKey → Jev ปิดไม้ขาดทุนแล้ว breaker/โหมดยังค้างค่าเก่า)
+  const key = `${await sniperKey()}|${policy?.updatedAt ?? ""}`
   if (_cache?.key === key) return _cache.res
 
   const [panel, sniper, regime, dq] = await Promise.all([
@@ -111,12 +158,14 @@ export async function runFlagshipFunnel(): Promise<FlagshipResponse> {
   let isSynthetic = true
   let dataLabel = "SYNTHETIC (demo seed)"
   try {
-    const [lastSeed, lastIngest] = await Promise.all([
-      db.eventLog.findFirst({ where: { kind: "seed" }, orderBy: { id: "desc" } }),
-      db.eventLog.findFirst({ where: { kind: "ingest" }, orderBy: { id: "desc" } }),
-    ])
-    isSynthetic = !!lastSeed && (!lastIngest || lastSeed.id > lastIngest.id)
-    dataLabel = isSynthetic ? "SYNTHETIC (demo seed)" : "REAL (CSV ingest)"
+    const events = await db.eventLog.findMany({
+      where: { kind: { in: ["seed", "ingest"] } },
+      select: { id: true, kind: true, payload: true },
+      orderBy: { id: "asc" },
+    })
+    const prov = classifyProvenance(events, rows.length)
+    isSynthetic = prov.isSynthetic
+    dataLabel = prov.dataLabel
   } catch {
     notes.push("อ่านที่มาข้อมูล (provenance) ไม่ได้ — แสดงป้ายระวังแทน")
     isSynthetic = true
@@ -195,7 +244,11 @@ export async function runFlagshipFunnel(): Promise<FlagshipResponse> {
     if (c.sectorRank > sectorCut) {
       vetoG3.push({
         symbol: c.symbol,
-        reason: `กลุ่ม ${c.sector} อยู่ท้ายตาราง (อันดับ ${c.sectorRank}/${nSectors} — ${GATE.blockSectorBottom} กลุ่มสุดท้ายออก)`,
+        // ข้อมูลมีกลุ่มไม่เกินจำนวนที่ตัด = เกณฑ์คัดออกทุกกลุ่ม (รวมอันดับ 1) — บอกตรง ๆ แทน "อยู่ท้ายตาราง (อันดับ 1/1)"
+        reason:
+          nSectors <= GATE.blockSectorBottom
+            ? `ข้อมูลมีเพียง ${nSectors} กลุ่ม — เกณฑ์ตัด ${GATE.blockSectorBottom} กลุ่มท้ายคัดออกทุกกลุ่ม (กลุ่ม ${c.sector} อันดับ ${c.sectorRank}/${nSectors})`
+            : `กลุ่ม ${c.sector} อยู่ท้ายตาราง (อันดับ ${c.sectorRank}/${nSectors} — ${GATE.blockSectorBottom} กลุ่มสุดท้ายออก)`,
       })
       continue
     }
@@ -232,7 +285,7 @@ export async function runFlagshipFunnel(): Promise<FlagshipResponse> {
       symbol: c.symbol,
       sector: c.sector,
       bars,
-      hasOhlc: bars[bars.length - 1].open > 0 && bars[bars.length - 1].high > 0 && bars[bars.length - 1].low > 0,
+      hasOhlc: hasOhlc(bars),
     })
     confluenceOf.set(c.symbol, cf)
     if (cf.location === null) {
@@ -250,7 +303,9 @@ export async function runFlagshipFunnel(): Promise<FlagshipResponse> {
   // ---------- ระบบประตูใหญ่ 3 ประตู (ระดับระบบ ไม่ใช่ระดับหุ้น) ----------
   const regimeAction = regime?.action ?? "neutral"
   const gtaa = sniper.briefing.gtaa
-  const gtaaStance = gtaa?.stance ?? "neutral"
+  // ข้อมูล GTAA ที่เลยรอบรีบาลานซ์ หรือเป็นชุดสังเคราะห์ ห้ามใช้ "เปิด" ประตู (gtaa-faber.md §8.4) → ถือเป็น caution
+  const gtaaUnusable = gtaa ? (gtaa.staleMonths ?? 0) > 0 || /synthetic/i.test(gtaa.source) : false
+  const gtaaStance = gtaa ? (gtaaUnusable ? "caution" : gtaa.stance) : "neutral"
   const breaker = sniper.breaker
   const dqFlags = dq.flags.length
 
@@ -284,7 +339,12 @@ export async function runFlagshipFunnel(): Promise<FlagshipResponse> {
       name: "GTAA (ตลาดโลก)",
       status: gtaaStance === "risk_on" ? "open" : gtaaStance === "caution" ? "caution" : "closed",
       detail: gtaa
-        ? `${gtaa.stance} · เงินสด ${(gtaa.cashPct * 100).toFixed(0)}% · ข้อมูลถึง ${gtaa.asOfMonth}`
+        ? `${gtaa.stance} · เงินสด ${(gtaa.cashPct * 100).toFixed(0)}% · ข้อมูลถึง ${gtaa.asOfMonth}` +
+          (gtaaUnusable
+            ? (gtaa.staleMonths ?? 0) > 0
+              ? ` · เลยรอบรีบาลานซ์ ${gtaa.staleMonths} รอบ — ยังไม่ใช้เปิดประตูจนกว่าจะดึงข้อมูลใหม่`
+              : " · ข้อมูลสังเคราะห์ — ไม่ใช้เปิดประตู"
+            : "")
         : "ไม่พร้อม — panel GTAA ไม่มี",
     },
     {

@@ -126,12 +126,14 @@ def _ensure_state_fields(state: dict) -> dict:
 
 # ---------------------------------------------------------- ChatML
 def chatml_record(state: dict, verdict: dict) -> dict:
-    """รูปแบบ ChatML (openai messages) — system/user/assistant"""
+    """รูปแบบ ChatML (openai messages) — system/user/assistant
+    user = prompt_state(state): ตัด "verdict" ที่ state_gen/synth_state ฝังไว้ออก — เดิมคำตอบ
+    assistant อยู่ใน prompt ทุกแถว (โมเดลเรียนแค่ลอก) และต้องตรงกับที่ nimble_runner ส่งตอนตัดสิน"""
     return {
         "messages": [
             {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user",
-             "content": json.dumps(state, ensure_ascii=False, sort_keys=True)},
+             "content": json.dumps(prompt_state(state), ensure_ascii=False, sort_keys=True)},
             {"role": "assistant",
              "content": json.dumps(verdict, ensure_ascii=False, sort_keys=True)},
         ]
@@ -140,12 +142,16 @@ def chatml_record(state: dict, verdict: dict) -> dict:
 
 # SYSTEM_PROMPT มาจาก nimble_runner (ไม่ต้องลง llama-cpp — import ไม่ล้ม)
 try:
-    from nimble_runner import SYSTEM_PROMPT, SCHEMA  # noqa: F401
+    from nimble_runner import SYSTEM_PROMPT, SCHEMA, prompt_state  # noqa: F401
 except ImportError:                                     # pragma: no cover
     SYSTEM_PROMPT = (
         "คุณคือ Jev — สมองตัดสินใจเทรดหุ้นไทย (paper mode) "
         "ตอบเฉพาะ JSON ตาม schema ที่กำหนด"
     )
+
+    def prompt_state(state: dict) -> dict:
+        """สำรอง: ตัดคำตอบครู (verdict) ออกจาก prompt"""
+        return {k: v for k, v in state.items() if k != "verdict"}
 
 
 def md5_dedup_key(state: dict, target_action: str) -> str:

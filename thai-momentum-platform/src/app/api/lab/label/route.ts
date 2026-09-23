@@ -20,7 +20,8 @@ const GUTS = new Set(["ENTER", "NO_TRADE", ""])
 // body { logKey, gut, label, reason, confLabel } — พิธี 5 นาที/สัปดาห์ (ground truth มนุษย์)
 export async function POST(req: Request) {
   try {
-    const body = (await req.json().catch(() => ({}))) as {
+    const raw: unknown = await req.json().catch(() => null)
+    const body = (raw !== null && typeof raw === "object" ? raw : {}) as {
       logKey?: unknown
       gut?: unknown
       label?: unknown

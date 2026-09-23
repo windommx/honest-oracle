@@ -25,6 +25,7 @@ nimble_runner.py — ตัวกระทำเงา (Shadow Judge): ให้
 import argparse
 import hashlib
 import json
+import math
 import sys
 import time
 from datetime import datetime, timezone
@@ -73,6 +74,30 @@ STATE_KEYS_REQUIRED = ("date", "symbol", "close", "regime", "levels")
 
 
 # ---------------------------------------------------------------- helpers
+def prompt_state(state: dict) -> dict:
+    """state ที่ส่งให้โมเดล (ทั้งตอนฝึกและตอนตัดสิน) — ตัดคำตอบครูออก
+    state_gen.build()/synth_state ฝัง "verdict" ของ rule_engine ไว้ใน state → ถ้าส่งทั้งก้อน
+    โมเดลแค่ลอกคำตอบ (label leakage) · ป้าย edge ของตัวสังเคราะห์ (meta.edge / flags "edge:*")
+    ไม่มีใน state จริง → ตัดด้วยกัน train/serve skew"""
+    out = {k: v for k, v in state.items() if k != "verdict"}
+    if isinstance(out.get("meta"), dict) and "edge" in out["meta"]:
+        out["meta"] = {k: v for k, v in out["meta"].items() if k != "edge"}
+    if isinstance(out.get("flags"), list):
+        out["flags"] = [f for f in out["flags"] if not str(f).startswith("edge:")]
+    return out
+
+
+def _as_conf(v):
+    """confidence ต้องเป็นตัวเลขจริงในช่วง 0..1 (ยอมรับ "0.85") — อย่างอื่น = grammar ไม่ผ่าน"""
+    if isinstance(v, bool):
+        return None
+    try:
+        x = float(v)
+    except (TypeError, ValueError):
+        return None
+    return x if math.isfinite(x) and 0.0 <= x <= 1.0 else None
+
+
 def state_key(date: str, asset: str) -> str:
     """key สำหรับ dedup — md5('<date>|<asset>')[:12] ตามสเปก"""
     raw = f"{date}|{asset}".encode("utf-8")
@@ -119,7 +144,7 @@ def rule_action_of(state: dict):
 # ---------------------------------------------------------------- judge
 def judge_state(llm, state: dict, n_ctx: int = 4096) -> dict:
     """ถามโมเดล 1 state → parse + ตรวจ grammar → dict ผล"""
-    user = json.dumps(state, ensure_ascii=False, sort_keys=True)
+    user = json.dumps(prompt_state(state), ensure_ascii=False, sort_keys=True)
     t0 = time.time()
     grammar_valid = True
     try:
@@ -152,13 +177,18 @@ def judge_state(llm, state: dict, n_ctx: int = 4096) -> dict:
         verdict = {"action": "wait", "confidence": 0.0,
                    "reason_th": "parse fail (schema)", "rules": []}
 
-    ok_keys = isinstance(verdict, dict) and "action" in verdict \
-        and verdict.get("action") in ("buy", "hold", "exit", "reduce", "wait")
-    grammar_valid = bool(grammar_valid and ok_keys)
-    conf = float(verdict.get("confidence") or 0.0) if grammar_valid else 0.0
+    if not isinstance(verdict, dict):
+        # JSON ถูกไวยากรณ์แต่ไม่ใช่ object (เช่น ["buy"] / "wait") — เดิม .get() ล้มทั้งรอบ
+        grammar_valid = False
+        verdict = {"action": "wait", "confidence": 0.0,
+                   "reason_th": "parse fail (not an object)", "rules": []}
+    ok_keys = verdict.get("action") in ("buy", "hold", "exit", "reduce", "wait")
+    conf = _as_conf(verdict.get("confidence"))     # "high"/NaN/85 เดิม crash หรือหลุดเป็นค่าจริง
+    grammar_valid = bool(grammar_valid and ok_keys and conf is not None)
+    conf = conf if grammar_valid else 0.0
     return {
         "action": verdict.get("action") if grammar_valid else "wait",
-        "confidence": round(min(max(conf, 0.0), 1.0), 3),
+        "confidence": round(conf, 3),
         "stop": verdict.get("stop"),
         "target": verdict.get("target"),
         "reason_th": str(verdict.get("reason_th", ""))[:500],

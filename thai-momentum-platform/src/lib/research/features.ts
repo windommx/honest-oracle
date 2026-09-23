@@ -9,7 +9,7 @@
 // ============================================================
 
 import { db } from "@/lib/db"
-import { closePivot, snapshotMembers, zScore } from "@/lib/momentum/core"
+import { closePivot, snapshotMembers, zScore, type Pivot } from "@/lib/momentum/core"
 import { valuePivot } from "@/lib/momentum/engine"
 import { predictProba, type LogisticModel } from "./logistic"
 
@@ -47,8 +47,10 @@ export interface MetaPanel {
 // ---- per-date context (cached) ----
 
 interface FeatureCtx {
+  pivot: Pivot // pivot ที่ใช้สร้าง ctx นี้ (ตัวตนใช้ตรวจ cache — ingest/seed สร้าง pivot ใหม่เสมอ)
   pivotDates: string[]
   dateIdx: Map<string, number>
+  symIdx: Map<string, number>
   px: number[][]
   val: number[][]
   unionByDate: Map<string, Set<string>>
@@ -64,15 +66,18 @@ interface FeatureCtx {
 let _ctxCache: FeatureCtx | null = null
 
 async function featureCtx(): Promise<FeatureCtx> {
-  const [rawCount, snapCount, maxDate] = await Promise.all([
+  const [rawCount, snapCount, maxDate, pivot] = await Promise.all([
     db.rawDaily.count(),
     db.snapshot.count(),
     db.rawDaily.aggregate({ _max: { date: true } }).then((r) => r._max.date ?? ""),
+    closePivot(),
   ])
   const key = `${rawCount}:${snapCount}:${maxDate}`
-  if (_ctxCache && _ctxCache.key === key) return _ctxCache
+  // key อย่างเดียวไม่พอ: ingest ที่แก้แถวเดิม (จำนวนแถว/วันล่าสุดเท่าเดิม) ต้องได้ ctx ใหม่
+  // → ผูกกับ object ของ closePivot ที่ invalidateDataCache() สร้างใหม่ทุกครั้งที่ข้อมูลเปลี่ยน
+  if (_ctxCache && _ctxCache.key === key && _ctxCache.pivot === pivot) return _ctxCache
 
-  const [pivot, vp, members] = await Promise.all([closePivot(), valuePivot(), snapshotMembers()])
+  const [vp, members] = await Promise.all([valuePivot(pivot), snapshotMembers()])
   const { dates, symbols, px } = pivot
   const N = dates.length
 
@@ -179,8 +184,10 @@ async function featureCtx(): Promise<FeatureCtx> {
   const repeatZ = repeatSeries.map((_, i) => zScore(repeatSeries, i))
 
   const ctx: FeatureCtx = {
+    pivot,
     pivotDates: dates,
     dateIdx: pivot.dateIdx,
+    symIdx: pivot.symIdx,
     px,
     val: vp.val,
     unionByDate: members.byDate,
@@ -299,11 +306,12 @@ function featureRow(
 }
 
 // สร้าง panel ทั้งชุดสำหรับ CPCV / Permutation Importance / เทรนโมเดล
-export async function buildMetaPanel(hold = 10): Promise<MetaPanel> {
+export async function buildMetaPanel(holdIn = 10): Promise<MetaPanel> {
+  // horizon เป็นจำนวนวันทำการ (index ของ pivot) — ค่าเศษทำให้ px[i + hold] เป็น undefined แล้วพัง
+  const hold = Math.max(1, Math.round(holdIn))
   const ctx = await featureCtx()
-  const { pivotDates, dateIdx, px } = ctx
+  const { pivotDates, symIdx, px } = ctx
   const N = pivotDates.length
-  const symIdx = await closePivot().then((p) => p.symIdx)
 
   // n_tf ต่อ (date, symbol) จาก snapshot
   const snaps = await db.snapshot.findMany({ select: { date: true, symbol: true } })
@@ -368,7 +376,7 @@ export async function liveMetaProbability(args: LiveScoreArgs): Promise<number |
 
   const ctx = await featureCtx()
   const i = ctx.dateIdx.get(args.date)
-  const si = await closePivot().then((p) => p.symIdx.get(args.symbol))
+  const si = ctx.symIdx.get(args.symbol)
   if (i === undefined || si === undefined || i < 60) return null
   const x = featureRow(ctx, i, si, args.nTf, args.streak)
   if (!x) return null

@@ -45,7 +45,9 @@ export function runSelfTests(): SelfTestResult[] {
   const add = (id: string, name: string, pass: boolean, detail: string) =>
     results.push({ id, name, pass, detail })
 
-  // 1) ไม่มี look-ahead: สินทรัพย์ +1%/เดือน คงที่ ต้อง compound เป๊ะ 1.01^n
+  // 1) ไม่มี look-ahead: (ก) สินทรัพย์ +1%/เดือน คงที่ ต้อง compound เป๊ะ 1.01^n
+  //    (ข) กับดัก: เดือน crash −20% ที่ไม่มีสัญญาณล่วงหน้า — engine ที่ไม่แอบดูอนาคตต้องกินเต็ม ๆ
+  //        (ซีรีส์คงที่อย่างเดียวจับ look-ahead ไม่ได้ เพราะผลตอบแทนทุกเดือนเท่ากัน)
   {
     const n = 60
     const risky = seriesFrom(Array(n).fill(0.01))
@@ -57,11 +59,17 @@ export function runSelfTests(): SelfTestResult[] {
     const expected = Math.pow(1.01, strat.length)
     const got = strat.reduce((a, b) => a * (1 + b), 1)
     const err = Math.abs(got / expected - 1)
+
+    const crashAt = 40 // closes[40] = closes[39] × 0.8 — ตัดสินใจที่ปิดเดือน 39 ยังเห็นแต่ขาขึ้น
+    const trap = seriesFrom(Array.from({ length: n }, (_, k) => (k === crashAt - 1 ? -0.2 : 0.01)))
+    const trapRun = backtestReturns(miniPanel({ VTV: trap, BIL: bil, SPY: spy }), cfg)
+    const crashRet = trapRun.strat[crashAt - 1 - trapRun.startIdx]
+    const trapOk = crashRet !== undefined && Math.abs(crashRet - -0.2) < 1e-9
     add(
       "no-lookahead",
-      "ไม่มี look-ahead — +1%/เดือน คงที่ต้อง compound เป็น 1.01^n เป๊ะ",
-      err < 1e-9,
-      `ผลลัพธ์ ${got.toFixed(8)} vs คำตอบปิดรูป ${expected.toFixed(8)} (คลาดเคลื่อน ${(err * 100).toExponential(2)}%)`,
+      "ไม่มี look-ahead — +1%/เดือน คงที่ต้อง compound เป็น 1.01^n เป๊ะ และเดือน crash ที่ยังไม่รู้ล่วงหน้าต้องโดนเต็ม −20%",
+      err < 1e-9 && trapOk,
+      `ผลลัพธ์ ${got.toFixed(8)} vs คำตอบปิดรูป ${expected.toFixed(8)} (คลาดเคลื่อน ${(err * 100).toExponential(2)}%) · เดือน crash = ${crashRet !== undefined ? (crashRet * 100).toFixed(2) : "—"}% (ต้อง −20.00%)`,
     )
   }
 
@@ -78,7 +86,7 @@ export function runSelfTests(): SelfTestResult[] {
     add(
       "trend-gate",
       "SMA filter — หุ้นขาลง monotone ต้องโดนเตะไปเงินสดทุกเดือน",
-      maxDev < 1e-9,
+      strat.length > 0 && maxDev < 1e-9, // strat ว่าง → Math.max() = −Infinity จะผ่านแบบไม่ได้ทดสอบอะไร
       `ผลตอบแทนทุกเดือนเบี่ยงจาก BIL มากสุด ${(maxDev * 100).toExponential(1)}%`,
     )
   }
@@ -245,14 +253,18 @@ export function runSelfTests(): SelfTestResult[] {
     )
   }
 
-  // 11) จักรวาลครบ: universe 13 ตัวพร้อมใช้ใน panel มาตรฐาน
+  // 11) จักรวาลครบ: universe 13 ตัวตรงรายชื่อสเปคทุกตัว (ป้องกันการแก้ universe พังโดยไม่รู้ตัว)
   {
-    const missing = GTAA_UNIVERSE.filter((a) => a.ticker === "MTUM") // ป้องกันการแก้ universe พังโดยไม่รู้ตัว
+    const SPEC = ["VTV", "MTUM", "VBR", "DWAS", "EFA", "EEM", "TLT", "IEF", "LQD", "IGOV", "DBC", "GLD", "VNQ"]
+    const got = GTAA_UNIVERSE.map((a) => a.ticker)
+    const missing = SPEC.filter((t) => !got.includes(t))
+    const extra = got.filter((t) => !SPEC.includes(t))
+    const ok = got.length === SPEC.length && missing.length === 0 && extra.length === 0
     add(
       "universe-intact",
       "Universe 13 สินทรัพย์ตามสเปค Faber (VTV/MTUM/VBR/DWAS/EFA/EEM/TLT/IEF/LQD/IGOV/DBC/GLD/VNQ)",
-      GTAA_UNIVERSE.length === 13 && missing.length === 1,
-      `นับได้ ${GTAA_UNIVERSE.length} ตัว${GTAA_UNIVERSE.length === 13 ? " ✅" : " ❌"}`,
+      ok,
+      `นับได้ ${got.length} ตัว${ok ? " ✅" : ` ❌ ขาด [${missing.join(", ")}] เกิน [${extra.join(", ")}]`}`,
     )
   }
 
@@ -308,9 +320,17 @@ export function runSelfTests(): SelfTestResult[] {
     const vtv = seriesFrom(Array(n).fill(0.012))
     const bil = seriesFrom(Array(n).fill(BIL_RET))
     const spy = seriesFrom(Array(n).fill(0.005))
-    const panel = miniPanel({ VTV: vtv, BIL: bil, SPY: spy })
+    const base = miniPanel({ VTV: vtv, BIL: bil, SPY: spy })
     const i = n - 2 // decision ที่ปิดเดือนรองจากท้าย → มีเดือนถัดไปให้วัด
+    // "ตอนนี้" = วันแรกหลังเดือนสุดท้ายของ panel ปิด (miniPanel จบที่เดือนปัจจุบันซึ่งยังไม่ปิด)
+    const [ly, lm] = base.dates[n - 1].split("-").map(Number)
+    const afterClose = new Date(Date.UTC(ly, lm, 1))
+    const midApplies = new Date(Date.UTC(ly, lm - 1, 15))
+    // panel ที่ดึงหลังปิดเดือน (แท่งสุดท้ายสมบูรณ์) กับ panel ที่ดึงกลางเดือน (แท่งสุดท้ายยังเป็นราคากลางเดือน)
+    const panel: GtaaPanel = { ...base, meta: { ...base.meta, fetchedAt: afterClose.toISOString() } }
+    const panelMid: GtaaPanel = { ...base, meta: { ...base.meta, fetchedAt: midApplies.toISOString() } }
 
+    // รูปแบบเดียวกับที่ persistSignalSnapshot บันทึกจริง: holdings มีเฉพาะ universe — เงินสด (BIL) อยู่ใน cashPct/cashTicker
     const rows: StoredSignalLike[] = [
       {
         id: 1,
@@ -318,18 +338,21 @@ export function runSelfTests(): SelfTestResult[] {
         appliesMonth: panel.dates[i + 1],
         cashPct: 0.5,
         cashTicker: "BIL",
-        holdings: JSON.stringify([
-          { ticker: "VTV", weight: 0.5 },
-          { ticker: "BIL", weight: 0.5 },
-        ]),
+        holdings: JSON.stringify([{ ticker: "VTV", weight: 0.5 }]),
         failed: JSON.stringify(["EFA"]),
         stance: "risk_on",
-        dataSource: "yahoo",
+        dataSource: "synthetic",
         configHash: "cfgtest",
         createdAt: new Date().toISOString(),
       },
     ]
-    const [ev] = evaluateTracking(panel, rows)
+    const [ev] = evaluateTracking(panel, rows, afterClose)
+    // แถวเก่าที่ใส่ BIL ใน holdings เองต้องได้ผลเท่ากัน (ไม่นับเงินสดซ้ำ)
+    const [evExplicit] = evaluateTracking(
+      panel,
+      [{ ...rows[0], id: 3, holdings: JSON.stringify([{ ticker: "VTV", weight: 0.5 }, { ticker: "BIL", weight: 0.5 }]) }],
+      afterClose,
+    )
     const expVtv = vtv[i + 1] / vtv[i] - 1
     const expSpy = spy[i + 1] / spy[i] - 1
     const expPort = 0.5 * expVtv + 0.5 * BIL_RET
@@ -339,16 +362,20 @@ export function runSelfTests(): SelfTestResult[] {
       Math.abs((ev.realized.portfolioRet ?? -9) - expPort) < 1e-12 &&
       Math.abs((ev.realized.spyRet ?? -9) - expSpy) < 1e-12 &&
       Math.abs((ev.realized.delta ?? -9) - (expPort - expSpy)) < 1e-12 &&
-      ev.realized.hit === true
-    // แถวที่ยังรอผล (decision ที่ปิดเดือนสุดท้ายของ panel) ต้องได้ realized = null
-    const pending = evaluateTracking(panel, [{ ...rows[0], id: 2, decisionMonth: panel.dates[panel.dates.length - 1], appliesMonth: "2099-01" }])[0]
-    const pendingOk = pending.realized === null
+      ev.realized.hit === true &&
+      Math.abs((evExplicit?.realized?.portfolioRet ?? -9) - expPort) < 1e-12
+    // แถวที่ยังรอผล: (ก) decision ที่ปิดเดือนสุดท้ายของ panel (ข) เดือนที่ใช้ยังไม่ปิดตามปฏิทิน แม้ panel มีแท่งของเดือนนั้นแล้ว
+    // (ค) ปฏิทินปิดเดือนแล้วแต่ panel ดึงมากลางเดือน (แท่งยังไม่สมบูรณ์)
+    const pending = evaluateTracking(panel, [{ ...rows[0], id: 2, decisionMonth: panel.dates[panel.dates.length - 1], appliesMonth: "2099-01" }], afterClose)[0]
+    const pendingOpen = evaluateTracking(panelMid, rows, midApplies)[0]
+    const pendingStale = evaluateTracking(panelMid, rows, afterClose)[0]
+    const pendingOk = pending.realized === null && pendingOpen.realized === null && pendingStale.realized === null
 
     add(
       "tracking-eval",
       "Tracking Log — พอร์ตที่บันทึกไว้คำนวณผลย้อนหลังตรงราคาปิดรูป (Σw·r) · สัญญาณรอเดือนถัดไป = ยังไม่ให้คะแนน",
       ok && pendingOk,
-      `portfolio ${(expPort * 100).toFixed(4)}% · spy ${(expSpy * 100).toFixed(4)}% · delta ${(((expPort - expSpy) * 100)).toFixed(4)}% · pending=${pending.realized === null}`,
+      `portfolio ${(expPort * 100).toFixed(4)}% (รวมเงินสด 50%) · spy ${(expSpy * 100).toFixed(4)}% · delta ${(((expPort - expSpy) * 100)).toFixed(4)}% · pending=${pendingOk}`,
     )
   }
 

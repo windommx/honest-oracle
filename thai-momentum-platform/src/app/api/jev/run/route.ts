@@ -32,6 +32,8 @@ import {
   readStopPolicy,
 } from "@/lib/momentum/stops/engine"
 import { liveExit, liveBackstop, type Posterior } from "@/lib/momentum/stops/bayes"
+import { lastKnownIndex } from "@/lib/portfolio/returns"
+import { legacyExitDecision } from "@/lib/jev/exit"
 
 export const dynamic = "force-dynamic"
 export const maxDuration = 120
@@ -42,11 +44,21 @@ const IDEMPOTENT_MSG = "Jev รันไปแล้วสำหรับวั�
 
 type Dec = JevDecision
 
+// รันทีละรอบต่อโปรเซส — กดซ้ำ/หลายแท็บยิงพร้อมกันเคยผ่าน idempotency guard ทั้งคู่
+// (log/gate ซ้ำ, exit ซ้ำ) → รอบถัดไปรอรอบก่อนจบ แล้วเจอ guard ตอบ IDEMPOTENT_MSG ตามปกติ
+let runChain: Promise<unknown> = Promise.resolve()
+
 // POST /api/jev/run → สมอง Jev ตัดสินใจรอบวันล่าสุด (PAPER mode, log ทุก decision)
 // Signals v2: composite regime (grossMult ต่อเนื่อง) + risk filters เปิดเสมอ
 // (distribution/sector-outflow block, vol-aware sizing/stop) + alpha boosts
 // เฉพาะสัญญาณที่ผ่าน IC ตาม pre-registered policy + shadow A/B + Q_PAIRS
 export async function POST() {
+  const job = runChain.then(() => runJev())
+  runChain = job.catch(() => undefined)
+  return job
+}
+
+async function runJev() {
   try {
     // ---------- Thai config-as-data (Task 9-c) — โหลดไม่ได้ → ใช้ค่า default ----------
     let TH: ThaiConfig
@@ -81,7 +93,10 @@ export async function POST() {
     } catch {
       panel = null
     }
-    const marketNow = panel ? (panel.market[panel.market.length - 1] ?? null) : null
+    // regime/calendar ต้องเป็นของวันเดียวกับ decisions (latest = วันล่าสุดที่มี snapshot) — ไม่ใช่แถวท้ายของ
+    // panel (RawDaily ล่าสุด): แถววันหยุดจาก Yahoo (volume 0 → ไม่มี snapshot) เคยทำให้ regime มาจากอีกวัน
+    const panelIdx = panel ? panel.dates.lastIndexOf(latest) : -1
+    const marketNow = panel && panelIdx >= 0 ? (panel.market[panelIdx] ?? null) : null
     const sdBySym = new Map<string, StockDay>()
     if (panel) for (const s of panel.byDateStock.get(latest) ?? []) sdBySym.set(s.symbol, s)
     const promoted = new Set<string>(policy?.promoted ?? [])
@@ -92,16 +107,20 @@ export async function POST() {
     const regimeConf = marketNow
       ? Math.round(Math.min(0.99, 0.5 + 0.35 * Math.abs(marketNow.regimeScore)) * 100) / 100
       : regime.conf
-    let slotBudget = marketNow ? Math.max(2, Math.floor(MAX_SLOTS * marketNow.grossMult)) : MAX_SLOTS
+    // งบ slots ของรอบ — บังคับจริงใน sector layer (maxSlots) · ไม่เกิน MAX_SLOTS (grossMult สูงสุด 1.25 → 8 > 7)
+    let slotBudget =
+      marketNow && Number.isFinite(marketNow.grossMult)
+        ? Math.min(MAX_SLOTS, Math.max(2, Math.floor(MAX_SLOTS * marketNow.grossMult)))
+        : MAX_SLOTS
 
     // Calendar overlay (H3) — TH.calendarOverlay → คูณงบ slots ด้วยตัวคูณ TOM/January
     // (panel สร้างไม่สำเร็จ → ข้าม overlay อย่างเงียบ ๆ) · clamp ผลลัพธ์เสมอ [1, MAX_SLOTS]
     let calMult = 1
-    if (TH.calendarOverlay && panel) {
-      calMult = calendarMult(panel.dates, panel.dates.length - 1, regimeAction)
+    if (TH.calendarOverlay && panel && panelIdx >= 0) {
+      calMult = calendarMult(panel.dates, panelIdx, regimeAction)
       slotBudget = Math.min(MAX_SLOTS, Math.max(1, Math.round(slotBudget * calMult)))
     }
-    const calPart = TH.calendarOverlay && panel ? ` calendarMult:${calMult.toFixed(2)}` : ""
+    const calPart = TH.calendarOverlay && panel && panelIdx >= 0 ? ` calendarMult:${calMult.toFixed(2)}` : ""
 
     // Sector risk layer — โหลดแผนที่ symbol → sector ครั้งเดียวต่อรัน
     const sectorMap = await getSectorMap()
@@ -135,6 +154,13 @@ export async function POST() {
       if (pi === undefined) return NaN
       const si = pivot.symIdx.get(sym)
       return si === undefined ? NaN : pivot.px[pi][si]
+    }
+    // ราคาปิดล่าสุดที่มีจริง ณ/ก่อนวันล่าสุด (หุ้นพัก/หยุดซื้อขายไม่มีแถววันล่าสุด) — ใช้เขียนเหตุผลเท่านั้น
+    const lastKnownOf = (sym: string): { px: number; date: string } | null => {
+      const si = pivot.symIdx.get(sym)
+      if (pi === undefined || si === undefined) return null
+      const k = lastKnownIndex(pivot.px, si, pi)
+      return k < 0 ? null : { px: pivot.px[k][si], date: pivot.dates[k] }
     }
 
     // ---------- 1) candidates: นับ n_tf + best rank ของวันล่าสุด ----------
@@ -230,8 +256,6 @@ export async function POST() {
     const exitDecs: Dec[] = []
     for (const p of posRows) {
       const lp = lastPxOf(p.symbol)
-      const r = isFinite(lp) ? lp / p.entryPx - 1 : 0
-      const fmt = `${(r * 100).toFixed(1)}%`
       let dec: Dec
       if (bayesPost && isFinite(lp)) {
         const dNow = Math.max(0, 1 - lp / p.entryPx)
@@ -270,17 +294,9 @@ export async function POST() {
           continue
         }
       }
-      if (!isFinite(lp)) {
-        dec = { question: "Q_EXIT", target: p.symbol, action: "hold", conf: 0.6, reason: `ret=${fmt}` }
-      } else if (r > 0.25) {
-        dec = { question: "Q_EXIT", target: p.symbol, action: "exit", conf: 0.85, reason: `กำไรใหญ่ ret=${fmt}` }
-      } else if (!latestSet.has(p.symbol) && r > 0) {
-        dec = { question: "Q_EXIT", target: p.symbol, action: "tighten", conf: 0.8, reason: `ret=${fmt}` }
-      } else if (r <= -0.06) {
-        dec = { question: "Q_EXIT", target: p.symbol, action: "exit", conf: 0.85, reason: `ret=${fmt}` }
-      } else {
-        dec = { question: "Q_EXIT", target: p.symbol, action: "hold", conf: 0.6, reason: `ret=${fmt}` }
-      }
+      // กฎ legacy (src/lib/jev/exit.ts): ไม่มีราคา → hold พร้อมราคาล่าสุดที่มีจริง · หลุด stop ที่บันทึกไว้ → exit
+      // · กำไร > 25% → exit · หลุดโผ & กำไร → tighten · ≤ −6% → exit · อื่น ๆ → hold
+      dec = legacyExitDecision(p, lp, latestSet.has(p.symbol), isFinite(lp) ? null : lastKnownOf(p.symbol))
       exitDecs.push(dec)
     }
 
@@ -362,11 +378,13 @@ export async function POST() {
         riskBlocked++
         continue
       }
-      if (sd && sd.sectorRank <= GATES.blockSectorBottom && sd.rotZ < 0) {
+      // sectorRank 1 = sector แรงสุด → "2 กลุ่มท้าย" คือ rank > nSec − 2 (เกณฑ์เดียวกับ G3 ของ flagship/funnel.ts)
+      const nSec = panel?.sectors.length ?? 0
+      if (sd && nSec > GATES.blockSectorBottom && sd.sectorRank > nSec - GATES.blockSectorBottom && sd.rotZ < 0) {
         const blockedDec: Dec = {
           ...dec,
           action: "watch",
-          reason: `${dec.reason} | risk filter: sector เงินไหลออก (rank=${sd.sectorRank} rotZ=${sd.rotZ.toFixed(2)})`,
+          reason: `${dec.reason} | risk filter: sector เงินไหลออก (rank=${sd.sectorRank}/${nSec} rotZ=${sd.rotZ.toFixed(2)})`,
         }
         await logDecision(blockedDec, false)
         blocked.push(blockedDec)
@@ -459,8 +477,39 @@ export async function POST() {
     // v2 alpha: เรียงคิวซื้อด้วย meta-score (ต่อเมื่อสัญญาณผ่าน IC)
     if (v2Alpha) buyCands.sort((a, b) => (b.sd?.score ?? -Infinity) - (a.sd?.score ?? -Infinity))
 
+    // ขนาดจริงที่จะซื้อ (risk_on เท่านั้น) คำนวณ "ก่อน" sector layer — เดิมคูณ boost/meta หลังผ่าน
+    // constraint ทำให้ขยายเกิน cap/งบที่เพิ่งตรวจ · neutral ส่ง human gate ด้วยขนาดฐานเหมือนเดิม
+    // v2 sizing: vol regime หดไซส์เสมอ (risk), boost เฉพาะสัญญาณที่ผ่าน IC (alpha) + meta-model sizing
+    const sizing = new Map<
+      string,
+      { want: number; volMult: number; boostMult: number; p: number | null; mult: number }
+    >()
+    if (regimeAction === "risk_on") {
+      for (const c of buyCands) {
+        const sd = c.sd
+        const volMult = sd ? GATES.volSizeMult(sd.symVolPct) : 1
+        const boostMult =
+          v2Alpha && sd && promoted.has("mfd") && sd.mfd < GATES.boostMfd ? GATES.boostMult : 1
+        const meta = entryMeta.get(c.dec.target)
+        let p: number | null = null
+        if (meta) {
+          // โมเดล meta ใช้ไม่ได้ (throw/NaN) = ไม่มี meta sizing — ไม่ล้มทั้งรอบหลัง log ไปแล้วครึ่งทาง
+          p = await liveMetaProbability({
+            symbol: c.dec.target,
+            date: latest,
+            nTf: meta.nTf,
+            streak: meta.streak,
+          }).catch(() => null)
+          if (p !== null && !Number.isFinite(p)) p = null
+        }
+        const mult = p !== null ? metaSizeMultiplier(p) : 1
+        const want = Math.round(Math.min(1.5, c.base * volMult * boostMult * mult) * 100) / 100
+        sizing.set(c.dec.target, { want, volMult, boostMult, p, mult })
+      }
+    }
+
     // Sector constraints: จำลองการรับ candidate ทีละตัวบนพอร์ตเดิม
-    // (จำนวนชื่อ/sector ≤ 3 → น้ำหนัก sector ≤ 30% → น้ำหนักกลุ่ม ≤ cap กลุ่ม → งบ slotBudget)
+    // (จำนวนชื่อ/sector ≤ 3 → งบ slotBudget → น้ำหนัก sector ≤ 30% → น้ำหนักกลุ่ม ≤ cap กลุ่ม)
     let constraint: SectorConstraintResult = {
       accepted: [],
       downsized: [],
@@ -470,12 +519,14 @@ export async function POST() {
     }
     if (buyCands.length > 0) {
       constraint = applySectorConstraints(
-        buyCands.map((c) => ({ symbol: c.dec.target, slots: c.base })),
+        buyCands.map((c) => ({ symbol: c.dec.target, slots: sizing.get(c.dec.target)?.want ?? c.base })),
         posRows.map((p) => ({ symbol: p.symbol, slots: p.slots })),
-        sectorMap
+        sectorMap,
+        { maxSlots: slotBudget }
       )
     }
     const candBySymbol = new Map(buyCands.map((c) => [c.dec.target, c]))
+    const acceptedBySymbol = new Map(constraint.accepted.map((a) => [a.symbol, a]))
     const downsizeBySymbol = new Map(constraint.downsized.map((d) => [d.symbol, d]))
     const allowedSymbols = new Set([
       ...constraint.accepted.map((a) => a.symbol),
@@ -505,7 +556,8 @@ export async function POST() {
       const sd = c.sd
       const src = c.src ?? "lite"
       const down = downsizeBySymbol.get(dec.target)
-      const base = down ? down.slots : c.base
+      // ขนาดที่ sector layer อนุมัติจริง (accepted อาจถูกจำกัดด้วยพื้นที่พอร์ต — ห้ามย้อนกลับไปใช้ c.base)
+      const base = down ? down.slots : (acceptedBySymbol.get(dec.target)?.slots ?? c.base)
       const downPart = down ? ` | ${down.reason}` : ""
       if (regimeAction === "neutral") {
         // gate reason นำด้วยเหตุผลการลดขนาด (ถ้ามี) ตามด้วยเหตุผลสัญญาณเดิม
@@ -533,21 +585,13 @@ export async function POST() {
         if (!isFinite(entryPx)) {
           await logDecision({ ...dec, reason: `${dec.reason} (ราคาไม่พร้อม)` }, false, src)
         } else {
-          // v2 sizing: vol regime หดไซส์เสมอ (risk), boost เฉพาะสัญญาณที่ผ่าน IC (alpha)
-          const volMult = sd ? GATES.volSizeMult(sd.symVolPct) : 1
-          const boostMult =
-            v2Alpha && sd && promoted.has("mfd") && sd.mfd < GATES.boostMfd ? GATES.boostMult : 1
-          const meta = entryMeta.get(dec.target)
-          const p = meta
-            ? await liveMetaProbability({
-                symbol: dec.target,
-                date: latest,
-                nTf: meta.nTf,
-                streak: meta.streak,
-              })
-            : null
-          const mult = p !== null ? metaSizeMultiplier(p) : 1
-          const slots = Math.round(Math.min(1.5, base * volMult * boostMult * mult) * 100) / 100
+          // ขนาด = ที่ sector layer อนุมัติ (คำนวณ vol/boost/meta ไว้ก่อนเข้า constraint แล้ว)
+          const sz = sizing.get(dec.target)
+          const volMult = sz?.volMult ?? 1
+          const boostMult = sz?.boostMult ?? 1
+          const p = sz?.p ?? null
+          const mult = sz?.mult ?? 1
+          const slots = base
           const v2Part = sd
             ? ` v2[mfd=${sd.mfd.toFixed(2)} sec=${sd.sectorRank} vol×${volMult}${boostMult > 1 ? ` boost×${boostMult}` : ""}]`
             : ""

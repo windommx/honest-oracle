@@ -122,7 +122,8 @@ export default function JevTab() {
 
   const [runResult, setRunResult] = useState<JevRunResponse | null>(null)
   const [running, setRunning] = useState(false)
-  const [gateBusy, setGateBusy] = useState<number | null>(null)
+  // ปุ่มที่กำลังทำงาน (แถว + อนุมัติ/ปฏิเสธ) — spinner ขึ้นเฉพาะปุ่มที่กด
+  const [gateBusy, setGateBusy] = useState<{ id: number; approve: boolean } | null>(null)
 
   async function handleRun() {
     setRunning(true)
@@ -144,7 +145,7 @@ export default function JevTab() {
   }
 
   async function handleGate(id: number, approve: boolean) {
-    setGateBusy(id)
+    setGateBusy({ id, approve })
     try {
       const r = await postJson<GateActionResult>("/api/jev/pending", {
         id,
@@ -209,9 +210,9 @@ export default function JevTab() {
             </p>
           )}
           <p className="text-xs text-muted-foreground">
-            Jev แยกคนตัดสินใจออกจากคนลงมือ — conf ≥ 0.70 + regime เปิด =
-            ซื้ออัตโนมัติในพอร์ตกระดาษ · เคสกำไรใหญ่/สุดขั้ว/upgrade = ส่งเข้า
-            Human Gate (default-deny)
+            Jev แยกคนตัดสินใจออกจากคนลงมือ — conf ≥ 0.70 + regime risk_on =
+            ซื้ออัตโนมัติในพอร์ตกระดาษ · regime neutral / ติดหลายโผวันแรก
+            (escalate) / pairs = ส่งเข้า Human Gate (default-deny)
           </p>
           <Button size="lg" onClick={handleRun} disabled={running}>
             {running && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
@@ -220,7 +221,20 @@ export default function JevTab() {
         </CardContent>
       </Card>
 
-      {/* 2) ผลรันล่าสุด 3 คอลัมน์ */}
+      {/* 2) ผลรันล่าสุด — regime ที่รอบนี้ใช้ตัดสินจริง (composite v2; badge ด้านบนเป็น regime ภาพรวมแบบเดิม อาจต่างกัน) */}
+      {runResult && (
+        <p className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
+          <span>รอบ {runResult.date} · regime ที่ใช้ตัดสิน</span>
+          <Badge
+            variant="outline"
+            className={cn("px-1.5 text-[10px]", REGIME_BADGE[runResult.regime]?.cls)}
+          >
+            {REGIME_BADGE[runResult.regime]?.label ?? runResult.regime}
+          </Badge>
+          <span className="min-w-0 break-words">· {runResult.message}</span>
+        </p>
+      )}
+      {/* 3 คอลัมน์ */}
       {runResult && (
         <div className="grid gap-4 md:grid-cols-3">
           <Card>
@@ -265,7 +279,7 @@ export default function JevTab() {
                 🙋 รออนุมัติ ({runResult.gated.length})
               </CardTitle>
               <CardDescription className="text-xs">
-                เคสกำไรใหญ่/สุดขั้ว/upgrade — มนุษย์ตัดสินก่อน
+                regime neutral / escalate / pairs — มนุษย์ตัดสินก่อน
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -376,7 +390,7 @@ export default function JevTab() {
                       onClick={() => handleGate(p.id, true)}
                       disabled={gateBusy !== null}
                     >
-                      {gateBusy === p.id && (
+                      {gateBusy?.id === p.id && gateBusy.approve && (
                         <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
                       )}
                       ✓ อนุมัติ
@@ -388,7 +402,7 @@ export default function JevTab() {
                       onClick={() => handleGate(p.id, false)}
                       disabled={gateBusy !== null}
                     >
-                      {gateBusy === p.id && (
+                      {gateBusy?.id === p.id && !gateBusy.approve && (
                         <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
                       )}
                       ✕ ปฏิเสธ
@@ -519,7 +533,8 @@ export default function JevTab() {
                             : fmtPct(b.winRate * 100, 1)}
                         </TableCell>
                         <TableCell className="text-right font-mono text-xs">
-                          {fmtNum(b.avgConf, 2)}
+                          {/* bucket ว่าง: API ส่ง avgConf = 0 (ไม่มีข้อมูล) — ไม่โชว์ 0.00 ปลอม */}
+                          {b.n === 0 ? "—" : fmtNum(b.avgConf, 2)}
                         </TableCell>
                       </TableRow>
                     ))}

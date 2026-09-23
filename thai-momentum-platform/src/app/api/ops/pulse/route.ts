@@ -8,6 +8,7 @@ import { NextResponse } from "next/server"
 import { db } from "@/lib/db"
 import { auditEvents } from "@/lib/research/events"
 import { runDataQualityChecks } from "@/lib/momentum/core"
+import { ictDate } from "@/lib/platform/dates"
 
 export const dynamic = "force-dynamic"
 
@@ -128,8 +129,9 @@ export async function GET() {
       tab: "portfolio",
     })
 
-    // 4) Evidence Night — รัน thai_fit ภายใน 30 วัน
-    const evidenceAge = lastEvidence ? daysBetween(lastEvidence.createdAt.toISOString().slice(0, 10), today) : null
+    // 4) Evidence Night — รัน thai_fit ภายใน 30 วัน (อายุนับตามปฏิทินกรุงเทพทั้งสองฝั่ง — today เป็น ICT
+    //    จึงต้องแปลง createdAt เป็นวันที่ ICT ด้วย ไม่ใช่วันที่ UTC ที่ช้ากว่า 1 วันช่วง 00:00–06:59 น.)
+    const evidenceAge = lastEvidence ? daysBetween(ictDate(lastEvidence.createdAt), today) : null
     const evidenceOk = evidenceAge !== null && evidenceAge <= 30
     checklist.push({
       id: "evidence-night",

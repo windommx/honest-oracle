@@ -7,7 +7,7 @@
 
 import { Fragment, useMemo, useState, type ReactNode } from "react"
 import { ChevronDown, ChevronRight, RefreshCw } from "lucide-react"
-import { useApi } from "@/hooks/use-api"
+import { fmtNum, useApi } from "@/hooks/use-api"
 import type { ConfluenceRow, LayerScore, SniperReport } from "@/lib/sniper/types"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
@@ -22,6 +22,16 @@ import { cn } from "@/lib/utils"
 function pct(x: number | null | undefined, digits = 1): string {
   if (x === null || x === undefined || !isFinite(x)) return "—"
   return `${x >= 0 ? "+" : ""}${x.toFixed(digits)}%`
+}
+
+// ค่าทศนิยม (0.01 = 1%) → เปอร์เซ็นต์มีเครื่องหมาย · null/NaN (JSON null) → "—" ไม่ throw
+function pctDec(x: number | null | undefined, digits = 1): string {
+  return x === null || x === undefined ? "—" : pct(x * 100, digits)
+}
+
+// สัดส่วน 0..1 → "67%" · null → "—"
+function share(x: number | null | undefined): string {
+  return x === null || x === undefined || !isFinite(x) ? "—" : `${(x * 100).toFixed(0)}%`
 }
 
 function retClass(x: number | null | undefined): string {
@@ -207,7 +217,7 @@ export default function SniperTab() {
             <div className="flex flex-wrap items-center gap-2">
               {briefing.regime ? stanceBadge(briefing.regime.label) : <span className="text-xs text-muted-foreground">—</span>}
               {briefing.regime && (
-                <span className="font-mono text-xs tabular-nums text-muted-foreground">conf {briefing.regime.score.toFixed(2)}</span>
+                <span className="font-mono text-xs tabular-nums text-muted-foreground">conf {fmtNum(briefing.regime.score, 2)}</span>
               )}
             </div>
             <div className="h-px bg-border/60" aria-hidden />
@@ -217,8 +227,11 @@ export default function SniperTab() {
             </div>
             {briefing.gtaa && (
               <div className="text-[11px] text-muted-foreground">
-                เงินสด <span className="font-mono tabular-nums">{(briefing.gtaa.cashPct * 100).toFixed(0)}%</span> · ถึง{" "}
+                เงินสด <span className="font-mono tabular-nums">{share(briefing.gtaa.cashPct)}</span> · ถึง{" "}
                 {briefing.gtaa.asOfMonth}
+                {(briefing.gtaa.staleMonths ?? 0) > 0 && (
+                  <span className="text-neon-amber"> · เลยรอบรีบาลานซ์ {briefing.gtaa.staleMonths} รอบ</span>
+                )}
               </div>
             )}
           </div>
@@ -227,12 +240,12 @@ export default function SniperTab() {
             <div className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">ตลาด (SET)</div>
             <div className="grid grid-cols-3 gap-2">
               <MiniTile label="วันล่าสุด">
-                <span className={retClass(briefing.mkt.ret1d)}>{pct(briefing.mkt.ret1d * 100)}</span>
+                <span className={retClass(briefing.mkt.ret1d)}>{pctDec(briefing.mkt.ret1d)}</span>
               </MiniTile>
               <MiniTile label="5 วัน">
-                <span className={retClass(briefing.mkt.ret5d)}>{pct(briefing.mkt.ret5d * 100)}</span>
+                <span className={retClass(briefing.mkt.ret5d)}>{pctDec(briefing.mkt.ret5d)}</span>
               </MiniTile>
-              <MiniTile label="Breadth 20d">{(briefing.mkt.breadth20 * 100).toFixed(0)}%</MiniTile>
+              <MiniTile label="Breadth 20d">{share(briefing.mkt.breadth20)}</MiniTile>
             </div>
             <p className="text-xs text-muted-foreground">{briefing.mkt.note}</p>
           </div>
@@ -259,7 +272,7 @@ export default function SniperTab() {
                 <div key={row.asset} title={row.note} className="truncate text-[11px] text-muted-foreground">
                   <span className="font-mono">{row.asset}</span>{" "}
                   {row.direction === "leads" ? `นำ ${row.bestLag} วัน` : "เคลื่อนพร้อมกัน"} (r{" "}
-                  {row.bestCorr.toFixed(2)})
+                  {fmtNum(row.bestCorr, 2)})
                 </div>
               ))}
               {briefing.leadlag.length === 0 && <span className="text-[11px] text-muted-foreground">—</span>}
@@ -315,14 +328,15 @@ export default function SniperTab() {
             ระบบแนะนำเท่านั้น — คำสั่งจริงต้องผ่าน Human Gate (default-deny) เหมือนเดิม
           </p>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+            {/* breaker ใช้ 0 ภายในเมื่อวัดตลาดไม่ได้ — จอแสดง "—" ตาม brief (เป็นค่าเดียวกันเมื่อวัดได้) */}
             <MiniTile label="ตลาดวันนี้">
-              <span className={retClass(breaker.metrics.mkt1d)}>{pct(breaker.metrics.mkt1d * 100)}</span>
+              <span className={retClass(briefing.mkt.ret1d)}>{pctDec(briefing.mkt.ret1d)}</span>
             </MiniTile>
             <MiniTile label="5 วัน">
-              <span className={retClass(breaker.metrics.mkt5d)}>{pct(breaker.metrics.mkt5d * 100)}</span>
+              <span className={retClass(briefing.mkt.ret5d)}>{pctDec(briefing.mkt.ret5d)}</span>
             </MiniTile>
             <MiniTile label="Win rate 10 ไม้">
-              {breaker.metrics.winRate10 !== null ? `${(breaker.metrics.winRate10 * 100).toFixed(0)}%` : "—"}
+              {share(breaker.metrics.winRate10)}
             </MiniTile>
             <MiniTile label="ไม้ที่ปิดล่าสุด">
               {breaker.metrics.lastClosedPnlPct !== null
@@ -345,7 +359,11 @@ export default function SniperTab() {
         </CardHeader>
         <CardContent>
           {confluence.length === 0 ? (
-            <p className="text-xs text-muted-foreground">ยังไม่มีข้อมูล watchlist — รัน ingest ก่อน</p>
+            <p className="text-xs text-muted-foreground">
+              {meta.latestDate
+                ? "ยังไม่มีหุ้นผ่านเกณฑ์ watchlist (ประวัติ ≥ 61 วัน · ราคา ≥ 1฿ · มูลค่าเฉลี่ย 20 วัน ≥ 1 ล้าน) — รอข้อมูลสะสมเพิ่ม"
+                : "ยังไม่มีข้อมูล watchlist — รัน ingest ก่อน"}
+            </p>
           ) : (
             <div className="overflow-x-auto">
               <Table className="min-w-[760px]">
@@ -388,7 +406,7 @@ export default function SniperTab() {
                             </div>
                           </div>
                         </TableCell>
-                        <TableCell className="text-right font-mono tabular-nums">{r.close.toFixed(2)}</TableCell>
+                        <TableCell className="text-right font-mono tabular-nums">{fmtNum(r.close, 2)}</TableCell>
                         <TableCell className={cn("text-right font-mono tabular-nums", retClass(r.ret20))}>
                           {pct(r.ret20)}
                         </TableCell>
@@ -435,7 +453,7 @@ export default function SniperTab() {
                                   title={lv.note}
                                   className="inline-flex items-center gap-1 rounded-md border border-border/60 bg-card px-1.5 py-0.5 font-mono text-[10px] tabular-nums"
                                 >
-                                  {lv.kind} {lv.price.toFixed(2)}
+                                  {lv.kind} {fmtNum(lv.price, 2)}
                                   <span className={retClass(lv.gapPct)}>{pct(lv.gapPct)}</span>
                                 </span>
                               ))}
@@ -476,7 +494,7 @@ export default function SniperTab() {
                     <span className="font-mono text-sm font-bold">{s.symbol}</span>
                     {sweepBadge(s.side, true)}
                     <span className="font-mono tabular-nums text-muted-foreground">
-                      ทะลุ {s.pierced.toFixed(2)} · ลึก {s.depthPct.toFixed(1)}% · วอลุ่ม {s.valZ.toFixed(1)}σ
+                      ทะลุ {fmtNum(s.pierced, 2)} · ลึก {fmtNum(s.depthPct, 1)}% · วอลุ่ม {fmtNum(s.valZ, 1)}σ
                     </span>
                     <span className="ml-auto font-mono text-[10px] text-muted-foreground">
                       {s.date} · {s.barsAgo === 0 ? "แท่งล่าสุด" : `${s.barsAgo} แท่งก่อน`}
@@ -500,7 +518,7 @@ export default function SniperTab() {
                     <span className="font-mono text-sm font-bold">{f.symbol}</span>
                     {fvgBadge(f.kind)}
                     <span className="font-mono tabular-nums text-muted-foreground">
-                      โซน {f.bottom.toFixed(2)}–{f.top.toFixed(2)} ({f.sizePct.toFixed(1)}%)
+                      โซน {fmtNum(f.bottom, 2)}–{fmtNum(f.top, 2)} ({fmtNum(f.sizePct, 1)}%)
                     </span>
                     <span className="ml-auto flex flex-wrap items-center gap-1.5 font-mono text-[10px] text-muted-foreground">
                       {f.to}

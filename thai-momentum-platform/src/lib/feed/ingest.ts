@@ -8,10 +8,21 @@
 // ============================================================
 
 import { db } from "@/lib/db"
-import { ingestRows, invalidateDataCache, type IngestSummary, type ParsedCsvRow } from "@/lib/momentum/core"
+import {
+  CROSS_ASSET_SOURCE_KEY,
+  ingestRows,
+  invalidateDataCache,
+  markDataChanged,
+  type IngestSummary,
+  type ParsedCsvRow,
+} from "@/lib/momentum/core"
 import { emitEvent } from "@/lib/research/events"
 import { sectorForSymbol } from "./universe"
 export { normalizeFeedRows } from "./rows"
+
+/** ข้อความแจ้งผู้ใช้เมื่อ replaceDemo ล้าง CrossAsset สังเคราะห์ไปด้วย */
+export const CROSS_ASSET_CLEARED_NOTE =
+  "ล้าง CrossAsset จำลอง (SPX/USDTHB/GOLD ที่ seed สังเคราะห์จากตลาดจำลอง) ไปด้วย — crossZ ใน Regime Composite และชั้น lead-lag ปิดจนกว่าจะรัน bun run fetch:cross เพื่อดึงข้อมูลจริง"
 
 export interface IngestFeedInput {
   rows: ParsedCsvRow[]
@@ -26,9 +37,11 @@ export interface IngestFeedResult {
   sectorRows: number
   replacedDemo: boolean
   latestDate: string | null
+  /** replaceDemo ล้าง CrossAsset สังเคราะห์ของ seed ไปด้วย (แจ้งผู้ใช้ให้รัน fetch:cross) */
+  clearedCrossAsset: boolean
 }
 
-export async function clearDemoMarketData(): Promise<void> {
+export async function clearDemoMarketData(): Promise<{ clearedCrossAsset: boolean }> {
   await db.snapshot.deleteMany()
   await db.rawDaily.deleteMany()
   await db.symbolMeta.deleteMany()
@@ -37,12 +50,22 @@ export async function clearDemoMarketData(): Promise<void> {
   await db.trade.deleteMany()
   await db.backtestRun.deleteMany()
   await db.setting.deleteMany({ where: { key: { in: ["meta_model", "prereg_trial", "signals_policy", "stops_policy"] } } })
-  invalidateDataCache()
+  // CrossAsset ของ seed สังเคราะห์จากผลตอบแทนของตลาดจำลอง — ถ้าคงไว้ crossZ (25% ของ regimeScore) จะเป็นสัญญาณปลอม
+  // ปนกับหุ้นจริง จึงล้างด้วย เว้นแต่มีป้ายว่าเป็นข้อมูลจริงจาก `bun run fetch:cross` (Setting cross_asset_source=yahoo)
+  let clearedCrossAsset = false
+  const src = await db.setting.findUnique({ where: { key: CROSS_ASSET_SOURCE_KEY } })
+  if (src?.value !== "yahoo") {
+    const del = await db.crossAsset.deleteMany()
+    clearedCrossAsset = del.count > 0
+    await db.setting.deleteMany({ where: { key: CROSS_ASSET_SOURCE_KEY } })
+  }
+  await markDataChanged()
+  return { clearedCrossAsset }
 }
 
 export async function ingestFeed(input: IngestFeedInput): Promise<IngestFeedResult> {
   const replacedDemo = !!input.replaceDemo
-  if (replacedDemo) await clearDemoMarketData()
+  const clearedCrossAsset = replacedDemo ? (await clearDemoMarketData()).clearedCrossAsset : false
 
   const ingest = await ingestRows(input.rows)
 
@@ -67,7 +90,8 @@ export async function ingestFeed(input: IngestFeedInput): Promise<IngestFeedResu
     snapDates: ingest.snapDates.length,
     latestDate,
     replacedDemo,
+    clearedCrossAsset,
   })
   invalidateDataCache()
-  return { ingest, sectorRows, replacedDemo, latestDate }
+  return { ingest, sectorRows, replacedDemo, latestDate, clearedCrossAsset }
 }

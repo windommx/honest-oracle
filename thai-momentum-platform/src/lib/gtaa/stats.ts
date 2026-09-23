@@ -46,8 +46,9 @@ export function equityCurve(returns: number[]): number[] {
   return out
 }
 
-export function drawdownSeries(equity: number[]): number[] {
-  let peak = 0
+/** drawdown ของ equity ที่เริ่มจากทุน start (= 1 ตาม equityCurve) — จุดยอดเริ่มที่ทุนตั้งต้น ให้ตรงกับ maxDD ของ computeStats */
+export function drawdownSeries(equity: number[], start = 1): number[] {
+  let peak = start
   return equity.map((e) => {
     if (e > peak) peak = e
     return e / peak - 1

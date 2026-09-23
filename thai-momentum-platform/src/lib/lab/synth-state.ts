@@ -1,5 +1,6 @@
 // ============================================================
-// Shadow Lab — synthetic state generator (port จาก synth_state.py)
+// Shadow Lab — synthetic state generator (THE CORE State Packet)
+// หมายเหตุ: ไม่ใช่ port ของ lab/synth_state.py (ตัวนั้นสร้าง state OHLC ของครู S1–R6.1 คนละ schema/edge case)
 //
 // ตัวสร้างสถานการณ์จำลองแบบ deterministic: PRNG แบบ mulberry32 (seed เดิม →
 // state เดิมเสมอ) ใช้ทั้งเติมแล็บเมื่อ panel ยังมีไม่พอ และใช้เป็นชุดทดสอบ
@@ -8,7 +9,7 @@
 
 import type { StatePacket } from './state'
 
-// ---------------- PRNG: mulberry32 (เหมือนต้นฉบับ python) ----------------
+// ---------------- PRNG: mulberry32 (deterministic ต่อ seed) ----------------
 export function mulberry32(seed: number): () => number {
   let a = seed >>> 0
   return () => {

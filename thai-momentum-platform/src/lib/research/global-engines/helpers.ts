@@ -131,13 +131,17 @@ export function icAcross(
   }))
 }
 
-/** เลือก IC ที่ดีที่สุดตาม ICIR (สำหรับ verdict) */
+/**
+ * เลือก IC ที่ดีที่สุดตาม ICIR (สำหรับ verdict) — เฉพาะ hold ที่วัดได้จริง (n>0)
+ * (hold ที่ n=0 มี ICIR 0 ปลอม ห้ามชนะ hold ที่วัดได้แต่ติดลบ) · ไม่มีเลย → null
+ */
 export function bestIc(rows: { hold: number; ic: IcSummary }[]): {
   hold: number
   ic: IcSummary
 } | null {
   let best: { hold: number; ic: IcSummary } | null = null
   for (const r of rows) {
+    if (r.ic.n <= 0) continue
     if (!best || r.ic.ICIR > best.ic.ICIR) best = r
   }
   return best

@@ -12,12 +12,20 @@ preflight.py — ตรวจข้อมูลก่อนใช้งาน LA
   5. close   — ค่า valid ทั้งหมด (ไม่ว่าง / > 0 / ไม่ extreme)
   6. days/yr >= 200 วัน/ปี         (ตลาดเปิดครบ ไม่มีหลุดช่วง)
 
+ใช้งาน:
+  python preflight.py                 # ตรวจ ../db/custom.db
+  python preflight.py history.csv     # ตรวจไฟล์ CSV ก่อน backfill (date,symbol,close[,...])
+  python preflight.py other.db        # ตรวจ SQLite ไฟล์อื่น
+
 Exit code (คง semantics ตามสเปก):
   0 = ผ่านทั้งหมด
   1 = มีเกณฑ์ที่ไม่ผ่าน (ต้องแก้ข้อมูลก่อน)
-  2 = ไม่พบฐานข้อมูลหรือตาราง
+  2 = ไม่พบฐานข้อมูล/ไฟล์ หรือตาราง/คอลัมน์ที่ต้องใช้
 """
 
+import argparse
+import csv
+import re
 import sqlite3
 import sys
 from pathlib import Path
@@ -43,6 +51,54 @@ def open_db(db_path: Path | None = None):
     except sqlite3.Error as exc:
         print(f"[ERROR] เปิดตาราง \"RawDaily\" ไม่ได้: {exc}", file=sys.stderr)
         return None
+    return cx
+
+
+def _norm_date(s: str) -> str | None:
+    """YYYY-MM-DD · YYYY/M/D · YYYYMMDD → YYYY-MM-DD (รูปที่แพลตฟอร์ม normalize ได้แน่นอน)"""
+    t = s.strip()
+    m = re.fullmatch(r"(\d{4})[-/](\d{1,2})[-/](\d{1,2})", t)
+    if m:
+        return f"{m.group(1)}-{int(m.group(2)):02d}-{int(m.group(3)):02d}"
+    m = re.fullmatch(r"(\d{4})(\d{2})(\d{2})", t)
+    if m:
+        return f"{m.group(1)}-{m.group(2)}-{m.group(3)}"
+    return None
+
+
+def open_csv(csv_path: Path):
+    """โหลด CSV (ต้องมี date,symbol,close) เข้า SQLite ในหน่วยความจำเป็นตาราง "RawDaily" — ตรวจด้วยเกณฑ์เดียวกัน"""
+    if not csv_path.exists():
+        print(f"[ERROR] ไม่พบไฟล์ CSV: {csv_path}", file=sys.stderr)
+        return None
+    with csv_path.open("r", encoding="utf-8-sig", newline="") as fh:
+        reader = csv.reader(fh)
+        header = [h.strip().lower() for h in next(reader, [])]
+        need = ("date", "symbol", "close")
+        if any(c not in header for c in need):
+            print(f"[ERROR] CSV ต้องมีคอลัมน์ date, symbol, close (พบ: {', '.join(header) or '—'})",
+                  file=sys.stderr)
+            return None
+        i_d, i_s, i_c = (header.index(c) for c in need)
+        rows, bad_date = [], 0
+        for parts in reader:
+            if not parts or all(not p.strip() for p in parts):
+                continue
+            d = _norm_date(parts[i_d]) if len(parts) > i_d else None
+            sym = parts[i_s].strip().upper() if len(parts) > i_s else ""
+            if not d or not sym:
+                bad_date += 1
+                continue
+            try:
+                close = float(parts[i_c]) if len(parts) > i_c else None
+            except ValueError:
+                close = None                              # นับเป็น "close ว่าง" ในเกณฑ์ข้อ 5
+            rows.append((d, sym, close))
+    cx = sqlite3.connect(":memory:")
+    cx.execute('CREATE TABLE "RawDaily" (date TEXT, symbol TEXT, close REAL)')
+    cx.executemany('INSERT INTO "RawDaily" (date, symbol, close) VALUES (?, ?, ?)', rows)
+    note = f" (ข้าม {bad_date} แถวที่วันที่/ชื่อหุ้นอ่านไม่ได้)" if bad_date else ""
+    print(f"อ่าน CSV {csv_path.name}: {len(rows):,} แถว{note}")
     return cx
 
 
@@ -124,8 +180,13 @@ def run_preflight(cx: sqlite3.Connection) -> list[dict]:
     return checks
 
 
-def main() -> int:
-    cx = open_db()
+def main(argv: list[str] | None = None) -> int:
+    ap = argparse.ArgumentParser(description="ตรวจข้อมูลก่อนใช้ LAB KIT (6 เกณฑ์)")
+    ap.add_argument("source", nargs="?", default=None,
+                    help="ไฟล์ CSV (date,symbol,close[,...]) หรือ SQLite (default: ../db/custom.db)")
+    args = ap.parse_args(argv)
+    src = Path(args.source) if args.source else None
+    cx = open_csv(src) if src is not None and src.suffix.lower() == ".csv" else open_db(src)
     if cx is None:
         return 2
     try:

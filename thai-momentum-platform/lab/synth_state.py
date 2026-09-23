@@ -20,7 +20,7 @@ Edge case 10 แบบ (ครอบทุกกฎ):
  10. regime_flip      — ตลาดพลิกเป็น risk_off        → wait (R2.0)
 
 ใช้งาน:
-  from synth_state import StateGenerator, synth_state, gen_normal, gen_edge
+  from synth_state import StateGenerator, synth_state, gen_normal, gen_edge, generate_batch
   python synth_state.py        # เดโม seed=42
 """
 
@@ -137,13 +137,15 @@ class StateGenerator:
             st["levels"]["support"] = round(close * 1.08, 3)
         elif kind == "wick_trap":       # S1 → wait (ไส้รวม 7.5% > 2×body 1%)
             st["levels"]["resistance"] = round(close * 0.995, 3)
-            st["atr14"] = round(close * 0.01, 4)   # fix atr กัน missed ยิงแย่งซีน
+            # fix atr กัน missed ยิงแย่งซีน: missed = close > res + 0.5×ATR → ATR 1.0% วางพอดีขอบ (res+0.5ATR = close)
+            # ปัดเศษตัดสินแทน (~50% กลายเป็น R3.2) → ใช้ 1.2% ให้เหลือระยะ 0.1% เหนือ close เสมอ
+            st["atr14"] = round(close * 0.012, 4)
             # body 0.01c, ไส้บน 0.025c + ไส้ล่าง 0.05c → wick 7.5% > 2×body ✓ แต่ close_pos 0.71 ✓
             st["bars"][-1] = {"o": round(close * 0.99, 3), "h": round(close * 1.025, 3),
                               "l": round(close * 0.94, 3), "c": st["close"], "v": 9e5}
         elif kind == "close_weak":       # S2 → wait (ทะลุแนวต้านแต่ปิดต่ำในแท่ง)
             st["levels"]["resistance"] = round(close * 0.995, 3)
-            st["atr14"] = round(close * 0.01, 4)
+            st["atr14"] = round(close * 0.012, 4)  # เหมือน wick_trap — ห่างขอบ missed (R3.2)
             # ไส้สะอาด (S1 ผ่าน) แต่ close_pos ≈ 0.29 < 2/3 → S2 ไม่ผ่านเฉพาะจุด
             st["bars"][-1] = {"o": round(close * 1.02, 3), "h": round(close * 1.025, 3),
                               "l": round(close * 0.99, 3), "c": st["close"], "v": 8e5}
@@ -224,6 +226,11 @@ def synth_state(seed: int | None = None, edge: str | None = None) -> dict:
 def gen_normal(seed: int | None = None) -> dict:
     """สุ่ม state ปกติ 1 ตัวอย่าง (มี verdict ฝังใน state แล้ว)"""
     return StateGenerator().gen_normal(seed)
+
+
+def generate_batch(n: int, seed: int = 42, edge_ratio: float = 0.30) -> list[dict]:
+    """ชุด n ตัวอย่างจาก seed เดียว (deterministic) — eval_harness.py ใช้ seed 123 / 789"""
+    return StateGenerator(seed).generate_batch(n, edge_ratio=edge_ratio, seed=seed)
 
 
 def gen_edge(kind: str, seed: int | None = None) -> dict:

@@ -23,8 +23,9 @@ export function useApi<T>(url: string | null) {
       setLoading(true)
       fetch(url)
         .then(async (r) => {
-          const j = await r.json()
-          if (!r.ok) throw new Error((j as { error?: string }).error || `HTTP ${r.status}`)
+          const j = await readJson(r)
+          if (!r.ok) throw new Error((j as { error?: string } | null)?.error || `HTTP ${r.status}`)
+          if (j === null) throw new Error(`รูปแบบข้อมูลไม่ถูกต้อง (HTTP ${r.status})`)
           return j as T
         })
         .then((j) => {
@@ -48,14 +49,24 @@ export function useApi<T>(url: string | null) {
   return { data, error, loading, refetch }
 }
 
+// body ที่ไม่ใช่ JSON (หน้า HTML ของ proxy/gateway timeout, body ว่าง) → null แทน SyntaxError ที่อ่านไม่รู้เรื่อง
+async function readJson(r: Response): Promise<unknown> {
+  try {
+    return await r.json()
+  } catch {
+    return null
+  }
+}
+
 export async function postJson<T>(url: string, body: unknown): Promise<T> {
   const r = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   })
-  const j = (await r.json()) as T & { error?: string }
-  if (!r.ok) throw new Error(j.error || `HTTP ${r.status}`)
+  const j = (await readJson(r)) as (T & { error?: string }) | null
+  if (!r.ok) throw new Error(j?.error || `HTTP ${r.status}`)
+  if (j === null) throw new Error(`รูปแบบข้อมูลไม่ถูกต้อง (HTTP ${r.status})`)
   return j as T
 }
 

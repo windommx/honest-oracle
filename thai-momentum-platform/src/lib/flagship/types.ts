@@ -98,7 +98,7 @@ export interface RankedSignal {
   evidenceDetail: string[]
 }
 
-/** สัญญาณที่ใกล้เข้าโผ (ผ่านโมเมนตัม/กลุ่มแล้ว แต่ Confluence ยังไม่ถึง 45) */
+/** สัญญาณที่ใกล้เข้าโผ = อยู่นอก 10 อันดับ: ผ่านครบแต่คะแนนไม่ถึง หรือกองเฝ้าดู (Confluence 30–44) — ดู reason */
 export interface NearMissSignal {
   symbol: string
   sector: string

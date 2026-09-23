@@ -15,7 +15,9 @@ export const dynamic = "force-dynamic"
 
 export async function POST(req: Request) {
   try {
-    const body = (await req.json().catch(() => ({}))) as GtaaSnapshotRequest
+    // body ต้องเป็นออบเจ็กต์ — JSON "null"/ตัวเลข/ข้อความ = ใช้ config default (ไม่ใช่ 500)
+    const raw = (await req.json().catch(() => null)) as unknown
+    const body = (raw && typeof raw === "object" ? raw : {}) as GtaaSnapshotRequest
     const cfg = sanitizeConfig(body.config)
     const { panel } = await loadPanel()
     const macro = computeMacroState(panel, cfg)

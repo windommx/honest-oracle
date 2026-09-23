@@ -44,7 +44,7 @@ export function evalW52High(piv: ThaiPivots): EngineEval {
   const rows = icAcross(piv, sig, [5, 10, 20, 40])
   const best = bestIc(rows)
   const ic = best?.ic ?? { meanIC: 0, ICIR: 0, t: 0, n: 0 }
-  const { verdict, why } = alphaVerdict(ic.meanIC, ic.ICIR, ic.t)
+  const { verdict, why } = alphaVerdict(ic.meanIC, ic.ICIR, ic.t, ic.n)
 
   // % ของหุ้นที่อยู่ใกล้ high (gamma ≥ 0.9) วันล่าสุด — เชิงเล่าเรื่อง regime
   const last = sig[sig.length - 1] ?? []

@@ -87,7 +87,9 @@ export async function stopsDataKey(): Promise<string> {
     db.trade.aggregate({ _max: { id: true } }),
     closePivot(),
   ])
-  return `${count}|${maxIdAgg._max.id ?? 0}|${pivot.dates[pivot.dates.length - 1] ?? ""}`
+  // exIdx/eiIdx ใน cache อ้าง index ของปฏิทิน pivot — backfill ย้อนหลัง/วันแทรกกลางทำให้ index เลื่อน
+  // จึงต้องผูกรูปร่างปฏิทิน (จำนวนวัน + วันแรก + วันสุดท้าย) ไว้ใน key ด้วย ไม่ใช่แค่วันสุดท้าย
+  return `${count}|${maxIdAgg._max.id ?? 0}|${pivot.dates.length}|${pivot.dates[0] ?? ""}|${pivot.dates[pivot.dates.length - 1] ?? ""}`
 }
 
 export async function loadClosedTrades(): Promise<{
@@ -105,8 +107,14 @@ export async function loadClosedTrades(): Promise<{
   for (const r of rows) {
     let path: { d: string; p: number }[] = []
     try {
-      const parsed = JSON.parse(r.pathJson) as { d: string; p: number }[]
-      if (Array.isArray(parsed)) path = parsed
+      const parsed: unknown = JSON.parse(r.pathJson)
+      // เก็บเฉพาะจุดที่รูปถูก ({d: string, p: number จำกัด}) — จุดเสีย (null/ชนิดผิด) ทำ R-method throw ทั้ง route
+      if (Array.isArray(parsed)) {
+        path = parsed.filter(
+          (x): x is { d: string; p: number } =>
+            !!x && typeof x === "object" && typeof x.d === "string" && typeof x.p === "number" && isFinite(x.p)
+        )
+      }
     } catch {
       path = []
     }
@@ -192,8 +200,8 @@ export async function getBucketPosteriors(bucket: StopBucket): Promise<BucketPos
     pooled,
     note,
     nTrades: selected.length,
-    postT: buildPosterior(bayes, { mode: "T" }),
-    postR: buildPosterior(bayes, { mode: "R" }),
+    postT: buildPosterior(bayes, { mode: "T", cost: COST_RT }),
+    postR: buildPosterior(bayes, { mode: "R", cost: COST_RT }),
   }
 }
 
@@ -215,14 +223,19 @@ interface ArmFull {
   sMap: Map<number, number> // refit index → s*
 }
 
-function simulateArm(arm: StopArm, trades: StopTradeRec[], N: number): ArmFull {
+export function simulateArm(
+  arm: StopArm,
+  trades: StopTradeRec[],
+  N: number,
+  dateIdx: Map<string, number>
+): ArmFull {
   // (1) walk-forward refit schedule — posterior สร้าง "จากอดีตเท่านั้น" (exit ≤ R − embargo)
   const sMap = new Map<number, number>()
   if (arm !== "fixed10") {
     for (let R = REFIT_START; R < N; R += REFIT_DAYS) {
       const usable = trades.filter((t) => t.exIdx !== null && t.exIdx <= R - EMBARGO_DAYS)
       const bayes = toBayes(usable, R)
-      const p = buildPosterior(bayes, { mode: arm === "bayesT" ? "T" : "R" })
+      const p = buildPosterior(bayes, { mode: arm === "bayesT" ? "T" : "R", cost: COST_RT })
       sMap.set(R, p.sOpt === null ? 0.1 : Math.min(p.sOpt, BASE_BACKSTOP))
     }
   }
@@ -246,13 +259,25 @@ function simulateArm(arm: StopArm, trades: StopTradeRec[], N: number): ArmFull {
     const ex = t.exIdx
     if (ei === null || ex === null || ex <= ei) continue
     const s = stopFor(ei)
-    // (3) เดิน path: ถ้า dd ≥ s ก่อนวันออกจริง → ถูก stop ที่ระดับ s
+    // (3) path ผูกกับ "วันที่" ของจุด (ไม่ใช่ตำแหน่งใน array): path บาง/มีรู (seed เก็บแค่วันเข้า+วันออก,
+    //     หุ้นหยุดพัก) ต้องไม่ถูกเลื่อนมาเป็นราคาของวันถัดจากวันเข้า (= มองอนาคต + ลงบัญชีผิดวัน)
+    const pAt = new Map<number, number>()
+    for (const pt of t.path) {
+      const j = pt && typeof pt.d === "string" ? dateIdx.get(pt.d) : undefined
+      if (j !== undefined && j > ei && j <= ex && isFinite(pt.p) && pt.p > 0) pAt.set(j, pt.p)
+    }
+    if (!pAt.has(ex)) {
+      // ไม่มีจุดวันออกใน path → ราคาวันออกจากผลเทรด (ret % หลังต้นทุน round-trip)
+      const pEnd = 1 + t.ret / 100 + COST_RT
+      if (isFinite(pEnd) && pEnd > 0) pAt.set(ex, pEnd)
+    }
+    // เดิน path: ถ้า dd ≥ s ณ วันที่มีราคาจริง (ไม่เกินวันออก) → ถูก stop ที่ระดับ s วันนั้น
     let stopped = false
     let stopIdx = ex
     for (let j = ei + 1; j <= ex; j++) {
-      const pt = t.path[j - ei]
-      if (!pt) break
-      if (Math.max(0, 1 - pt.p) >= s) {
+      const p = pAt.get(j)
+      if (p === undefined) continue
+      if (Math.max(0, 1 - p) >= s) {
         stopped = true
         stopIdx = j
         break
@@ -260,17 +285,17 @@ function simulateArm(arm: StopArm, trades: StopTradeRec[], N: number): ArmFull {
     }
     armTrades.push({ ret: stopped ? (-s - COST_RT) * 100 : t.ret, stopped, stopIdx, ei, ex, s })
 
-    // (4) daily accounting — slot เท่ากัน / maxPos, cost ต่อขา (entry + exit)
+    // (4) daily accounting — slot เท่ากัน / maxPos, cost ต่อขา (entry + exit) — ลงบัญชีวันที่ราคาเกิดจริง
     dayRet[ei] += -COST_LEG
-    const path = t.path
+    let pp = 1
     for (let j = ei + 1; j <= stopIdx; j++) {
-      const pj = path[j - ei]?.p
-      const pp = path[j - ei - 1]?.p ?? 1
-      if (!isFinite(pj) || !isFinite(pp) || pp <= 0) continue
+      const pj = pAt.get(j)
+      if (pj === undefined) continue
       let r = pj / pp - 1
       if (stopped && j === stopIdx) r = (1 - s) / pp - 1 - COST_LEG
       else if (!stopped && j === ex) r -= COST_LEG
       dayRet[j] += r
+      pp = pj
     }
   }
 
@@ -331,10 +356,10 @@ export interface ArmsResult {
 }
 
 export async function runStopArms(): Promise<ArmsResult> {
-  const { trades, dates } = await loadClosedTrades()
+  const { trades, dates, dateIdx } = await loadClosedTrades()
   const N = dates.length
   const usable = trades.filter((t) => t.eiIdx !== null && t.exIdx !== null && t.exIdx > t.eiIdx)
-  const simArms = ARMS.map((a) => simulateArm(a, usable, N))
+  const simArms = ARMS.map((a) => simulateArm(a, usable, N, dateIdx))
 
   // stopNow ของ bayes arm = s* จาก refit ล่าสุดที่มีข้อมูลพอ
   const latestStop: { bayesT: number | null; bayesR: number | null } = { bayesT: null, bayesR: null }
@@ -393,11 +418,15 @@ export async function persistClosedTrade(
   const xi = pivot.dateIdx.get(exitDate)
   const si = pivot.symIdx.get(pos.symbol)
   if (ei === undefined || xi === undefined || si === undefined || xi <= ei || pos.entryPx <= 0) return false
+  // ไม่มีราคาวันออก = คำนวณผลเทรดไม่ได้ → ไม่บันทึก
+  if (!isFinite(pivot.px[xi][si]) || pivot.px[xi][si] <= 0) return false
   const path: { d: string; p: number }[] = []
   let mae = 0
   for (let j = ei; j <= xi; j++) {
     const px = pivot.px[j][si]
-    if (!isFinite(px) || px <= 0) return false // ข้อมูลไม่ครบ — ไม่บันทึก (กัน path ปลอม)
+    // วันที่หุ้นไม่มีราคา (หยุดพัก/ไม่มีการซื้อขาย) → ข้ามวันนั้น ไม่เติมจุดปลอม — แต่ไม่ทิ้งทั้งเทรด
+    // (ทิ้งทั้งเทรดทำให้ posterior เห็นเฉพาะเทรดที่ข้อมูลครบ = survivorship bias)
+    if (!isFinite(px) || px <= 0) continue
     const p = px / pos.entryPx
     path.push({ d: pivot.dates[j], p: Math.round(p * 10000) / 10000 })
     mae = Math.max(mae, Math.max(0, 1 - p))
@@ -424,15 +453,39 @@ export async function persistClosedTrade(
 }
 
 // ---------- ตำแหน่งเปิดวันนี้ ----------
-export async function evaluateStopPositions(post: Posterior): Promise<StopPositionRow[]> {
+export interface StopPositionsEval {
+  rows: StopPositionRow[]
+  stale: string[] // "SYM (YYYY-MM-DD)" — ใช้ราคาปิดล่าสุดที่มีจริง ซึ่งเก่ากว่าวันล่าสุดของระบบ (หยุดพัก/หยุดซื้อขาย)
+  noPrice: string[] // หุ้นที่ไม่มีราคาเลยในระบบ — ประเมินบน curve ไม่ได้
+}
+
+export async function evaluateStopPositions(post: Posterior): Promise<StopPositionsEval> {
   const [positions, pivot] = await Promise.all([db.position.findMany(), closePivot()])
   const pi = pivot.dates.length - 1
   const backstop = liveBackstop(post)
   const rows: StopPositionRow[] = []
+  const stale: string[] = []
+  const noPrice: string[] = []
   for (const p of positions) {
+    if (!(p.entryPx > 0)) continue
     const si = pivot.symIdx.get(p.symbol)
-    const lastPx = si === undefined || pi < 0 ? NaN : pivot.px[pi][si]
-    if (!isFinite(lastPx) || p.entryPx <= 0) continue
+    // ราคาปิดล่าสุดที่มีจริง (≤ วันล่าสุดของระบบ) — หุ้นที่หยุดพัก/หยุดซื้อขายต้องไม่หายไปจากตาราง
+    let li = -1
+    if (si !== undefined) {
+      for (let i = pi; i >= 0; i--) {
+        const v = pivot.px[i][si]
+        if (isFinite(v) && v > 0) {
+          li = i
+          break
+        }
+      }
+    }
+    if (si === undefined || li < 0) {
+      noPrice.push(p.symbol)
+      continue
+    }
+    const lastPx = pivot.px[li][si]
+    if (li < pi) stale.push(`${p.symbol} (${pivot.dates[li]})`)
     const dNow = Math.max(0, 1 - lastPx / p.entryPx)
     const lv = liveExit(post, dNow)
     rows.push({
@@ -451,5 +504,5 @@ export async function evaluateStopPositions(post: Posterior): Promise<StopPositi
     })
   }
   rows.sort((a, b) => b.dNow - a.dNow)
-  return rows
+  return { rows, stale, noPrice }
 }

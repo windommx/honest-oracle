@@ -31,6 +31,9 @@ export async function PUT(req: Request) {
     } catch {
       return NextResponse.json({ error: "body ต้องเป็น JSON" }, { status: 400 })
     }
+    if (!body || typeof body !== "object" || Array.isArray(body)) {
+      return NextResponse.json({ error: "body ต้องเป็น JSON object" }, { status: 400 })
+    }
 
     const patch: Record<string, unknown> = {}
     if (body.tfWeights !== undefined) patch.tfWeights = body.tfWeights
@@ -43,7 +46,8 @@ export async function PUT(req: Request) {
         { status: 400 }
       )
     }
-    const note = typeof body.note === "string" ? body.note : undefined
+    // note ถูกเก็บลง history ใน config (ส่งกลับทุก GET) — จำกัดความยาวกัน payload บวม
+    const note = typeof body.note === "string" ? body.note.slice(0, 500) : undefined
 
     const config: ThaiConfig = await saveConfigTh(patch, "human", note)
     return NextResponse.json({ ok: true, config })

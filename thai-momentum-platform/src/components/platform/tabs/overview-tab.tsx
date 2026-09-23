@@ -132,6 +132,7 @@ import {
   saveUserPreset,
   type DashboardPreset,
 } from "@/lib/platform/dashboard-presets"
+import { resolveGtaaCountdown, weeklyDdRatio } from "@/lib/platform/command-center"
 import OptionsCenter from "../options-center"
 
 const TOOLTIP_STYLE = {
@@ -239,13 +240,6 @@ function decisionMonthLabel(): string {
     month: "long",
     year: "numeric",
   }).format(new Date())
-}
-
-/** วันสุดท้ายของเดือน "YYYY-MM" (ปฏิทิน) — ใช้กับ nextDecisionMonth ของเอนจิน GTAA */
-function lastDayOfMonth(ym: string): string {
-  const [y, m] = ym.split("-").map(Number)
-  if (!y || !m) return ym
-  return new Date(Date.UTC(y, m, 0)).toISOString().slice(0, 10)
 }
 
 function thDate(iso: string): string {
@@ -432,14 +426,19 @@ function BreadthHeatmap({ market, window: win }: { market: SignalsResponse["mark
         {rows.map((d) => (
           <Fragment key={d.date}>
             <div className="bg-card px-2 py-0.5 font-mono text-[10px] text-muted-foreground">{d.date.slice(5)}</div>
-            {[d.b20, d.b50, d.b200, 0.5 + d.thrust * 4].map((v, i) => (
-              <div
-                key={i}
-                title={v.toFixed(2)}
-                className={`h-4 ${v > 0.5 ? "bg-neon-green" : "bg-neon-rose"}`}
-                style={{ opacity: 0.12 + 0.88 * Math.min(1, Math.abs(v - 0.5) * 2) }}
-              />
-            ))}
+            {[d.b20, d.b50, d.b200, d.thrust == null ? null : 0.5 + d.thrust * 4].map((v, i) =>
+              // ค่าที่คำนวณไม่ได้ (null/NaN เช่นประวัติยังไม่ถึงหน้าต่าง MA) = ช่องเทา ไม่ใช่ toFixed บน null
+              v != null && Number.isFinite(v) ? (
+                <div
+                  key={i}
+                  title={v.toFixed(2)}
+                  className={`h-4 ${v > 0.5 ? "bg-neon-green" : "bg-neon-rose"}`}
+                  style={{ opacity: 0.12 + 0.88 * Math.min(1, Math.abs(v - 0.5) * 2) }}
+                />
+              ) : (
+                <div key={i} title="ยังคำนวณไม่ได้" className="h-4 bg-foreground/[0.06]" />
+              ),
+            )}
           </Fragment>
         ))}
       </div>
@@ -483,7 +482,14 @@ function SignalRowLine({ s }: { s: SignalRow }) {
           "w-11 shrink-0 text-right font-mono text-[10px]",
           s.trendPass ? "text-neon-green" : "text-neon-rose",
         )}
-        title={s.trendPass ? `ยืนเหนือ SMA ${s.sma.toFixed(2)}` : `หลุด SMA ${s.sma.toFixed(2)}`}
+        title={
+          // sma ของเอนจินเป็น NaN (→ null ใน JSON) เมื่อประวัติไม่ถึง smaMonths เดือน
+          s.sma != null && Number.isFinite(s.sma)
+            ? s.trendPass
+              ? `ยืนเหนือ SMA ${s.sma.toFixed(2)}`
+              : `หลุด SMA ${s.sma.toFixed(2)}`
+            : "ประวัติราคาไม่พอคำนวณ SMA"
+        }
       >
         {s.trendPass ? "PASS" : "FAIL"}
       </span>
@@ -498,13 +504,19 @@ function GtaaModuleBody({
   nextDate,
   view,
   onGoTo,
+  offline,
+  countdownSource,
 }: {
   gtaa: GtaaOverview | null
   brief: GtaaBrief | null
   daysLeft: number | null
   nextDate: string | null
+  /** engine = ปิดเดือน nextDecisionMonth ของเอนจิน · calendar = สิ้นเดือนตามปฏิทิน (เอนจินยังไม่โหลด/ข้อมูลค้าง) */
+  countdownSource?: "engine" | "calendar" | null
   view: "top6" | "all"
   onGoTo: (tab: string) => void
+  /** /api/gtaa/overview ล่ม — ส่วนที่ต้องใช้ข้อมูลเอนจินเต็มโชว์ออฟไลน์ (brief จาก /api/overview ยังแสดงได้) */
+  offline?: boolean
 }) {
   if (gtaa == null && brief == null) {
     return <EmptyNote minH={120}>โมดูล GTAA ไม่พร้อม — เปิดแท็บ GTAA ตรวจสอบแหล่งข้อมูล</EmptyNote>
@@ -564,7 +576,11 @@ function GtaaModuleBody({
           </span>
         </div>
         {shown.length === 0 ? (
-          <EmptyNote minH={90}>ยังไม่มีตารางสัญญาณ — รอโมดูล GTAA โหลด</EmptyNote>
+          <EmptyNote minH={90}>
+            {gtaa == null && offline
+              ? "ดึงตารางสัญญาณ GTAA ไม่สำเร็จ — เปิดแท็บ GTAA ตรวจสอบ"
+              : "ยังไม่มีตารางสัญญาณ — รอโมดูล GTAA โหลด"}
+          </EmptyNote>
         ) : (
           <div className="max-h-64 space-y-1 overflow-y-auto pr-1">
             {shown.map((s) => (
@@ -580,7 +596,13 @@ function GtaaModuleBody({
         <MiniStat
           label="รอบตัดสินใจ (ปิดเดือนถัดไป)"
           value={daysLeft != null ? `${daysLeft} วัน` : "—"}
-          sub={nextDate ? `ปิดรอบ ${nextDate} · ใช้ผลตั้งแต่ต้น ${macro?.nextAppliesMonth ?? "เดือนถัดไป"}` : `ใช้ผลตั้งแต่ต้น ${macro?.nextAppliesMonth ?? "เดือนถัดไป"}`}
+          sub={
+            nextDate && countdownSource === "calendar"
+              ? `ปิดรอบ ${nextDate} · สิ้นเดือนตามปฏิทิน${macro ? ` (ข้อมูล GTAA ถึง ${macro.asOfMonth} — ค้าง)` : ""}`
+              : nextDate
+                ? `ปิดรอบ ${nextDate} · ใช้ผลตั้งแต่ต้น ${macro?.nextAppliesMonth ?? "เดือนถัดไป"}`
+                : `ใช้ผลตั้งแต่ต้น ${macro?.nextAppliesMonth ?? "เดือนถัดไป"}`
+          }
           tone={daysLeft != null && daysLeft <= 3 ? "amber" : "cyan"}
         />
         <Meter
@@ -599,7 +621,9 @@ function GtaaModuleBody({
               ))}
             </ul>
           ) : (
-            <p className="text-[11px] text-muted-foreground">กำลังโหลด readiness…</p>
+            <p className="text-[11px] text-muted-foreground">
+              {offline ? "ออฟไลน์ — ดึง readiness ไม่สำเร็จ" : "กำลังโหลด readiness…"}
+            </p>
           )}
         </div>
         <Button variant="ghost" size="sm" className="h-11 sm:h-8" onClick={() => onGoTo("gtaa")}>
@@ -627,8 +651,17 @@ interface EvidenceBrief {
   runs: { id: number; createdAt: string; verdict: string }[]
 }
 
-function EvidenceModuleBody({ ev, view }: { ev: EvidenceBrief | null; view: "runs" | "buckets" }) {
+function EvidenceModuleBody({
+  ev,
+  view,
+  error,
+}: {
+  ev: EvidenceBrief | null
+  view: "runs" | "buckets"
+  error?: string | null
+}) {
   if (ev == null) {
+    if (error) return <EmptyNote minH={140}>ดึง evidence pipeline ไม่สำเร็จ — {error}</EmptyNote>
     return <EmptyNote minH={140}>กำลังโหลด evidence pipeline… (โหลดตามหลังเพื่อไม่ให้หน้าหลักช้า)</EmptyNote>
   }
   const latest = ev.runs[0] ?? null
@@ -746,9 +779,15 @@ function EvidenceModuleBody({ ev, view }: { ev: EvidenceBrief | null; view: "run
 // M7 Shadow Lab — body
 // =====================================================================
 
+// ผลตอบแทนตลาดจาก briefing ของ Sniper (ทศนิยม) — null = วัดไม่ได้ (DB ว่าง/ข้อมูลไม่พอ) → "—" ไม่ใช่ 0.0% ปลอม
+function fmtMktPct(v: number | null | undefined): string {
+  return v != null && Number.isFinite(v) ? `${(v * 100).toFixed(1)}%` : "—"
+}
+
 interface LabBrief {
   stats: { total: number; wouldExecute: number; agreementRate: number | null }
   brier: number | null
+  brierN?: number | null // จำนวนแถวที่มี outcome — Brier ตัดสินได้เมื่อ ≥ 10 (เกณฑ์เดียวกับ G3 / แท็บ Shadow Lab)
   expectancy: number | null
   executedN: number
   pnl: { date: string; cumR: number }[]
@@ -756,8 +795,17 @@ interface LabBrief {
   weekly: { n: number; gutRulePct: number | null; labelRulePct: number | null; labelNimblePct: number | null }
 }
 
-function LabModuleBody({ lab, view }: { lab: LabBrief | null; view: "stats" | "gates" }) {
+function LabModuleBody({
+  lab,
+  view,
+  error,
+}: {
+  lab: LabBrief | null
+  view: "stats" | "gates"
+  error?: string | null
+}) {
   if (lab == null) {
+    if (error) return <EmptyNote minH={140}>ดึง Shadow Lab ไม่สำเร็จ — {error}</EmptyNote>
     return <EmptyNote minH={140}>กำลังโหลด Shadow Lab… (โหลดตามหลัง — งาน DB หนัก)</EmptyNote>
   }
   const spark = lab.pnl.slice(-90).map((p, i) => ({ i, cumR: Math.round(p.cumR * 1000) / 1000 }))
@@ -780,7 +828,11 @@ function LabModuleBody({ lab, view }: { lab: LabBrief | null; view: "stats" | "g
           sub="rule ≡ Nimble"
           tone={(lab.stats.agreementRate ?? 0) >= 0.7 ? "green" : "amber"}
         />
-        <MiniStat label="Brier" value={lab.brier != null ? lab.brier.toFixed(3) : "—"} sub="ยิ่งต่ำยิ่งดี" />
+        <MiniStat
+          label="Brier"
+          value={lab.brier != null && (lab.brierN == null || lab.brierN >= 10) ? lab.brier.toFixed(3) : "—"}
+          sub={lab.brier != null && lab.brierN != null && lab.brierN < 10 ? `n=${lab.brierN} (<10) ยังน้อยเกินตัดสิน` : "ยิ่งต่ำยิ่งดี"}
+        />
         <MiniStat
           label="expectancy"
           value={lab.expectancy != null ? `${lab.expectancy >= 0 ? "+" : ""}${lab.expectancy.toFixed(2)}R` : "—"}
@@ -868,6 +920,8 @@ function RiskModuleBody({
   riskScore,
   posture,
   onGoTo,
+  breakerError,
+  riskError,
 }: {
   breaker: { level: number; label: string } | null
   volPct: number | null // 0..1 percentile
@@ -876,9 +930,14 @@ function RiskModuleBody({
   riskScore: number
   posture: Posture
   onGoTo: (tab: string) => void
+  /** /api/sniper ล่ม (breaker มาไม่ได้) — โชว์ออฟไลน์แทน "กำลังโหลด…" ค้าง */
+  breakerError?: boolean
+  /** /api/portfolio ล่ม */
+  riskError?: boolean
 }) {
   const volTone: Tone = volPct == null ? "neutral" : volPct <= 0.4 ? "green" : volPct <= 0.7 ? "amber" : "rose"
-  const ddRatio = risk && risk.maxWeeklyDD > 0 && risk.weeklyDD != null ? Math.min(1, Math.abs(risk.weeklyDD) / risk.maxWeeklyDD) : 0
+  // maxWeeklyDD ของ API ติดลบ (-0.05) — นับเฉพาะสัปดาห์ที่ขาดทุน เทียบขนาดเพดาน (ratio ≥ 1 ⇔ kill switch)
+  const ddRatio = weeklyDdRatio(risk?.weeklyDD, risk?.maxWeeklyDD)
   const ddTone: Tone = ddRatio >= 1 ? "rose" : ddRatio >= 0.6 ? "amber" : "green"
   return (
     <div className="space-y-3.5">
@@ -925,7 +984,7 @@ function RiskModuleBody({
               <Meter value={breaker.level / 3} tone={breaker.level === 0 ? "green" : breaker.level === 1 ? "amber" : "rose"} />
             </>
           ) : (
-            <p className="text-xs text-muted-foreground">กำลังโหลด…</p>
+            <p className="text-xs text-muted-foreground">{breakerError ? "ออฟไลน์ — ดึง SET Sniper ไม่สำเร็จ" : "กำลังโหลด…"}</p>
           )}
         </div>
         <div className="min-w-0 space-y-1">
@@ -969,7 +1028,7 @@ function RiskModuleBody({
               {risk.killSwitch ? "🔴 ทริกเกอร์" : "🟢 ปกติ"}
             </Badge>
           ) : (
-            <p className="text-xs text-muted-foreground">กำลังโหลด…</p>
+            <p className="text-xs text-muted-foreground">{riskError ? "ออฟไลน์ — ดึงพอร์ตไม่สำเร็จ" : "กำลังโหลด…"}</p>
           )}
           <p className="text-[10px] text-muted-foreground">เพดานสัปดาห์ถูกแตะ = หยุดเข้าไม้ใหม่</p>
         </div>
@@ -993,6 +1052,7 @@ function OpsModuleBody({
   onGoTo,
   onRefresh,
   refreshing,
+  error,
 }: {
   pulse: OpsPulseResponse | null
   /** ค่าจากเอนจิน GTAA (nextDecisionMonth) เมื่อโหลดแล้ว — fallback เป็นปฏิทินสิ้นเดือนจาก pulse */
@@ -1001,8 +1061,22 @@ function OpsModuleBody({
   onGoTo: (tab: string) => void
   onRefresh: () => void
   refreshing?: boolean
+  /** ข้อความ error ของ /api/ops/pulse — มีค่า + ไม่มีข้อมูล = โชว์ออฟไลน์ (ไม่ค้าง "กำลังโหลด" ตลอดไป) */
+  error?: string | null
 }) {
   if (pulse == null) {
+    if (error) {
+      return (
+        <EmptyNote minH={120}>
+          <span className="flex flex-col items-center gap-2">
+            <span>ดึง operations pulse ไม่สำเร็จ — {error}</span>
+            <Button variant="outline" size="sm" className="h-11 gap-1.5 sm:h-8" onClick={onRefresh} disabled={refreshing}>
+              <RefreshCw className={cn("size-3.5", refreshing && "animate-spin")} aria-hidden /> ลองใหม่
+            </Button>
+          </span>
+        </EmptyNote>
+      )
+    }
     return <EmptyNote minH={120}>กำลังโหลด operations pulse…</EmptyNote>
   }
   const done = pulse.doneCount
@@ -1148,8 +1222,10 @@ export default function OverviewTab({ onGoTo }: { onGoTo: (tab: string) => void 
     })
     return idx
   }, [prefs.order])
+  /** โฟกัสที่มีผลจริง — โมดูลที่โฟกัสอยู่ถูกซ่อน (เช่นปิดจาก Options Center/พรีเซ็ต) = เลิกโฟกัส ไม่ทิ้งกระดานว่าง */
+  const activeFocus: FeatureId | null = focusId !== null && prefs.modules[focusId] ? focusId : null
   /** โมดูลแสดงไหม = ไม่ถูกซ่อน และ (ไม่ได้โฟกัสอยู่ หรือเป็นโมดูลที่ถูกโฟกัส) */
-  const show = (id: FeatureId) => prefs.modules[id] && (focusId === null || focusId === id)
+  const show = (id: FeatureId) => prefs.modules[id] && (activeFocus === null || activeFocus === id)
   /** props มาตรฐาน super options ของทุกโมดูล — โฟกัส/ซ่อน/โหมดอ่าน/ลำดับ */
   const modFocus = (id: FeatureId) => ({
     onFocus: () => setFocusId(id),
@@ -1266,6 +1342,9 @@ export default function OverviewTab({ onGoTo }: { onGoTo: (tab: string) => void 
   )
 
   // ---------- derived ----------
+  // API ล่มและไม่มีข้อมูลเก่าค้าง = บอกว่าดึงไม่สำเร็จ (ไม่ใช่ "ยังไม่มีข้อมูล" ที่ชวนเข้าใจผิด)
+  const sigFail = !sig.data && sig.error ? `ดึงสัญญาณไม่สำเร็จ — ${sig.error}` : null
+  const decFail = !dec.data && dec.error ? `ดึงการตัดสินใจของ Jev ไม่สำเร็จ — ${dec.error}` : null
   const last = sig.data?.market[sig.data.market.length - 1] ?? null
   const breaker = sniper.data?.breaker ?? null
   const { posture, score } = computePosture(sig.data?.label, ov.data?.gtaa ?? null, breaker ? breaker.level : null)
@@ -1297,11 +1376,15 @@ export default function OverviewTab({ onGoTo }: { onGoTo: (tab: string) => void 
 
   // นับถอยหลังรอบตัดสินใจ GTAA — ใช้ nextDecisionMonth ของเอนจินเป็นความจริง
   // (เอนจินตัดสินใจเดือนปัจจุบันจากข้อมูลถึงเดือนก่อนหน้าแล้ว → รอบถัดไปคือปิดเดือนถัดไป)
-  // ยังโหลดไม่เสร็จ = ใช้ปฏิทินสิ้นเดือนจาก pulse เป็นค่าประมาณ (แสดงเหตุผลตรง ๆ)
-  const gtaaNextMonth = gtaaOv.data?.macro?.nextDecisionMonth ?? null
-  const gtaaNextDate = gtaaNextMonth ? lastDayOfMonth(gtaaNextMonth) : (pulse.data?.nextRebalance.date ?? null)
-  const gtaaDaysLeft =
-    gtaaNextMonth && today ? daysBetween(today, lastDayOfMonth(gtaaNextMonth)) : (pulse.data?.nextRebalance.daysLeft ?? null)
+  // ยังโหลดไม่เสร็จ หรือวันปิดรอบของเอนจินผ่านไปแล้ว (panel GTAA ค้าง) = ใช้ปฏิทินสิ้นเดือนจาก pulse — ไม่นับติดลบ
+  // วันนี้ = วันที่ ICT ของ pulse (รีเฟรชตาม autoRefresh) ก่อน แล้วจึงใช้ค่าที่อ่านตอน mount
+  const gtaaCountdown = resolveGtaaCountdown(
+    pulse.data?.today ?? today,
+    gtaaOv.data?.macro?.nextDecisionMonth,
+    pulse.data?.nextRebalance,
+  )
+  const gtaaNextDate = gtaaCountdown.date
+  const gtaaDaysLeft = gtaaCountdown.daysLeft
 
   // lab brief normalize (จาก /api/lab/dashboard — shape ตรงตาม route)
   const labBrief = useMemo<LabBrief | null>(() => {
@@ -1314,6 +1397,7 @@ export default function OverviewTab({ onGoTo }: { onGoTo: (tab: string) => void 
         agreementRate: d.stats?.agreementRate ?? null,
       },
       brier: d.brier ?? null,
+      brierN: d.brierN ?? null,
       expectancy: d.expectancy ?? null,
       executedN: d.executedN ?? 0,
       pnl: (d.pnl ?? []).map((p) => ({ date: p.date, cumR: p.cumR })),
@@ -1349,7 +1433,7 @@ export default function OverviewTab({ onGoTo }: { onGoTo: (tab: string) => void 
       badge: breakerBadge(breaker ? breaker.level : null, breaker?.label),
       note:
         breaker != null
-          ? `${breaker.label} · ตลาด 1 วัน ${(breaker.metrics.mkt1d * 100).toFixed(1)}% · 5 วัน ${(breaker.metrics.mkt5d * 100).toFixed(1)}%`
+          ? `${breaker.label} · ตลาด 1 วัน ${fmtMktPct(sniper.data?.briefing.mkt.ret1d)} · 5 วัน ${fmtMktPct(sniper.data?.briefing.mkt.ret5d)}`
           : deferred.sniper === null
             ? "โหลดตามหลัง (งานคำนวณหนัก)"
             : sniper.error
@@ -1542,7 +1626,7 @@ export default function OverviewTab({ onGoTo }: { onGoTo: (tab: string) => void 
         <span className="h-px w-6 bg-neon-cyan/40" aria-hidden />
         <span className="min-w-0 truncate text-xs text-muted-foreground">
           {visibleCount}/{FEATURE_IDS.length} โมดูล{hiddenCount > 0 ? ` · ซ่อน ${hiddenCount}` : ""}
-          {focusId ? ` · โฟกัส: ${FEATURE_LABELS[focusId]}` : ""}
+          {activeFocus ? ` · โฟกัส: ${FEATURE_LABELS[activeFocus]}` : ""}
         </span>
         <span className="hidden font-mono text-[10px] tracking-wide text-muted-foreground/70 xl:inline" aria-hidden>
           O ตัวเลือก · R รีเฟรช · D กระชับ · L เลย์เอาต์ · X โหมดอ่าน
@@ -1673,10 +1757,10 @@ export default function OverviewTab({ onGoTo }: { onGoTo: (tab: string) => void 
       ) : null}
 
       {/* ---- แถบโฟกัสโมดูลเดี่ยว (ออกด้วย Esc หรือปุ่ม) ---- */}
-      {focusId ? (
+      {activeFocus ? (
         <div className="flex min-w-0 flex-wrap items-center gap-2 rounded-lg border border-neon-cyan/30 bg-neon-cyan/[0.05] px-3 py-2">
           <Maximize2 className="size-3.5 shrink-0 text-neon-cyan" aria-hidden />
-          <span className="min-w-0 truncate text-xs font-semibold">โหมดโฟกัส — {FEATURE_LABELS[focusId]}</span>
+          <span className="min-w-0 truncate text-xs font-semibold">โหมดโฟกัส — {FEATURE_LABELS[activeFocus]}</span>
           <span className="hidden font-mono text-[10px] text-muted-foreground sm:inline">โมดูลเดียว · Esc ออก</span>
           <Button variant="outline" size="sm" className="ml-auto h-9 gap-1.5 sm:h-7" onClick={() => setFocusId(null)}>
             <Minimize2 className="size-3.5" aria-hidden />
@@ -1707,7 +1791,7 @@ export default function OverviewTab({ onGoTo }: { onGoTo: (tab: string) => void 
           hue="cyan"
           dense={dense}
           desc="รวม 3 ประตูตัดสินเป็นโหมดเดียวที่อ่านจบในพริบตา — เกณฑ์ลงทะเบียนล่วงหน้าทั้งหมด"
-          className={cn(dual && "xl:col-span-2", posture ? POSTURE_META[posture].accent.replace("border-l-", "border-l-2 ") : "")}
+          className={cn(dual && "xl:col-span-2", posture && ["border-l-2", POSTURE_META[posture].accent])}
         >
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1.15fr_1fr_1fr]">
             {/* A — คำวินิจฉัย */}
@@ -1829,7 +1913,15 @@ export default function OverviewTab({ onGoTo }: { onGoTo: (tab: string) => void 
                   {last ? <span className="font-mono">{last.regimeScore.toFixed(2)}</span> : null}
                 </span>
               }
-              sub={last ? `gross ×${last.grossMult.toFixed(2)} · ${sig.data?.latest ?? ""}` : "โหลดสัญญาณ…"}
+              sub={
+                last
+                  ? `gross ×${last.grossMult.toFixed(2)} · ${sig.data?.latest ?? ""}`
+                  : sigFail
+                    ? "ดึงสัญญาณไม่สำเร็จ"
+                    : sig.data
+                      ? "ยังไม่มีข้อมูลสัญญาณ"
+                      : "โหลดสัญญาณ…"
+              }
               target="signals"
               onGoTo={onGoTo}
             />
@@ -1995,7 +2087,7 @@ export default function OverviewTab({ onGoTo }: { onGoTo: (tab: string) => void 
               {sig.loading && !sig.data ? (
                 <Skeleton className="w-full" style={{ height: chartH }} />
               ) : regimeData.length === 0 ? (
-                <EmptyNote minH={chartH}>ยังไม่มีข้อมูลสัญญาณ</EmptyNote>
+                <EmptyNote minH={chartH}>{sigFail ?? "ยังไม่มีข้อมูลสัญญาณ"}</EmptyNote>
               ) : (
                 <ResponsiveContainer width="100%" height={chartH}>
                   <ComposedChart data={regimeData} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
@@ -2089,7 +2181,7 @@ export default function OverviewTab({ onGoTo }: { onGoTo: (tab: string) => void 
               {sig.loading && !sig.data ? (
                 <Skeleton className="h-[240px] w-full" />
               ) : (sig.data?.market.length ?? 0) === 0 ? (
-                <EmptyNote minH={240}>ยังไม่มีข้อมูล</EmptyNote>
+                <EmptyNote minH={240}>{sigFail ?? "ยังไม่มีข้อมูล"}</EmptyNote>
               ) : (
                 <BreadthHeatmap market={sig.data!.market} window={Number(breadthWin)} />
               )}
@@ -2147,6 +2239,8 @@ export default function OverviewTab({ onGoTo }: { onGoTo: (tab: string) => void 
             nextDate={gtaaNextDate}
             view={gtaaView}
             onGoTo={onGoTo}
+            offline={!gtaaOv.data && !!gtaaOv.error}
+            countdownSource={gtaaCountdown.source}
           />
         </FeatureModule>
       ) : null}
@@ -2192,7 +2286,7 @@ export default function OverviewTab({ onGoTo }: { onGoTo: (tab: string) => void 
                 </OptionsBar>
               }
             >
-              <EvidenceModuleBody ev={evid.data} view={evidView} />
+              <EvidenceModuleBody ev={evid.data} view={evidView} error={evid.error} />
             </FeatureModule>
           ) : null}
 
@@ -2229,7 +2323,7 @@ export default function OverviewTab({ onGoTo }: { onGoTo: (tab: string) => void 
                 </OptionsBar>
               }
             >
-              <LabModuleBody lab={labBrief} view={labView} />
+              <LabModuleBody lab={labBrief} view={labView} error={lab.error} />
             </FeatureModule>
           ) : null}
         </div>
@@ -2268,6 +2362,8 @@ export default function OverviewTab({ onGoTo }: { onGoTo: (tab: string) => void 
                 riskScore={score}
                 posture={posture}
                 onGoTo={onGoTo}
+                breakerError={!sniper.data && !!sniper.error}
+                riskError={!port.data && !!port.error}
               />
             </FeatureModule>
           ) : null}
@@ -2287,7 +2383,9 @@ export default function OverviewTab({ onGoTo }: { onGoTo: (tab: string) => void 
                       kind: pulse.data.doneCount === pulse.data.checklist.length ? "ready" : "warn",
                       text: `${pulse.data.doneCount}/${pulse.data.checklist.length}`,
                     }
-                  : { kind: "loading", text: "…" }
+                  : pulse.error
+                    ? { kind: "offline", text: "ออฟไลน์" }
+                    : { kind: "loading", text: "…" }
               }
             >
               <OpsModuleBody
@@ -2297,6 +2395,7 @@ export default function OverviewTab({ onGoTo }: { onGoTo: (tab: string) => void 
                 onGoTo={onGoTo}
                 onRefresh={pulse.refetch}
                 refreshing={pulse.loading}
+                error={pulse.error}
               />
             </FeatureModule>
           ) : null}
@@ -2342,7 +2441,7 @@ export default function OverviewTab({ onGoTo }: { onGoTo: (tab: string) => void 
               {sig.loading && !sig.data ? (
                 <Skeleton className="h-64 w-full" />
               ) : topStocks.arr.length === 0 ? (
-                <EmptyNote minH={120}>ยังไม่มีข้อมูล</EmptyNote>
+                <EmptyNote minH={120}>{sigFail ?? "ยังไม่มีข้อมูล"}</EmptyNote>
               ) : (
                 <div className="space-y-2">
                   {topStocks.arr.map((s, i) => (
@@ -2406,7 +2505,7 @@ export default function OverviewTab({ onGoTo }: { onGoTo: (tab: string) => void 
                   ))}
                 </div>
               ) : recentDecisions.length === 0 ? (
-                <EmptyNote minH={90}>ยังไม่มีการตัดสินใจ — กดรัน Jev</EmptyNote>
+                <EmptyNote minH={90}>{decFail ?? "ยังไม่มีการตัดสินใจ — กดรัน Jev"}</EmptyNote>
               ) : (
                 <div className="max-h-80 space-y-2 overflow-y-auto pr-1">
                   {recentDecisions.map((d) => {

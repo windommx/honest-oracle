@@ -3,12 +3,26 @@
 // เดือนล่าสุดตรงกันทุกตัว
 
 import { GTAA_UNIVERSE } from "./defaults"
+import { monthDiff } from "./macro"
 import type { GtaaPanel, QualityIssue, QualityReport } from "./types"
 
 export function checkQuality(panel: GtaaPanel): QualityReport {
   const issues: QualityIssue[] = []
   const T = panel.dates.length
   const lastMonth = panel.dates[T - 1] ?? "—"
+
+  // กริดเดือนต้องต่อเนื่อง ("YYYY-MM" เรียงขึ้น ห่างกัน 1 เดือนพอดี) — เดือนที่หายทั้งแถวคือรูของทุกตัว
+  // (engine ถือว่าช่องถัดไป = เดือนถัดไป: SMA/ผลตอบแทนจะคร่อมหลายเดือนโดยไม่รู้ตัว)
+  for (let i = 1; i < T; i++) {
+    const gap = monthDiff(panel.dates[i - 1], panel.dates[i])
+    if (gap !== 1) {
+      issues.push({
+        ticker: "ทุกตัว",
+        type: "hole",
+        detail: `กริดเดือนไม่ต่อเนื่อง ${panel.dates[i - 1]} → ${panel.dates[i]}${gap > 1 ? ` (หาย ${gap - 1} เดือน)` : ""}`,
+      })
+    }
+  }
 
   for (const asset of [...GTAA_UNIVERSE, { ticker: "SPY" }, { ticker: "BIL" }]) {
     const series = panel.closes[asset.ticker]

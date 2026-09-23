@@ -155,21 +155,25 @@ export async function fetchRealPanel(): Promise<FetchOutcome> {
       tickersFail.push({ ticker, detail: `yahoo: ${e instanceof Error ? e.message : String(e)}` })
     }
   }
+  // เหตุผลจริงจากแต่ละตัว (เช่น HTTP 403 / 429 / timeout) — ไม่เดาว่าเป็น rate limit
+  const yahooReasons = [...new Set(tickersFail.map((f) => f.detail.replace(/^yahoo: /, "")))].slice(0, 3).join(" · ")
   attempts.push({
     source: "yahoo",
     detail:
       yahooBlocked === tickers.length
-        ? "โดนบล็อกทั้งหมด (HTTP 429/rate limit จาก IP นี้)"
+        ? `ดึงไม่ได้ทั้งหมด (${yahooReasons})`
         : `ได้ ${tickers.length - yahooBlocked}/${tickers.length} ตัว`,
   })
 
   // Stooq เฉพาะตัวที่ยังขาด (ถ้า Yahoo ตายหมด = ทุกตัว)
+  const fromStooq: string[] = []
   if (yahooBlocked > 0) {
     const cookie = await stooqCookie("https://stooq.com/q/?s=spy.us")
     if (cookie) {
       for (const ticker of tickers.filter((t) => !data.has(t))) {
         try {
           data.set(ticker, await fetchStooqMonthly(ticker, cookie))
+          fromStooq.push(ticker)
           tickersFail.splice(tickersFail.findIndex((f) => f.ticker === ticker), 1)
         } catch (e) {
           const msg = e instanceof Error ? e.message : String(e)
@@ -207,16 +211,21 @@ export async function fetchRealPanel(): Promise<FetchOutcome> {
     closes[a.ticker] = dates.map((m) => map.get(m) ?? null)
   }
 
+  // ป้ายแหล่งข้อมูลตามจริง — Stooq เป็นราคาปิดไม่ปรับปันผล (docs §7) ห้ามติดป้าย "Yahoo adjclose" ให้ตัวที่มาจาก Stooq
+  const yahooCount = data.size - fromStooq.length
   const notes: string[] = [
-    `ดึงข้อมูลจริงเมื่อ ${new Date().toISOString()} — Yahoo adjclose (ปรับปันผล) ${data.has("SPY") ? "" : ""}`,
+    `ดึงข้อมูลจริงเมื่อ ${new Date().toISOString()} — ${yahooCount > 0 ? "Yahoo adjclose (ปรับปันผล)" : "Stooq close (ไม่ปรับปันผล)"}`,
   ]
+  if (fromStooq.length > 0 && yahooCount > 0) {
+    notes.push(`${fromStooq.join(", ")} มาจาก Stooq — ราคาปิดไม่ปรับปันผล (โมเมนตัมบอนด์/REIT จะอ่านต่ำกว่าจริง)`)
+  }
   if (!data.has("BIL")) notes.push("ไม่มี BIL — ควรเพิ่มในไฟล์ก่อนใช้จริง (engine จะใช้ชุดแทนไม่ได้เพราะไม่ได้เติมให้)")
   if (!data.has("SPY")) notes.push("ไม่มี SPY — benchmark จะแสดงเป็น 0")
 
   return {
     ok: true,
     panel: {
-      meta: { source: "yahoo", fetchedAt: new Date().toISOString(), notes },
+      meta: { source: yahooCount > 0 ? "yahoo" : "stooq", fetchedAt: new Date().toISOString(), notes },
       dates,
       assets,
       closes,

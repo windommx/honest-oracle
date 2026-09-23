@@ -26,12 +26,25 @@ const clamp = (x: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, x
 const r2 = (x: number) => Math.round(x * 100) / 100
 const r4 = (x: number) => Math.round(x * 10000) / 10000
 
+export interface PanelRow {
+  date: string
+  symbol: string
+  close: number
+  val: number
+  liq5: number
+}
+
 export async function buildPanelStates(limit?: number): Promise<PanelStates> {
   // โหลด RawDaily ครั้งเดียวต่อ request (เรียง date, symbol) — ตามสเปก
   const rows = await db.rawDaily.findMany({
     select: { date: true, symbol: true, close: true, val: true, liq5: true },
     orderBy: [{ date: 'asc' }, { symbol: 'asc' }],
   })
+  return panelStatesFromRows(rows, limit)
+}
+
+// ส่วนคำนวณล้วน (ไม่แตะ DB) — rows ต้องเรียง (date, symbol) จากเก่าไปใหม่
+export function panelStatesFromRows(rows: PanelRow[], limit?: number): PanelStates {
   if (rows.length === 0) return { date: '', states: [] }
 
   // ---------------- สร้าง matrix: close / val / liq ----------------
@@ -182,8 +195,10 @@ export async function buildPanelStates(limit?: number): Promise<PanelStates> {
     const inZone = close >= zoneLo * 0.98 && close <= zoneHi * 1.05
 
     // G5 risk — entry/stop/RR ถึง supply แบบประมาณ
+    // stop = ใต้โซน (zoneLo) แต่ "ไม่กว้างเกิน" 6% จาก close (เอาตัวที่แคบกว่า)
+    // เดิม Math.min บังคับ stop ≥6.2% เสมอ → RR ถึง supply(+10%) ≤ 1.62 < 2 → tradeable=false ทุกตัว (G5 ไม่มีวันผ่าน)
     const entry = r2(close * 1.002)
-    const stop = r2(Math.min(zoneLo, close * 0.94))
+    const stop = r2(Math.max(zoneLo, close * 0.94))
     const stopDistPct = ((entry - stop) / entry) * 100
     const supply = entry * 1.1
     const rrv = entry - stop > 0 ? (supply - entry) / (entry - stop) : 0

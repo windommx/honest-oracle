@@ -18,7 +18,9 @@ export const maxDuration = 60
 export async function POST(req: Request) {
   try {
     const t0 = Date.now()
-    const body = (await req.json().catch(() => ({}))) as GtaaRunRequest
+    // body ต้องเป็นออบเจ็กต์ — JSON "null"/ตัวเลข/ข้อความ = ใช้ค่า default (ไม่ใช่ 500)
+    const raw = (await req.json().catch(() => null)) as unknown
+    const body = (raw && typeof raw === "object" ? raw : {}) as GtaaRunRequest
     const cfg = sanitizeConfig(body.config)
     const { panel, fromFile } = await loadPanel()
 

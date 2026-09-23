@@ -64,7 +64,8 @@ export default function FeedCard({ onIngested }: { onIngested?: () => void }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ source: "yahoo", symbols: text, range, adjusted, replaceDemo }),
       })
-      const j = (await r.json()) as FeedFetchResponse & { error?: string }
+      // proxy/gateway timeout ตอบเป็น HTML ไม่ใช่ JSON — แสดงสถานะ HTTP แทนข้อความ JSON parse error
+      const j = ((await r.json().catch(() => null)) ?? { error: `HTTP ${r.status}` }) as FeedFetchResponse & { error?: string }
       if (!r.ok || !j.ok) {
         setFailure({ message: j.error ?? j.message ?? `HTTP ${r.status}`, detail: j.reports ? j : null })
         toast({ variant: "destructive", title: "ดึงข้อมูลไม่สำเร็จ", description: j.error ?? j.message ?? `HTTP ${r.status}` })
@@ -199,7 +200,7 @@ export default function FeedCard({ onIngested }: { onIngested?: () => void }) {
                     <span>
                       ล้างข้อมูล demo ก่อนนำเข้า
                       <span className="block text-[11px] text-muted-foreground">
-                        ลบราคา/โผ/พอร์ตกระดาษของหุ้นจำลอง — คง audit ไว้
+                        ลบราคา/โผ/พอร์ตกระดาษของหุ้นจำลอง + CrossAsset จำลอง (SPX/USDTHB/GOLD) — คง audit ไว้ · ใช้ข้อมูลข้ามตลาดจริงด้วย bun run fetch:cross
                       </span>
                     </span>
                     <Switch checked={replaceDemo} onCheckedChange={setReplaceDemo} disabled={running} />
@@ -238,7 +239,8 @@ python fetch_set_feed.py --index SET50 --period 3Y --post http://localhost:3000 
 # เพิ่ม --ohlc-from-yahoo (pip install yfinance) เพื่อผสาน open/high/low ให้ SET Sniper`
                     : `pip install settrade-v2                 # ต้องมีบัญชี Settrade Open API กับโบรกเกอร์ที่รองรับ
 cd thai-momentum-platform/lab
-python fetch_settrade_feed.py --symbols SET50 --limit 500 --post http://localhost:3000
+python fetch_settrade_feed.py --symbols PTT,KBANK,CPALL --limit 500 --post http://localhost:3000
+# --symbols ต้องเป็นชื่อหุ้นคั่นด้วย , (ไม่ขยายชื่อดัชนี เช่น SET50 ให้)
 # เทมเพลตอยู่ในไฟล์ — กรอก app_id / app_secret / broker_id / app_code ของคุณ`}
                 </pre>
                 <div className="text-xs text-muted-foreground">

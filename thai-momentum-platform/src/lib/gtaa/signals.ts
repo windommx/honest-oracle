@@ -10,6 +10,8 @@ export interface MonthSignals {
   /** น้ำหนักเป้าหมาย ณ ปิดเดือน t — key = ticker (รวมตัวเงินสดที่เลือกใช้), ผลรวม = 1 */
   weights: Record<string, number>
   cashTicker: string
+  /** ส่วนเงินสดของสัญญาณ = 1 − (จำนวนตัวที่ถือ × 1/N) — แยกจาก weights[cashTicker] ซึ่งรวม slot ของ IEF เองเมื่อ trendedBond */
+  cashWeight: number
 }
 
 /** หาตัวเงินสดที่ใช้พักตาม cashMode — trendedBond = IEF ถ้าเหนือ SMA10 ของตัวเอง ไม่งั้น BIL */
@@ -17,7 +19,8 @@ function pickCashTicker(panel: GtaaPanel, t: number, cfg: GtaaConfig): string {
   if (cfg.cashMode === "tbill") return "BIL"
   const ief = panel.closes["IEF"]
   if (!ief) return "BIL"
-  const sma = smaAt(ief, t, Math.min(10, cfg.smaMonths))
+  // SMA-10 ตายตัวตามกฎ (docs §1) — ไม่ผูกกับ smaMonths ของ trend filter
+  const sma = smaAt(ief, t, 10)
   const price = ief[t]
   if (sma === null || price === null || price === undefined) return "BIL"
   return price > sma ? "IEF" : "BIL"
@@ -45,7 +48,7 @@ export function computeMonthSignals(panel: GtaaPanel, t: number, cfg: GtaaConfig
       name: asset.name,
       group: asset.group,
       close,
-      sma: sma ?? NaN,
+      sma, // null เมื่อประวัติสั้นกว่า smaMonths (เดิม NaN → กลายเป็น null ใน JSON อยู่แล้ว แต่ type บอกว่าเป็น number)
       trendPass,
       r1: ms?.r1 ?? null,
       r3: ms?.r3 ?? null,
@@ -95,5 +98,5 @@ export function computeMonthSignals(panel: GtaaPanel, t: number, cfg: GtaaConfig
     return (a.rank ?? 99) - (b.rank ?? 99)
   })
 
-  return { rows, weights, cashTicker }
+  return { rows, weights, cashTicker, cashWeight: cashWeight > 1e-9 ? cashWeight : 0 }
 }

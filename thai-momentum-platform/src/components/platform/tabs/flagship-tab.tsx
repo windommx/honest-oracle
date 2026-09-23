@@ -462,7 +462,11 @@ export default function FlagshipTab() {
       {/* ---------- F2 โผสัญญาณ 1–10 ---------- */}
       <FeatureModule
         code="F2 · RANKED"
-        title={`โผสัญญาณวันนี้ — อันดับ 1–${data.ranked.length} จาก ${data.gates[4]?.outCount ?? 0} ตัวที่ผ่านครบ + กองเฝ้าดู`}
+        title={
+          data.ranked.length > 0
+            ? `โผสัญญาณวันนี้ — อันดับ 1–${data.ranked.length} จาก ${data.gates[4]?.outCount ?? 0} ตัวที่ผ่านครบ + กองเฝ้าดู`
+            : "โผสัญญาณวันนี้ — ยังไม่มีอันดับ"
+        }
         desc="เรียงด้วย ReliabilityScore (สูงสุด 100) — Tier A/B = ผ่านครบทุกด่าน · Tier C = เฝ้าดู (ยังไม่ผ่าน Confluence ติดป้ายชัด) · คลิกแถวขยายดูที่มาคะแนนได้"
         icon={Medal}
         hue="green"
@@ -510,7 +514,7 @@ export default function FlagshipTab() {
         {data.nearMiss.length > 0 ? (
           <div className="mt-4">
             <p className="text-[11px] font-semibold text-muted-foreground">
-              ใกล้เข้าโผ (ผ่านโมเมนตัม+กลุ่มแล้ว แต่ Confluence ยังไม่ถึง 45)
+              ใกล้เข้าโผ — อยู่นอก 10 อันดับ (ผ่านครบแต่คะแนนไม่ถึง หรือ Confluence ยังไม่ถึง 45 — ดูเหตุผลรายตัว)
             </p>
             <div className="mt-2 grid gap-1.5 sm:grid-cols-2 xl:grid-cols-3">
               {data.nearMiss.map((n) => (

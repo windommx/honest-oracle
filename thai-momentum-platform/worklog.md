@@ -802,3 +802,32 @@ Stage Summary:
 - ทุกตัวเลือกบันทึก localStorage ทันที (prefs v3 + presets v1) — migration v1/v2 อัตโนมัติ ผู้ใช้เก่าไม่เสียค่าที่ตั้งไว้ · คีย์ลัดออกแบบกันชน: ไม่ทำงานขณะพิมพ์/ขณะเปิดหน้าต่าง
 - ไฟล์แตะ: lib/platform/dashboard-prefs.ts (v3) · lib/platform/dashboard-presets.ts (ใหม่) · hooks/use-hotkeys.ts (ใหม่) · components/platform/feature-module.tsx (+HeadIconButton, onFocus/onHide/hideOptions/style, kind "open") · components/platform/options-center.tsx (ใหม่) · tabs/overview-tab.tsx (Command Center 4.0 + แก้ type error legacy 2 จุด)
 - Flagship และแท็บอื่นที่ใช้ FeatureModule ไม่กระทบ (props ใหม่เป็น optional ทั้งหมด) — กันหน้าบวมและพร้อมให้แท็บอื่นรับพลังเดียวกันต่อได้ทันที
+---
+Task ID: 21
+Agent: main (orchestrator)
+Task: "ข้อมูลที่ feed มาจากตลาดยังไม่ตรง ช่วยหาแหล่ง feed ใหม่" — ชั้น market feed ข้อมูลจริง
+
+Work Log:
+- 21-a: src/lib/feed/{universe,yahoo,quality,rows,ingest,sources}.ts — Yahoo (.BK) adapter ฝั่ง server (adjclose, วันที่ตามเวลาตลาด), รายชื่อ SET50/CORE + map sector ของ SET, ตรวจคุณภาพรายตัว, ล้าง demo แบบเลือกได้
+- 21-b: API GET /api/feed · POST /api/feed/fetch · POST /api/feed/ingest (JSON rows จากสคริปต์ภายนอก) + FeedCard ในแท็บข้อมูล + CLI bun run fetch:th
+- 21-c: lab/fetch_set_feed.py (settfex) · lab/fetch_settrade_feed.py (Settrade Open API เทมเพลต) · docs/research/market-feed.md
+
+Stage Summary:
+- ข้อมูลจริงเข้าได้ 3 ทาง (Yahoo ฝั่ง server / สคริปต์ Python → ingest / CSV เดิม) ผ่านเส้นทาง ingestRows เดียวกัน
+
+---
+Task ID: 22
+Agent: main (orchestrator) + 10 sub-agents
+Task: "ช่วยเขียน code ให้สมบูรณ์ถูกต้องไม่มีบั๊ก โดยการยิง agents 10 ตัวช่วยกัน" — ตรวจ/แก้บั๊กทั้งแพลตฟอร์ม
+
+Work Log:
+- 22-a: baseline ก่อนแก้ — fixture 3 ชุด (demo ที่มากับโปรเจกต์ / feed ข้อมูลแบบของจริง: วันหยุดไทย, หยุดพัก 3%, IPO กลางทาง, หุ้นเลิกซื้อขาย, ราคากระโดด, 10% ไม่มี OHLC / empty schema เปล่า) + ยิง API ทุก route + กวาดเบราว์เซอร์ 17 แท็บ desktop/mobile → พบแอปล่มทั้งหน้า 2 จุด (SET Sniper บนข้อมูลจริง: null.toFixed · สัญญาณบน DB ว่าง: undefined.regimeScore), breadth NaN%, ไม่มี error boundary, คำเตือน DialogTitle ทุกครั้งที่เปิดเมนู, DQ ตีวันหยุดสงกรานต์/ปีใหม่เป็นช่องว่างข้อมูล
+- 22-b: แบ่ง 10 slice ไฟล์ไม่ทับกัน (data · backtest/วิจัย · Jev/พอร์ต · signals/alpha/map · stops/AI-score/py · evidence/global engines · GTAA · sniper/flagship/skills · shell/command center · Shadow Lab/py) — กติกา: ต้องพิสูจน์บั๊กก่อนแก้ (repro บนสำเนา fixture / test ที่ล้มกับโค้ดเดิม / trace), ห้ามแตะ db/custom.db และ data/gtaa/panel.json
+- 22-c: แก้บั๊กที่พิสูจน์แล้ว 218 จุด: data 24 · backtest 16 · Jev 18 · signals 29 · stops 18 · evidence 22 · GTAA 28 · sniper 19 · shell 16 · lab 28 — ตัวอย่างสำคัญ: ingest backfill ทิ้งโผวันหลังค้าง (118 วัน), hash chain ของ EventLog แตกกิ่งเมื่อ emit พร้อมกัน, CPCV purge ข้างเดียว (label รั่ว), งบ slot ของ regime ไม่ถูกบังคับจริง + ตัวกรอง sector 2 กลุ่มท้ายกลับด้าน, walk-forward ของ Bayes Stop จับคู่ path ตามตำแหน่ง (มองอนาคต), crossZ ใช้ราคาปิดต่างประเทศวันเดียวกัน (look-ahead), residual momentum เป็นศูนย์เสมอ, vol-managed มองอนาคต, GTAA backtest ค้างน้ำหนักตัวที่ขายไปแล้ว (turnover 12.09→3.95/ปี, CAGR 6.54→7.41%), Shadow Lab บันทึกการตัดสินใจปลอมเมื่อ LLM ไม่พร้อม, FVG จากแท่งที่ไม่มี OHLC ทำแท็บ Sniper ล่ม, หน่วย % คูณซ้ำหลายจุดใน UI
+- 22-d: orchestrator รวมผล + ข้อเสนอข้าม slice: ตัวกรอง sector bottom-2 ของ Jev (rank > nSec−2), Brier โชว์เมื่อ n ≥ 10, SignalRow.sma เป็น number|null, seed เก็บ path เทรดรายวัน, GTAA ข้อมูลเกินรอบ/สังเคราะห์ไม่เปิดประตู Flagship (+ staleMonths ใน briefing, cache key รวมเดือนปัจจุบัน), breadth ที่วัดไม่ได้ = null (ไม่ใช่ 0% และไม่ปน z-score), ⌘K กัน e.key ว่าง, badge policy ตัดบรรทัดบนมือถือ, .gitignore lab/context.json
+- 22-e: โครง test ใหม่ — bunfig.toml preload src/test/setup.ts ชี้ DATABASE_URL ไป SQLite ชั่วคราวที่สร้างจาก schema.prisma จริง (src/test/schema-db.ts ใช้ prisma migrate diff แบบ offline) ก่อนโหลดไฟล์ใด ๆ → test ไม่มีทางแตะ db/custom.db แม้ bun โหลด .env เอง; เลิกใช้ DDL เขียนมือและไฟล์ fixture นอก repo
+- 22-f: ตรวจซ้ำทั้งระบบ: bun test 301 ผ่าน (21 ไฟล์) · Python 39 ผ่าน · tsc 0 error · eslint สะอาด · next build ผ่าน · API 37 route ทั้ง 3 fixture = 200 (empty: map/report 404 ตามออกแบบ) ไม่มี NaN/Infinity · POST flow 31–32 เคสต่อ fixture ไม่มี 5xx ที่ไม่ได้ตั้งใจ (502/503 = เครือข่ายถูกบล็อก/LLM ไม่พร้อม ตอบตามจริง) · กวาดเบราว์เซอร์ 17 แท็บ × desktop/mobile × 3 fixture: 0 page error, 0 console warning, 0 ข้อความ NaN, ไม่ล้นจอ · checksum db/custom.db และ data/gtaa/panel.json ไม่เปลี่ยน
+
+Stage Summary:
+- สิ่งที่ยังเป็นการตัดสินใจเชิงออกแบบ (ไม่แก้เอง รายงานไว้): นโยบายออกจากหุ้นที่ถูกเพิกถอน (ทั้ง backtest และ Jev), หุ้นไม่ทราบ sector รวมเป็นถังเดียว, สัญญาณ FIP ไม่แยกทิศ, trigger T1 ของ Shadow Lab ขัดกันเอง, lead-lag ไม่มีเกณฑ์นัยสำคัญ, G3 ตัดทุกตัวเมื่อมี ≤ 2 sector, stop fill ที่ระดับ stop แม้ราคาเปิด gap (demo จึงชอบ stop แคบ), time exit ใน Jev live
+- DB demo ที่มากับโปรเจกต์มีแถวตกค้างจากบั๊กเดิม (ShadowLog conf 0 จาก LLM ล่ม, outcomeR −1 ของไม้ที่ยังเปิด, lab_eval ที่ agreement 1.0 ปลอม) — โค้ดใหม่ไม่สร้างเพิ่มแล้ว ไม่ได้แก้ไฟล์ DB (binary 30MB) ล้างได้ด้วย SQL ตามรายงาน

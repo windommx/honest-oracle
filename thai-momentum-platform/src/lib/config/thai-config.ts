@@ -13,6 +13,9 @@ export const CONFIG_TH_KEY = "config_th"
 /** เวลา cache config (ms) — ระดับโมดูล */
 const CACHE_TTL_MS = 60_000
 
+/** เก็บ history ใน config ไว้เฉพาะ N รายการล่าสุด (audit เต็มอยู่ที่ EventLog + Decision แล้ว) */
+export const HISTORY_MAX = 200
+
 /** tf ที่อนุญาตใน tfWeights */
 export const TF_KEYS = ["5", "10", "20", "40", "80", "160", "300"] as const
 
@@ -168,7 +171,9 @@ export async function saveConfigTh(
   validatePatch(patch)
   const cur = await readConfigFromDb() // อ่านสด (ไม่ผ่าน cache) กันทับของใหม่ด้วยของเก่า
   const next: ThaiConfig = {
-    tfWeights: patch.tfWeights ? { ...patch.tfWeights } : { ...cur.tfWeights },
+    // tfWeights บางคีย์ = แก้เฉพาะคีย์นั้น (merge บนค่าปัจจุบัน) — ให้ค่าที่ cache/ตอบกลับ
+    // ตรงกับค่าที่อ่านกลับจาก DB (mergeConfig เติมคีย์ที่ขาดเสมอ)
+    tfWeights: patch.tfWeights ? { ...cur.tfWeights, ...patch.tfWeights } : { ...cur.tfWeights },
     holdDefault: patch.holdDefault !== undefined ? patch.holdDefault : cur.holdDefault,
     calendarOverlay: patch.calendarOverlay !== undefined ? patch.calendarOverlay : cur.calendarOverlay,
     reversalEnabled: patch.reversalEnabled !== undefined ? patch.reversalEnabled : cur.reversalEnabled,
@@ -179,6 +184,7 @@ export async function saveConfigTh(
   if (verdict) entry.verdict = verdict
   if (note !== undefined && note !== "") entry.note = note
   next.history.push(entry)
+  if (next.history.length > HISTORY_MAX) next.history = next.history.slice(-HISTORY_MAX)
 
   const value = JSON.stringify(next)
   await db.setting.upsert({
@@ -193,14 +199,24 @@ export async function saveConfigTh(
 
 // ---------- auto-apply verdict ----------
 
+/** วันที่ปัจจุบันตามเวลาตลาด (Asia/Bangkok) รูป YYYY-MM-DD — ไม่ขึ้นกับ TZ ของ server */
+export function bangkokDate(now: Date = new Date()): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Bangkok",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(now)
+}
+
 /**
  * applyVerdict(rep) — auto-apply ผล thai_fit ลง config + เขียน audit row (Decision):
  *   reversalEnabled = H2 pass, calendarOverlay = H3 pass,
  *   holdDefault = 5 (H1 pass) / 10, tfWeights เอนสายสั้น (H1 pass) หรือสายยาว
- *   updatedBy = auto-verdict@<YYYY-MM-DD>
+ *   updatedBy = auto-verdict@<YYYY-MM-DD> (วันที่ตามเวลาไทย)
  */
 export async function applyVerdict(rep: ThaiFitReport): Promise<ThaiConfig> {
-  const today = new Date().toISOString().slice(0, 10)
+  const today = bangkokDate()
   const h1Pass = !!rep.h1?.pass
   const patch: Partial<ThaiConfig> = {
     reversalEnabled: !!rep.h2?.pass,

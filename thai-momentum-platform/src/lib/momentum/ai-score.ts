@@ -213,6 +213,29 @@ export function computeAiScore(input: AiSymbolInput): AiScoreRow | null {
   }
 }
 
+// ---------------- จัดแถวในหน้าต่าง → input ต่อหุ้น ----------------
+// rows ต้องเรียง date asc (route ดึงด้วย orderBy date asc) — นับเฉพาะหุ้นที่ "แถวสุดท้ายของตัวเอง" คือวัน target
+// (เทียบวันที่จริง ไม่ใช่ตำแหน่งในปฏิทิน: หุ้นที่ขาดบางวันในหน้าต่าง — หยุดพัก/IPO ใหม่ — แถวจะสั้นกว่าปฏิทิน)
+export function buildAiInputs(
+  rows: { date: string; symbol: string; close: number; val: number }[],
+  target: string
+): AiSymbolInput[] {
+  const bySym = new Map<string, { closes: number[]; vals: number[]; lastDate: string }>()
+  for (const r of rows) {
+    const e = bySym.get(r.symbol) ?? { closes: [], vals: [], lastDate: "" }
+    e.closes.push(r.close)
+    e.vals.push(r.val)
+    e.lastDate = r.date
+    bySym.set(r.symbol, e)
+  }
+  const inputs: AiSymbolInput[] = []
+  for (const [symbol, e] of bySym) {
+    if (e.closes.length === 0 || e.lastDate !== target) continue // หยุดซื้อขายก่อนวันล่าสุด → ไม่นับ
+    inputs.push({ symbol, closes: e.closes, vals: e.vals })
+  }
+  return inputs
+}
+
 // ---------------- ประกอบเรดาร์: เรียงตาม %CMPR แล้วตัด top N ----------------
 export function buildAiScoreRadar(inputs: AiSymbolInput[], topN = 30): AiScoreRow[] {
   const rows: AiScoreRow[] = []

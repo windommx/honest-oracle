@@ -126,13 +126,23 @@ function emRun(x: number[], mu0: [number, number], sd0: [number, number], floor:
     if (iter > 2 && Math.abs(delta) < TOL * Math.abs(ll)) break
   }
 
-  // posterior ณ วันสุดท้าย
-  const B0 = normPdf(x[T - 1] ?? 0, mu[0], sd[0]) + 1e-300
-  const B1 = normPdf(x[T - 1] ?? 0, mu[1], sd[1]) + 1e-300
-  const g0 = pi[0] * B0
-  const g1 = pi[1] * B1
-  const norm = g0 + g1 || 1
-  return { mu, sd, a, gammaLast: [g0 / norm, g1 / norm], logLik }
+  // posterior ณ วันสุดท้าย = filtered P(s_T | x_1..x_T): forward pass ด้วยพารามิเตอร์ชุดสุดท้าย
+  // (เดิมใช้ pi — การกระจายสถานะของ "วันแรก" — คูณ likelihood วันสุดท้าย ซึ่งไม่ใช่ posterior ของวันนี้)
+  let f0 = pi[0] * (normPdf(x[0] ?? 0, mu[0], sd[0]) + 1e-300)
+  let f1 = pi[1] * (normPdf(x[0] ?? 0, mu[1], sd[1]) + 1e-300)
+  let fs = f0 + f1 || 1e-300
+  f0 /= fs
+  f1 /= fs
+  for (let t = 1; t < T; t++) {
+    const q0 = f0 * a[0] + f1 * a[2]
+    const q1 = f0 * a[1] + f1 * a[3]
+    f0 = q0 * (normPdf(x[t] ?? 0, mu[0], sd[0]) + 1e-300)
+    f1 = q1 * (normPdf(x[t] ?? 0, mu[1], sd[1]) + 1e-300)
+    fs = f0 + f1 || 1e-300
+    f0 /= fs
+    f1 /= fs
+  }
+  return { mu, sd, a, gammaLast: [f0, f1], logLik }
 }
 
 function fitHmm(x: number[]): HmmFit | null {

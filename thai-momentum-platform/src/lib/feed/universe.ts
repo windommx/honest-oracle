@@ -232,7 +232,9 @@ export function parseSymbolList(text: string): { symbols: string[]; invalid: str
 /** sector ของ symbol: ค่าที่ผู้ใช้ส่งมา → universe ตั้งต้น → Unknown (ไม่เดาแทน) */
 export function sectorForSymbol(symbol: string, overrides?: Record<string, string>): string {
   const s = symbol.toUpperCase()
-  const o = (overrides?.[s] ?? overrides?.[symbol] ?? "").trim()
+  // overrides มาจาก JSON ของผู้ใช้ — ค่าที่ไม่ใช่ข้อความ (เช่น {"PTT": 1}) ต้องไม่ทำให้ ingest ล้มกลางทาง
+  const raw: unknown = overrides?.[s] ?? overrides?.[symbol]
+  const o = typeof raw === "string" ? raw.trim().slice(0, 40) : ""
   if (o) {
     if ((TH_SECTORS as readonly string[]).includes(o)) return o
     const mapped = toThSector(o)

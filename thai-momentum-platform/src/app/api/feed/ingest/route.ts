@@ -5,17 +5,23 @@
 import { NextResponse } from "next/server"
 import { normalizeFeedRows } from "@/lib/feed/rows"
 import { assessSymbol, flagStale } from "@/lib/feed/quality"
-import { ingestFeed } from "@/lib/feed/ingest"
+import { CROSS_ASSET_CLEARED_NOTE, ingestFeed } from "@/lib/feed/ingest"
+import type { ParsedCsvRow } from "@/lib/momentum/core"
 import type { FeedFetchResponse, FeedIngestRequest } from "@/lib/momentum/contracts"
 
 export const dynamic = "force-dynamic"
 export const maxDuration = 300
 
 const MAX_ROWS = 600_000
+const MAX_BODY_BYTES = 128 * 1024 * 1024 // ~600k แถว JSON ≈ 70 MB — กันคำขอใหญ่ผิดปกติก่อน parse ทั้งก้อนลงหน่วยความจำ
 
 export async function POST(req: Request) {
   const t0 = Date.now()
   try {
+    const len = Number(req.headers.get("content-length") ?? 0)
+    if (len > MAX_BODY_BYTES) {
+      return NextResponse.json({ error: `ข้อมูลใหญ่เกิน ${MAX_BODY_BYTES / 1024 / 1024} MB ต่อครั้ง — แบ่งส่งเป็นชุด` }, { status: 413 })
+    }
     const body = (await req.json().catch(() => null)) as Partial<FeedIngestRequest> | null
     if (!body || !Array.isArray(body.rows) || body.rows.length === 0) {
       return NextResponse.json({ error: "ต้องส่ง rows เป็น array อย่างน้อย 1 แถว" }, { status: 400 })
@@ -28,8 +34,15 @@ export async function POST(req: Request) {
     if (rows.length === 0) {
       return NextResponse.json({ error: "ไม่มีแถวที่ถูกต้อง (ต้องมี date, symbol, close > 0)" }, { status: 400 })
     }
-    const symbols = [...new Set(rows.map((r) => r.symbol))]
-    const reports = flagStale(symbols.map((s) => assessSymbol(s, rows)))
+    // จัดกลุ่มต่อหุ้นครั้งเดียว (เดิม assessSymbol กรองทั้งชุดต่อหุ้น = O(หุ้น × แถว) — 800 ตัว × 600k แถว)
+    const bySym = new Map<string, ParsedCsvRow[]>()
+    for (const r of rows) {
+      let a = bySym.get(r.symbol)
+      if (!a) bySym.set(r.symbol, (a = []))
+      a.push(r)
+    }
+    const symbols = [...bySym.keys()]
+    const reports = flagStale(symbols.map((s) => assessSymbol(s, bySym.get(s) ?? [])))
     const res = await ingestFeed({
       rows,
       source,
@@ -39,6 +52,7 @@ export async function POST(req: Request) {
     })
     const notes: string[] = []
     if (dropped > 0) notes.push(`ทิ้งแถวที่ไม่ถูกต้อง ${dropped.toLocaleString()} แถว`)
+    if (res.clearedCrossAsset) notes.push(CROSS_ASSET_CLEARED_NOTE)
     return NextResponse.json<FeedFetchResponse>({
       ok: true,
       source,
@@ -57,7 +71,7 @@ export async function POST(req: Request) {
       replacedDemo: res.replacedDemo,
       notes,
       tookMs: Date.now() - t0,
-      message: `รับข้อมูลจาก ${source} ${symbols.length} ตัว ${rows.length.toLocaleString()} แถว → สร้างโผ ${res.ingest.snapDates.length} วัน`,
+      message: `รับข้อมูลจาก ${source} ${symbols.length} ตัว ${rows.length.toLocaleString()} แถว → สร้างโผ ${res.ingest.snapDates.length} วัน${dropped > 0 ? ` (ทิ้งแถวเสีย ${dropped.toLocaleString()})` : ""}${res.clearedCrossAsset ? " · ล้าง CrossAsset จำลองแล้ว — รัน bun run fetch:cross เพื่อใช้ข้อมูลจริง" : ""}`,
     })
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : "internal error" }, { status: 500 })

@@ -49,14 +49,15 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Textarea } from "@/components/ui/textarea"
 
 const CSV_FORMATS = `date,symbol,close,val,liq5,ret5,ret10,ret20,ret40,ret80,ret160,ret300  (snapshot รายวัน)
-date,symbol,close,volume  (history backfill)`
+date,symbol,close,volume  (history backfill)
+คั่นด้วย , / tab (วางจาก Excel) / ; · วันที่ 2026-09-18, 18/09/2026 (ปี พ.ศ. ได้), 20260918`
 
 // object ที่ได้จาก useApi<T> (ยกขึ้นไปที่ DataTab เพื่อให้ refetch หลัง ingest ได้จริง)
 type ApiResult<T> = ReturnType<typeof useApi<T>>
 
 // ---------- Card 1: Demo seed ----------
 
-function DemoSeedCard() {
+function DemoSeedCard({ onSeeded }: { onSeeded?: () => void }) {
   const { toast } = useToast()
   const [days, setDays] = useState(520)
   const [symbols, setSymbols] = useState(240)
@@ -71,6 +72,8 @@ function DemoSeedCard() {
         title: "สร้างข้อมูลตัวอย่างสำเร็จ 🎲",
         description: `raw ${res.rawRows.toLocaleString()} แถว · snapshot ${res.snapRows.toLocaleString()} แถว · ใช้เวลา ${(res.tookMs / 1000).toFixed(1)} วินาที`,
       })
+      // ข้อมูลเปลี่ยนทั้งชุด → ให้การ์ดวันที่ + DQ โหลดใหม่ (เดิมค้างค่าก่อน seed จนรีเฟรชหน้า)
+      onSeeded?.()
     } catch (e) {
       toast({
         variant: "destructive",
@@ -293,7 +296,7 @@ function DqCard({ dq }: { dq: ApiResult<DqResponse> }) {
         <CardTitle>🩺 คุณภาพข้อมูล (DQ)</CardTitle>
         <CardDescription>ตรวจสอบความถูกต้องของข้อมูลในระบบโดยอัตโนมัติ</CardDescription>
         <CardAction>
-          {dq.data ? (
+          {dq.data && checks.length > 0 ? (
             allOk ? (
               <Badge
                 variant="outline"
@@ -349,7 +352,8 @@ function DqCard({ dq }: { dq: ApiResult<DqResponse> }) {
 // ---------- Card 4: Dates ----------
 
 function DatesCard({ dates }: { dates: ApiResult<DatesResponse> }) {
-  const last12 = dates.data ? dates.data.dates.slice(-12).reverse() : []
+  // /api/dates เรียงใหม่ → เก่า — 12 วันล่าสุดคือ 12 ตัวแรก (เดิม slice(-12) ได้วันเก่าสุดของชุด 400 วัน)
+  const last12 = dates.data ? dates.data.dates.slice(0, 12) : []
 
   return (
     <Card>
@@ -400,23 +404,17 @@ export default function DataTab() {
   // ยก dates/dq ขึ้นมาที่นี่ — ingest สำเร็จแล้ว refetch ที่เดียว ทุกการ์ดอัปเดต
   const dates = useApi<DatesResponse>("/api/dates")
   const dq = useApi<DqResponse>("/api/dq")
+  const reload = () => {
+    dates.refetch()
+    dq.refetch()
+  }
 
   return (
     <div className="space-y-6">
       <div className="grid gap-6 lg:grid-cols-2">
-        <DemoSeedCard />
-        <CsvIngestCard
-          onIngested={() => {
-            dates.refetch()
-            dq.refetch()
-          }}
-        />
-        <FeedCard
-          onIngested={() => {
-            dates.refetch()
-            dq.refetch()
-          }}
-        />
+        <DemoSeedCard onSeeded={reload} />
+        <CsvIngestCard onIngested={reload} />
+        <FeedCard onIngested={reload} />
         <DqCard dq={dq} />
         <DatesCard dates={dates} />
       </div>

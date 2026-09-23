@@ -29,6 +29,10 @@ export function condorPlan(o: {
   equity: number
 }): CondorPlan {
   const riskPct = o.riskPct ?? 0.01
+  // input จากเครื่องคิดเลขฝั่ง UI (ช่องว่าง = 0) — S/IV/DTE ≤ 0 ทำให้ maxLoss = 0 → "เปิดได้ Infinity ชุด"
+  // หรือ strikes เป็น NaN จึงต้องตอบว่าข้อมูลไม่ครบ แทนการคำนวณเลขปลอม
+  if (!(o.S > 0 && o.iv > 0 && o.dte > 0 && o.equity > 0 && riskPct > 0 && Number.isFinite(o.ivPct)))
+    return { open: false, reason: "ข้อมูลไม่ครบ — S50 index, IV, DTE, equity และ IV percentile ต้องเป็นตัวเลขมากกว่า 0" }
   if (o.ivPct < 0.45)
     return { open: false, reason: "IV ถูกเกิน: premium ไม่คุ้ม tail risk (ivPct < 0.45)" }
   const em = o.S * o.iv * Math.sqrt(o.dte / 365)

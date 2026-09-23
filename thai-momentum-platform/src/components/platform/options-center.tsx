@@ -127,10 +127,11 @@ export default function OptionsCenter({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
+      {/* aria-labelledby/aria-describedby ผูกอัตโนมัติจาก SheetTitle/SheetDescription (id ของ Radix)
+          — ห้ามตั้ง id/aria-describedby เอง ไม่งั้น Radix หา Description ไม่เจอแล้วเตือนทุกครั้งที่เปิด */}
       <SheetContent
         side="right"
         className="flex w-full flex-col gap-0 p-0 sm:max-w-[460px]"
-        aria-describedby="options-center-desc"
       >
         {/* ---- header ---- */}
         <SheetHeader className="border-b border-border/80 px-4 py-3.5">
@@ -143,7 +144,7 @@ export default function OptionsCenter({
               {visibleCount}/{FEATURE_IDS.length} โมดูล · {prefs.layout === "dual" ? "2 col" : "1 col"}
             </Badge>
           </div>
-          <SheetDescription id="options-center-desc" className="text-[11px] leading-4">
+          <SheetDescription className="text-[11px] leading-4">
             ตัวเลือกการจัดวางระดับมืออาชีพ — ทุกการเปลี่ยนบันทึกทันทีในเครื่องนี้ (localStorage)
           </SheetDescription>
         </SheetHeader>

@@ -4,6 +4,7 @@ import { useState } from "react"
 import { ChevronLeft, ChevronRight, Map as MapIcon } from "lucide-react"
 import { useApi } from "@/hooks/use-api"
 import type { DatesResponse, MapResponse } from "@/lib/momentum/contracts"
+import { TH_TOP_N } from "@/lib/config/thai"
 import MomentumMap from "./momentum-map"
 import { Alert } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
@@ -37,18 +38,21 @@ export default function MapTab() {
           <MapIcon className="h-5 w-5 text-muted-foreground" aria-hidden />
           <span className="text-sm font-semibold">Momentum Map</span>
           <span className="text-xs text-muted-foreground hidden sm:inline">
-            โผ Top-30 ข้าม 7 timeframe · หุ้นซ้ำ = สีเดียวกัน + เส้นเชื่อม · หุ้นไม่ซ้ำ = สีเทา
+            โผ Top-{TH_TOP_N} ข้าม 7 timeframe · หุ้นซ้ำ = สีเดียวกัน + เส้นเชื่อม · หุ้นไม่ซ้ำ = สีเทา
           </span>
           <div className="ml-auto flex items-center gap-2">
             <Button variant="outline" size="icon" onClick={() => go(1)} disabled={idx < 0 || idx + 1 >= dates.length} aria-label="วันก่อนหน้า">
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            <Select value={active ?? undefined} onValueChange={(v) => setPicked(v)}>
+            {/* value ต้องเป็น string ตั้งแต่ render แรก ("" = แสดง placeholder) — undefined → string
+                ทำให้ Radix เตือน uncontrolled → controlled ทุกครั้งที่รายการวันที่โหลดเสร็จ */}
+            <Select value={active ?? ""} onValueChange={(v) => setPicked(v)}>
               <SelectTrigger className="w-[150px]" aria-label="เลือกวันที่">
                 <SelectValue placeholder="เลือกวันที่" />
               </SelectTrigger>
               <SelectContent className="max-h-72">
-                {dates.slice(0, 250).map((d) => (
+                {/* ทุกวันที่ที่ปุ่ม ‹ › ไปถึงได้ (API จำกัด 400) — เดิมตัดที่ 250 ทำให้ช่องเลือกว่างเปล่าเมื่อย้อนเกิน */}
+                {dates.map((d) => (
                   <SelectItem key={d} value={d}>
                     {d}
                   </SelectItem>
@@ -61,6 +65,12 @@ export default function MapTab() {
           </div>
         </CardContent>
       </Card>
+
+      {datesData && dates.length === 0 && (
+        <Alert>
+          <span>ยังไม่มีข้อมูล snapshot — สร้างข้อมูลตัวอย่างหรือนำเข้าข้อมูลจริงก่อน แล้ว Momentum Map จะแสดงอัตโนมัติ</span>
+        </Alert>
+      )}
 
       {error && (
         <Alert variant="destructive">

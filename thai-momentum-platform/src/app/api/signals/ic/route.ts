@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { db } from "@/lib/db"
 import { getPanelCached, loadAll, DEFAULT_W } from "@/lib/momentum/signals/io"
-import { crossIC, timingCorr, promote, type Row } from "@/lib/momentum/signals/engine"
+import { crossIC, timingCorr, promote } from "@/lib/momentum/signals/engine"
 import { learnWeights, type SignalWeights } from "@/lib/momentum/signals/weights"
 import { emitEvent } from "@/lib/research/events"
 import type { IcResponse, SignalIcSummary } from "@/lib/momentum/contracts"
@@ -18,13 +18,6 @@ function verdict(r: SignalIcSummary, sign: 1 | -1): "PROMOTE" | "FLIP-CHECK" | "
   return "KILL"
 }
 
-// rows ใช้ร่วมกันทุกการวัดภายใน request เดียว
-let _rows: Row[] | null = null
-async function rowsOf(): Promise<Row[]> {
-  if (!_rows) _rows = (await loadAll()).rows
-  return _rows
-}
-
 // GET /api/signals/ic?hold=10
 // สอบสัญญาณด้วย cross-sectional IC (Spearman รายวัน vs forward return) + timing corr
 // ผลบันทึกเป็น pre-registered policy (Setting.signals_policy) + Decision Q_SIGNAL/policy
@@ -34,7 +27,10 @@ export async function GET(req: Request) {
     const holdRaw = Number(new URL(req.url).searchParams.get("hold") ?? 10)
     const hold = isFinite(holdRaw) ? Math.min(60, Math.max(5, Math.round(holdRaw))) : 10
 
-    const [panel, rows] = await Promise.all([getPanelCached(DEFAULT_W), rowsOf()])
+    // rows ใช้ร่วมกันทุกการวัดภายใน request เดียว — ผ่าน loadAll() ที่ cache ตาม dataKey
+    // (เดิมเก็บไว้ในตัวแปรระดับโมดูลตลอดอายุ server → forward return มาจากข้อมูลเก่าหลัง ingest/reseed
+    //  ขณะที่ panel สร้างจากข้อมูลใหม่)
+    const [panel, { rows }] = await Promise.all([getPanelCached(DEFAULT_W), loadAll()])
 
     const ic = {
       mom: crossIC(panel, (s) => s.mom, hold, rows),
@@ -79,21 +75,25 @@ export async function GET(req: Request) {
         update: { value: JSON.stringify(policy) },
       })
       // ลบ Q_SIGNAL ของวันล่าสุดเดิม (รันสอบซ้ำ = แทนที่ผลชุดเดิม) แล้ว log ชุดใหม่
-      await db.decision.deleteMany({ where: { date: latest, question: "Q_SIGNAL" } })
-      for (const k of SIGNAL_KEYS) {
-        await db.decision.create({
-          data: {
-            date: latest,
-            question: "Q_SIGNAL",
-            target: k,
-            action: verdicts[k].toLowerCase(),
-            conf: Math.min(1, Math.abs(ic[k].ICIR)),
-            reason: `meanIC=${ic[k].meanIC.toFixed(3)} t=${ic[k].t.toFixed(1)} n=${ic[k].n} | น้ำหนัก=${weights[k].toFixed(3)}`,
-            executed: verdicts[k] === "PROMOTE",
-            source: "policy",
-          },
-        })
-      }
+      // ทำใน batch transaction เดียว — request ที่ซ้อนกัน (สลับ hold เร็ว ๆ) เดิม delete ก่อนแล้ว
+      // create สลับกันจนเหลือ Q_SIGNAL ซ้ำ (เช่น 6 แถวแทน 4)
+      await db.$transaction([
+        db.decision.deleteMany({ where: { date: latest, question: "Q_SIGNAL" } }),
+        ...SIGNAL_KEYS.map((k) =>
+          db.decision.create({
+            data: {
+              date: latest,
+              question: "Q_SIGNAL",
+              target: k,
+              action: verdicts[k].toLowerCase(),
+              conf: Math.min(1, Math.abs(ic[k].ICIR)),
+              reason: `meanIC=${ic[k].meanIC.toFixed(3)} t=${ic[k].t.toFixed(1)} n=${ic[k].n} | น้ำหนัก=${weights[k].toFixed(3)}`,
+              executed: verdicts[k] === "PROMOTE",
+              source: "policy",
+            },
+          })
+        ),
+      ])
       await emitEvent("signals_policy", "policy", {
         date: latest,
         hold,

@@ -1,7 +1,8 @@
 // Residual Momentum — Blitz, Huij & Martens (2011), Journal of Empirical Finance
 // แนวคิด: โมเมนตัมบน "residual return" หลังถอด market beta ออก
 //   r_j,t = α_j + β_j·r_m,t + ε_t  (market model, หน้าต่าง F วัน)
-//   signal = ผลรวม residual สะสมในหน้าต่าง formation
+//   signal = ผลตอบแทนสะสมหลังถอด market beta = Σ(r_t − β·m_t) = n·α̂
+//   (Σ ε_t ในหน้าต่างเดียวกับที่ fit = 0 เสมอตามนิยาม OLS ที่มี intercept จึงใช้เป็นสัญญาณไม่ได้)
 // เหตุผลที่เหมาะกับ SET: โมเมนตัมราคาดิบระยะยาวของเราตาย (H4) — residual momentum
 // กำไร risk-adjusted ~2 เท่าของ total-return momentum และลด momentum crash
 // (กัน beta/sector ปลอม ๆ ขับเคลื่อน)
@@ -40,7 +41,6 @@ export function residualMomentumSig(piv: ThaiPivots, rets: Mat, mkt: number[]): 
         const mb = sm / cnt
         let cov = 0
         let varM = 0
-        let sumE = 0
         for (let t = i - FORM + 1; t <= i; t++) {
           const r = rets[t]?.[j]
           if (r === undefined) continue
@@ -50,14 +50,9 @@ export function residualMomentumSig(piv: ThaiPivots, rets: Mat, mkt: number[]): 
         }
         if (varM <= 1e-12) continue
         const beta = cov / varM
-        // residual สะสม = Σ ε_t = Σ(r_t − rb) − β·Σ(m_t − mb) (ค่าคงที่ α ดูดซับใน mean)
-        for (let t = i - FORM + 1; t <= i; t++) {
-          const r = rets[t]?.[j]
-          if (r === undefined) continue
-          const m = mkt[t] ?? 0
-          sumE += (r - rb) - beta * (m - mb)
-        }
-        row[j] = sumE
+        // ผลตอบแทนสะสมหลังถอด beta = Σ(r_t − β·m_t) = cnt·(rb − β·mb) (เก็บ α̂ ไว้ — มันคือส่วนที่เป็นโมเมนตัม)
+        // หมายเหตุ: Σ(r_t − rb) − β·Σ(m_t − mb) (ลบ α̂ ด้วย) = 0 เสมอ → สัญญาณเหลือแต่ noise ทศนิยม
+        row[j] = cnt * (rb - beta * mb)
       }
     }
     out.push(row)
@@ -70,7 +65,7 @@ export function evalResidualMomentum(piv: ThaiPivots, rets: Mat, mkt: number[]):
   const rows = icAcross(piv, sig, [5, 10, 20, 40])
   const best = bestIc(rows)
   const ic = best?.ic ?? { meanIC: 0, ICIR: 0, t: 0, n: 0 }
-  const { verdict, why } = alphaVerdict(ic.meanIC, ic.ICIR, ic.t)
+  const { verdict, why } = alphaVerdict(ic.meanIC, ic.ICIR, ic.t, ic.n)
 
   const stats: EngineStats = {
     bestHold: best?.hold ?? 0,

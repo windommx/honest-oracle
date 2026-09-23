@@ -70,7 +70,8 @@ export default function SkillsTab({ onGoTo }: { onGoTo: (tab: string) => void })
       dqFlags: ov.data ? ov.data.dqFlags.length : null,
       gtaaReady: ov.data ? ov.data.gtaa != null : null,
       gtaaReal: ov.data?.gtaa ? !/synthetic/i.test(ov.data.gtaa.source) : null,
-      sniperReady: sniper.data ? true : sniperUrl !== null && sniper.error ? null : false,
+      // โครงสร้าง OHLC "พร้อม" เมื่อ watchlist มีหุ้นที่มี OHLC จริงอย่างน้อย 1 ตัว — DB ว่าง/CSV ไม่มี open,high,low = ยังไม่พร้อม
+      sniperReady: sniper.data ? sniper.data.meta.hasOhlcCount > 0 : sniperUrl !== null && sniper.error ? null : false,
       stopsReady: null,
       auditOk: audit.data ? audit.data.ok : null,
       decisions: sig.data ? sig.data.stockToday.length : null,

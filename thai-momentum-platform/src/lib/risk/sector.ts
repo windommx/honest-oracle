@@ -137,6 +137,11 @@ export interface SectorConstraintResult {
   sectorExposure: SectorExposureRow[]
   groupExposure: GroupExposureRow[]
 }
+export interface SectorConstraintOptions {
+  // เพดาน slots รวมของรอบนี้ (เช่น slotBudget จาก composite regime × calendar) — clamp [0, maxPos]
+  // น้ำหนัก sector/กลุ่มยังคิดเทียบงบเต็ม maxPos เหมือนเดิม (ไม่ระบุ = maxPos)
+  maxSlots?: number
+}
 
 const SLOT_GRID = 0.25 // ลดขนาดลงกริด 0.25 slot
 const MIN_ACCEPT = 0.25 // รับเข้าได้ต่อเมื่อขนาดสุดท้าย ≥ 0.25 slot
@@ -151,9 +156,15 @@ function floorGrid(x: number): number {
 export function applySectorConstraints(
   candidates: SectorSlotItem[],
   existingPositions: SectorSlotItem[],
-  sectorMap: Map<string, string>
+  sectorMap: Map<string, string>,
+  opts: SectorConstraintOptions = {}
 ): SectorConstraintResult {
   const budget = Math.max(1, TH_STRATEGY.maxPos) // งบ slots รวมของพอร์ต (maxPos = 7)
+  // เพดาน slots รวมจริงของรอบ (พื้นที่พอร์ต) — ไม่เกินงบเต็ม
+  const slotCap =
+    opts.maxSlots !== undefined && Number.isFinite(opts.maxSlots)
+      ? Math.min(budget, Math.max(0, opts.maxSlots))
+      : budget
 
   // สถานะจำลอง: เริ่มจากพอร์ตเดิม แล้วรับ candidate ทีละตัวตามลำดับที่ให้มา
   const slotsBySymbol = new Map<string, number>()
@@ -183,6 +194,12 @@ export function applySectorConstraints(
     const sector = sectorOf(sectorMap, cand.symbol)
     const group = groupOf(sector)
 
+    // ขนาดที่ขอมาไม่ถูกต้อง (NaN/≤0) → ตัด (กัน NaN ลามเข้า usedSlots แล้วทุกตัวถัดไปผ่านหมด)
+    if (!Number.isFinite(want) || want <= 0) {
+      rejected.push({ symbol: cand.symbol, reason: `${cand.symbol} ถูกตัด — ขนาดไม่ถูกต้อง` })
+      continue
+    }
+
     // 0) ไม่ทราบ sector + เปิดโหมด hard reject → ตัด
     if (sector === "Unknown" && TH_HARD_REJECT_UNKNOWN) {
       rejected.push({ symbol: cand.symbol, reason: `${cand.symbol} ถูกตัด — ไม่ทราบ sector` })
@@ -199,16 +216,20 @@ export function applySectorConstraints(
       continue
     }
 
-    // พื้นที่พอร์ตคงเหลือ — เหลือ ≤ 0.25 slot = เต็ม, ไม่งั้นจำกัดที่พื้นที่ที่เหลือ
-    const remaining = budget - usedSlots
+    // พื้นที่พอร์ตคงเหลือ (เทียบเพดาน slots ของรอบ) — เหลือ ≤ 0.25 slot = เต็ม, ไม่งั้นจำกัดที่พื้นที่ที่เหลือ
+    const remaining = slotCap - usedSlots
     if (remaining <= SLOT_GRID + EPS) {
       rejected.push({ symbol: cand.symbol, reason: `${cand.symbol} ถูกตัด — พื้นที่พอร์ตเต็ม` })
       continue
     }
     let s = Math.min(want, remaining)
+    // ถูกจำกัดด้วยพื้นที่ที่เหลือ = ลดขนาด (รายงานใน downsized พร้อมเหตุผล ไม่ปนกับ accepted เต็มขนาด)
+    let downReason: string | null =
+      s < want - EPS
+        ? `${cand.symbol} (${sector}) ลดขนาดเหลือ ${fmtSlots(s)} slots — พื้นที่พอร์ตเหลือ ${fmtSlots(remaining)} slots`
+        : null
 
     // Layer 2: น้ำหนัก sector เดี่ยว ≤ 30% — ลดขนาดลงกริด 0.25 ก่อนตัด
-    let downReason: string | null = null
     const secSlots = slotsBySector.get(sector) ?? 0
     if ((secSlots + s) / budget > TH_MAX_SECTOR_WEIGHT + EPS) {
       const sFit = floorGrid(budget * TH_MAX_SECTOR_WEIGHT - secSlots)
@@ -241,10 +262,17 @@ export function applySectorConstraints(
       }
     }
 
-    // รับเข้าพอร์ต — ปัด 2 ตำแหน่ง, ต่ำกว่า 0.25 ถือว่าไม่มีที่ว่าง
+    // รับเข้าพอร์ต — ปัด 2 ตำแหน่ง, ต่ำกว่า 0.25 ไม่รับ
+    // (ถึงจุดนี้ remaining > 0.25 และ sFit ≥ 0.5 เสมอ → ต่ำกว่า 0.25 ได้เฉพาะเมื่อขนาดที่ขอมาเล็กเกิน)
     const sFinal = round2(s)
     if (sFinal < MIN_ACCEPT - EPS) {
-      rejected.push({ symbol: cand.symbol, reason: `${cand.symbol} ถูกตัด — พื้นที่พอร์ตเต็ม` })
+      rejected.push({
+        symbol: cand.symbol,
+        reason:
+          want < MIN_ACCEPT - EPS
+            ? `${cand.symbol} ถูกตัด — ขนาด ${fmtSlots(want)} slots ต่ำกว่าขั้นต่ำ ${MIN_ACCEPT} slots`
+            : `${cand.symbol} ถูกตัด — พื้นที่พอร์ตเต็ม`,
+      })
       continue
     }
     register(cand.symbol, sFinal)

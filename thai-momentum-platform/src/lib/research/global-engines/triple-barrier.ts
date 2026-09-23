@@ -59,10 +59,12 @@ export function evalTripleBarrier(piv: ThaiPivots, rets: Mat): EngineEval {
       let label: 1 | -1 | 0 = 0
       let ret = 0
       let hold = H
+      let seen = 0 // จำนวนแท่งถัดไปที่มีราคาจริง
       const maxK = Math.min(H, nD - 1 - i)
       for (let k = 1; k <= maxK; k++) {
         const cp = piv.close[i + k]?.[j]
         if (cp === undefined) continue
+        seen++
         const r = cp / entry - 1
         hold = k
         if (r >= up) {
@@ -77,6 +79,9 @@ export function evalTripleBarrier(piv: ThaiPivots, rets: Mat): EngineEval {
         }
         ret = r // ล่าสุดก่อนหมดเวลา
       }
+      // ไม่มีราคาหลังเข้าเลย (พักการซื้อขาย/เพิกถอน) หรือกำแพงเวลาเกินปลายข้อมูลโดยยังไม่ชนกำแพงราคา
+      // → ไม่รู้ผลจริง: ไม่นับเป็น timeout ผลตอบแทน 0/บางส่วน (กันป้ายปลอม)
+      if (seen === 0 || (label === 0 && maxK < H)) continue
       n++
       holdSum += hold
       if (label === 1) tp++
@@ -94,7 +99,11 @@ export function evalTripleBarrier(piv: ThaiPivots, rets: Mat): EngineEval {
   // เกณฑ์ลงทะเบียน: PASS = EV หลังต้นทุน > 0 และ %TP > %SL; WEAK = EV > 0
   let verdict: EngineEval["verdict"] = "FAIL"
   let why = `EV หลังต้นทุน ${(ev * 100).toFixed(2)}% ≤ 0 — barrier ชุดนี้ยังไม่คุ้ม (honest)`
-  if (ev > 0 && pctTp > pctSl) {
+  if (n === 0) {
+    // ไม่มีไม้ให้ติดป้าย — EV = −ต้นทุน ไม่ใช่ผลวัด
+    verdict = "INFO"
+    why = `ข้อมูลไม่พอ — ไม่มีไม้ที่ติดป้ายได้ (ต้องมีหุ้น liquid ≥${TOP_N} ตัวที่มีประวัติ ${LOOKBACK} วันและราคาถัดไปครบกำแพงเวลา) จึงยังตัดสินไม่ได้`
+  } else if (ev > 0 && pctTp > pctSl) {
     verdict = "PASS"
     why = `EV หลังต้นทุน ${(ev * 100).toFixed(2)}% > 0 และ %TP ${(pctTp * 100).toFixed(1)}% > %SL ${(pctSl * 100).toFixed(1)}% (เกณฑ์ลงทะเบียน)`
   } else if (ev > 0) {

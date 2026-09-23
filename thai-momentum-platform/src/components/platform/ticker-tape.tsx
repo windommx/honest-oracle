@@ -2,12 +2,14 @@
 
 import { useMemo } from "react"
 import { TrendingDown, TrendingUp } from "lucide-react"
-import { useApi, fmtPct } from "@/hooks/use-api"
+import { useApi } from "@/hooks/use-api"
 import type { SignalsResponse } from "@/lib/momentum/contracts"
 
 /**
  * TickerTape — แถบเลื่อนหุ้นโมเมนตัมสูงสุดของวัน (สไตล์ trading terminal)
  * - เรียงตาม score แล้วเลือก 16 ตัวแรก · วนลูป 2 ชุดเพื่อเลื่อนต่อเนื่องไม่มีรอยต่อ
+ * - mom / score ของสัญญาณ v2 เป็นคะแนน 0..1 (mom = 0.7·จำนวน TF ที่ติดโผ/7 + 0.3·streak/10) ไม่ใช่ % ผลตอบแทน
+ *   → แสดงเป็นคะแนน 0–100 (m.. / s..) ห้ามต่อท้าย %
  * - hover/focus เพื่อหยุดดู · ผู้ใช้ที่ตั้ง prefers-reduced-motion จะเห็นแบบหยุดนิ่ง
  * - ข้อมูลยังไม่มา = skeleton แถบเรียบ ๆ
  */
@@ -56,7 +58,9 @@ export default function TickerTape() {
               ) : (
                 <TrendingDown className="size-3 text-neon-rose" aria-hidden />
               )}
-              <span className={up ? "text-neon-green" : "text-neon-rose"}>{fmtPct(s.mom, 1)}</span>
+              <span className={up ? "text-neon-green" : "text-neon-rose"}>
+                m{Number.isFinite(s.mom) ? (s.mom * 100).toFixed(0) : "—"}
+              </span>
               <span className="text-[10px] text-muted-foreground/60">s{(s.score * 100).toFixed(0)}</span>
               <span className="ml-3.5 text-foreground/15" aria-hidden>
                 ·

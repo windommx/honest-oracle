@@ -17,7 +17,13 @@
 //   - ถังบาง (< MIN_TRADES) → ผู้เรียกต้อง fallback ไป pooled (ดู stops/engine.ts)
 //   - R mode ใช้ bin กว้างกว่า (1.5%) กัน obs ภายในเทรด correlated
 //   - หน่วย: mae/dd = ทศนิยม (0.08 = −8%) · ret = % หลังต้นทุน (ตาม convention TradeRow)
+//   - ไม่มี observation เลย → ไม่มี posterior: sOpt/evOpt = null, evCurve ว่าง (ไม่แต่งตัวเลขจาก prior)
 // ============================================================
+
+import { TH_STRATEGY } from "@/lib/config/thai"
+
+/** ต้นทุน round-trip (ทศนิยม) = 2 ขา × (commission + slippage) — ค่าเดียวกับ COST_RT ของ stops/engine.ts */
+export const DEFAULT_COST_RT = (2 * (TH_STRATEGY.costBps + TH_STRATEGY.slipBpsBase)) / 1e4
 
 export interface BayesTrade {
   ret: number // % หลังต้นทุน round-trip (>0 = winner)
@@ -30,6 +36,7 @@ export interface PosteriorOptions {
   mode?: "T" | "R"
   bin?: number // T default 0.01, R default 0.015
   maxDD?: number // เพดาน bin สุดท้าย (default 0.25)
+  cost?: number // ต้นทุน round-trip (ทศนิยม) ของเทรดที่ถูก stop (default DEFAULT_COST_RT)
 }
 
 export interface Posterior {
@@ -54,6 +61,7 @@ export function buildPosterior(trades: BayesTrade[], o: PosteriorOptions = {}): 
   const mode = o.mode ?? "T"
   const bin = o.bin ?? (mode === "R" ? 0.015 : 0.01)
   const maxDD = o.maxDD ?? 0.25
+  const cost = typeof o.cost === "number" && isFinite(o.cost) && o.cost >= 0 ? o.cost : DEFAULT_COST_RT
   const nb = Math.ceil(maxDD / bin) + 1 // bin สุดท้าย = overflow (≥ maxDD)
   const bins: number[] = Array.from({ length: nb }, (_, i) => i * bin)
 
@@ -148,16 +156,18 @@ export function buildPosterior(trades: BayesTrade[], o: PosteriorOptions = {}): 
   }
 
   // ---------- EV ของกลยุทธ์ที่ stop s ----------
-  // ret ทั้งชุดเป็น "หลังต้นทุน round-trip" อยู่แล้ว — เทรดที่ถูก stop ที่ s จบที่ −s
-  // (close-based fill ที่ระดับ stop) โดยต้นทุน round-trip เท่าเดิมทุก arm จึงไม่ต้องหักเพิ่ม
-  const evNoStop = pBin.reduce((s, pb, b) => s + pb * evHold[b], 0)
-  const evCurve: { s: number; ev: number }[] = [{ s: maxDD, ev: evNoStop }] // จุดแรก = ไม่มี stop (plot ที่ maxDD)
+  // evHold มาจาก ret "หลังต้นทุน round-trip" — เทรดที่ถูก stop ที่ s (close-based fill ที่ระดับ stop)
+  // ต้องอยู่หน่วยเดียวกัน: จบที่ −s − cost (สูตรหัวไฟล์ และตรงกับ walk-forward ใน stops/engine.ts)
+  // ไม่มี observation → ไม่มี posterior ให้หา argmax (evCurve ว่าง, sOpt = null)
+  const noObs = obs.length === 0
+  const evNoStop = noObs ? 0 : pBin.reduce((s, pb, b) => s + pb * evHold[b], 0)
+  const evCurve: { s: number; ev: number }[] = noObs ? [] : [{ s: maxDD, ev: evNoStop }] // จุดแรก = ไม่มี stop (plot ที่ maxDD)
   let best = { s: null as number | null, ev: evNoStop }
-  for (let k = 1; k < nb; k++) {
+  for (let k = 1; k < nb && !noObs; k++) {
     const s = bins[k]
     let ev = 0
     for (let b = 0; b < nb; b++) {
-      ev += pBin[b] * (b >= k ? -s : evHold[b])
+      ev += pBin[b] * (b >= k ? -s - cost : evHold[b])
     }
     evCurve.push({ s, ev })
     if (ev > best.ev) best = { s, ev }
@@ -194,7 +204,7 @@ export interface LiveExitResult {
 export function liveExit(p: Posterior, dNow: number): LiveExitResult {
   const nb = p.bins.length
   const b = Math.min(nb - 1, Math.max(0, Math.floor(Math.max(0, dNow) / p.bin)))
-  if (p.nTrades === 0) return { bin: b, pL: null, evHold: null, exit: false }
+  if (p.nTrades === 0 || p.nObs === 0) return { bin: b, pL: null, evHold: null, exit: false }
   return { bin: b, pL: p.pL[b], evHold: p.evHold[b], exit: p.evHold[b] <= 0 }
 }
 

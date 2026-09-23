@@ -2,7 +2,7 @@
 // หลักการ: ทุก engine ต้องผ่านการทดสอบบนข้อมูล SET ก่อน "แนะนำ" เข้า config
 // verdict เป็นเพียงผลวัด — การเปลี่ยน config ยังไปผ่าน apply-verdict/audit เหมือนเดิม
 
-import { loadPivots } from "@/lib/research/thai-fit"
+import { loadPivots, type ThaiPivots } from "@/lib/research/thai-fit"
 import { dailyReturns, marketReturns } from "./helpers"
 import { evalResidualMomentum } from "./residual-momentum"
 import { evalFrogInPan } from "./frog-in-pan"
@@ -15,13 +15,14 @@ import { evalHmmRegime } from "./hmm-regime"
 import { evalHrp } from "./hrp"
 import type { GlobalEnginesReport } from "./types"
 
-let _cache: { key: string; report: GlobalEnginesReport } | null = null
+// cache ต่อ data snapshot: loadPivots คืน object เดิมก็ต่อเมื่อ fingerprint ข้อมูลไม่เปลี่ยน
+// (count/maxDate/maxId/ผลรวมค่า) → ผูก cache กับ identity ของ pivot แทน "จำนวนวัน:วันล่าสุด"
+// ที่พลาดการเพิ่ม/ลบหุ้นหรือแก้ราคาในช่วงวันเดิม
+let _cache: { piv: ThaiPivots; report: GlobalEnginesReport } | null = null
 
 export async function runGlobalEngines(): Promise<GlobalEnginesReport> {
   const piv = await loadPivots()
-  const latest = piv.dates[piv.dates.length - 1] ?? ""
-  const key = `${piv.dates.length}:${latest}`
-  if (_cache && _cache.key === key) return _cache.report
+  if (_cache && _cache.piv === piv) return _cache.report
 
   const t0 = Date.now()
   const rets = dailyReturns(piv)
@@ -47,6 +48,6 @@ export async function runGlobalEngines(): Promise<GlobalEnginesReport> {
     engines,
     runtimeMs: Date.now() - t0,
   }
-  _cache = { key, report }
+  _cache = { piv, report }
   return report
 }

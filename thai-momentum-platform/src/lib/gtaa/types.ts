@@ -59,7 +59,8 @@ export interface SignalRow {
   name: string
   group: string
   close: number
-  sma: number
+  /** null = ประวัติราคาสั้นกว่า smaMonths (คำนวณ SMA ไม่ได้ — trendPass เป็น false) */
+  sma: number | null
   trendPass: boolean
   r1: number | null
   r3: number | null

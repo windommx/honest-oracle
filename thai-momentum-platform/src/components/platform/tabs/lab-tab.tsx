@@ -105,7 +105,7 @@ interface LabDisagreement {
   id?: number | string
   date: string
   asset: string
-  rule: string
+  rule: string | null // null = NO_TRADE (API คง null ตามจริง)
   nimble: string
   conf?: number | null
 }
@@ -154,6 +154,15 @@ interface LabWeekly {
   labelVsNimble?: LabWeeklyMetric
 }
 
+// shape ตรงจาก GET /api/lab/dashboard — ค่า *Pct เป็น "เปอร์เซ็นต์" (0–100) ไม่ใช่สัดส่วน
+interface LabWeeklyApi {
+  n?: number | null
+  gutN?: number | null
+  gutRulePct?: number | null
+  labelRulePct?: number | null
+  labelNimblePct?: number | null
+}
+
 interface LabAgreement {
   rules?: string[]
   nimble?: string[]
@@ -175,6 +184,7 @@ interface LabDashboard {
   matrix?: { rows: string[]; cols: string[]; cells: number[][] }
   gateKill?: { gate: string; kills: number }[]
   expectancy?: number | null
+  brierN?: number | null
   disagreements?: LabDisagreement[]
   calibration?: LabBin[]
   pnl?: LabPnlRow[]
@@ -183,18 +193,38 @@ interface LabDashboard {
   gateKills?: Record<string, number> | LabGateKill[]
   gates?: LabGateKill[]
   edgeQueue?: LabEdgeRow[]
-  weekly?: LabWeekly
+  weekly?: LabWeekly | LabWeeklyApi
   lastEval?: LabEvalResult | null
 }
 
 interface LabRunResponse {
   created?: number
+  updated?: number
   count?: number
   n?: number
   message?: string
 }
 
-type LabEvalResponse = LabEvalResult
+// shape ตรงจาก POST /api/lab/eval
+interface LabEvalApiResponse {
+  ok?: boolean
+  results?: {
+    syntheticAgreement?: number | null
+    humanEdgeAgreement?: number | null
+    brier?: number | null
+    grammarValidity?: number | null
+    noRegression?: boolean | null
+    passed?: boolean | null
+    promotion?: string | null
+  }
+  details?: {
+    gate1?: { n?: number; agree?: number } | null
+    gate2?: { n?: number; agree?: number } | null
+    gate5?: { n?: number; baseAgree?: number; newAgree?: number } | null
+  }
+}
+
+type LabEvalResponse = LabEvalResult & LabEvalApiResponse
 
 interface LabLabelResponse {
   ok?: boolean
@@ -256,6 +286,70 @@ function fmtTime(iso: string | undefined): string {
 
 function num(v: unknown): number | null {
   return typeof v === "number" && isFinite(v) ? v : null
+}
+
+// แปลงผล POST /api/lab/eval ({results, details}) → view 5 ด่าน (ด่านที่ข้าม = null ถือว่าผ่านตามกติกา route)
+function evalViewOf(r: LabEvalResponse): LabEvalResult {
+  if (Array.isArray(r.gates)) return r
+  const res = r.results
+  if (!res) return r
+  const g5 = r.details?.gate5
+  const g5n = num(g5?.n)
+  const frac = (v: unknown) => {
+    const x = num(v)
+    return x !== null && g5n !== null && g5n > 0 ? x / g5n : null
+  }
+  const s1 = num(res.syntheticAgreement)
+  const s2 = num(res.humanEdgeAgreement)
+  const s3 = num(res.brier)
+  const s4 = num(res.grammarValidity)
+  const approved = res.passed === true
+  return {
+    approved,
+    verdict: res.promotion ?? (approved ? "APPROVED" : "REJECTED"),
+    gates: [
+      { key: "g1", label: "G1 synthetic agreement ≥0.97", value: s1, threshold: 0.97, pass: s1 !== null && s1 >= 0.97 },
+      {
+        key: "g2",
+        label: s2 === null ? "G2 human edge (ข้าม — ยังไม่มี label)" : "G2 human edge ≥0.85",
+        value: s2,
+        threshold: 0.85,
+        pass: s2 === null || s2 >= 0.85,
+      },
+      {
+        key: "g3",
+        label: s3 === null ? "G3 Brier (ข้าม — outcome < 10 แถว)" : "G3 Brier <0.15",
+        value: s3,
+        threshold: 0.15,
+        pass: s3 === null || s3 < 0.15,
+      },
+      { key: "g4", label: "G4 grammar = 1.00", value: s4, threshold: 1, pass: s4 === 1 },
+      {
+        key: "g5",
+        label: "G5 no-regression (ใหม่ / base)",
+        value: frac(g5?.newAgree),
+        threshold: frac(g5?.baseAgree),
+        pass: res.noRegression === true,
+      },
+    ],
+  }
+}
+
+// weekly จาก API (เปอร์เซ็นต์) → สัดส่วน 0–1 ให้ตรงกับ pctFrac และเกณฑ์ 0.3 / 0.1 ในการ์ด
+function weeklyViewOf(w: LabWeekly | LabWeeklyApi | undefined): LabWeekly | undefined {
+  if (!w) return undefined
+  const a = w as LabWeeklyApi
+  if (!("gutRulePct" in a || "labelRulePct" in a || "labelNimblePct" in a)) return w as LabWeekly
+  const frac = (v: unknown) => {
+    const x = num(v)
+    return x === null ? null : x / 100
+  }
+  const n = num(a.n)
+  return {
+    gutVsRule: { pct: frac(a.gutRulePct), n: num(a.gutN) ?? n },
+    labelVsRule: { pct: frac(a.labelRulePct), n },
+    labelVsNimble: { pct: frac(a.labelNimblePct), n },
+  }
 }
 
 interface MatrixView {
@@ -401,7 +495,8 @@ export default function LabTab() {
   }, [d])
 
   const matrix = useMemo(() => agreementMatrix(d?.agreement ?? (d as unknown as LabAgreement)), [d])
-  const disagreements = (d?.disagreements ?? []).slice(0, 20)
+  // rule null = NO_TRADE ตามสัญญา API (ไม่ใช่ "ไม่รู้")
+  const disagreements = (d?.disagreements ?? []).slice(0, 20).map((x) => ({ ...x, rule: x.rule ?? "NO_TRADE" }))
   const gateKills = useMemo(() => gateKillData(d), [d])
   // normalize edgeQueue จาก API: {key, wickRatio, closePos} → {id, wick, closePos}
   const edgeQueue: LabEdgeRow[] = (d?.edgeQueue ?? []).map((raw, i) => {
@@ -410,14 +505,14 @@ export default function LabTab() {
       id: (r.key as string) ?? (r.id as string) ?? `${String(r.date ?? "")}-${String(r.asset ?? "")}-${i}`,
       date: r.date as string | undefined,
       asset: r.asset as string | undefined,
-      rule: r.rule as string | undefined,
+      rule: (r.rule as string | null | undefined) ?? "NO_TRADE",
       nimble: r.nimble as string | undefined,
       conf: num(r.conf),
       wick: num(r.wickRatio) ?? num(r.wick),
       closePos: (r.closePos as number | string | undefined) ?? (r.close_pos as number | string | undefined),
     }
   })
-  const weekly = d?.weekly
+  const weekly = weeklyViewOf(d?.weekly)
   const evalView = evalResult ?? d?.lastEval ?? null
 
   const calibData = useMemo(() => {
@@ -443,6 +538,9 @@ export default function LabTab() {
 
   const expectancyR = num(d?.expectancyR) ?? num(d?.expectancy)
   const executedN = num(d?.executedN)
+  // Brier ต้องมี outcome ≥10 แถวก่อนตัดสินผ่าน/ไม่ผ่าน (เกณฑ์เดียวกับ G3 ของ eval) — n น้อยกว่านั้นห้ามโชว์ว่า "ผ่าน"
+  const brierN = num(d?.brierN)
+  const brierJudgeable = brierN === null || brierN >= 10
 
   async function runBatch() {
     setBatchRunning(true)
@@ -450,9 +548,10 @@ export default function LabTab() {
       const nn = Math.min(24, Math.max(4, Math.round(n) || 12))
       const r = await postJson<LabRunResponse>("/api/lab/run", { n: nn, origin })
       const created = r.created ?? r.count ?? r.n
+      const updatedNote = r.updated ? ` · อัปเดต ${r.updated}` : ""
       toast({
         title: "รัน Shadow Batch แล้ว",
-        description: r.message ?? `สร้างใหม่ ${created ?? 0} ไม้เงา (origin: ${ORIGIN_LABEL[origin] ?? origin})`,
+        description: r.message ?? `สร้างใหม่ ${created ?? 0} ไม้เงา${updatedNote} (origin: ${ORIGIN_LABEL[origin] ?? origin})`,
       })
       lab.refetch()
     } catch (e) {
@@ -470,7 +569,7 @@ export default function LabTab() {
     setEvalRunning(true)
     setEvalError(null)
     try {
-      const r = await postJson<LabEvalResponse>("/api/lab/eval", { n: 40 })
+      const r = evalViewOf(await postJson<LabEvalResponse>("/api/lab/eval", { n: 40 }))
       setEvalResult(r)
       toast({
         title: r.approved ? "Eval Harness ผ่านทั้ง 5 ด่าน" : "Eval Harness ยังไม่ผ่าน",
@@ -697,7 +796,11 @@ export default function LabTab() {
               label="Brier score"
               value={stats.brier === null ? "—" : stats.brier.toFixed(3)}
               badge={
-                stats.brier !== null ? (
+                stats.brier !== null && !brierJudgeable ? (
+                  <Badge variant="outline" className="border-border bg-foreground/5 text-[10px] text-muted-foreground">
+                    n={brierN} (&lt;10) ยังน้อยเกินตัดสิน
+                  </Badge>
+                ) : stats.brier !== null ? (
                   <Badge
                     variant="outline"
                     className={cn(
@@ -970,7 +1073,7 @@ export default function LabTab() {
                         conf {row.conf === null || row.conf === undefined ? "—" : pctFrac(row.conf, 0)}
                       </Badge>
                       <span className="font-mono text-[10px] text-muted-foreground">
-                        wick {row.wick === null || row.wick === undefined ? "—" : pctFrac(row.wick, 0)}
+                        wick {row.wick === null || row.wick === undefined ? "—" : `${row.wick.toFixed(2)}×`}
                         {" · "}
                         closePos {row.closePos ?? "—"}
                       </span>

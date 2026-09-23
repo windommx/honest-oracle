@@ -1,0 +1,3 @@
+[test]
+# ชี้ DATABASE_URL ไป SQLite ชั่วคราว (schema จริง) ก่อนโหลดไฟล์ test ใด ๆ — test ไม่มีทางแตะ db/custom.db
+preload = ["./src/test/setup.ts"]

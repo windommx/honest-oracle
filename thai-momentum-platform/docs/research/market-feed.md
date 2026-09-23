@@ -8,6 +8,7 @@
 
 - จาก sandbox ที่ใช้พัฒนา (proxy บล็อก egress) **ทุกโฮสต์ข้อมูลตลาดถูกปฏิเสธ** (Yahoo, set.or.th, settrade.com, Stooq, Twelve Data, EODHD, Alpha Vantage ตอบ 403) จึง **ไม่สามารถยืนยัน feed สด** จากที่นี่ได้ — โค้ดในเอกสารนี้ตรวจด้วย unit test บนตัวอย่างข้อมูลจริงรูปแบบเดียวกัน และต้องรันจริงบนเครื่องผู้ใช้ครั้งแรกแล้วดูรายงานรายตัว
 - ที่ยืนยันได้จากซอร์สโค้ดของไลบรารี **settfex 0.24.1** (PyPI, 21 ก.ย. 2026): เว็บ SET มี bot protection (Incapsula/Imperva) — ไลบรารีต้องใช้ `curl_cffi` ปลอม TLS fingerprint เป็น Chrome + header เฉพาะ + cookie สุ่ม จึงผ่านได้ → `fetch` ธรรมดาของ Node จาก server แพลตฟอร์ม **ผ่านไม่ได้** เป็นเหตุผลที่ทาง SET ต้องรันเป็นสคริปต์ Python บนเครื่องผู้ใช้
+- ตรวจกับ settfex 0.24.2 ที่ติดตั้งจริง: `get_chart_quotation` **ไม่ได้ export ที่ระดับบนสุด** (`from settfex import get_chart_quotation` → ImportError) ต้อง import จาก `settfex.services.set` — สคริปต์แก้แล้ว (เดิมทุกตัวล้มเหลว = ไม่ได้ข้อมูลเลย) · `Quotation.local_datetime` เป็นเวลากรุงเทพ (naive) จึงใช้ตัดวันที่ได้ตรง
 - Yahoo chart API v8 (`query1.finance.yahoo.com/v8/finance/chart/PTT.BK`) เป็น endpoint เดียวกับที่โมดูล GTAA ใช้ดึงข้อมูลจริง 30 ปีสำเร็จจาก container ที่มีเน็ต (worklog Task 14-b) — ต้องส่ง `User-Agent` แบบ browser
 
 ## 2. ตารางเปรียบเทียบแหล่ง feed หุ้นไทย
@@ -29,6 +30,7 @@
 - **ปันผล/สปลิต**: Yahoo `close` ปรับสปลิตแล้วแต่ไม่ปรับปันผล; `adjclose` ปรับทั้งคู่ — ค่าเริ่มต้นของระบบใช้ adjusted (คูณ OHLC ด้วย adjclose/close รายวัน) เพื่อไม่ให้โมเมนตัมข้ามวัน XD กระโดด สลับเป็นราคาดิบได้ในการ์ด
 - **volume ของ Yahoo สำหรับหุ้นไทย** มีรายงานปัญหาเป็นครั้งคราว (ดัชนี ^SET.BK แสดง volume 0; issue ใน yfinance) — quality gate ของ feed เตือนเมื่อมูลค่าเป็น 0 เกินครึ่งของวัน
 - **ป้าย provenance**: ทุกการนำเข้ายิง `EventLog(kind=ingest, payload.source=yahoo|set|settrade|…)` → Flagship เปลี่ยนป้ายจาก SYNTHETIC เป็น REAL อัตโนมัติ
+- **CrossAsset (SPX/USDTHB/GOLD) หลังล้าง demo**: ชุดของ seed สังเคราะห์จากผลตอบแทนของตลาดจำลอง ถ้าคงไว้ crossZ (25% ของ regimeScore) จะเป็นสัญญาณปลอมปนกับหุ้นจริง — `replaceDemo` จึงล้าง CrossAsset ด้วย เว้นแต่มีป้าย `Setting.cross_asset_source = yahoo` (มาจาก `bun run fetch:cross`) · หลังล้าง crossZ ไม่มีส่วนร่วม และชั้น lead-lag ของ SET Sniper ปิด จนกว่าจะรัน `bun run fetch:cross` (การ์ด/สคริปต์แจ้งในหมายเหตุผลนำเข้า)
 
 ## 3. สถาปัตยกรรม feed ในแพลตฟอร์ม (สิ่งที่เพิ่มในรอบนี้)
 
@@ -44,10 +46,10 @@
 | ไฟล์ | หน้าที่ |
 |---|---|
 | `src/lib/feed/universe.ts` | รายชื่อตั้งต้น 78 ตัว (SET50 + ขนาดกลาง) พร้อม sector · `parseSymbolList` · แผนที่ sector ของ SET → 13 กลุ่ม |
-| `src/lib/feed/yahoo.ts` | `mapChartToRows` (pure) · `fetchYahooDaily` (query1→query2, retry 429) · `fetchYahooBatch` (เรียงคิว + รายงานรายตัว) |
+| `src/lib/feed/yahoo.ts` | `mapChartToRows` (pure) · `fetchYahooDaily` (query1→query2, ถอยหลังลองซ้ำเฉพาะ 429/5xx/timeout — 401/403 ไม่ลองซ้ำ) · `fetchYahooBatch` (เรียงคิว + รายงานรายตัว · 3 ตัวแรกเข้าไม่ได้ทั้งหมด = ถูกบล็อก หยุดทั้งชุด · งบเวลา 220 วินาทีใน route ตัวที่ไม่ทันรายงานว่า "ข้าม") |
 | `src/lib/feed/quality.ts` | `assessSymbol` (ประวัติสั้น/กระโดด >35%/มูลค่า 0/วันซ้ำ) · `flagStale` |
 | `src/lib/feed/rows.ts` | `normalizeFeedRows` — ตรวจแถว JSON จากสคริปต์ภายนอก |
-| `src/lib/feed/ingest.ts` | `ingestFeed` · `clearDemoMarketData` |
+| `src/lib/feed/ingest.ts` | `ingestFeed` · `clearDemoMarketData` (รวม CrossAsset สังเคราะห์) |
 | `src/lib/feed/sources.ts` | ทะเบียนแหล่ง + ป้ายความจริงของข้อมูล (แสดงบนการ์ดเสมอ) |
 | `src/app/api/feed/*` | `GET /api/feed` · `POST /api/feed/fetch` · `POST /api/feed/ingest` |
 | `src/components/platform/feed-card.tsx` | การ์ดในแท็บข้อมูล |
@@ -82,11 +84,21 @@ python fetch_set_feed.py --index SET50 --period 3Y --ohlc-from-yahoo --post http
 สมัครที่ developer.settrade.com/open-api (ต้องมีบัญชีกับโบรกเกอร์ที่รองรับ) → สร้าง app → ตั้ง env `SETTRADE_APP_ID / APP_SECRET / BROKER_ID / APP_CODE` → `pip install settrade-v2` →
 `python lab/fetch_settrade_feed.py --symbols PTT,KBANK --limit 500 --post http://localhost:3000`
 เทมเพลตยังไม่ได้ทดสอบกับบัญชีจริง: ถ้ารูปแบบ candlestick ของ SDK ต่างจากที่คาด สคริปต์พิมพ์คีย์ที่ได้จริงให้แก้ `to_rows()`
+- `--symbols` ต้องเป็นรายชื่อหุ้น (ไม่ขยายชื่อดัชนีอย่าง SET50 ให้ — ชื่อดัชนีถูกข้ามพร้อมคำเตือน) · วันที่ของแท่งแปลงเป็นเวลาไทย (UTC+7) ไม่ขึ้นกับ timezone ของเครื่อง
+
+### 4.5 CSV (การ์ดนำเข้า / `POST /api/ingest`)
+- ตัวคั่น `,` · tab (วางจาก Excel) · `;` — ขึ้นบรรทัด LF/CRLF/CR · ช่องในเครื่องหมายคำพูดและตัวคั่นหลักพัน (`"12,345,678"`) · BOM ของ Excel
+- คอลัมน์ `date` (หรือ `Date/Time`), `symbol` (หรือ `Ticker`), `close` + `val`/`value` หรือ `volume`/`vol` · `PTT.BK` = `PTT`
+- วันที่ `2026-09-18` · `20260918` · `18/09/2026` (วัน/เดือน/ปี แบบไทยเป็นค่าเริ่มต้น; ถ้าทั้งไฟล์มีค่าเดือน/วันที่ไม่กำกวมจะอ่านแบบเดือน/วัน) · ปี พ.ศ. (2569 = 2026) — วันที่ที่ไม่มีจริงหรือราคาปิด ≤ 0 ถูกทิ้ง
+
+### 4.6 fetch:cross (SPX / USDTHB / GOLD จริง)
+`bun run fetch:cross` แทนที่ชุดของแต่ละ asset ทั้งชุด (ไม่ upsert ทับชุดสังเคราะห์) · วันที่ตาม timezone ของตลาดนั้น (FX ของ Yahoo ตราเวลาเที่ยงคืนลอนดอน — ตัดวันที่แบบ UTC จะเลื่อนถอยไป 1 วัน) · asset ที่ดึงไม่สำเร็จและเดิมเป็นชุดสังเคราะห์ถูกลบ (ไม่ผสมของปลอมกับของจริง) · ติดป้าย `cross_asset_source = yahoo`
 
 ## 5. Quality gate และหลังนำเข้า
 1. รายงานรายตัวก่อนเข้าฐาน: ไม่พบสัญลักษณ์ / ประวัติสั้น < 60 แท่ง / ราคากระโดด > 35% / มูลค่า 0 เกินครึ่ง / วันล่าสุดตามหลังชุด
-2. DQ ของระบบ (`/api/dq`) ตรวจซ้ำ: แถวซ้ำ, ช่องว่างวันที่ > 5 วัน, กระโดด > 35%, ตัวกรองรั่ว
-3. หลังนำเข้าข้อมูลจริงครั้งแรก ควรรันใหม่ตามลำดับ: Evidence Night (H1–H4) → `bun run ic` (IC harness) → CPCV → Bayes Stop backtest — ค่า verdict/policy เดิมทั้งหมดผูกกับข้อมูล seed และถูกล้างเมื่อเปิด "ล้างข้อมูล demo"
+2. DQ ของระบบ (`/api/dq`) ตรวจซ้ำ: แถวซ้ำ · ช่องว่างวันที่ **วัดเป็นวันทำการ (จ.–ศ.) ที่หายไป** — ขาดเกิน 4 วันทำการ = ข้อมูลหาย (flag) ส่วนช่วงปิดยาว 3–4 วันทำการ (สงกรานต์/ปีใหม่ ซึ่ง SET ปิดติดกันยาวสุด ~4 วันทำการ เช่น 12–15 เม.ย. 2564) แจ้งในรายละเอียดแต่ไม่นับเป็นปัญหา (เดิม "> 5 วันปฏิทิน" ติด flag ทุกปี และ flag นี้ลดโหมด Flagship / นับใน circuit breaker ของ SET Sniper) · กระโดด > 35% เทียบราคาปิดล่าสุดที่มีของหุ้นตัวนั้น (ข้ามวันพักการซื้อขาย) · ตัวกรองรั่ว · DB ว่าง = ไม่มีรายการตรวจ (ไม่แสดง "ผ่านทั้งหมด")
+3. นำเข้าประวัติย้อนหลัง/แก้ราคาย้อนหลัง: retN ของวันถัดไป (สูงสุด 300 แท่ง) เปลี่ยนตาม — ระบบสร้างโผใหม่ให้ทุกวันที่ indicator เปลี่ยน ไม่ใช่เฉพาะวันที่ในไฟล์
+4. หลังนำเข้าข้อมูลจริงครั้งแรก ควรรันใหม่ตามลำดับ: Evidence Night (H1–H4) → `bun run ic` (IC harness) → CPCV → Bayes Stop backtest — ค่า verdict/policy เดิมทั้งหมดผูกกับข้อมูล seed และถูกล้างเมื่อเปิด "ล้างข้อมูล demo"
 
 ## 6. ข้อจำกัดและเงื่อนไขการใช้งาน
 - Yahoo และ endpoint ของเว็บ SET เป็นบริการสาธารณะที่ **ไม่มีสัญญาบริการ** — ใช้เพื่อวิจัย/ส่วนตัว เคารพ rate limit และเงื่อนไขของผู้ให้บริการ ใช้เชิงพาณิชย์ควรใช้ SETSMART/Settrade/vendor ที่มีสัญญา

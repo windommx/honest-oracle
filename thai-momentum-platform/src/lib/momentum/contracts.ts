@@ -2,18 +2,21 @@
 // Shared API contracts — single source of truth สำหรับทุก API + UI
 // ============================================================
 
+import { TH_TOP_N } from "@/lib/config/thai"
+
 export const TFS = [5, 10, 20, 40, 80, 160, 300] as const
 export type Tf = (typeof TFS)[number]
-export const TOPN = 30
+/** จำนวนอันดับต่อโผที่ระบบสร้างจริง (= TH_TOP_N ของ core; เดิมเขียนตายตัว 30 ไม่ตรงกับ Top-25) */
+export const TOPN = TH_TOP_N
 
 export type Question = "Q_REGIME" | "Q_ENTRY" | "Q_EXIT" | "Q_ESCALATE" | "Q_SIGNAL" | "Q_PAIRS" | "Q_STOP"
 export type RegimeAction = "risk_on" | "neutral" | "risk_off"
 
 // ---------- GET /api/dates ----------
 export interface DatesResponse {
-  dates: string[]
+  dates: string[] // วันที่มี snapshot เรียงใหม่ → เก่า (สูงสุด 400 วันล่าสุด)
   latest: string | null
-  count: number
+  count: number // จำนวนวันที่มี snapshot ทั้งหมดในระบบ (อาจมากกว่า dates.length)
 }
 
 // ---------- GET /api/map?date= ----------
@@ -483,10 +486,12 @@ export interface ImportanceResponse {
 
 export interface SignalMarketDay {
   date: string
-  b20: number
-  b50: number
-  b200: number
-  thrust: number
+  /** สัดส่วนหุ้นเหนือ MA20/50/200 · null = วัดไม่ได้ (ยังไม่มีหุ้นตัวไหนมี MA ของหน้าต่างนั้น — ประวัติสั้น) */
+  b20: number | null
+  b50: number | null
+  b200: number | null
+  /** b20(d) − b20(d−5) · null = วัดไม่ได้ */
+  thrust: number | null
   breadthZ: number
   volPct: number
   overlapZ: number

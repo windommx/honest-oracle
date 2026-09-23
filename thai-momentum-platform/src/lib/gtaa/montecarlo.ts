@@ -9,6 +9,8 @@ import { DEFAULT_GTAA_CONFIG } from "./types"
 import type { GtaaConfig, MonteCarloResult, Percentiles } from "./types"
 
 function drawStats(returns: number[]): { cagr: number; maxDD: number; sharpe: number } {
+  // ไม่มีผลตอบแทนเลย (panel สั้นกว่า warmup) — Math.pow(1, 1/0) = NaN จะหลุดเป็น null ใน JSON / "NaN%" ในกราฟ
+  if (returns.length === 0) return { cagr: 0, maxDD: 0, sharpe: 0 }
   let eq = 1
   let peak = 1
   let maxDD = 0

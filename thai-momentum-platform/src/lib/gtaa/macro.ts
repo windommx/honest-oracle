@@ -51,7 +51,8 @@ export function computeMacroState(panel: GtaaPanel, cfg: GtaaConfig = DEFAULT_GT
 
   // สัญญาณของเดือนปิดล่าสุด (ไม่มี look-ahead — อ่านข้อมูล ≤ T-1 เท่านั้น)
   const sig = computeMonthSignals(panel, T - 1, cfg)
-  const cashPct = sig.weights[sig.cashTicker] ?? 0
+  // เงินสดของสัญญาณ — ไม่ใช้ weights[cashTicker] เพราะ trendedBond ที่ IEF ถูกเลือกด้วยจะรวม slot ของ IEF เข้าไป
+  const cashPct = sig.cashWeight
 
   // SPY — เส้นเทรนด์ตลาดหุ้นหลัก (absolute momentum ของ benchmark เอง)
   const benchCloses = panel.closes["SPY"] ?? []
@@ -61,9 +62,17 @@ export function computeMacroState(panel: GtaaPanel, cfg: GtaaConfig = DEFAULT_GT
   const benchGapPct = benchSma !== null && benchClose !== null && benchSma > 0 ? (benchClose / benchSma - 1) * 100 : null
 
   const failed = sig.rows.filter((r) => r.status === "kicked").map((r) => r.ticker)
+  // ตัวที่ถือ (Top-N) ด้วยน้ำหนัก slot ของตัวเอง — ถ้าเป็นตัวเงินสดด้วย (IEF) หักส่วนเงินสดออก
   const holdings = sig.rows
-    .filter((r) => r.weight > 0 && r.ticker !== sig.cashTicker)
-    .map((r) => ({ ticker: r.ticker, name: r.name, group: r.group, weight: r.weight, score: r.score, trendPass: r.trendPass }))
+    .filter((r) => r.status === "selected")
+    .map((r) => ({
+      ticker: r.ticker,
+      name: r.name,
+      group: r.group,
+      weight: r.ticker === sig.cashTicker ? r.weight - sig.cashWeight : r.weight,
+      score: r.score,
+      trendPass: r.trendPass,
+    }))
 
   // เกณฑ์ stance ตามที่ลงทะเบียนไว้ด้านบน
   const cashHeavy = cashPct >= 0.5

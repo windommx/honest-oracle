@@ -118,6 +118,14 @@ function StatCard({
 }
 
 function verdictBadge(s: BacktestStats) {
+  // 0 เทรด: CAGR 0 จะ "ชนะ" benchmark ที่ติดลบเสมอ — ไม่มีอะไรให้ตัดสิน
+  if (s.trades === 0) {
+    return (
+      <Badge variant="outline" className="text-muted-foreground">
+        ⚪ ไม่มีเทรด — ยังตัดสินไม่ได้
+      </Badge>
+    )
+  }
   if (s.cagr > s.benchCagr && s.maxDD > -0.2) {
     return (
       <Badge
@@ -278,14 +286,18 @@ export default function BacktestTab() {
             <span className="text-xs text-muted-foreground">
               k≥{result.params.k} · ถือ {result.params.hold} วัน · stop{" "}
               {(result.params.stopPct * 100).toFixed(0)}% · สูงสุด{" "}
-              {result.params.maxPos} สถานะ · ต้นทุน {result.params.costBps} bps
+              {result.params.maxPos} สถานะ · ต้นทุน {result.params.costBps} bps + slippage{" "}
+              {result.params.slipBps} bps ต่อขา
             </span>
           </div>
 
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 xl:grid-cols-6">
             <StatCard label="เทรดรวม" value={String(s.trades)} />
-            <StatCard label="Win rate" value={`${(s.winRate * 100).toFixed(1)}%`} />
-            <StatCard label="เฉลี่ย/เทรด" value={fmtPct(s.avgRet, 2)} />
+            <StatCard
+              label="Win rate"
+              value={s.trades > 0 ? `${(s.winRate * 100).toFixed(1)}%` : "—"}
+            />
+            <StatCard label="เฉลี่ย/เทรด" value={s.trades > 0 ? fmtPct(s.avgRet, 2) : "—"} />
             <StatCard label="CAGR" value={fmtPct(s.cagr * 100, 1)} />
             <StatCard
               label="MaxDD"
@@ -296,7 +308,11 @@ export default function BacktestTab() {
             <StatCard label="Exposure" value={`${(s.exposure * 100).toFixed(0)}%`} />
             <StatCard
               label="Stop / Time"
-              value={`${(s.stopShare * 100).toFixed(0)}% / ${(s.timeShare * 100).toFixed(0)}%`}
+              value={
+                s.trades > 0
+                  ? `${(s.stopShare * 100).toFixed(0)}% / ${(s.timeShare * 100).toFixed(0)}%`
+                  : "—"
+              }
             />
             <StatCard label="Benchmark CAGR" value={fmtPct(s.benchCagr * 100, 1)} />
           </div>

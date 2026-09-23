@@ -135,7 +135,8 @@ export default function AnalyticsTab() {
   )
 
   const bestTf = useMemo(() => {
-    const rows = stats.data?.byTf ?? []
+    // เฉพาะ timeframe ที่มีข้อมูล — n = 0 ได้ mean 0 จาก API (เช่น tf 300 ของข้อมูล 1 ปี) ต้องไม่ถูกยกเป็น "ดีที่สุด"
+    const rows = (stats.data?.byTf ?? []).filter((r) => r.n > 0)
     if (!rows.length) return null
     return rows.reduce((a, b) => (b.mean > a.mean ? b : a)).tf
   }, [stats.data])
@@ -215,10 +216,12 @@ export default function AnalyticsTab() {
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold tabular-nums">
-                    {fmtPct(b.bucket.mean, 2)}
+                    {b.bucket.n > 0 ? fmtPct(b.bucket.mean, 2) : "—"}
                   </div>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    win {(b.bucket.winRate * 100).toFixed(0)}% · n={b.bucket.n}
+                    {b.bucket.n > 0
+                      ? `win ${(b.bucket.winRate * 100).toFixed(0)}% · n=${b.bucket.n}`
+                      : "ยังไม่มีข้อมูล · n=0"}
                   </p>
                 </CardContent>
               </Card>
@@ -258,13 +261,13 @@ export default function AnalyticsTab() {
                       <TableCell className="font-medium">{r.tf} วัน</TableCell>
                       <TableCell className="text-right tabular-nums">{r.n}</TableCell>
                       <TableCell className="text-right tabular-nums">
-                        {fmtPct(r.mean, 2)}
+                        {r.n > 0 ? fmtPct(r.mean, 2) : "—"}
                       </TableCell>
                       <TableCell className="text-right tabular-nums">
-                        {fmtPct(r.median, 2)}
+                        {r.n > 0 ? fmtPct(r.median, 2) : "—"}
                       </TableCell>
                       <TableCell className="text-right tabular-nums">
-                        {(r.winRate * 100).toFixed(1)}%
+                        {r.n > 0 ? `${(r.winRate * 100).toFixed(1)}%` : "—"}
                       </TableCell>
                     </TableRow>
                   ))}
@@ -274,13 +277,15 @@ export default function AnalyticsTab() {
                       {stats.data.control.n}
                     </TableCell>
                     <TableCell className="text-right tabular-nums">
-                      {fmtPct(stats.data.control.mean, 2)}
+                      {stats.data.control.n > 0 ? fmtPct(stats.data.control.mean, 2) : "—"}
                     </TableCell>
                     <TableCell className="text-right tabular-nums">
-                      {fmtPct(stats.data.control.median, 2)}
+                      {stats.data.control.n > 0 ? fmtPct(stats.data.control.median, 2) : "—"}
                     </TableCell>
                     <TableCell className="text-right tabular-nums">
-                      {(stats.data.control.winRate * 100).toFixed(1)}%
+                      {stats.data.control.n > 0
+                        ? `${(stats.data.control.winRate * 100).toFixed(1)}%`
+                        : "—"}
                     </TableCell>
                   </TableRow>
                 </TableBody>

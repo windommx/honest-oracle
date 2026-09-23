@@ -123,15 +123,16 @@ let _pivCache: { key: string; piv: ThaiPivots } | null = null
 
 /**
  * ดึง RawDaily ทั้งหมด (เรียง date, symbol) → เมทริกซ์ close/val/liq
- * ~124k แถว in-memory สบาย; cache ระดับโมดูลด้วย fingerprint (count|maxDate|maxId)
- * กัน refetch ตอนเรียกซ้ำ (รีเซ็ตเองเมื่อข้อมูลเปลี่ยน)
+ * ~124k แถว in-memory สบาย; cache ระดับโมดูลด้วย fingerprint
+ * (count|maxDate|maxId|Σclose|Σval|Σliq5) กัน refetch ตอนเรียกซ้ำ — ผลรวมค่าจับการ
+ * แก้แถวเดิมแบบ in-place (ingest upsert ราคาแก้ไข / recompute liq5) ที่ count/maxId ไม่ขยับ
  */
 export async function loadPivots(): Promise<ThaiPivots> {
   const [cnt, agg] = await Promise.all([
     db.rawDaily.count(),
-    db.rawDaily.aggregate({ _max: { date: true, id: true } }),
+    db.rawDaily.aggregate({ _max: { date: true, id: true }, _sum: { close: true, val: true, liq5: true } }),
   ])
-  const key = `${cnt}:${agg._max.date ?? ""}:${agg._max.id ?? 0}`
+  const key = `${cnt}:${agg._max.date ?? ""}:${agg._max.id ?? 0}:${agg._sum.close ?? 0}:${agg._sum.val ?? 0}:${agg._sum.liq5 ?? 0}`
   if (_pivCache && _pivCache.key === key) return _pivCache.piv
 
   const rows = await db.rawDaily.findMany({
@@ -139,13 +140,34 @@ export async function loadPivots(): Promise<ThaiPivots> {
     select: { date: true, symbol: true, close: true, val: true, liq5: true },
   })
 
-  const dateSet = new Map<string, number>()
+  const piv = buildPivots(rows)
+  _pivCache = { key, piv }
+  return piv
+}
+
+export interface PivotRow {
+  date: string
+  symbol: string
+  close: number
+  val: number
+  liq5: number
+}
+
+/**
+ * แถว RawDaily → ThaiPivots — pure (เรียงวัน asc เองเสมอ: YYYY-MM-DD เรียง lexicographic = เรียงเวลา)
+ * close ที่ไม่ใช่ราคาจริง (≤0 / ไม่ finite เช่น CSV ใส่ 0 วันหยุดพัก) ถือเป็น "ไม่มีข้อมูล"
+ * กัน Infinity/NaN ไหลเข้า pct_change, demean รายวัน และ market return
+ */
+export function buildPivots(rows: PivotRow[]): ThaiPivots {
+  const dateKeys = new Set<string>()
   const symSet = new Set<string>()
   for (const r of rows) {
-    if (!dateSet.has(r.date)) dateSet.set(r.date, dateSet.size)
+    dateKeys.add(r.date)
     symSet.add(r.symbol)
   }
-  const dates = [...dateSet.keys()]
+  const dates = [...dateKeys].sort()
+  const dateSet = new Map<string, number>()
+  dates.forEach((d, i) => dateSet.set(d, i))
   const symbols = [...symSet].sort()
   const si = new Map<string, number>()
   symbols.forEach((s, i) => si.set(s, i))
@@ -158,14 +180,12 @@ export async function loadPivots(): Promise<ThaiPivots> {
   for (const r of rows) {
     const i = dateSet.get(r.date) as number
     const j = si.get(r.symbol) as number
-    close[i][j] = r.close
+    close[i][j] = Number.isFinite(r.close) && r.close > 0 ? r.close : undefined
     val[i][j] = r.val
     liq[i][j] = r.liq5 === 1
   }
 
-  const piv: ThaiPivots = { dates, symbols, nSym, close, val, liq }
-  _pivCache = { key, piv }
-  return piv
+  return { dates, symbols, nSym, close, val, liq }
 }
 
 // ---------- IC harness ----------
@@ -304,10 +324,20 @@ export interface ScanResult {
 }
 
 /**
+ * scan มีหลักฐานจริงไหม — ต้องมีอย่างน้อย 1 cell ที่วัดได้ (n>0 วัน)
+ * (DB ว่าง / หุ้น liquid ไม่ถึง MIN_CS_N ทุกวัน → false: verdict H1/H4 ไม่มีข้อมูลรองรับ ห้าม auto-apply)
+ */
+export function scanHasEvidence(cells: readonly Pick<ScanCell, "n">[]): boolean {
+  return cells.some((c) => c.n > 0)
+}
+
+/**
  * scan() — สแกนทุกคู่ (form, hold):
  *   H1 pass = มี cell ไหน form<=20 && hold<=10 && ICIR>0.25
  *   H4 pass = ไม่มี cell ไหน form>=160 && ICIR>0.25 (long momentum ตาย = ดี)
- *   best    = top-3 cell สายสั้น (form<=20 && hold<=10) เรียงด้วย ICIR
+ *             — ต้องมี long cell ที่วัดได้จริง (n>0) อย่างน้อย 1 cell: ไม่มีข้อมูล ≠ "ตายแล้ว"
+ *             (สอดคล้องกับกรณี DB ว่างที่คืน h4Pass=false)
+ *   best    = top-3 cell สายสั้น (form<=20 && hold<=10) ที่วัดได้จริง (n>0) เรียงด้วย ICIR
  * เกณฑ์ตัดสินใช้ค่า ICIR ที่เก็บใน cell (ปัดแล้ว) เพื่อให้ตารางที่ผู้อ่านเห็นสอดคล้องกับ verdict เสมอ
  */
 export function scan(piv: ThaiPivots): ScanResult {
@@ -326,9 +356,13 @@ export function scan(piv: ThaiPivots): ScanResult {
   const shortCells = cells.filter((c) => c.form <= 20 && c.hold <= 10)
   // H1: สายสั้นต้องมี ICIR > 0.25 อย่างน้อย 1 cell
   const h1Pass = shortCells.some((c) => c.ICIR > 0.25)
-  // H4: long momentum ต้อง "ตาย" — ไม่มี cell form>=160 ที่ ICIR ยัง > 0.25
-  const h4Pass = !cells.some((c) => c.form >= 160 && c.ICIR > 0.25)
-  const best = [...shortCells].sort((a, b) => b.ICIR - a.ICIR).slice(0, 3)
+  // H4: long momentum ต้อง "ตาย" — ไม่มี cell form>=160 ที่ ICIR ยัง > 0.25 (และต้องวัดได้จริง)
+  const longMeasured = cells.filter((c) => c.form >= 160 && c.n > 0)
+  const h4Pass = longMeasured.length > 0 && !longMeasured.some((c) => c.ICIR > 0.25)
+  const best = shortCells
+    .filter((c) => c.n > 0)
+    .sort((a, b) => b.ICIR - a.ICIR)
+    .slice(0, 3)
   const longCells: LongCell[] = cells
     .filter((c) => c.form >= 160)
     .map((c) => ({ form: c.form, hold: c.hold, meanIC: c.meanIC, ICIR: c.ICIR }))
@@ -394,7 +428,8 @@ function pctRankPerDate(m: Mat, nD: number, nSym: number): Mat {
  *   flow = Σ(sign(ret1)·val) 20 วัน / Σ(val) 20 วัน
  *   สัญญาณ: z5<=-2.5 && turnPct>=0.60 && flow<-0.20 && liq && close>1
  *   เทรดจำลอง 5 แท่ง: stop −8% → 'stop' | z5 กลับ ≥ −0.5 → 'revert' | ครบ 5 วัน → 'time'
- *   net = exitPx/entry − 1 − COST_RT ; control = fwd5 ของวันสัญญาณ
+ *   net = exitPx/entry − 1 − COST_RT ; control = fwd5 ของ "ตลาด" วันสัญญาณ
+ *     (เฉลี่ย fwd5 ของหุ้น liq วันเดียวกัน — H2 ถามว่ากลับตัวแล้ว "ชนะตลาด" ไหม)
  *   PASS = n>=10 && winRate>0.53 && edgeVsCtrl>0
  *     (n>=10 เป็นกันชนกัน noise ของ sample เล็ก — ถ้า n < 10 ไม่มีสถิติพอจะเชื่อได้)
  */
@@ -471,16 +506,22 @@ export function reversal(piv: ThaiPivots): H2Result {
     }
   }
 
-  // --- fwd5 = forward 5-day return masked by liq (control ของ H2) ---
-  const fwd5: Mat = Array.from({ length: nD }, () => new Array<number | undefined>(nSym).fill(undefined))
+  // --- control ของ H2 = fwd5 ของตลาดวันเดียวกัน: เฉลี่ย forward 5-day return ของหุ้น liq ---
+  const mktFwd5: (number | undefined)[] = new Array<number | undefined>(nD).fill(undefined)
   for (let i = 0; i < nD; i++) {
     const fut = i + 5 < nD ? close[i + 5] : null
     if (!fut) continue
+    let s = 0
+    let c = 0
     for (let j = 0; j < nSym; j++) {
       const c0 = close[i][j]
       const cf = fut[j]
-      if (c0 !== undefined && cf !== undefined && liq[i][j]) fwd5[i][j] = cf / c0 - 1
+      if (c0 !== undefined && cf !== undefined && liq[i][j]) {
+        s += cf / c0 - 1
+        c++
+      }
     }
+    if (c > 0) mktFwd5[i] = s / c
   }
 
   // --- สแกน candidate + จำลองเทรด 5 แท่ง ---
@@ -508,7 +549,7 @@ export function reversal(piv: ThaiPivots): H2Result {
         px.push(p)
       }
       if (!ok) continue
-      const ctrl = fwd5[i][j]
+      const ctrl = mktFwd5[i]
       if (ctrl === undefined) continue
 
       // exit scan วันที่ 1..5: stop −8% ก่อน → แล้ว z5 กลับตัว ≥ −0.5 → ไม่งั้น 'time' ที่แท่ง 5
@@ -551,6 +592,8 @@ export function reversal(piv: ThaiPivots): H2Result {
  * tom() — H3 turn-of-month:
  *   market daily return = mean ตามหุ้นที่ liq ในแต่ละวัน
  *   in-window = 3 วันทำการแรกหรือ 3 วันทำการท้ายของเดือน (YYYY-MM), out = ที่เหลือ
+ *     เดือนแรก/เดือนสุดท้ายของตัวอย่างอาจไม่ครบเดือน → "3 วันแรก" ของเดือนแรกและ "3 วันท้าย"
+ *     ของเดือนสุดท้ายระบุไม่ได้ (อาจเป็นกลางเดือน) — วันกำกวมเหล่านี้ไม่นับเข้ากลุ่มใด
  *   Welch t = (meanIn − meanOut)/sqrt(varIn/nIn + varOut/nOut) — PASS เมื่อ t > 2
  */
 export function tom(piv: ThaiPivots): H3Result {
@@ -584,12 +627,15 @@ export function tom(piv: ThaiPivots): H3Result {
     const m = dates[k].slice(0, 7)
     let e = k
     while (e < nD && dates[e].slice(0, 7) === m) e++
+    const startKnown = k > 0 // เดือนแรกของตัวอย่าง: ไม่รู้ว่าข้อมูลเริ่มที่วันทำการแรกของเดือนจริงไหม
+    const endKnown = e < nD // เดือนสุดท้าย: เดือนอาจยังไม่จบ
     for (let idx = k; idx < e; idx++) {
       const v = mkt[idx]
       if (v === undefined) continue
       const fromStart = idx - k
       const fromEnd = e - 1 - idx
-      if (fromStart < 3 || fromEnd < 3) inR.push(v)
+      if ((startKnown && fromStart < 3) || (endKnown && fromEnd < 3)) inR.push(v)
+      else if (fromStart < 3 || fromEnd < 3) continue // ขอบตัวอย่างที่ระบุตำแหน่งในเดือนไม่ได้
       else outR.push(v)
     }
     k = e
@@ -666,10 +712,14 @@ export async function runThaiFit(mode: ThaiFitMode = "all"): Promise<ThaiFitRepo
   }
 
   // freeze กติกาลง paramsHash (sha256 hex) — config-as-evidence
+  // rules: 2 = control H2 เป็น fwd5 ของตลาด + TOM ไม่นับวันกำกวมขอบตัวอย่าง + H4 ต้องมี long cell ที่วัดได้
   const params = {
     mode,
+    rules: 2,
     forms: [...FORMS_TH],
     holds: [...HOLDS_SHORT],
+    holdsLong: [...HOLDS_LONG],
+    minCsN: MIN_CS_N,
     cost: COST_RT,
     zIn: Z_IN,
     turnMin: TURN_MIN,

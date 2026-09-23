@@ -4,7 +4,7 @@ import { buildPanelStates } from "@/lib/lab/panel-state"
 import { generateBatch } from "@/lib/lab/synth-state"
 import { ruleEngine } from "@/lib/lab/rule-engine"
 import { decideBatch, CONF_MIN } from "@/lib/lab/nimble"
-import { makeKey } from "@/lib/lab/keys"
+import { makeKey, makeSynthKey } from "@/lib/lab/keys"
 import type { StatePacket } from "@/lib/lab/state"
 
 export const dynamic = "force-dynamic"
@@ -13,9 +13,11 @@ export const maxDuration = 300
 // POST /api/lab/run
 // body { n?: number (default 12, cap 24), origin?: 'mix'|'synth'|'panel' (default 'mix') }
 // → สร้าง state (panel จริง + synth), ให้ rule × Nimble ตัดสินคู่ แล้ว upsert ShadowLog
+// Nimble ตอบไม่ได้/ตอบเพี้ยน → ไม่บันทึกแถวนั้น (ห้ามปลอมเป็น NO_TRADE) และแจ้งจำนวนที่พลาดตรง ๆ
 export async function POST(req: Request) {
   try {
-    const body = (await req.json().catch(() => ({}))) as { n?: unknown; origin?: unknown }
+    const raw: unknown = await req.json().catch(() => null)
+    const body = (raw !== null && typeof raw === "object" ? raw : {}) as { n?: unknown; origin?: unknown }
     const n = Math.min(24, Math.max(1, typeof body.n === "number" ? Math.floor(body.n) : 12))
     const origin = body.origin === "synth" || body.origin === "panel" ? body.origin : "mix"
 
@@ -35,10 +37,19 @@ export async function POST(req: Request) {
       for (const s of panel.states.slice(0, Math.min(panelN, panel.states.length))) {
         items.push({ packet: s.packet, originTag: "panel", entryPx: s.entryPx, stopPx: s.stopPx })
       }
+      if (origin === "panel" && items.length === 0) {
+        return NextResponse.json(
+          {
+            error:
+              "ยังไม่มี state จากแผงจริง — ต้องมี RawDaily ของหุ้นสภาพคล่อง (liq5=1, ราคา > 1.5) อย่างน้อย 261 วันทำการ; ใช้ origin 'mix' หรือ 'synth' แทนได้",
+          },
+          { status: 422 }
+        )
+      }
     }
 
-    // synth เติมส่วนที่เหลือ (mix/synth) — seed จากเวลาปัจจุบัน
-    const synthN = n - items.length
+    // synth เติมส่วนที่เหลือ (เฉพาะ mix/synth — origin 'panel' ต้องเป็นข้อมูลจริงล้วน) — seed จากเวลาปัจจุบัน
+    const synthN = origin === "panel" ? 0 : n - items.length
     if (synthN > 0) {
       const seed = Date.now() % 100000
       for (const packet of generateBatch(synthN, seed)) {
@@ -51,13 +62,28 @@ export async function POST(req: Request) {
     const nimble = await decideBatch(items.map((it) => it.packet))
 
     // ---------------- upsert ShadowLog (double-key log) ----------------
-    // key = md5(date|asset) — ถ้าชนกันในรอบเดียวกันให้เขียนทับ (unique ตามดีไซน์)
+    // panel: key = md5(date|asset) — ถ้าชนกันในรอบเดียวกันให้เขียนทับ (unique ตามดีไซน์)
+    // synth: key = md5(เนื้อ packet) — กันเขียนทับแถว panel จริง/แถวที่มนุษย์ label แล้วด้วย state คนละตัว
+    const keyOf = (it: Item) =>
+      it.originTag === "synth" ? makeSynthKey(it.packet) : makeKey(it.packet.date ?? "", it.packet.asset)
+    const existing = new Set(
+      (await db.shadowLog.findMany({ where: { key: { in: items.map(keyOf) } }, select: { key: true } })).map((r) => r.key)
+    )
     let created = 0
+    let updated = 0
+    const failures: string[] = []
+    let unavailable = false
     for (let i = 0; i < items.length; i++) {
       const it = items[i]
       const rule = ruleDecisions[i]
       const nb = nimble[i]
-      const key = makeKey(it.packet.date ?? "", it.packet.asset)
+      if (nb.error) {
+        // ไม่มีคำตอบจริงจาก Nimble (ติดต่อไม่ได้ / timeout / JSON เพี้ยน) → ไม่บันทึกแถวปลอม
+        failures.push(nb.error)
+        if (nb.unavailable) unavailable = true
+        continue
+      }
+      const key = keyOf(it)
       const wouldExecute = !!rule.action && nb.action === "ENTER_LONG" && nb.confidence >= CONF_MIN
       const data = {
         date: it.packet.date ?? "",
@@ -75,15 +101,42 @@ export async function POST(req: Request) {
         stopPx: it.stopPx,
       }
       await db.shadowLog.upsert({ where: { key }, create: { key, ...data }, update: data })
-      created++
+      if (existing.has(key)) updated++
+      else {
+        created++
+        existing.add(key)
+      }
+    }
+
+    const logged = created + updated
+    const failed = failures.length
+    const detail = failures[0] ?? ""
+    if (items.length > 0 && logged === 0) {
+      return NextResponse.json(
+        {
+          error: unavailable
+            ? `Nimble (LLM) ไม่พร้อม — ไม่ได้บันทึกไม้เงาเลย (${failed}/${items.length} ล้มเหลว): ${detail}`
+            : `Nimble ตอบกลับไม่เป็น JSON ที่ถูกต้อง — ไม่ได้บันทึกไม้เงาเลย (${failed}/${items.length}): ${detail}`,
+          failed,
+        },
+        { status: unavailable ? 503 : 502 }
+      )
     }
 
     const panelN = items.filter((it) => it.originTag === "panel").length
+    const notes: string[] = []
+    if (origin === "panel" && panelN < n) notes.push(`แผงจริงมีเพียง ${panelN}/${n} ตัว`)
+    if (failed > 0) notes.push(`Nimble พลาด ${failed} ตัว (ไม่บันทึก): ${detail}`)
     return NextResponse.json({
       ok: true,
       created,
+      updated,
+      failed,
       panelN,
       synthN: items.length - panelN,
+      ...(notes.length > 0
+        ? { message: `บันทึก ${logged} ไม้เงา (ใหม่ ${created} · อัปเดต ${updated}) — ${notes.join(" · ")}` }
+        : {}),
     })
   } catch (e) {
     return NextResponse.json({ error: `แล็บเงารันไม่สำเร็จ: ${(e as Error).message}` }, { status: 500 })

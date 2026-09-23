@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { db } from "@/lib/db"
 import { normalizeDate } from "@/lib/momentum/core"
-import { buildAiScoreRadar, type AiSymbolInput } from "@/lib/momentum/ai-score"
+import { buildAiInputs, buildAiScoreRadar } from "@/lib/momentum/ai-score"
 import type { AiScoreResponse } from "@/lib/momentum/contracts"
 
 export const dynamic = "force-dynamic"
@@ -35,6 +35,7 @@ export async function GET(req: Request) {
       orderBy: { date: "desc" },
     })
     let allDates = distinctDates.map((d) => d.date)
+    const earliest = allDates[allDates.length - 1] // distinct เรียง desc → ตัวท้าย = วันแรกของข้อมูล
     if (date) allDates = allDates.filter((d) => d <= date)
     if (allDates.length === 0) {
       return NextResponse.json<AiScoreResponse>({
@@ -43,15 +44,23 @@ export async function GET(req: Request) {
         rows: [],
         formula: "CmprPct = Vol วันนี้ ÷ เฉลี่ย 5 วัน • AI-Score = Cmpr + PerC12-30 + Trend + Heikin-Score",
         tookMs: Date.now() - t0,
-        message: "ยังไม่มีข้อมูลในระบบ — ไปที่แท็บข้อมูลเพื่อ Seed ข้อมูลก่อน",
+        message:
+          earliest === undefined
+            ? "ยังไม่มีข้อมูลในระบบ — ไปที่แท็บข้อมูลเพื่อ Seed ข้อมูลก่อน"
+            : `ไม่มีข้อมูล ณ หรือก่อนวันที่ ${date} (ข้อมูลในระบบเริ่ม ${earliest})`,
       })
     }
     const target = allDates[0]
     const windowDates = allDates.slice(0, Math.min(WINDOW, allDates.length)).reverse() // เก่า → ใหม่
 
-    // 2) cache ต่อ (target date + จำนวนแถวในหน้าต่าง) กันคำนวณซ้ำทุก request
-    const rowCount = await db.rawDaily.count({ where: { date: { in: windowDates } } })
-    const key = `${target}|${windowDates[0]}|${rowCount}`
+    // 2) cache ต่อ (target date + จำนวนแถว + ผลรวม close/val ในหน้าต่าง) กันคำนวณซ้ำทุก request
+    //    ผลรวมจับการ ingest ทับแถวเดิม (upsert วันเดียวกันหลังตลาดปิด) ที่จำนวนแถวไม่เปลี่ยน
+    const agg = await db.rawDaily.aggregate({
+      where: { date: { in: windowDates } },
+      _count: { _all: true },
+      _sum: { close: true, val: true },
+    })
+    const key = `${target}|${windowDates[0]}|${agg._count._all}|${agg._sum.close ?? 0}|${agg._sum.val ?? 0}`
     if (_cache && _cache.key === key) {
       return NextResponse.json({ ..._cache.data, tookMs: Date.now() - t0 })
     }
@@ -62,22 +71,8 @@ export async function GET(req: Request) {
       select: { date: true, symbol: true, close: true, val: true },
       orderBy: [{ date: "asc" }, { symbol: "asc" }],
     })
-    const bySym = new Map<string, { closes: number[]; vals: number[] }>()
-    for (const r of rows) {
-      const e = bySym.get(r.symbol) ?? { closes: [], vals: [] }
-      e.closes.push(r.close)
-      e.vals.push(r.val)
-      bySym.set(r.symbol, e)
-    }
-    const inputs: AiSymbolInput[] = []
-    for (const [symbol, e] of bySym) {
-      // ต้องมีข้อมูลถึงวัน target จึงจะนับ (ตัดหุ้นหยุดซื้อขายก่อนวันล่าสุด)
-      const lastIdx = e.closes.length - 1
-      if (lastIdx < 0) continue
-      const lastDateIdx = Math.min(lastIdx, windowDates.length - 1)
-      if (windowDates[lastDateIdx] !== target) continue
-      inputs.push({ symbol, closes: e.closes, vals: e.vals })
-    }
+    // ต้องมีข้อมูลถึงวัน target จึงจะนับ (ตัดหุ้นหยุดซื้อขายก่อนวันล่าสุด) — เทียบวันที่ของแถวจริง
+    const inputs = buildAiInputs(rows, target)
 
     // 4) คำนวณคะแนน + จัดอันดับตาม %CMPR
     const radar = buildAiScoreRadar(inputs, TOP_N)

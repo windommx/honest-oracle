@@ -55,6 +55,7 @@ export interface CpcvResult {
 
 const MAX_TRAIN_ROWS = 12000
 const EPOCHS = 250
+export const MIN_PANEL_ROWS = 200 // panel เล็กกว่านี้ไม่รัน CPCV (paths = 0)
 
 function* combinations(n: number, k: number): Generator<number[]> {
   const c = Array.from({ length: k }, (_, i) => i)
@@ -76,7 +77,7 @@ export interface CpcvSplit {
 }
 
 // แบ่งวันที่เป็น nGroups กลุ่มต่อเนื่อง → ทุก combination ของ nTestGroups กลุ่มเป็น test
-// พร้อม purge (ตัดวันใกล้ก่อน test — label ซ้อนทับ horizon) และ embargo (กักหลัง test)
+// พร้อม purge (label ซ้อนทับ horizon — ตัดทั้งก่อน test และหลัง test) และ embargo (กักเพิ่มหลัง test)
 export function cpcvSplits(
   dates: string[],
   nGroups: number,
@@ -86,7 +87,11 @@ export function cpcvSplits(
 ): CpcvSplit[] {
   const G = nGroups
   const k = nTestGroups
-  if (G < 2 || k < 1 || k > G || dates.length === 0) return []
+  // จำนวนกลุ่มต้องเป็นจำนวนเต็ม — ค่าเศษทำให้ combinations() ไม่มีวันจบ (วนจน memory หมด)
+  if (!Number.isInteger(G) || !Number.isInteger(k) || G < 2 || k < 1 || k > G || dates.length === 0) return []
+  // purge/embargo นับเป็นจำนวนวัน (index) — ค่าเศษปัดขึ้น ไม่งั้น excluded[j] ถูกตั้งที่ index เศษ = ไม่ตัดอะไรเลย
+  const pg = Math.max(0, Math.ceil(Number.isFinite(purge) ? purge : 0))
+  const em = Math.max(0, Math.ceil(Number.isFinite(embargo) ? embargo : 0))
   // กลุ่มต่อเนื่อง (array_split style: กลุ่มแรกได้เพิ่ม 1 ถ้าหารไม่ลงตัว)
   const base = Math.floor(dates.length / G)
   const rem = dates.length % G
@@ -104,11 +109,13 @@ export function cpcvSplits(
   for (const combo of combinations(G, k)) {
     const testGroups = new Set(combo)
     // โซนต้องห้าม (purge/embargo) รอบทุกวัน test — แถว train ที่ label ซ้อนทับ horizon ต้องถูกตัด
+    // ก่อน test: label ของ train [d, d+h] ยื่นเข้า test ได้ถ้า d ≥ t − purge
+    // หลัง test: label ของ test [t, t+h] ทับ label ของ train ได้ถ้า d ≤ t + purge → ตัด purge แล้วกัก embargo ต่อ
     const excluded = new Array<boolean>(dates.length).fill(false)
     for (const [d, g] of groupOfDate) {
       if (!testGroups.has(g)) continue
       const t = dateIndexOf.get(d) as number
-      for (let j = Math.max(0, t - purge); j <= Math.min(dates.length - 1, t + embargo); j++) {
+      for (let j = Math.max(0, t - pg); j <= Math.min(dates.length - 1, t + pg + em); j++) {
         excluded[j] = true
       }
     }
@@ -136,7 +143,7 @@ export function runCpcv(panel: MetaPanel, params: CpcvParams): CpcvResult {
     pctAbove: 0, avgLong: 0, avgShort: 0, avgGap: 0, pooledHit: 0, pooledAuc: 0,
     pathRows: [], metaPass: false, skipped: 0,
   }
-  if (rows.length < 200) return empty
+  if (rows.length < MIN_PANEL_ROWS) return empty
 
   // วันที่ไม่ซ้ำ → แบ่งด้วย cpcvSplits (combinations + purge/embargo)
   const dates = [...new Set(rows.map((r) => r.date))].sort()

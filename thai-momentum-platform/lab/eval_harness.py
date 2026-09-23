@@ -8,6 +8,7 @@ from pathlib import Path
 
 import numpy as np
 
+from nimble_runner import prompt_state
 from state_gen import rule_engine
 from synth_state import generate_batch
 
@@ -35,6 +36,22 @@ SCHEMA = {
 }
 
 
+def core_action(verdict: dict):
+    """คำตอบครูของ kit (buy/hold/exit/reduce/wait) → ภาษา THE CORE: "ENTER_LONG" | None (= NO_TRADE)
+    THE CORE ตัดสินเฉพาะการเปิดไม้ใหม่ → buy = ENTER_LONG, ที่เหลือทั้งหมด = NO_TRADE
+    (เดิมเทียบ "wait"/"buy" ตรง ๆ กับ ENTER_LONG/NO_TRADE → G1 = 0 เสมอแม้โมเดลถูกทุกข้อ)"""
+    return "ENTER_LONG" if (verdict or {}).get("action") == "buy" else None
+
+
+def core_label(label):
+    """ป้ายมนุษย์ได้ทั้งภาษา THE CORE (ENTER_LONG/NO_TRADE) และภาษาครู (buy/wait/…) — None = อ่านไม่ออก"""
+    if label in ("ENTER_LONG", "buy"):
+        return "ENTER_LONG"
+    if label in ("NO_TRADE", "wait", "hold", "exit", "reduce"):
+        return "NO_TRADE"
+    return None
+
+
 class EvalHarness:
     """รัน 5 ด่าน promotion gate + ออกรายงาน (llama.cpp local)"""
 
@@ -47,7 +64,7 @@ class EvalHarness:
         try:
             r = llm.create_chat_completion(
                 messages=[{"role": "system", "content": system_prompt},
-                          {"role": "user", "content": json.dumps(state, ensure_ascii=False)}],
+                          {"role": "user", "content": json.dumps(prompt_state(state), ensure_ascii=False)}],
                 response_format={"type": "json_schema", "json_schema": {"schema": SCHEMA}},
                 temperature=0.0, max_tokens=220)
             return json.loads(r["choices"][0]["message"]["content"])
@@ -60,9 +77,11 @@ class EvalHarness:
         agree = valid = 0
         for s in states:
             dec = self._decide(llm, s, system_prompt)
-            rule_action = rule_engine(s)["action"]
+            rule_action = core_action(rule_engine(s))
             model_action = dec.get("action")
-            if (rule_action == model_action) or (not rule_action and model_action == "NO_TRADE"):
+            # คำตอบที่ล้ม (error → fallback NO_TRADE) ไม่ใช่การตัดสินของโมเดล — ห้ามนับว่าตรงกัน
+            if "error" not in dec and ((rule_action == model_action)
+                                       or (not rule_action and model_action == "NO_TRADE")):
                 agree += 1
             if "error" not in dec and dec.get("action") in ("ENTER_LONG", "NO_TRADE") \
                     and isinstance(dec.get("confidence"), (int, float)) \
@@ -80,20 +99,38 @@ class EvalHarness:
     def gate2_human_edge(self, labels_path):
         if not Path(labels_path).exists():
             print(f"⚠️  {labels_path} not found — skip"); return None
-        labels = [json.loads(l) for l in open(labels_path)]
-        if not labels:
-            return None
-        agree = 0
+        labels = []
+        for line in open(labels_path, encoding="utf-8"):
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                labels.append(json.loads(line))
+            except json.JSONDecodeError:
+                continue
+        agree = n = 0
         for l in labels:
-            s = json.load(open(f"states/{l['date']}_{l['asset']}.json"))
-            if self._decide(self.model, s).get("action") == l["label"]:
+            # รับทั้ง {date, asset, label} (state อยู่ใน states/) และ {date, state, action} ของ build_dataset.py
+            s = l.get("state")
+            if s is None:
+                path = Path("states") / f"{l.get('date')}_{l.get('asset')}.json"
+                if not path.exists():
+                    print(f"⚠️  ไม่พบ {path} — ข้ามป้ายนี้")
+                    continue
+                s = json.loads(path.read_text(encoding="utf-8"))
+            label = core_label(l.get("label") or l.get("action"))
+            if label is None:
+                continue
+            n += 1
+            dec = self._decide(self.model, s)
+            if "error" not in dec and dec.get("action") == label:
                 agree += 1
-        return agree / len(labels)
+        return agree / n if n else None
 
     def gate3_calibration(self, shadow_log_path):
         if not Path(shadow_log_path).exists():
             print(f"⚠️  {shadow_log_path} not found — skip"); return None
-        logs = [json.loads(l) for l in open(shadow_log_path)]
+        logs = [json.loads(l) for l in open(shadow_log_path, encoding="utf-8") if l.strip()]
         v = [l for l in logs if l.get("outcome_R") is not None and l.get("nimble_conf") is not None]
         if len(v) < 10:
             return None

@@ -45,6 +45,12 @@ function pct(x: number | null | undefined, d = 1, sign = true): string {
   return `${s}${(x * 100).toFixed(d)}%`
 }
 
+// ค่าที่เป็น % อยู่แล้ว (ไม่คูณ 100) — null/NaN จาก API ต้องไม่ทำให้ .toFixed พังทั้งหน้า
+function pct3(x: number | null | undefined, sign = true): string {
+  if (x === null || x === undefined || !isFinite(x)) return "—"
+  return `${sign && x >= 0 ? "+" : ""}${x.toFixed(3)}%`
+}
+
 function fmtTime(iso: string): string {
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return iso
@@ -174,7 +180,8 @@ export default function ResearchTab() {
     setBusy(reset ? "reset" : "freeze")
     try {
       await postJson<PreregResponse>("/api/research/prereg", reset ? { reset: true } : {})
-      await Promise.all([prereg.refetch(), trialHistory.refetch()])
+      // freeze/reset emit event → รีเฟรช audit ด้วย (เหมือน CPCV)
+      await Promise.all([prereg.refetch(), trialHistory.refetch(), audit.refetch()])
     } catch {
       // แสดงเงียบ ๆ — ปุ่มนี้ไม่ควรพังบ่อย
     } finally {
@@ -189,6 +196,7 @@ export default function ResearchTab() {
       const res = await postJson<TrialResponse>("/api/research/trial", {})
       setTrial(res)
       trialHistory.refetch()
+      audit.refetch()
     } catch (e) {
       setTrialError(e instanceof Error ? e.message : "รัน Profit Engine ไม่สำเร็จ")
     } finally {
@@ -392,15 +400,15 @@ export default function ResearchTab() {
                 <Card className="gap-1 px-4 py-3">
                   <div className="text-xs text-muted-foreground">Time-half split (mean/day)</div>
                   <div className="text-sm font-bold tabular-nums">
-                    ครึ่งแรก <span className={trial.halves.first > 0 ? "text-neon-green" : "text-neon-rose"}>{trial.halves.first >= 0 ? "+" : ""}{trial.halves.first.toFixed(3)}%</span>
+                    ครึ่งแรก <span className={trial.halves.first > 0 ? "text-neon-green" : "text-neon-rose"}>{pct3(trial.halves.first)}</span>
                     {" · "}
-                    ครึ่งหลัง <span className={trial.halves.second > 0 ? "text-neon-green" : "text-neon-rose"}>{trial.halves.second >= 0 ? "+" : ""}{trial.halves.second.toFixed(3)}%</span>
+                    ครึ่งหลัง <span className={trial.halves.second > 0 ? "text-neon-green" : "text-neon-rose"}>{pct3(trial.halves.second)}</span>
                   </div>
                 </Card>
                 <Card className="gap-1 px-4 py-3">
                   <div className="text-xs text-muted-foreground">Bootstrap CI (กลยุทธ์ − naive, ต่อวัน)</div>
                   <div className="text-sm font-bold tabular-nums">
-                    กลาง {trial.bootstrap.mean >= 0 ? "+" : ""}{trial.bootstrap.mean.toFixed(3)}% · 5–95% [{trial.bootstrap.low5.toFixed(3)}%, {trial.bootstrap.high95 >= 0 ? "+" : ""}{trial.bootstrap.high95.toFixed(3)}%]
+                    กลาง {pct3(trial.bootstrap.mean)} · 5–95% [{pct3(trial.bootstrap.low5, false)}, {pct3(trial.bootstrap.high95)}]
                   </div>
                   <div className={cn("text-[11px]", trial.bootstrap.low5 > 0 ? "text-neon-green" : "text-neon-amber")}>
                     {trial.bootstrap.low5 > 0 ? "ขอบล่าง > 0 — edge แน่นพอทางสถิติ" : "ขอบล่างยังติดลบ — edge ยังไม่แน่น"}

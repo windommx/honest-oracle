@@ -21,14 +21,16 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { fmtNum, fmtPct, useApi } from "@/hooks/use-api"
+import { TH_RISK, TH_STRATEGY } from "@/lib/config/thai"
 import type { PortfolioResponse } from "@/lib/momentum/contracts"
 import { cn } from "@/lib/utils"
 
+// ค่าจาก config/thai (single source of truth) — เดิม hardcode -10% / 10 สล็อต ไม่ตรงระบบจริง (-9% / 7)
 const RULES = [
   "ซื้อที่ราคาปิดวันรัน (T+1 จากสัญญาณ)",
-  "slots 1.0 ถ้า conf ≥ 0.85 ไม่งั้น 0.5",
-  "stop ตั้งที่ -10% และ tighten เป็น +2% เมื่อหลุดจากโผ",
-  "สูงสุด 10 สล็อต",
+  "slots 1.0 ถ้า conf ≥ 0.85 ไม่งั้น 0.5 (ก่อนปรับตาม vol/meta/sector)",
+  `stop ตั้งที่ -${Math.round(TH_STRATEGY.stopPct * 100)}% (หุ้นผันผวนสูงแคบลง ×0.8) และ tighten เป็น +2% เมื่อหลุดจากโผ`,
+  `สูงสุด ${TH_STRATEGY.maxPos} สล็อต`,
   "ทุกคำสั่งมี audit log",
 ]
 
@@ -60,7 +62,12 @@ export default function PortfolioTab() {
 
   const positions = data?.positions ?? []
   const totals = data?.totals ?? null
-  const risk = data?.risk ?? { effN: null, weeklyDD: null, killSwitch: false }
+  const risk = data?.risk ?? {
+    effN: null,
+    weeklyDD: null,
+    killSwitch: false,
+    maxWeeklyDD: TH_RISK.maxWeeklyDD,
+  }
 
   return (
     <div className="space-y-4">
@@ -74,7 +81,8 @@ export default function PortfolioTab() {
             <div>
               {risk.killSwitch ? (
                 <Badge variant="destructive">
-                  🚨 ทำงาน — DD รายสัปดาห์แตะ -6%
+                  🚨 ทำงาน — DD รายสัปดาห์แตะ{" "}
+                  {fmtPct(risk.maxWeeklyDD * 100, 0)}
                 </Badge>
               ) : (
                 <Badge
@@ -114,7 +122,7 @@ export default function PortfolioTab() {
           <CardContent className="space-y-2">
             <p className="text-2xl font-bold tabular-nums">
               {totals
-                ? `${totals.positions} สถานะ · ${totals.slots.toFixed(1)} สล็อต`
+                ? `${totals.positions} สถานะ · ${fmtNum(totals.slots, 2)} สล็อต`
                 : "0 สถานะ"}
             </p>
             <p className="text-xs text-muted-foreground">
@@ -162,7 +170,7 @@ export default function PortfolioTab() {
                     <TableHead>เข้าวันที่</TableHead>
                     <TableHead className="text-right">ราคาเข้า</TableHead>
                     <TableHead className="text-right">สล็อต</TableHead>
-                    <TableHead className="text-right">Stop (-10%)</TableHead>
+                    <TableHead className="text-right">Stop</TableHead>
                     <TableHead className="text-right">ราคาล่าสุด</TableHead>
                     <TableHead className="text-right">P&amp;L</TableHead>
                     <TableHead className="text-right">ถือมา (วัน)</TableHead>
@@ -187,7 +195,8 @@ export default function PortfolioTab() {
                         {fmtNum(p.entryPx, 2)}
                       </TableCell>
                       <TableCell className="text-right font-mono text-xs">
-                        {p.slots.toFixed(1)}
+                        {/* กริด 0.25 — toFixed(1) เคยโชว์ 0.75 เป็น 0.8 */}
+                        {fmtNum(p.slots, 2)}
                       </TableCell>
                       <TableCell className="text-right font-mono text-xs text-neon-rose">
                         {fmtNum(p.stop, 2)}

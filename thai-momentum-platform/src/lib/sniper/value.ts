@@ -4,13 +4,28 @@
 // HVN = แม่เหล็ก · LVN = สุญญากาศที่ราคาพุ่งผ่านเร็ว (ตามเอกสาร — แต่ระดับรายวัน)
 
 import type { OhlcBar, ValueProfile } from "./types"
+import { hasHighLow } from "./structure"
 
 const BINS = 24
 const WINDOW = 60
 
 export function buildValueProfile(bars: OhlcBar[]): ValueProfile | null {
   if (bars.length < 30) return null
-  const win = bars.slice(-WINDOW)
+  // ราคาจริงของแต่ละแท่ง: แถวที่ไม่มี open/high/low ถูกเติม 0 ตอนโหลด — ใช้ close (ราคาจริงราคาเดียวที่มี)
+  // แทนการใช้ 0 เป็นราคา (0 ทำให้ช่วงโปรไฟล์ยืดลงถึง 0 → POC/VA เพี้ยนทั้งชุด)
+  const win = bars
+    .slice(-WINDOW)
+    .filter((b) => b.close > 0)
+    .map((b) => {
+      const hl = hasHighLow(b)
+      return {
+        low: hl ? b.low : b.close,
+        high: hl ? b.high : b.close,
+        mid: hl && b.open > 0 ? (b.close + b.open) / 2 : b.close,
+        val: b.val,
+      }
+    })
+  if (win.length === 0) return null
   const min = Math.min(...win.map((b) => b.low))
   const max = Math.max(...win.map((b) => b.high))
   if (!(max > min) || !Number.isFinite(min)) return null
@@ -22,7 +37,7 @@ export function buildValueProfile(bars: OhlcBar[]): ValueProfile | null {
     const v = b.val > 0 ? b.val : 1
     const lo = clampBin((b.low - min) / binW)
     const hi = clampBin((b.high - min) / binW)
-    const mid = clampBin(((b.close + b.open) / 2 - min) / binW)
+    const mid = clampBin((b.mid - min) / binW)
     w[mid] += v * 0.5
     w[lo] += v * 0.25
     w[hi] += v * 0.25
@@ -52,8 +67,10 @@ export function buildValueProfile(bars: OhlcBar[]): ValueProfile | null {
       acc += Math.max(0, down)
     }
   }
-  const valLow = centerOf(lo)
-  const valHigh = centerOf(hi)
+  // ขอบ Value Area = ขอบล่างของถังล่างสุด / ขอบบนของถังบนสุดที่อยู่ใน VA
+  // (เดิมใช้ "กึ่งกลาง" ถัง → ราคาในครึ่งนอกของถังขอบ VA หรือในถัง POC เอง (VA ถังเดียว) ถูกตีว่าอยู่นอก VA)
+  const valLow = min + lo * binW
+  const valHigh = min + (hi + 1) * binW
 
   // HVN / LVN — เทียบกับ max bin
   const wMax = Math.max(...w)
@@ -65,9 +82,9 @@ export function buildValueProfile(bars: OhlcBar[]): ValueProfile | null {
     else if (w[k] <= wMax * 0.12 && k > 0 && k < BINS - 1) lvn.push(centerOf(k))
   }
 
-  const lastClose = bars[bars.length - 1].close
-  const closePos =
-    lastClose > valHigh ? "above_va" : lastClose < valLow ? "below_va" : "inside_va"
+  // จัดราคาปิดเข้าถังด้วยสูตรเดียวกับตอนกระจายน้ำหนัก แล้วเทียบกับช่วงถังของ VA (ไม่พลาดเพราะทศนิยมที่ขอบถัง)
+  const closeBin = clampBin((bars[bars.length - 1].close - min) / binW)
+  const closePos = closeBin > hi ? "above_va" : closeBin < lo ? "below_va" : "inside_va"
 
   return {
     poc,

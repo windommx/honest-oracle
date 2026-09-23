@@ -1,8 +1,8 @@
 /// <reference types="bun-types" />
 // bun test — เอนจิน feed ส่วนที่ pure (แปลง JSON ของ Yahoo, รายชื่อ, sector, คุณภาพ, แถวจากสคริปต์)
-import { describe, expect, it } from "bun:test"
+import { afterEach, describe, expect, it } from "bun:test"
 
-import { mapChartToRows, tsToMarketDate, type YahooChartJson } from "./yahoo"
+import { BLOCKED_AFTER, fetchYahooBatch, fetchYahooDaily, mapChartToRows, tsToMarketDate, type YahooChartJson } from "./yahoo"
 import { parseSymbolList, sectorForSymbol, toThSector, FEED_PRESETS } from "./universe"
 import { assessSymbol, flagStale, MIN_BARS_WARN } from "./quality"
 import { normalizeFeedRows } from "./rows"
@@ -137,5 +137,81 @@ describe("normalizeFeedRows", () => {
     expect(dropped).toBe(2)
     expect(rows[0]).toMatchObject({ symbol: "PTT", val: 30000, open: null })
     expect(rows[1]).toMatchObject({ symbol: "KBANK", date: "2026-09-18", val: 5e8, high: 151 })
+  })
+
+  it("val = null/\"\" (สคริปต์ Python ส่ง None) ใช้ close × volume — เดิม Number(null) = 0 ทำให้ liq5 ตกทั้งตัว", () => {
+    const { rows } = normalizeFeedRows([
+      { date: "2026-09-18", symbol: "PTT", close: 30, val: null, volume: 1000 },
+      { date: "2026-09-18", symbol: "KBANK", close: 150, val: "" as unknown as number, volume: 10 },
+      { date: "2026-09-18", symbol: "SCB", close: 100, val: 0, volume: 10 }, // มูลค่า 0 ที่ส่งมาจริง = 0
+    ])
+    expect(rows.map((r) => r.val)).toEqual([30000, 1500, 0])
+  })
+
+  it("แถวที่ไม่ใช่ object ถูกทิ้งแทนที่จะทำให้ทั้งคำขอล้ม", () => {
+    const { rows, dropped } = normalizeFeedRows([null, 5, { date: "18/09/2569", symbol: "PTT", close: 30 }] as never)
+    expect(dropped).toBe(2)
+    expect(rows[0].date).toBe("2026-09-18")
+  })
+})
+
+describe("sectorForSymbol กับ overrides ที่ผิดชนิด", () => {
+  it("ค่าที่ไม่ใช่ข้อความไม่ทำให้ ingest ล้ม (เดิม TypeError หลังเขียน RawDaily ไปแล้ว)", () => {
+    expect(sectorForSymbol("PTT", { PTT: 1 } as unknown as Record<string, string>)).toBe("Energy")
+    expect(sectorForSymbol("ABC", { ABC: null } as unknown as Record<string, string>)).toBe("Unknown")
+    expect(sectorForSymbol("ABC", { ABC: "x".repeat(500) }).length).toBe(40)
+  })
+})
+
+describe("Yahoo fetch — retry / ถูกบล็อก / งบเวลา", () => {
+  const realFetch = globalThis.fetch
+  afterEach(() => {
+    globalThis.fetch = realFetch
+  })
+  const mockFetch = (status: number) => {
+    let calls = 0
+    globalThis.fetch = (async () => {
+      calls++
+      return new Response("nope", { status })
+    }) as unknown as typeof fetch
+    return () => calls
+  }
+
+  it("403 (ถูกบล็อก) ไม่ถอยหลังลองซ้ำ — ลอง 2 host แล้วจบทันที", async () => {
+    const calls = mockFetch(403)
+    const t0 = Date.now()
+    await expect(fetchYahooDaily("PTT", "1y", { adjusted: true })).rejects.toThrow("HTTP 403")
+    expect(calls()).toBe(2)
+    expect(Date.now() - t0).toBeLessThan(1000) // เดิมถอยหลัง 1.5+3+4.5 วินาทีต่อตัว
+  })
+
+  it("503 (ชั่วคราว) ลองครบ 3 รอบ × 2 host", async () => {
+    const calls = mockFetch(503)
+    await expect(fetchYahooDaily("PTT", "1y", { adjusted: true, retryDelayMs: 0 })).rejects.toThrow("HTTP 503")
+    expect(calls()).toBe(6)
+  })
+
+  it("ชุดใหญ่ที่ถูกบล็อกหยุดหลัง 3 ตัวแรก และรายงาน blocked", async () => {
+    const calls = mockFetch(403)
+    const syms = Array.from({ length: 53 }, (_, i) => `S${i}`)
+    const res = await fetchYahooBatch(syms, "1y", { adjusted: true, delayMs: 0 })
+    expect(res.blocked).toBe(true)
+    expect(res.reports).toHaveLength(53)
+    expect(calls()).toBe(BLOCKED_AFTER * 2)
+    expect(res.reports.slice(BLOCKED_AFTER).every((r) => !r.ok && (r.error ?? "").startsWith("ข้าม"))).toBe(true)
+  })
+
+  it("404 (ไม่พบสัญลักษณ์) ไม่นับว่าเครือข่ายถูกบล็อก", async () => {
+    mockFetch(404)
+    const res = await fetchYahooBatch(["AAA", "BBB", "CCC", "DDD"], "1y", { adjusted: true, delayMs: 0 })
+    expect(res.blocked).toBe(false)
+    expect(res.reports.every((r) => (r.error ?? "").startsWith("ไม่พบสัญลักษณ์"))).toBe(true)
+  })
+
+  it("เลยงบเวลา → ตัวที่เหลือรายงานว่าข้าม (route ไม่ timeout ทั้งคำขอ)", async () => {
+    const calls = mockFetch(403)
+    const res = await fetchYahooBatch(["AAA", "BBB"], "1y", { adjusted: true, delayMs: 0, deadline: Date.now() - 1 })
+    expect(calls()).toBe(0)
+    expect(res.reports.map((r) => r.error?.startsWith("ข้าม"))).toEqual([true, true])
   })
 })

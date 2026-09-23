@@ -112,7 +112,8 @@ const NUMBER_KEYS = new Set([
 function fmtStat(key: string, v: number | string): string {
   if (typeof v === "string") return v
   if (!Number.isFinite(v)) return "—"
-  if (key === "liveValue" || key === "evAfterCost" || key === "fwdStress" || key === "fwdCalm") {
+  // ค่าเหล่านี้ API ส่งเป็นสัดส่วน (fraction) — spread ป้ายบอก "pp" จึงต้องคูณ 100 ด้วย
+  if (key === "liveValue" || key === "evAfterCost" || key === "fwdStress" || key === "fwdCalm" || key === "spread") {
     return (v * 100).toFixed(2) + "%"
   }
   if (Number.isInteger(v)) return String(v)

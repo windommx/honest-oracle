@@ -16,6 +16,12 @@ import { fetchRealPanel } from "../src/lib/gtaa/fetcher"
 import { DEFAULT_GTAA_CONFIG } from "../src/lib/gtaa/types"
 
 const cmd = process.argv[2] ?? "run"
+const COMMANDS = ["fetch", "run", "macro", "sensitivity", "selftest", "reset"]
+if (!COMMANDS.includes(cmd)) {
+  // คำสั่งพิมพ์ผิดต้องไม่เงียบแล้วไปรัน backtest พร้อม exit 0 (cron จะเข้าใจว่าสำเร็จ)
+  console.error(`ไม่รู้จักคำสั่ง "${cmd}" — ใช้ได้: ${COMMANDS.join(" | ")}`)
+  process.exit(1)
+}
 
 function pct(x: number, digits = 2): string {
   return `${(x * 100).toFixed(digits)}%`

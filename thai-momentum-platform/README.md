@@ -43,6 +43,16 @@ bun run gtaa -- fetch          # ราคาจริง 15 สินทรั�
 bun run gtaa -- run|macro|sensitivity|selftest|reset
 ```
 
+## การทดสอบ
+
+```bash
+bun run test                                      # bun test src — unit + scenario บน SQLite ชั่วคราว
+python3 -m unittest discover -s lab/tests_stops   # LAB KIT: thai_fit / apply_verdict / preflight / context_updater
+python3 lab/tests_lab/test_lab_kit.py             # LAB KIT: state_gen / synth_state / nimble_runner / eval / dashboard
+```
+
+`bun test` ใช้ preload `src/test/setup.ts` (ตั้งใน `bunfig.toml`) ชี้ `DATABASE_URL` ไป SQLite ชั่วคราวที่สร้างจาก `prisma/schema.prisma` ก่อนโหลดไฟล์ test ใด ๆ — เทสต์จึงไม่แตะ `db/custom.db` (bun โหลด `.env` เองอัตโนมัติ และใช้ Prisma client ตัวเดียวร่วมกันทุกไฟล์) · เทสต์ที่ต้องการ DB แยกขาดให้รันใน subprocess พร้อม `createSchemaDb()` จาก `src/test/schema-db.ts`
+
 ## LAB KIT (Python, รันบนเครื่อง local)
 
 `lab/` คือฉบับ offline ของ Evidence Board + Shadow Lab สำหรับข้อมูล OHLC จริง (อ่าน `db/custom.db` ตาราง `RawDaily`) — ลำดับรัน, cron รายเดือน และธรรมาภิบาลอยู่ใน [`lab/README.md`](lab/README.md)

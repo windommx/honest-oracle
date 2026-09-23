@@ -17,6 +17,17 @@ except ValueError:
     st.warning("ยังไม่มี shadow_log.jsonl — รัน nimble_runner.py ก่อน")
     st.stop()
 
+# nimble_runner.py เขียน model_action/confidence — แดชบอร์ดนี้อ่าน nimble_action/nimble_conf (เดิม KeyError ทั้งหน้า)
+for dst, src in (("nimble_action", "model_action"), ("nimble_conf", "confidence")):
+    if dst not in log.columns and src in log.columns:
+        log[dst] = log[src]
+for col in ("rule_action", "nimble_action", "nimble_conf", "wick_ratio", "close_pos",
+            "would_execute", "outcome_R", "gates"):
+    if col not in log.columns:
+        log[col] = np.nan
+if "grammar_valid" in log.columns:   # parse ไม่ได้ = ไม่ใช่การตัดสินของโมเดล (fallback wait/0.0) — ไม่นับในสถิติ
+    log = log[log["grammar_valid"] != False].copy()  # noqa: E712
+
 t1, t2, t3, t4, t5 = st.tabs(["Agreement", "Calibration", "Shadow P&L", "Gate Kill", "Label Queue"])
 
 # ---------- Tab 1: Rule vs Nimble ----------
@@ -85,7 +96,7 @@ def outcome_R(bars, entry, stop, horizon=20):
     """bars = DataFrame แท่งหลังวันเข้า (ต้องมีคอลัมน์ Low/High)"""
     r2 = entry + 2 * (entry - stop)
     trail, half_booked, r = stop, False, -1.0
-    for i, c in bars.iloc[-horizon:].iterrows():
+    for i, c in bars.iloc[:horizon].iterrows():   # horizon แท่ง "แรก" หลังวันเข้า (เดิม -horizon: = ท้ายสุด)
         if c.Low <= trail:
             return r if half_booked else -1.0
         if not half_booked and c.High >= r2:

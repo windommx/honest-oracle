@@ -29,10 +29,11 @@ const LIMITS: {
   label: string
   integer?: boolean
 }[] = [
-  { key: "k", min: 1, max: 7, label: "k" },
-  { key: "hold", min: 1, max: 60, label: "hold" },
+  // k/hold/maxPos เป็นจำนวนนับ — maxPos เศษ (เช่น 1.5) ให้ถือได้ 2 ตัว ตัวละ 1/1.5 = gross 133% (leverage)
+  { key: "k", min: 1, max: 7, label: "k", integer: true },
+  { key: "hold", min: 1, max: 60, label: "hold", integer: true },
   { key: "stopPct", min: 0.02, max: 0.5, label: "stopPct" },
-  { key: "maxPos", min: 1, max: 30, label: "maxPos" },
+  { key: "maxPos", min: 1, max: 30, label: "maxPos", integer: true },
   { key: "costBps", min: 0, max: 500, label: "costBps" },
   { key: "slipBps", min: 0, max: 500, label: "slipBps", integer: true },
 ]
@@ -62,7 +63,9 @@ export async function POST(req: Request) {
   try {
     let body: Record<string, unknown> = {}
     try {
-      body = (await req.json()) as Record<string, unknown>
+      const parsed: unknown = await req.json()
+      // JSON ที่ไม่ใช่ object (null, ตัวเลข, array) → ถือเป็น body ว่าง แทนที่จะพังเป็น 500
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) body = parsed as Record<string, unknown>
     } catch {
       body = {}
     }

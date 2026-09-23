@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { db } from "@/lib/db"
 import type { EngineRow, EnginesResponse } from "@/lib/momentum/contracts"
+import { TH_TOP_N } from "@/lib/config/thai"
 
 export const dynamic = "force-dynamic"
 export const maxDuration = 60
@@ -26,7 +27,7 @@ export async function GET() {
         expected: "10-20%",
         maxDD: "-20%",
         capacity: "5-30 ลบ.",
-        detail: "กลไกหลักของแพลตฟอร์ม — คัด top-30 ข้าม 7 timeframe + Jev decision brain",
+        detail: `กลไกหลักของแพลตฟอร์ม — คัด top-${TH_TOP_N} ข้าม 7 timeframe + Jev decision brain`,
         gates: [
           { label: "ข้อมูล RawDaily + Snapshot", pass: true },
           { label: "ผ่าน profit-engine GO/NO-GO", pass: null },

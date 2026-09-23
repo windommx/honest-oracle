@@ -7,6 +7,9 @@
 import type { SectorRow } from "./types"
 import type { Row } from "@/lib/momentum/signals/engine"
 
+/** ชื่อถังของหุ้นที่ยังไม่รู้กลุ่ม: "Unknown" (feed/ค่าว่าง) · "OTHER" (fallbackSectorOf) */
+const UNKNOWN_SECTORS = new Set(["Unknown", "OTHER"])
+
 export function sectorRotation(rows: Row[], sectorOf: (s: string) => string, latestDate: string): SectorRow[] {
   const T = rows.length
   if (T === 0) return []
@@ -14,8 +17,7 @@ export function sectorRotation(rows: Row[], sectorOf: (s: string) => string, lat
   const li = dates.indexOf(latestDate)
   if (li < 0 || li < 60) return []
 
-  const idxOf = new Map(dates.map((d, i) => [d, i]))
-  const per = new Map<string, Map<string, { c: number[]; v: number[] }>>() // sector → symbol → {closes, vals}
+  const per = new Map<string, Map<string, { c: number[]; v: number[]; last: string }>>() // sector → symbol → {closes, vals, วันล่าสุด}
   for (const r of rows) {
     const sec = sectorOf(r.symbol) || "Unknown"
     let bySym = per.get(sec)
@@ -25,15 +27,13 @@ export function sectorRotation(rows: Row[], sectorOf: (s: string) => string, lat
     }
     let m = bySym.get(r.symbol)
     if (!m) {
-      m = { c: [], v: [] }
+      m = { c: [], v: [], last: "" }
       bySym.set(r.symbol, m)
     }
+    // แถวเรียงตาม date อยู่แล้ว (loadAll orderBy date asc) — วันที่ขาด (หยุดพัก) ใช้แท่งของหุ้นเองต่อกันได้
     m.c.push(r.close)
     m.v.push(r.val)
-    // แถวเรียงตาม date อยู่แล้ว (loadAll orderBy date asc) — แต่กันเหนียว: ถ้าวันไม่ต่อเนื่องให้ NaN
-    if (m.c.length > idxOf.get(r.date)!) {
-      // symbol นี้ขาดบางวัน — ต่อให้เรียงแบบ sparse ก็ใช้สัดส่วนได้พอ
-    }
+    m.last = r.date
   }
 
   const out: SectorRow[] = []
@@ -46,6 +46,9 @@ export function sectorRotation(rows: Row[], sectorOf: (s: string) => string, lat
     let valPrev = 0
     let valPrevN = 0
     for (const [, m] of bySym) {
+      // ภาพกลุ่ม "ณ วันล่าสุด" — หุ้นที่ไม่มีแถววันนั้น (ถูกพัก/เลิกซื้อขาย) ไม่นับ
+      // (เดิมนับด้วย ret20/ret60 ของหน้าต่างเก่าที่จบไปแล้ว เช่นหุ้นที่หยุดซื้อขายมา 30 วัน)
+      if (m.last !== latestDate) continue
       const len = m.c.length
       if (len < 61) continue
       const c = m.c[len - 1]
@@ -85,7 +88,8 @@ export function sectorRotation(rows: Row[], sectorOf: (s: string) => string, lat
   byRet20.forEach((r, i) => (r.rankNow = i + 1))
   byRet60.forEach((r, i) => (r.rankPrev = i + 1))
   byRet20.forEach((r) => {
-    r.leader = r.rankNow === 1
+    // ถังหุ้นที่ไม่รู้กลุ่ม (Unknown / OTHER ของ fallback) ไม่ใช่ "กลุ่มอุตสาหกรรม" — แสดงในตารางได้ แต่ห้ามเป็นผู้นำกลุ่ม
+    r.leader = r.rankNow === 1 && !UNKNOWN_SECTORS.has(r.sector)
   })
   return byRet20
 }

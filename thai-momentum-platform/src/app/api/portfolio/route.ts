@@ -9,6 +9,7 @@ import {
 } from "@/lib/risk/sector"
 import { TH_RISK } from "@/lib/config/thai"
 import type { PortfolioResponse, PositionRow } from "@/lib/momentum/contracts"
+import { heldPeriodReturn, lastKnownIndex, observedReturns } from "@/lib/portfolio/returns"
 
 export const dynamic = "force-dynamic"
 
@@ -42,8 +43,9 @@ export async function GET() {
     const rows: PositionRow[] = []
     for (const p of positions) {
       const si = pivot.symIdx.get(p.symbol)
-      const lastPx =
-        pi !== undefined && si !== undefined && isFinite(pivot.px[pi][si]) ? pivot.px[pi][si] : p.entryPx
+      // หุ้นพัก/หยุดซื้อขายวันล่าสุด → ใช้ราคาปิดล่าสุดที่มีจริง (mark-to-last-trade) ไม่ใช่ราคาเข้า (P&L 0% ปลอม)
+      const lk = pi !== undefined && si !== undefined ? lastKnownIndex(pivot.px, si, pi) : -1
+      const lastPx = lk >= 0 && si !== undefined ? pivot.px[lk][si] : p.entryPx
       const ei = pivot.dateIdx.get(p.entryDate)
       const daysHeld = ei !== undefined && pi !== undefined ? pi - ei : 0
       let nTfToday = 0
@@ -74,22 +76,10 @@ export async function GET() {
     }
 
     // ---- Risk overlay ----
-    // weeklyDD: ผลตอบแทน 5 วันทำการล่าสุดของพอร์ต (ถ่วงน้ำหนักด้วย slots)
-    let weeklyDD: number | null = null
-    if (pi !== undefined && pi >= 5) {
-      let portRet = 0
-      let wSum = 0
-      for (const p of positions) {
-        const si = pivot.symIdx.get(p.symbol)
-        if (si === undefined) continue
-        const now = pivot.px[pi][si]
-        const ref = pivot.px[pi - 5][si]
-        if (!isFinite(now) || !isFinite(ref) || ref <= 0) continue
-        portRet += p.slots * (now / ref - 1)
-        wSum += p.slots
-      }
-      weeklyDD = wSum > 0 ? portRet / wSum : null
-    }
+    // weeklyDD: ผลตอบแทน 5 วันทำการล่าสุดของพอร์ต (ถ่วงน้ำหนักด้วย slots) — นับเฉพาะช่วงที่ถือจริง:
+    // สถานะที่เพิ่งเข้าภายใน 5 วันใช้ราคาเข้าเป็นฐาน (ไม่เอาการร่วงก่อนซื้อมาทริกเกอร์ kill switch)
+    // หุ้นพัก/หยุดซื้อขายใช้ราคาปิดล่าสุดที่มีทั้งปลายและฐาน (ไม่หลุดจากการคำนวณ)
+    const weeklyDD: number | null = pi !== undefined ? heldPeriodReturn(positions, pivot, pi, 5) : null
 
     // effN = 1/(wᵀCw) จาก correlation ของผลตอบแทน 60 วันของหุ้นในพอร์ต
     let effN: number | null = null
@@ -97,19 +87,12 @@ export async function GET() {
       const syms = positions.map((p) => p.symbol)
       const sIdx = syms.map((s) => pivot.symIdx.get(s))
       const start = Math.max(1, pi - 60)
-      const rets: number[][] = syms.map(() => [])
-      for (let i = start; i <= pi; i++) {
-        for (let k = 0; k < sIdx.length; k++) {
-          const si = sIdx[k]
-          if (si === undefined) {
-            rets[k].push(0)
-            continue
-          }
-          const a = pivot.px[i - 1][si]
-          const b = pivot.px[i][si]
-          rets[k].push(isFinite(a) && isFinite(b) && a > 0 ? b / a - 1 : 0)
-        }
-      }
+      // วันที่ไม่มีราคา = 0 (convention เดิม) แต่วันที่กลับมาเทรดเทียบราคาปิดล่าสุดที่มี — gap ช่วงพักไม่หาย
+      const rets: number[][] = sIdx.map((si) =>
+        si === undefined
+          ? new Array<number>(pi - start + 1).fill(0)
+          : observedReturns(pivot.px, si, start, pi).map((v) => (isFinite(v) ? v : 0))
+      )
       const n = rets.length
       const means = rets.map((r) => r.reduce((x, y) => x + y, 0) / r.length)
       const cors: number[][] = Array.from({ length: n }, () => new Array(n).fill(1))

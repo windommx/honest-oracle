@@ -20,6 +20,15 @@
 | `fetch_set_feed.py` → CSV + POST `/api/feed/ingest` | การ์ด "ดึงข้อมูลจริงจาก feed" (Yahoo) | `RawDaily` / `Snapshot` / `SymbolMeta` + `EventLog` (ingest) |
 | `fetch_settrade_feed.py` (เทมเพลต Settrade Open API) | — | เดียวกัน |
 
+> ⚠️ **ความเข้ากันได้ kit ↔ เว็บ (ตรวจแล้ว)** — ตารางข้างบนคือ "บทบาทเดียวกัน" ไม่ใช่ "ตัวเดียวกัน":
+> ครูของ kit (`state_gen.rule_engine` — กติกา S1–S3 / R2.0–R6.1 บนแท่ง OHLC, action `buy|hold|exit|reduce|wait`)
+> กับครูบนเว็บ (`src/lib/lab/rule-engine.ts` — THE CORE 5 ประตู + `day_pnl_R > -2` บน State Packet, action `ENTER_LONG|NO_TRADE`)
+> เป็นคนละเครื่องยนต์ คนละ schema — ป้อน state ข้ามฝั่งไม่ได้ (TS: TypeError, Python: KeyError) และ `synth_state.py`
+> ไม่ใช่ต้นฉบับของ `synth-state.ts` (คนละ edge case / คนละ PRNG) → ตัวเลข agreement ข้ามฝั่งเทียบกันตรง ๆ ไม่ได้
+> - `eval_harness.py` แปลงคำตอบครูเป็นภาษา THE CORE ก่อนเทียบ (`buy` → `ENTER_LONG`, อื่น ๆ → `NO_TRADE`)
+> - สิ่งที่ตรงกันจริง: คีย์ `md5("<date>|<asset>")[:12]` (UTF-8) ของ state จริง — บนเว็บ state สังเคราะห์ใช้คีย์จากเนื้อ packet แทน (กันเขียนทับแถวจริง/แถวที่ label แล้ว)
+> - prompt ที่ส่งให้โมเดล (ฝึก + ตัดสิน + eval) ตัด `verdict` ของครูออกเสมอ (`nimble_runner.prompt_state`) — ไม่งั้นโมเดลแค่ลอกคำตอบ
+
 ## ฐานข้อมูลที่ kit อ่าน
 
 SQLite ของแพลตฟอร์ม: `../db/custom.db` → ตาราง **RawDaily** (columns: `date` 'YYYY-MM-DD' · `symbol` · `close` · `val` · `liq5` 0/1) — ถ้า local ใช้ไฟล์ CSV OHLC เต็ม ให้ชี้ `load_px()` ไปที่ CSV ต่อ ticker ได้ทันที
