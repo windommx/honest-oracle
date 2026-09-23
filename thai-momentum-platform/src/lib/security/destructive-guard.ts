@@ -7,6 +7,7 @@ import path from "node:path"
 import { NextResponse } from "next/server"
 import { db } from "@/lib/db"
 import { appRoot, backupDatabase, isSqliteUrl } from "@/lib/ops/backup"
+import { frozenWriteError, liveFreezeFlag } from "@/lib/research/freeze"
 import { confirmationRequired, hasConfirmation, wouldDelete, type DestructiveOp, type ExistingData } from "./confirm"
 
 export interface BackupInfo {
@@ -66,6 +67,15 @@ export async function checkDestructiveConfirmation(
   op: DestructiveOp,
   body: unknown,
 ): Promise<{ ok: true; existing: ExistingData } | { ok: false; response: NextResponse }> {
+  // ล็อกช่วงเก็บผลจริงอยู่ → ห้ามล้างข้อมูลทั้งชุด (ลบกติกาที่ล็อกไว้ + เริ่มยุคข้อมูลใหม่กลาง record) แม้ยืนยันแล้ว
+  const freeze = await liveFreezeFlag()
+  if (freeze.frozen) {
+    const what = op === "seed" ? "สร้างข้อมูลตัวอย่าง (ล้างข้อมูลทั้งหมด)" : "ล้างข้อมูลตลาดทั้งชุด (replaceDemo)"
+    return {
+      ok: false,
+      response: NextResponse.json({ error: frozenWriteError(what, freeze), code: "live_frozen", frozenAt: freeze.frozenAt }, { status: 409 }),
+    }
+  }
   const existing = await countExisting(op)
   if (wouldDelete(existing) && !hasConfirmation(body, op)) {
     return { ok: false, response: NextResponse.json(confirmationRequired(op, existing), { status: 409 }) }

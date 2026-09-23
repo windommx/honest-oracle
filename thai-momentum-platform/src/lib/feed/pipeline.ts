@@ -646,7 +646,13 @@ export async function runDailyPipeline(opts: DailyOptions, deps: DailyDeps): Pro
 
     // ---------- (e) สมอง Jev + verify ----------
     const latestSnap = (await db.snapshot.aggregate({ _max: { date: true } }))._max.date
-    const alreadyRan = latestSnap ? !!(await db.decision.findFirst({ where: { date: latestSnap, question: "Q_ENTRY" }, select: { id: true } })) : false
+    // เหมือน guard ของ /api/jev/run: Decision ของมนุษย์ (อนุมัติหลังข้อมูลเข้า) และแถวเติม/ยกเลิกคำสั่ง T+1 ไม่ใช่หลักฐานว่ารอบนี้รันแล้ว
+    const alreadyRan = latestSnap
+      ? !!(await db.decision.findFirst({
+          where: { date: latestSnap, question: "Q_ENTRY", source: { not: "human" }, action: { notIn: ["fill", "cancel"] } },
+          select: { id: true },
+        }))
+      : false
     if (opts.dryRun) {
       step({ step: "brain", status: "skipped", detail: `dry-run — จะรัน Jev บนโผวันที่ ${latestSnap ?? "—"}${alreadyRan ? " (รันไปแล้ว = ไม่ทำอะไร)" : ""}` })
       step({ step: "verify", status: "skipped", detail: "dry-run" })

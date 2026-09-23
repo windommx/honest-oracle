@@ -1,5 +1,6 @@
 // GET  /api/config/th — อ่าน config กลยุทธ์หุ้นไทย (config-as-data)
 // PUT  /api/config/th — แก้ config บางส่วน (human) + ผนวก history + EventLog
+//                       ล็อกช่วงเก็บผลจริงอยู่ (src/lib/research/freeze.ts) → 409 code "live_frozen" ไม่แตะ config
 
 import { NextResponse } from "next/server"
 import {
@@ -8,6 +9,7 @@ import {
   ConfigValidationError,
   type ThaiConfig,
 } from "@/lib/config/thai-config"
+import { frozenWriteError, liveFreezeFlag } from "@/lib/research/freeze"
 
 export const dynamic = "force-dynamic"
 
@@ -25,6 +27,14 @@ export async function GET() {
 
 export async function PUT(req: Request) {
   try {
+    // config_th = กติกาที่ Jev อ่าน — ล็อกอยู่ห้ามแก้ทุกกรณี (ไม่ว่า body จะถูกหรือผิด)
+    const freeze = await liveFreezeFlag()
+    if (freeze.frozen) {
+      return NextResponse.json(
+        { error: frozenWriteError("แก้ config_th", freeze), code: "live_frozen", frozenAt: freeze.frozenAt },
+        { status: 409 }
+      )
+    }
     let body: Record<string, unknown> = {}
     try {
       body = (await req.json()) as Record<string, unknown>

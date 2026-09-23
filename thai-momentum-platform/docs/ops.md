@@ -231,6 +231,15 @@ docker compose exec scheduler bun scripts/daily.ts --dry-run --json       # ต�
 
 ไฟล์จาก `lab/fetch_set_feed.py` / `lab/fetch_settrade_feed.py` บนเครื่องอื่น: ส่งตรงเข้า API ด้วย `--post https://tmp.example.com` + env `TMP_API_TOKEN` (สะดวกสุดกับ Docker) หรือวางไฟล์ใน `/data/feed/inbox/` (`docker compose cp file.csv scheduler:/data/feed/inbox/`)
 
+**ช่วงเก็บผลจริง (live freeze)** — ระหว่างนับ paper record ([evidence-protocol ขั้น 3](research/evidence-protocol.md)) กติกาที่ Jev อ่านถูกล็อกด้วย sha256
+(`Setting.live_freeze` + EventLog `live_freeze`):
+
+- สถานะ: `curl -s -H "Authorization: Bearer $TMP_API_TOKEN" http://127.0.0.1:3000/api/research/freeze` → `frozen` · `freeze.frozenAt` · `drift` (ต้องว่าง) · `integrity` (ต้องว่าง)
+- ระหว่างล็อก: daily รันตามปกติ · เปิดแท็บ Signals/Stops ได้ (ไม่บันทึก policy) · Evidence Night รันแบบอ่านอย่างเดียว · `PUT /api/config/th` ได้ 409 `live_frozen` (ตั้งใจ)
+- **ห้าม** seed / `--replace-demo` ระหว่างล็อก — ล้าง policy ที่ล็อกไว้ → drift ขึ้นป้ายแดงใน Track Record (record ช่วงนั้นใช้เป็นหลักฐานไม่ได้) · กู้ backup ที่เก่ากว่าวันล็อกย้อนทั้งบันทึกล็อกและ EventLog ไปด้วย — ตรวจได้จาก hash ที่เผยแพร่ไว้ตอนล็อกเท่านั้น
+- drift ไม่ว่าง = มีคนแก้ค่าข้ามด่าน: หยุดดูว่าแก้อะไร (`GET /api/research/freeze` บอก key + hash ทั้งสองฝั่ง) → คืนค่าเดิมจาก backup จน hash กลับมาตรง แล้วบันทึกเหตุการณ์ หรือปลดล็อกแล้วนับเป็น trial ใหม่
+- ปลดล็อกต้องตั้งใจ: แท็บ Evidence พิมพ์ `UNFREEZE` + เหตุผล (หรือ `POST /api/research/freeze` `{"action":"unfreeze","confirm":"UNFREEZE","reason":"…"}`) — เหตุผลลง EventLog
+
 ## 7. สำรองและกู้คืนข้อมูล
 
 ### 7.1 สำรองอัตโนมัติ
@@ -348,6 +357,7 @@ TMP_API_TOKEN=<token> bun deploy/smoke.ts --base-url http://127.0.0.1:3000   # (
 | เปิดเว็บได้ 403 `local_only` | โหมด local แต่เข้าจากเครื่องอื่น/ผ่าน Docker | ตั้ง `TMP_AUTH_PASSWORD` (หัวข้อ 5) |
 | 401 จากสคริปต์/scheduler | token ไม่ตรง | ตั้ง `TMP_API_TOKEN` เดียวกันทั้ง app และผู้เรียก |
 | 429 | เรียกรายงานหนักถี่เกิน | รอ `Retry-After` · สคริปต์ให้เว้นจังหวะ |
+| 409 `live_frozen` ตอนแก้ config / Signals-Stops ไม่บันทึก policy | ล็อกช่วงเก็บผลจริงอยู่ (`GET /api/research/freeze`) | ตั้งใจ — กติกาห้ามเปลี่ยนระหว่างนับ record · เปลี่ยนจริง = ปลดล็อก (`UNFREEZE` + เหตุผล) = trial ใหม่ (หัวข้อ 6) |
 | `data.stale: true` | `docker compose logs scheduler \| grep daily` · `/data/runs/<วัน>.json` | ทำตามตาราง exit code หัวข้อ 6 · รันเอง `--once daily` |
 | daily exit 4 "DB จำลอง" | ยังเป็น demo | เปลี่ยนเป็นข้อมูลจริงครั้งแรก (หัวข้อ 4) |
 | backup ล้ม | `"msg":"backup failed"` · ดิสก์/สิทธิ์ `TMP_BACKUP_DIR` | คืนพื้นที่ · รันเอง (7.2) · ตรวจว่า mirror ยัง mount อยู่ |

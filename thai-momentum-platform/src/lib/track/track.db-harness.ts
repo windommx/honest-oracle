@@ -2,6 +2,8 @@
 // สคริปต์ทดสอบ track record กับ SQLite จริง — รันเป็น subprocess โดย track.db.test.ts เท่านั้น
 // ใช้: DATABASE_URL=file:/tmp/x.db bun track.db-harness.ts track → พิมพ์ JSON บรรทัดสุดท้าย
 // ชุดข้อมูลสังเคราะห์ deterministic + การตัดสินใจที่เขียนแบบเดียวกับ /api/jev/run (Decision/Trade/Position)
+// รูปแบบ buy executed=true (T+0 ก่อน 2026-09-23 — ledger ยังนับเป็นไม้เข้าที่วันของมัน) · รูปแบบคำสั่ง T+1 → แถว fill
+// ทดสอบใน track.test.ts และ src/lib/jev/fills.db-harness.ts (route จริง)
 // ============================================================
 
 import { createHash } from "node:crypto"
@@ -73,7 +75,8 @@ async function trackScenario() {
     if (i === 75) await mk(d, "Q_EXIT", "S03", "exit", 0.85, true, "human", "human-approved")
   }
   const c = (s: string, i: number) => (closes.get(s) as number[])[i]
-  // ไม้ที่ /api/jev/run ปิดเอง → Trade (stopPolicy jev) · ไม้ที่มนุษย์ปิด → ไม่มี Trade (ตามโค้ดจริงของ /api/jev/pending)
+  // ไม้ที่ /api/jev/run ปิดเอง → Trade (stopPolicy jev) · ไม้ที่มนุษย์ปิด → ไม่มี Trade (ข้อมูลแบบก่อน 2026-09-23 —
+  // ตอนนี้ /api/jev/pending บันทึก Trade ของ exit ที่มนุษย์อนุมัติแล้ว; ledger ต้องยังรับประวัติเก่าที่ไม่มี Trade ได้)
   await db.trade.create({
     data: { symbol: "S01", entry: dates[60], exit: dates[70], entryPx: c("S01", 60), exitPx: c("S01", 70), ret: Math.round((c("S01", 70) / c("S01", 60) - 1 - 0.014) * 10000) / 100, mae: 0, regime: "risk_on", src: "auto", holdDays: 10, pathJson: "[]", stopPolicy: "jev" },
   })

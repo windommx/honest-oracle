@@ -8,6 +8,7 @@
 //   AGED  : ราคาคงที่ ถือตั้งแต่ D62 → D68 ถือ 6 วัน ≥ holdDefault 5 → time exit วันที่ 1
 //   EDGE  : ราคาคงที่ ถือตั้งแต่ D64 → วันที่ 1 ถือ 4 (ถือต่อ) · วันที่ 2 ถือ 5 → time exit วันที่ 2
 //   FRESH : ราคาคงที่ ถือตั้งแต่ D67 → ถือต่อทั้งสองวัน
+//   (ซื้ออัตโนมัติวันที่ 1 ถ้ามี = คำสั่ง T+1 → เป็น Position ตอนเริ่มรอบวันที่ 2 ที่ราคาปิดวันที่ 2 — ฉากเต็มอยู่ใน fills.db-harness.ts)
 // ============================================================
 
 import { db } from "@/lib/db"
@@ -61,6 +62,8 @@ async function runDay(label: string) {
     message?: string
     error?: string
     executed?: { question: string; target: string; action: string; reason: string }[]
+    queued?: { symbol: string }[]
+    fills?: { filled: { symbol: string; fillDate: string }[] }
   }
   const exits = (body.executed ?? []).filter((d) => d.question === "Q_EXIT")
   const exitLog = await db.decision.findMany({ where: { date: body.date ?? "", question: "Q_EXIT" }, orderBy: { id: "asc" } })
@@ -69,6 +72,9 @@ async function runDay(label: string) {
     status: res.status,
     date: body.date ?? null,
     message: body.message ?? body.error ?? null,
+    // T+1 (2026-09-23): ซื้ออัตโนมัติของรอบนี้ = คำสั่งในคิว · เติม = คำสั่งของรอบก่อนที่กลายเป็น Position ตอนเริ่มรอบนี้
+    queued: (body.queued ?? []).map((o) => o.symbol),
+    filled: (body.fills?.filled ?? []).map((f) => ({ symbol: f.symbol, fillDate: f.fillDate })),
     exits: exits.map((d) => ({ target: d.target, action: d.action, reason: d.reason })),
     exitLog: exitLog.map((d) => ({ target: d.target, action: d.action, executed: d.executed, reason: d.reason })),
     positions: (await db.position.findMany({ orderBy: { symbol: "asc" } })).map((p) => ({ symbol: p.symbol, entryDate: p.entryDate })),

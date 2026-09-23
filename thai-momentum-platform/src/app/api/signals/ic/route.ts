@@ -4,6 +4,7 @@ import { getPanelCached, loadAll, DEFAULT_W } from "@/lib/momentum/signals/io"
 import { crossIC, timingCorr, promote } from "@/lib/momentum/signals/engine"
 import { learnWeights, type SignalWeights } from "@/lib/momentum/signals/weights"
 import { emitEvent } from "@/lib/research/events"
+import { liveFreezeFlag, type LiveFreezeFlag } from "@/lib/research/freeze"
 import { mayPersistOnGet } from "@/lib/security/request-principal"
 import type { IcResponse, SignalIcSummary } from "@/lib/momentum/contracts"
 
@@ -24,6 +25,8 @@ function verdict(r: SignalIcSummary, sign: 1 | -1): "PROMOTE" | "FLIP-CHECK" | "
 // ผลบันทึกเป็น pre-registered policy (Setting.signals_policy) + Decision Q_SIGNAL/policy
 // บันทึกเฉพาะผู้ดูแลที่เรียกจากหน้าเว็บนี้/สคริปต์ — hold มาจาก query string: ถ้าไม่กัน ผู้ชมหรือเว็บอื่น
 // ที่พา browser มาเปิด ?hold=60 จะเปลี่ยนสัญญาณ/น้ำหนักที่ Jev ใช้ได้ (ได้ผลคำนวณแต่ policySaved=false)
+// ล็อกช่วงเก็บผลจริง (src/lib/research/freeze.ts) = ไม่บันทึกเลยแม้เป็นผู้ดูแล — เปิดแท็บ/สลับ hold ได้ปลอดภัย
+// (frozen=true + freezeNote · Jev อ่าน policy ที่ล็อกไว้ต่อ · freezeDrift = ค่าที่ถูกแก้ข้ามด่าน)
 export async function GET(req: Request) {
   const t0 = Date.now()
   try {
@@ -60,7 +63,9 @@ export async function GET(req: Request) {
     // ---------- เขียน policy (กติกาล็อกไว้ก่อนเห็นผล ตาม pre-registered policy) ----------
     const latest = panel.dates[panel.dates.length - 1] ?? ""
     let policySaved = false
-    if (latest && mayPersistOnGet(req)) {
+    // เช็กล็อก "หลัง" คำนวณเสร็จ (ก่อนเขียนทันที) — ล็อกที่เกิดระหว่างคำนวณก็ยังกันได้
+    const freeze: LiveFreezeFlag = await liveFreezeFlag()
+    if (latest && !freeze.frozen && mayPersistOnGet(req)) {
       const stats: Record<string, SignalIcSummary> = {}
       for (const k of SIGNAL_KEYS) stats[k] = ic[k]
       const policy = {
@@ -108,7 +113,7 @@ export async function GET(req: Request) {
       policySaved = true
     }
 
-    const res: IcResponse = {
+    const res: IcResponse & LiveFreezeFlag = {
       hold,
       ic,
       timing,
@@ -118,6 +123,7 @@ export async function GET(req: Request) {
       weights: weights as unknown as Record<string, number>,
       policySaved,
       tookMs: Date.now() - t0,
+      ...freeze,
     }
     return NextResponse.json(res)
   } catch (e) {

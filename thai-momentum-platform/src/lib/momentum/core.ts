@@ -714,7 +714,7 @@ export async function seedDemoData(opts: { days?: number; symbols?: number } = {
   await db.backtestRun.deleteMany()
   await db.trade.deleteMany()
   // โมเดล meta / prereg / signals & stops policy ผูกกับชุดข้อมูลเดิม — reseed ต้องเคลียร์ด้วย
-  await db.setting.deleteMany({ where: { key: { in: ["meta_model", "prereg_trial", "signals_policy", "stops_policy"] } } })
+  await db.setting.deleteMany({ where: { key: { in: ["meta_model", "prereg_trial", "signals_policy", "stops_policy", "jev_pending_fills"] } } })
   invalidateDataCache()
 
   // insert raw_daily

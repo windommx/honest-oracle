@@ -10,13 +10,19 @@ import {
 import { TH_RISK } from "@/lib/config/thai"
 import type { PortfolioResponse, PositionRow } from "@/lib/momentum/contracts"
 import { heldPeriodReturn, lastKnownIndex, observedReturns } from "@/lib/portfolio/returns"
+import { previewPendingFills } from "@/lib/jev/fills"
 
 export const dynamic = "force-dynamic"
 
 // GET /api/portfolio → สถานะพอร์ตกระดาษ + ความเสี่ยง (effN, weekly DD, kill switch, sector exposure)
+// + คำสั่งซื้อรอเติม T+1 แยกต่างหาก (ยังไม่ใช่สถานะ ไม่นับใน totals/risk/exposure) — อ่านอย่างเดียว:
+// การเติมจริงเกิดตอนเริ่มรอบ POST /api/jev/run (วัน/ราคาเติมกำหนดแน่นอนจาก afterDate — preview บอกค่าที่จะใช้)
 export async function GET() {
   try {
-    const positions = await db.position.findMany({ orderBy: { symbol: "asc" } })
+    const [positions, pendingFills] = await Promise.all([
+      db.position.findMany({ orderBy: { symbol: "asc" } }),
+      previewPendingFills(),
+    ])
     if (positions.length === 0) {
       return NextResponse.json<PortfolioResponse>({
         positions: [],
@@ -29,6 +35,7 @@ export async function GET() {
         },
         sectorExposure: [],
         groupExposure: [],
+        pendingFills,
       })
     }
 
@@ -137,6 +144,7 @@ export async function GET() {
         rows.map((r) => ({ symbol: r.symbol, slots: r.slots })),
         sectorMap
       ),
+      pendingFills,
     })
   } catch (e) {
     return NextResponse.json({ error: (e as Error).message }, { status: 500 })

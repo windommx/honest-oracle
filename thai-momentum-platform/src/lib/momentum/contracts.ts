@@ -170,11 +170,80 @@ export interface JevRunResponse {
   date: string
   regime: RegimeAction
   message: string
+  /** ลงมือแล้วในรอบนี้: เติม T+1 ของคำสั่งค้าง (action "fill") + exit/tighten ที่ราคาปิดวันนี้ */
   executed: JevDecision[]
   gated: (JevDecision & { id: number })[]
   blocked: JevDecision[]
   sectorExposure: SectorExposureRow[] | null
   groupExposure: GroupExposureRow[] | null
+  /** คำสั่งซื้อที่รอบนี้ส่งเข้าคิว — ยังไม่ใช่สถานะ เติมที่ราคาปิดวันทำการถัดไป (T+1) */
+  queued: PendingFillRow[]
+  /** ผลเติมคำสั่งค้าง (ทำก่อนตัดสินใจรอบนี้) */
+  fills: FillStepResult
+  /** คิวที่ยังรอเติมหลังจบรอบ */
+  pendingFills: PendingFillRow[]
+}
+
+// ---------- คำสั่งซื้อรอเติม T+1 (pending fill queue) ----------
+// Jev ตัดสินหลังตลาดปิด (ข้อมูล EOD) — ราคาปิดของวันตัดสินใจจึงซื้อไม่ได้จริง
+// คำสั่งซื้อ (อัตโนมัติ / มนุษย์อนุมัติ / reversal) เข้าคิวก่อน แล้วเติมที่ราคาปิดของวันทำการแรก "หลัง" afterDate
+// (ตรงกับ runBacktest ที่ซื้อ pending ที่ราคาปิดแท่งถัดไป) · คิวเก็บใน Setting ไม่ใช่ Position — ไม่นับใน NAV
+/** ที่มาของคำสั่ง: auto = Jev ซื้ออัตโนมัติ (risk_on) · human = มนุษย์อนุมัติ gate · reversal = snap-back */
+export type PendingFillSource = "auto" | "human" | "reversal"
+export interface PendingFillOrder {
+  id: string
+  symbol: string
+  slots: number
+  /** stop % ที่ใช้วันตัดสิน (ทศนิยม เช่น 0.09) × ตัวคูณ vol-aware (×0.8 เมื่อผันผวนสูง) — คิดจากราคาเติม */
+  stopPct: number
+  stopMult: number
+  source: PendingFillSource
+  /** วันที่ Jev ตัดสินใจ (วันของสัญญาณ / วันของ gate) */
+  decisionDate: string
+  /** วันข้อมูลล่าสุดที่รู้ตอนส่งคำสั่ง — เติมที่ราคาปิดของวันทำการแรกที่ "หลัง" วันนี้ */
+  afterDate: string
+  gateId: number | null
+  conf: number
+  /** เหตุผลเดิมของการตัดสินใจ */
+  reason: string
+  /** งบ slots ของรอบที่ส่งคำสั่ง — ตรวจ sector/slot ซ้ำตอนเติมด้วยงบนี้ */
+  maxSlots: number
+  placedAt: string
+  /** EventLog id ของจุดเริ่มยุคข้อมูลตอนส่งคำสั่ง (seed/ล้าง demo) — ยุคเปลี่ยนก่อนเติม = ยกเลิก */
+  epoch: number | null
+}
+export interface PendingFillRow extends PendingFillOrder {
+  /** วันที่จะเติม (วันทำการแรกหลัง afterDate ที่มีในข้อมูลแล้ว) — null = รอข้อมูลวันทำการถัดไป */
+  fillDate: string | null
+  /** ราคาปิดวันเติม — null = ยังไม่มีข้อมูล หรือหุ้นไม่มีราคาวันนั้น (จะถูกยกเลิก) */
+  fillPx: number | null
+}
+export interface FilledOrderRow {
+  id: string
+  symbol: string
+  source: PendingFillSource
+  decisionDate: string
+  afterDate: string
+  fillDate: string
+  fillPx: number
+  slots: number
+  stop: number
+  /** เช่น ลดขนาดตอนเติมเพราะ sector/งบ slots */
+  note: string | null
+}
+export interface CancelledOrderRow {
+  id: string
+  symbol: string
+  source: PendingFillSource
+  decisionDate: string
+  afterDate: string
+  /** วันที่ควรเติม (null = ยกเลิกก่อนถึงวันเติม เช่นยุคข้อมูลเปลี่ยน) */
+  date: string | null
+  reason: string
+}
+export interface FillStepResult {
+  filled: FilledOrderRow[]
+  cancelled: CancelledOrderRow[]
 }
 
 // ---------- Sector risk (แผนที่หุ้น → อุตสาหกรรม) ----------
@@ -197,12 +266,16 @@ export interface DecisionsResponse {
 }
 export interface PendingResponse {
   pending: PendingRow[]
+  /** คำสั่งซื้อที่รอเติมราคาปิดวันทำการถัดไป (T+1) — ยังไม่ใช่สถานะ */
+  fills: PendingFillRow[]
 }
 export interface GateActionResult {
   ok: boolean
   id: number
   status: string
   message: string
+  /** อนุมัติ Q_ENTRY buy → คำสั่งที่เข้าคิว T+1 (ยังไม่ใช่สถานะ) */
+  order?: PendingFillOrder
 }
 export interface DecisionRow {
   id: number
@@ -259,6 +332,8 @@ export interface PortfolioResponse {
   risk: { effN: number | null; weeklyDD: number | null; killSwitch: boolean; maxWeeklyDD: number }
   sectorExposure: SectorExposureRow[]
   groupExposure: GroupExposureRow[]
+  /** คำสั่งซื้อรอเติม T+1 — แสดงแยก ไม่นับใน positions/totals/risk (ยังไม่ได้ซื้อ) */
+  pendingFills: PendingFillRow[]
 }
 
 // ---------- DQ ----------

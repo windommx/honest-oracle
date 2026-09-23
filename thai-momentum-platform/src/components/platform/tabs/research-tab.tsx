@@ -13,6 +13,7 @@ import {
   XCircle,
 } from "lucide-react"
 import { useApi, postJson, fmtNum } from "@/hooks/use-api"
+import { toast } from "@/hooks/use-toast"
 import type {
   AuditResponse,
   CpcvListResponse,
@@ -183,8 +184,13 @@ export default function ResearchTab() {
       await postJson<PreregResponse>("/api/research/prereg", reset ? { reset: true } : {})
       // freeze/reset emit event → รีเฟรช audit ด้วย (เหมือน CPCV)
       await Promise.all([prereg.refetch(), trialHistory.refetch(), audit.refetch()])
-    } catch {
-      // แสดงเงียบ ๆ — ปุ่มนี้ไม่ควรพังบ่อย
+    } catch (e) {
+      // 409 = ล็อกไว้แล้ว / ล็อกช่วงเก็บผลจริงอยู่ — แสดงข้อความภาษาไทยจาก server (เดิมเงียบ ผู้ใช้ไม่รู้ว่าไม่สำเร็จ)
+      toast({
+        variant: "destructive",
+        title: reset ? "ล็อกกติกาใหม่ไม่สำเร็จ" : "ล็อกกติกาไม่สำเร็จ",
+        description: e instanceof Error ? e.message : "เกิดข้อผิดพลาด",
+      })
     } finally {
       setBusy(null)
     }
@@ -225,6 +231,9 @@ export default function ResearchTab() {
     try {
       await postJson<CpcvResponse>("/api/research/cpcv", { disableModel: true })
       await Promise.all([cpcvStatus.refetch(), audit.refetch()])
+    } catch (e) {
+      // เดิมไม่มี catch → คำขอที่ล้ม (เช่น 409 ล็อกช่วงเก็บผลจริง) กลายเป็น unhandled rejection เงียบ ๆ
+      toast({ variant: "destructive", title: "ปิด meta model ไม่สำเร็จ", description: e instanceof Error ? e.message : "เกิดข้อผิดพลาด" })
     } finally {
       setBusy(null)
     }

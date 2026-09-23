@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { db } from "@/lib/db"
 import { emitEvent } from "@/lib/research/events"
+import { frozenWriteError, liveFreezeFlag } from "@/lib/research/freeze"
 import { buildMetaPanel } from "@/lib/research/features"
 import { runCpcv, DEFAULT_CPCV, MIN_PANEL_ROWS, type CpcvParams } from "@/lib/research/cpcv"
 import { fitLogistic, auc, predictProba } from "@/lib/research/logistic"
@@ -81,6 +82,17 @@ export async function POST(req: Request) {
       body = {}
     }
     const t0 = Date.now()
+
+    // meta_model = กติกาที่ Jev อ่าน (ปรับขนาดไม้) — ล็อกช่วงเก็บผลจริงอยู่ห้าม deploy/ถอด (รัน CPCV เพื่อดูผลได้ตามปกติ)
+    if (body.disableModel === true || body.deploy === true) {
+      const freeze = await liveFreezeFlag()
+      if (freeze.frozen) {
+        return NextResponse.json(
+          { error: frozenWriteError(body.disableModel === true ? "ถอด meta_model" : "deploy meta_model", freeze), code: "live_frozen", frozenAt: freeze.frozenAt },
+          { status: 409 }
+        )
+      }
+    }
 
     if (body.disableModel === true) {
       await db.setting.deleteMany({ where: { key: "meta_model" } })

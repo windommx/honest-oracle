@@ -61,6 +61,7 @@ export const DEFAULT_ROUTES = [
   "/api/backtest",
   "/api/data/trust",
   "/api/track-record",
+  "/api/research/freeze",
   "/api/auth/session",
   "/",
 ]

@@ -98,6 +98,69 @@ describe("buildLedger", () => {
   })
 })
 
+describe("buildLedger + simulateNav — คำสั่ง T+1: ไม้เข้า = วัน/ราคาเติม ไม่ใช่วันสัญญาณ (2026-09-23)", () => {
+  nextId = 300
+  const T1 = (reason: string, id: string) => `${reason} | รอเติมราคาปิดวันทำการถัดไป (T+1) (คำสั่ง ${id})`
+  const decisions: LedgerDecision[] = [
+    dec({ date: "2026-09-01", question: "Q_REGIME", target: "market", action: "risk_on" }),
+    dec({ date: "2026-09-01", question: "Q_ENTRY", target: "AAA", action: "buy", conf: 0.9, reason: T1("n_tf=4", "a1") }), // คำสั่ง (ยังไม่ใช่ไม้)
+    dec({ date: "2026-09-01", question: "Q_ENTRY", target: "CCC", action: "buy", conf: 0.72, reason: "n_tf=3" }), // ส่ง human gate
+    dec({ date: "2026-09-01", question: "Q_ENTRY", target: "HHH", action: "buy", conf: 0.72, source: "human", reason: T1("human-approved", "h1") }),
+    dec({ date: "2026-09-02", question: "Q_REGIME", target: "market", action: "risk_on" }),
+    dec({ date: "2026-09-02", question: "Q_ENTRY", target: "AAA", action: "fill", conf: 0.9, executed: true, reason: "เติม T+1 ที่ราคาปิด 2026-09-02 (11.00) ของการตัดสินใจวันที่ 2026-09-01 (คำสั่ง a1)" }),
+    dec({ date: "2026-09-02", question: "Q_ENTRY", target: "HHH", action: "fill", conf: 0.72, executed: true, source: "human", reason: "เติม T+1 (คำสั่ง h1)" }),
+    dec({ date: "2026-09-02", question: "Q_ENTRY", target: "BBB", action: "buy", conf: 0.9, reason: T1("n_tf=5", "b1") }),
+    dec({ date: "2026-09-03", question: "Q_REGIME", target: "market", action: "risk_on" }),
+    dec({ date: "2026-09-03", question: "Q_ENTRY", target: "BBB", action: "cancel", conf: 0.9, reason: "ยกเลิกคำสั่งเติม T+1 ของการตัดสินใจวันที่ 2026-09-02: ไม่มีราคาปิด BBB (คำสั่ง b1)" }),
+  ]
+  const L = buildLedger({
+    decisions,
+    trades: [],
+    positions: [
+      { symbol: "AAA", entryDate: "2026-09-02", entryPx: 11, slots: 1 },
+      { symbol: "HHH", entryDate: "2026-09-02", entryPx: 50, slots: 0.5 },
+    ],
+  })
+
+  it("แถว fill = ไม้เข้า (วันเติม) · คำสั่งที่รอ/ถูกยกเลิกไม่ใช่ไม้ · นับแยกจาก 'รอ human gate'", () => {
+    expect(L.legs.map((l) => [l.symbol, l.entryDate, l.status, l.source])).toEqual([
+      ["AAA", "2026-09-02", "open", "lite"], // เดิม: ไม่มีไม้ (แถว fill ไม่ถูกนับ) · ถ้าเข้า T+0 จะเป็น 09-01
+      ["HHH", "2026-09-02", "open", "human"],
+    ])
+    expect(L.legs.find((l) => l.symbol === "AAA")).toMatchObject({ recordedEntryPx: 11, slots: 1, slotsSource: "position" })
+    expect(L.counts).toMatchObject({ entries: 2, queuedOrders: 3, cancelledOrders: 1, pendingBuys: 1, human: 1 })
+    expect(L.untrackedPositions).toEqual([])
+  })
+
+  it("NAV: ไม่มี exposure/ต้นทุนในวันสัญญาณ · ราคาเข้า = ราคาปิดวันเติม (11 ไม่ใช่ 10)", () => {
+    const dates = ["2026-09-01", "2026-09-02", "2026-09-03"]
+    const prices: PriceMatrix = {
+      dates,
+      px: [
+        [10, 50],
+        [11, 50],
+        [12.1, 55],
+      ],
+      symIdx: new Map([
+        ["AAA", 0],
+        ["HHH", 1],
+      ]),
+      dateIdx: new Map(dates.map((d, i) => [d, i])),
+    }
+    const c = 0.007
+    const nav = simulateNav({ legs: L.legs, prices, startDate: "2026-09-01", maxSlots: 7, costLeg: c })
+    const wA = 1 / 7
+    const wH = 0.5 / 7
+    expect(nav.points.map((p) => p.exposure)).toEqual([0, Math.round((wA + wH) * 1e4) / 1e4, Math.round((wA + wH) * 1e4) / 1e4])
+    expect(nav.points[0].nav).toBe(1) // วันสัญญาณ: ยังไม่ได้ซื้อ
+    expect(nav.points[1].nav).toBeCloseTo(1 - (wA + wH) * c, 6) // วันเติม: ต้นทุนขาเข้าเท่านั้น (ไม่ได้กำไร 10 → 11)
+    expect(nav.points[2].nav).toBeCloseTo((1 - (wA + wH) * c) * (1 + wA * (12.1 / 11 - 1) + wH * (55 / 50 - 1)), 6)
+    const a = nav.priced.find((p) => p.leg.symbol === "AAA")!
+    expect(a.entryPx).toBe(11)
+    expect(a.netRet).toBeCloseTo(12.1 / 11 - 1 - c, 9)
+  })
+})
+
 describe("simulateNav — เทียบค่าคำนวณมือ", () => {
   const dates = ["2026-09-01", "2026-09-02", "2026-09-03", "2026-09-04", "2026-09-07", "2026-09-08"]
   // AAA: เข้า 09-02 ออก 09-04 (1 slot) · BBB: เข้า 09-03 ยังถือ (0.5 slot) พักการซื้อขาย 09-07 · CCC อยู่ใน benchmark อย่างเดียว

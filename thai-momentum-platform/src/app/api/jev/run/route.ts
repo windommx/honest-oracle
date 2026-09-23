@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { db } from "@/lib/db"
 import { closePivot, computeRegimeState, logistic, snapshotMembers } from "@/lib/momentum/core"
 import { emitEvent } from "@/lib/research/events"
+import { freezeFlagFrom, hashValues, readFreezeValues } from "@/lib/research/freeze"
 import { liveMetaProbability, metaSizeMultiplier } from "@/lib/research/features"
 import {
   applySectorConstraints,
@@ -13,7 +14,7 @@ import {
 } from "@/lib/risk/sector"
 import { TH_STRATEGY } from "@/lib/config/thai"
 import { DEFAULT_CONFIG, getConfigTh, type ThaiConfig } from "@/lib/config/thai-config"
-import type { JevDecision, JevRunResponse, RegimeAction } from "@/lib/momentum/contracts"
+import type { JevDecision, JevRunResponse, PendingFillRow, RegimeAction } from "@/lib/momentum/contracts"
 import { calendarMult, snapback } from "@/lib/momentum/signals/thai"
 import { snapbackInputsForDate } from "@/lib/momentum/signals/thai-panel"
 import {
@@ -34,6 +35,14 @@ import {
 import { liveExit, liveBackstop, type Posterior } from "@/lib/momentum/stops/bayes"
 import { lastKnownIndex } from "@/lib/portfolio/returns"
 import { applyTimeExit, exitKind, legacyExitDecision, noPriceStreak } from "@/lib/jev/exit"
+import {
+  currentEpochId,
+  enqueuePendingFill,
+  previewPendingFills,
+  processPendingFills,
+  readPendingFills,
+} from "@/lib/jev/fills"
+import { CANCEL_ACTION, FILL_ACTION, previewPendingFill, queuedDecisionReason } from "@/lib/jev/fill-rules"
 
 export const dynamic = "force-dynamic"
 export const maxDuration = 120
@@ -52,6 +61,9 @@ let runChain: Promise<unknown> = Promise.resolve()
 // Signals v2: composite regime (grossMult ต่อเนื่อง) + risk filters เปิดเสมอ
 // (distribution/sector-outflow block, vol-aware sizing/stop) + alpha boosts
 // เฉพาะสัญญาณที่ผ่าน IC ตาม pre-registered policy + shadow A/B + Q_PAIRS
+// Entry แบบ T+1 (2026-09-23 — src/lib/jev/fills.ts): ตอนเริ่มรอบเติมคำสั่งค้างที่ราคาปิดวันทำการแรกหลัง afterDate
+// ก่อนทุกอย่าง · การซื้ออัตโนมัติของรอบนี้ = ส่งคำสั่งเข้าคิว (ยังไม่ใช่ Position) เติมรอบถัดไป — เหมือน runBacktest
+// · exit ยังเป็น T+0 ที่ราคาปิดของวันที่ทริกเกอร์ (เหมือน stop/time exit ของ backtest)
 export async function POST() {
   const job = runChain.then(() => runJev())
   runChain = job.catch(() => undefined)
@@ -60,6 +72,16 @@ export async function POST() {
 
 async function runJev() {
   try {
+    // กติกาที่รอบนี้อ่าน (sha256 ของค่าใน Setting) + สถานะล็อก — ลง event jev_run ให้ตรวจย้อนหลังได้ทีละรอบ
+    // (การแก้ค่าตรงใน DB แล้วแก้กลับระหว่างสองจุดตรวจ ยังเห็นได้จาก hash ของแต่ละรอบ)
+    const rulesAtStart = await readFreezeValues().catch(() => null)
+    const rules = rulesAtStart
+      ? {
+          hashes: hashValues(rulesAtStart.values),
+          frozen: rulesAtStart.freezeRaw !== null,
+          drift: freezeFlagFrom(rulesAtStart.freezeRaw, rulesAtStart.values).freezeDrift,
+        }
+      : null
     // ---------- Thai config-as-data (Task 9-c) — โหลดไม่ได้ → ใช้ค่า default ----------
     let TH: ThaiConfig
     try {
@@ -125,27 +147,48 @@ async function runJev() {
     // Sector risk layer — โหลดแผนที่ symbol → sector ครั้งเดียวต่อรัน
     const sectorMap = await getSectorMap()
 
+    // ---------- 0) เติมคำสั่งค้าง T+1 ก่อนทุกอย่าง ----------
+    // ราคาปิดของวันทำการแรกใน pivot ที่หลัง afterDate (ไม่มีราคาวันนั้น = ยกเลิก) · ทำก่อน idempotency guard:
+    // เติมซ้ำไม่ได้อยู่แล้ว (คำสั่งถูกลบจากคิวหลังเติม) และการตัดสินใจ/exit ของรอบนี้ต้องเห็นพอร์ตหลังเติม
+    const fillStep = await processPendingFills()
+    const fills = { filled: fillStep.filled, cancelled: fillStep.cancelled }
+    const fillPart =
+      fills.filled.length + fills.cancelled.length > 0
+        ? ` | เติม T+1 ${fills.filled.length}${fills.cancelled.length > 0 ? ` (ยกเลิก ${fills.cancelled.length})` : ""}`
+        : ""
+
     // Idempotency guard: รันซ้ำวันเดียวกัน → ตอบกลับแบบไม่ทำอะไร
+    // นับเฉพาะแถวที่รอบของ Jev เขียนเอง — แถวเติม/ยกเลิกคำสั่ง (ลงวันเติม) และการอนุมัติของมนุษย์ (ลงวันข้อมูลล่าสุด
+    // ตอนอนุมัติ = อาจเป็นวันนี้ถ้าอนุมัติหลังข้อมูลเข้าแต่ก่อนรัน) ไม่ใช่หลักฐานว่ารอบของวันนี้ตัดสินใจไปแล้ว
+    // (เดิมอนุมัติหลังข้อมูลเข้า → รอบของวันนั้นถูกข้ามทั้งรอบ)
     const dup = await db.decision.findFirst({
-      where: { date: latest, question: "Q_ENTRY" },
+      where: {
+        date: latest,
+        question: "Q_ENTRY",
+        source: { not: "human" },
+        action: { notIn: [FILL_ACTION, CANCEL_ACTION] },
+      },
       select: { id: true },
     })
     if (dup) {
-      // รันซ้ำวันเดียวกัน — ไม่ทำอะไร แต่ยังคำนวณ exposure สดจากพอร์ตปัจจุบัน
+      // รันซ้ำวันเดียวกัน — ไม่ตัดสินใจใหม่ แต่ยังคำนวณ exposure สดจากพอร์ตปัจจุบัน (หลังเติม)
       // เพื่อให้ UI มีข้อมูล sector/group เสมอ
       const posNow = await db.position.findMany()
       const itemsNow = posNow.map((p) => ({ symbol: p.symbol, slots: p.slots }))
-      return NextResponse.json({
+      const dupResp: JevRunResponse = {
         date: latest,
         regime: regimeAction,
-        message: IDEMPOTENT_MSG,
-        executed: [],
+        message: `${IDEMPOTENT_MSG}${fillPart}`,
+        executed: fillStep.executed,
         gated: [],
         blocked: [],
         sectorExposure: computeSectorExposure(itemsNow, sectorMap),
         groupExposure: computeGroupExposure(itemsNow, sectorMap),
-        config: configSummary,
-      })
+        queued: [],
+        fills,
+        pendingFills: await previewPendingFills(),
+      }
+      return NextResponse.json({ ...dupResp, config: configSummary })
     }
 
     const pivot = await closePivot()
@@ -256,7 +299,15 @@ async function runJev() {
     }
     const posRows = await db.position.findMany()
     const posSymbols = new Set(posRows.map((p) => p.symbol))
-    const usedStart = posRows.reduce((a, p) => a + p.slots, 0)
+    // คำสั่งที่ยังรอเติม (เช่นมนุษย์อนุมัติหลังข้อมูลวันนี้เข้า → เติมวันทำการถัดไป) = ภาระผูกพัน:
+    // นับในงบ slots / sector layer / กันซื้อซ้ำ แต่ไม่ใช่สถานะ (ไม่ประเมิน exit ไม่นับใน exposure/NAV)
+    const pendingOrders = await readPendingFills()
+    const pendingSymbols = new Set(pendingOrders.map((o) => o.symbol))
+    const committed = [
+      ...posRows.map((p) => ({ symbol: p.symbol, slots: p.slots })),
+      ...pendingOrders.map((o) => ({ symbol: o.symbol, slots: o.slots })),
+    ]
+    const usedStart = committed.reduce((a, p) => a + p.slots, 0)
     const latestSet = byDate.get(latest) ?? new Set<string>()
     const exitDecs: Dec[] = []
     for (const p of posRows) {
@@ -327,7 +378,11 @@ async function runJev() {
     const executed: Dec[] = []
     const gated: (Dec & { id: number })[] = []
     const blocked: Dec[] = []
+    const queued: PendingFillRow[] = []
     let used = usedStart
+    // ยุคข้อมูลตอนส่งคำสั่ง (ถามครั้งเดียวเมื่อมีคำสั่งแรก)
+    let epochMemo: { v: number | null } | null = null
+    const epochNow = async () => (epochMemo ??= { v: await currentEpochId() }).v
     let riskBlocked = 0
     let shadowLogged = 0
     let reversalHits = 0
@@ -430,6 +485,8 @@ async function runJev() {
 
       if (posSymbols.has(dec.target)) {
         await logDecision({ ...dec, reason: `${dec.reason} (มีสถานะอยู่แล้ว)` }, false)
+      } else if (pendingSymbols.has(dec.target)) {
+        await logDecision({ ...dec, reason: `${dec.reason} (มีคำสั่งรอเติม T+1 อยู่แล้ว)` }, false)
       } else if (regimeAction === "risk_off" || dec.conf < TH_CONF.Q_ENTRY || used >= slotBudget) {
         const downgraded: Dec = { ...dec, action: "watch" }
         await logDecision(downgraded, false)
@@ -449,7 +506,7 @@ async function runJev() {
         const revRoom = slotBudget - usedStart // งบคงเหลือโดยประมาณ (ก่อน exit รอบนี้ — conservative)
         let revSlots = 0
         for (const [sym, inp] of revInputs) {
-          if (stat.has(sym) || posSymbols.has(sym)) continue // ติดโผอยู่แล้ว / มีสถานะอยู่แล้ว
+          if (stat.has(sym) || posSymbols.has(sym) || pendingSymbols.has(sym)) continue // ติดโผ / มีสถานะ / มีคำสั่งรอเติมอยู่แล้ว
           const lp = lastPxOf(sym)
           if (!isFinite(lp) || lp <= 1) continue // นิยามเดียวกับ research: close > 1
           const sb = snapback(inp)
@@ -526,7 +583,7 @@ async function runJev() {
       }
     }
 
-    // Sector constraints: จำลองการรับ candidate ทีละตัวบนพอร์ตเดิม
+    // Sector constraints: จำลองการรับ candidate ทีละตัวบนพอร์ตเดิม + คำสั่งที่รอเติม
     // (จำนวนชื่อ/sector ≤ 3 → งบ slotBudget → น้ำหนัก sector ≤ 30% → น้ำหนักกลุ่ม ≤ cap กลุ่ม)
     let constraint: SectorConstraintResult = {
       accepted: [],
@@ -538,7 +595,7 @@ async function runJev() {
     if (buyCands.length > 0) {
       constraint = applySectorConstraints(
         buyCands.map((c) => ({ symbol: c.dec.target, slots: sizing.get(c.dec.target)?.want ?? c.base })),
-        posRows.map((p) => ({ symbol: p.symbol, slots: p.slots })),
+        committed,
         sectorMap,
         { maxSlots: slotBudget }
       )
@@ -598,9 +655,10 @@ async function runJev() {
         await logDecision(downgraded, false, src)
         blocked.push(downgraded)
       } else {
-        // risk_on → ซื้ออัตโนมัติ (vol-aware sizing + alpha boost + meta-model sizing)
-        const entryPx = lastPxOf(dec.target)
-        if (!isFinite(entryPx)) {
+        // risk_on → สั่งซื้ออัตโนมัติ (vol-aware sizing + alpha boost + meta-model sizing)
+        // T+1: ส่งคำสั่งเข้าคิว เติมที่ราคาปิดวันทำการถัดไป (รอบหน้า) — ราคาปิดวันนี้ซื้อไม่ได้จริงหลังเห็นสัญญาณ EOD
+        const lastPx = lastPxOf(dec.target)
+        if (!isFinite(lastPx)) {
           await logDecision({ ...dec, reason: `${dec.reason} (ราคาไม่พร้อม)` }, false, src)
         } else {
           // ขนาด = ที่ sector layer อนุมัติ (คำนวณ vol/boost/meta ไว้ก่อนเข้า constraint แล้ว)
@@ -618,18 +676,35 @@ async function runJev() {
           const holdPart = src === "reversal" ? "" : ` hold=${TH.holdDefault}`
           const reason = `${dec.reason}${v2Part}${metaPart}${downPart}${holdPart}`
           // v2 stop: vol พุ่ง (pct > 0.8) → stop แคบลง ×0.8 · reversal ใช้ sb.stop (-8%)
+          // บันทึก stop % + ตัวคูณของวันนี้ไว้กับคำสั่ง — ราคา stop คิดจากราคาเติม (T+1) ตอนเติม
           const stopMult = sd ? GATES.volStopMult(sd.symVolPct) : 1
-          const stopPx = entryPx * (1 - (c.stopPct ?? TH_STRATEGY.stopPct) * stopMult)
-          await db.position.upsert({
-            where: { symbol: dec.target },
-            create: { symbol: dec.target, entryDate: latest, entryPx, slots, stop: stopPx },
-            update: { entryDate: latest, entryPx, slots, stop: stopPx },
-          })
-          posSymbols.add(dec.target)
-          used += slots
-          const decFinal: Dec = { ...dec, reason }
-          await logDecision(decFinal, true, src)
-          executed.push(decFinal)
+          // ส่งคำสั่งไม่สำเร็จ (ข้อมูลคำสั่งไม่ถูกต้อง/คิวถูกแก้พร้อมกัน) = บันทึกเหตุผลแล้วไปต่อ — ไม่ทิ้งรอบครึ่งทาง
+          // (รอบที่ล้มกลางทางจะถูก idempotency guard กันไม่ให้รันซ้ำ → คำสั่งที่เหลือหายเงียบ)
+          const order = await enqueuePendingFill({
+            symbol: dec.target,
+            slots,
+            stopPct: c.stopPct ?? TH_STRATEGY.stopPct,
+            stopMult,
+            source: src === "reversal" ? "reversal" : "auto",
+            decisionDate: latest,
+            afterDate: latest,
+            gateId: null,
+            conf: dec.conf,
+            reason,
+            maxSlots: slotBudget,
+            epoch: await epochNow(),
+          }).catch((e: Error) => e)
+          if (order instanceof Error) {
+            await logDecision({ ...dec, reason: `${reason} (ส่งคำสั่ง T+1 ไม่สำเร็จ: ${order.message})` }, false, src)
+          } else if (!order) {
+            await logDecision({ ...dec, reason: `${reason} (มีคำสั่งรอเติม T+1 อยู่แล้ว)` }, false, src)
+          } else {
+            pendingSymbols.add(dec.target)
+            used += slots
+            // executed=false: คำสั่งยังไม่ใช่การซื้อ — แถว "fill" วันเติมคือไม้เข้าจริงของ ledger/NAV
+            await logDecision({ ...dec, reason: queuedDecisionReason(reason, order.id) }, false, src)
+            queued.push(previewPendingFill(order, pivot))
+          }
         }
       }
     }
@@ -726,10 +801,10 @@ async function runJev() {
       }
     }
 
-    const nBuy = executed.filter((d) => d.question === "Q_ENTRY" && d.action === "buy").length
+    const nQueued = queued.length
     const nExit = executed.filter((d) => d.question === "Q_EXIT").length
 
-    // Sector exposure หลังปิดรอบ (พอร์ตสุดท้าย: เดิม − exit + buy ใหม่รวม downsized)
+    // Sector exposure หลังปิดรอบ (พอร์ตสุดท้าย: เดิม + เติม T+1 − exit · คำสั่งที่รอเติมไม่ใช่สถานะ ไม่นับ)
     const finalPositions = await db.position.findMany()
     const finalItems = finalPositions.map((p) => ({ symbol: p.symbol, slots: p.slots }))
     const sectorExposure = computeSectorExposure(finalItems, sectorMap)
@@ -744,12 +819,16 @@ async function runJev() {
     // แยกนับ exit ตามกฎที่ตัดสินเมื่อ 2026-09-23 (แสดงเฉพาะเมื่อเกิด — message รอบปกติคงรูปเดิม)
     const exitKindsPart =
       nTimeExit + nNoPriceExit > 0 ? ` (time ${nTimeExit} · หยุดซื้อขาย ${nNoPriceExit})` : ""
-    const message = `regime=${regimeAction} | ซื้ออัตโนมัติ ${nBuy} | รออนุมัติ ${gated.length} | ถูก gate ${blocked.length} | exit ${nExit}${exitKindsPart}${v2Part}${revPart}`
+    const message = `regime=${regimeAction} | สั่งซื้ออัตโนมัติ ${nQueued} (รอเติม T+1)${fillPart} | รออนุมัติ ${gated.length} | ถูก gate ${blocked.length} | exit ${nExit}${exitKindsPart}${v2Part}${revPart}`
     await emitEvent("jev_run", v2Alpha ? "jev_lite+v2" : "jev_lite", {
       date: latest,
+      rules,
       regime: regimeAction,
       conf: regimeConf,
-      autoBuy: nBuy,
+      // คำสั่งซื้ออัตโนมัติที่ส่งเข้าคิว T+1 รอบนี้ (ยังไม่ใช่สถานะ) · filledT1/cancelledT1 = ผลเติมคำสั่งค้างตอนเริ่มรอบ
+      autoBuy: nQueued,
+      filledT1: fills.filled.length,
+      cancelledT1: fills.cancelled.length,
       gated: gated.length,
       blocked: blocked.length,
       exit: nExit,
@@ -783,11 +862,14 @@ async function runJev() {
       date: latest,
       regime: regimeAction,
       message,
-      executed,
+      executed: [...fillStep.executed, ...executed],
       gated,
       blocked,
       sectorExposure,
       groupExposure,
+      queued,
+      fills,
+      pendingFills: await previewPendingFills(),
     }
     // Task 9-c honesty: config-as-data ที่รอบนี้ใช้ (JevRunResponse เป็น closed type ใน contracts.ts
     // — กระจาย object แล้วเติมฟิลด์ config ตอน serialize แทนการแก้ contracts)

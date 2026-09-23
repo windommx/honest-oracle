@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { emitEvent } from "@/lib/research/events"
+import { frozenWriteError, liveFreezeFlag } from "@/lib/research/freeze"
 import {
   freezePrereg,
   getPrereg,
@@ -34,7 +35,12 @@ export async function POST(req: Request) {
     } catch {
       body = {}
     }
+    // prereg_trial อยู่ในชุดที่ล็อกช่วงเก็บผลจริง — reset/ล็อกใหม่ระหว่างล็อก = เปลี่ยนกติกาที่ลงทะเบียนไว้ → 409
+    const freeze = await liveFreezeFlag()
     if (body.reset === true) {
+      if (freeze.frozen) {
+        return NextResponse.json({ error: frozenWriteError("reset prereg", freeze), code: "live_frozen", frozenAt: freeze.frozenAt }, { status: 409 })
+      }
       await resetPrereg()
       await emitEvent("research", "human", { action: "prereg_reset" })
       return NextResponse.json<PreregResponse>({ prereg: null })
@@ -53,6 +59,9 @@ export async function POST(req: Request) {
         { error: `กติกาถูกล็อกไว้แล้ว (sha256 ${existing.hash.slice(0, 12)}…) — ต้อง reset ก่อนจึงล็อกกติกาใหม่ได้` },
         { status: 409 }
       )
+    }
+    if (freeze.frozen) {
+      return NextResponse.json({ error: frozenWriteError("ล็อก prereg ใหม่", freeze), code: "live_frozen", frozenAt: freeze.frozenAt }, { status: 409 })
     }
     const prereg = await freezePrereg(params)
     await emitEvent("research", "human", {

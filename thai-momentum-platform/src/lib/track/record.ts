@@ -2,6 +2,7 @@
 // Track record ของพอร์ตกระดาษ Jev — อ่าน DB อย่างเดียว (ไม่เขียนอะไร) แล้วประกอบรายงานที่ซื่อตรง
 //   Decision/Trade/Position → ledger (ไม้เข้า/ออก) → NAV mark-to-market รายวัน vs benchmark
 //   + ป้ายที่มาข้อมูล (SYNTHETIC/REAL จาก EventLog) + ความเชื่อมั่นทางสถิติ + หลักฐานกันแก้ย้อนหลัง
+//   + ล็อกช่วงเก็บผลจริง (freeze): frozenAt · กติกาที่ใช้อยู่ไม่ตรงกับตอนล็อก (drift) · การเปลี่ยนกติกาใน EventLog ระหว่าง record
 // ============================================================
 
 import { db } from "@/lib/db"
@@ -9,7 +10,9 @@ import { closePivot, MIN_PRICE } from "@/lib/momentum/core"
 import { TH_STRATEGY } from "@/lib/config/thai"
 import { classifyProvenance } from "@/lib/flagship/funnel"
 import { auditEvents } from "@/lib/research/events"
+import { buildTrackFreeze, getLiveFreezeStatus, POLICY_EVENT_KINDS, type TrackFreezeInfo } from "@/lib/research/freeze"
 import { dataEpoch, epochSourceIds, evidenceDataLabel, provenanceFor } from "@/lib/feed/provenance"
+import { readPendingFills } from "@/lib/jev/fills"
 import { assessConfidence } from "./confidence"
 import { buildLedger, chainHashAt, JEV_QUESTIONS, ledgerChain, type SnapshotLegInfo } from "./ledger"
 import { computeTrackStats, simulateNav, type NavResult } from "./nav"
@@ -19,6 +22,9 @@ import type { LegRow, SnapshotCheck, TrackRecordResponse, TrackSnapshotPayload }
 export const COST_LEG = (TH_STRATEGY.costBps + TH_STRATEGY.slipBpsBase) / 1e4
 /** งบ slots สูงสุดของพอร์ต Jev (7) — 1 slot = 1/7 ของทุน */
 export const MAX_SLOTS = TH_STRATEGY.maxPos
+
+/** คำตอบของ GET /api/track-record = track record + สถานะล็อกกติกาช่วงเก็บผล */
+export type TrackRecordWithFreeze = TrackRecordResponse & { freeze: TrackFreezeInfo }
 
 const r2 = (x: number | null) => (x === null || !Number.isFinite(x) ? null : Math.round(x * 100) / 100)
 
@@ -96,9 +102,9 @@ export function checkSnapshots(
   }
 }
 
-export async function buildTrackRecord(): Promise<TrackRecordResponse> {
+export async function buildTrackRecord(): Promise<TrackRecordWithFreeze> {
   const generatedAt = new Date().toISOString()
-  const [rawRows, provEvents, decisionRows, tradeRows, positionRows, snapRows, audit, latestEvent] = await Promise.all([
+  const [rawRows, provEvents, decisionRows, tradeRows, positionRows, snapRows, audit, latestEvent, freezeStatus, policyEvents] = await Promise.all([
     db.rawDaily.count(),
     db.eventLog.findMany({ where: { kind: { in: ["seed", "ingest"] } }, select: { id: true, kind: true, payload: true, ts: true }, orderBy: { id: "asc" } }),
     db.decision.findMany({ where: { question: { in: [...JEV_QUESTIONS] } }, orderBy: { id: "asc" } }),
@@ -107,6 +113,8 @@ export async function buildTrackRecord(): Promise<TrackRecordResponse> {
     db.eventLog.findMany({ where: { kind: "track_snapshot" }, select: { id: true, ts: true, payload: true }, orderBy: { id: "asc" } }),
     auditEvents(1),
     db.eventLog.findFirst({ orderBy: { id: "desc" }, select: { id: true, kind: true, ts: true, hash: true } }),
+    getLiveFreezeStatus(),
+    db.eventLog.findMany({ where: { kind: { in: [...POLICY_EVENT_KINDS] } }, select: { id: true, kind: true, ts: true, payload: true }, orderBy: { id: "asc" } }),
   ])
 
   // ---- ที่มาข้อมูล + ยุคข้อมูล ----
@@ -215,6 +223,22 @@ export async function buildTrackRecord(): Promise<TrackRecordResponse> {
     notes.push(`⚠️ ledger hash ไม่ตรงกับ snapshot ${snapshots.ledgerMismatches} ครั้ง (แรกสุด ${snapshots.firstLedgerMismatch}) — ประวัติการตัดสินใจถูกแก้/ลบหลังบันทึก`)
   if (snapshots.navMismatches > 0) notes.push(`NAV ที่คำนวณใหม่ต่างจาก snapshot ${snapshots.navMismatches} วัน — ราคาในฐานข้อมูลถูกแก้ย้อนหลัง`)
   if (!audit.ok) notes.push(`⚠️ EventLog hash chain พังที่ event #${audit.brokenAt} — audit trail ไม่น่าเชื่อถือ`)
+  // คำสั่งซื้อรอเติม T+1 (Setting jev_pending_fills) ไม่ใช่สถานะ — ไม่อยู่ใน legs/NAV จนกว่าจะเติม → แสดงแยก
+  const pendingFills = await readPendingFills()
+  if (pendingFills.length > 0)
+    notes.push(`คำสั่งซื้อรอเติม T+1 ${pendingFills.length} รายการ (${pendingFills.map((o) => `${o.symbol} หลังข้อมูล ${o.afterDate}`).join(", ")}) — ยังไม่ใช่สถานะ ไม่นับใน NAV จนกว่าจะเติมที่ราคาปิดวันทำการถัดไป`)
+
+  // ---- ล็อกกติกาช่วงเก็บผล: ช่วง record = ตั้งแต่รอบตัดสินใจจริงครั้งแรกของยุคนี้ ----
+  const freeze = buildTrackFreeze({
+    status: freezeStatus,
+    events: policyEvents.map((e) => ({ id: e.id, kind: e.kind, ts: e.ts.toISOString(), payload: e.payload })),
+    recordStart: ledger.counts.runs > 0 ? ledger.firstRunAt : null,
+    liveSince: status === "OK" ? ledger.liveSince : null,
+    epochStart: epoch.startTs,
+  })
+  notes.push(...freeze.notes)
+  if (freeze.info.violated)
+    confidence.notes.push("กติกาเปลี่ยน/ตรวจไม่ผ่านระหว่างช่วงล็อก — track record นี้ไม่ใช่หลักฐานของกติกาที่ลงทะเบียนไว้ (ดูหมายเหตุ ⚠️)")
 
   return {
     generatedAt,
@@ -252,8 +276,9 @@ export async function buildTrackRecord(): Promise<TrackRecordResponse> {
       costPerLegPct: Math.round(COST_LEG * 10000) / 100,
       maxSlots: MAX_SLOTS,
       benchmark: `equal-weight รายวันของหุ้นที่ผ่าน liq5 และราคา > ${MIN_PRICE} บาท ณ วันก่อนหน้า (ไม่ใช่ดัชนี SET)`,
-      prices: "ราคาปิดใน DB ปัจจุบัน (ชุดเดียวกับ benchmark) · เข้า/ออกที่ราคาปิดของวันตัดสินใจ",
+      prices: "ราคาปิดใน DB ปัจจุบัน (ชุดเดียวกับ benchmark) · เข้าที่ราคาปิดของวันเติม T+1 (Position.entryDate / Decision fill — วันทำการถัดจากวันตัดสินใจ) · ออกที่ราคาปิดของวันตัดสินใจ",
     },
     notes,
+    freeze: freeze.info,
   }
 }

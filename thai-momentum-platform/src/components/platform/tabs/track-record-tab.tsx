@@ -7,6 +7,7 @@
 //  - ป้ายที่มาข้อมูล (SYNTHETIC / REAL) อยู่บนหัวแท็บเสมอ — ข้อมูลจำลองติดป้ายทุกจุดที่มีตัวเลข
 //  - ยังไม่ถึง 60 วันซื้อขาย / 30 เทรดปิด = ป้าย "ยังเร็วเกินไปที่จะตัดสิน" · ค่าที่วัดไม่ได้ = "—" (ไม่ใช่ 0)
 //  - หลักฐานกันแก้ย้อนหลัง (hash chain ของ EventLog + ledger hash + snapshot) แสดงให้ตรวจเองได้
+//  - ล็อกกติกาช่วงเก็บผล (freeze): วันที่ล็อก + กติกาที่เปลี่ยน/ไม่ตรงกับตอนล็อกระหว่าง record ขึ้นป้ายแดง
 
 import { type ReactNode } from "react"
 import {
@@ -18,6 +19,8 @@ import {
   Hourglass,
   LineChart as LineChartIcon,
   ListChecks,
+  Lock,
+  LockOpen,
   RefreshCw,
   ShieldAlert,
   ShieldCheck,
@@ -25,6 +28,7 @@ import {
 import { CartesianGrid, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts"
 import { fmtNum, fmtPct, useApi } from "@/hooks/use-api"
 import type { LegRow, TrackRecordResponse } from "@/lib/track/types"
+import type { FrozenKey, TrackFreezeInfo } from "@/lib/research/freeze"
 import type { DataTrustResponse } from "@/lib/feed/trust"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
@@ -70,6 +74,9 @@ const VERDICT_TONE: Record<string, string> = {
   NO_RUNS: "border-border bg-foreground/[0.03]",
   NO_DATA: "border-border bg-foreground/[0.03]",
 }
+
+/** GET /api/track-record แนบ freeze มาด้วย (optional ในชนิดของ view — ข้อมูลเก่า/test ที่ไม่มีฟิลด์นี้ยังเรนเดอร์ได้) */
+type TrackView = TrackRecordResponse & { freeze?: TrackFreezeInfo }
 
 const STATUS_TEXT: Record<LegRow["status"], string> = { open: "ถืออยู่", closed: "ปิดแล้ว", orphan: "ไม่มีไม้ออก" }
 const SLOTS_SRC: Record<LegRow["slotsSource"], string> = { position: "จากพอร์ต", snapshot: "จาก snapshot", estimated: "ประมาณจาก conf" }
@@ -147,11 +154,29 @@ function NavChart({ nav, chartWidth }: { nav: TrackRecordResponse["nav"]; chartW
 
 // ---------------- sections ----------------
 
-function HonestyBanners({ t }: { t: TrackRecordResponse }) {
+function HonestyBanners({ t }: { t: TrackView }) {
   const c = t.confidence
   const notReal = t.provenance.evidenceLabel !== "REAL"
+  const f = t.freeze
+  const afterFreeze = f ? f.changes.filter((x) => x.afterFreeze && x.keys.length > 0) : []
   return (
     <div className="space-y-3">
+      {f?.violated ? (
+        <Alert className="border-neon-rose/30 bg-neon-rose/[0.06]">
+          <ShieldAlert className="size-4 text-neon-rose" aria-hidden />
+          <AlertTitle className="text-neon-rose">กติกาเปลี่ยน/ตรวจไม่ผ่านระหว่างช่วงล็อก — record ช่วงนี้ไม่ใช่หลักฐานของกติกาที่ลงทะเบียนไว้</AlertTitle>
+          <AlertDescription className="text-foreground/80">
+            <ul className="list-disc space-y-0.5 pl-5">
+              {f.drift.length > 0 ? <li>ค่าที่ระบบเทรดใช้ไม่ตรงกับตอนล็อก: {f.drift.map((d) => d.key).join(", ")} (แก้ข้ามด่านล็อก เช่นแก้ตรงใน DB)</li> : null}
+              {f.integrity.map((i) => (
+                <li key={i}>{i}</li>
+              ))}
+              {afterFreeze.length > 0 ? <li>EventLog มีการเปลี่ยนกติกาหลังล็อก {afterFreeze.length} ครั้ง: {afterFreeze.map((x) => `#${x.id} ${x.text}`).join(" · ")}</li> : null}
+              {f.beforeEpoch ? <li>ยุคข้อมูลเริ่มใหม่ (seed/ล้าง demo) หลังล็อก — policy ที่ล็อกไว้ถูกล้าง</li> : null}
+            </ul>
+          </AlertDescription>
+        </Alert>
+      ) : null}
       {notReal && t.status !== "NO_DATA" ? (
         <Alert className="border-neon-amber/30 bg-neon-amber/[0.06]">
           <AlertTriangle className="size-4 text-neon-amber" aria-hidden />
@@ -246,6 +271,63 @@ function LegsTable({ legs }: { legs: LegRow[] }) {
           ))}
         </TableBody>
       </Table>
+    </div>
+  )
+}
+
+const FREEZE_KEYS_SHORT: [FrozenKey, string][] = [
+  ["config_th", "config"],
+  ["signals_policy", "signals"],
+  ["stops_policy", "stops"],
+  ["meta_model", "meta"],
+  ["prereg_trial", "prereg"],
+]
+
+/** ล็อกกติกาช่วงเก็บผล (TR4) — วันที่ล็อก · hash ที่ล็อก · ค่าที่ไม่ตรง · การเปลี่ยนกติกาใน EventLog ระหว่าง record */
+function FreezeBlock({ f }: { f: TrackFreezeInfo }) {
+  const tone = f.violated ? "border-neon-rose/40 bg-neon-rose/[0.04]" : f.frozen ? "border-neon-cyan/30 bg-neon-cyan/[0.03]" : "border-border"
+  return (
+    <div className={cn("mt-3 min-w-0 space-y-1.5 rounded-lg border px-3 py-2 text-xs", tone)}>
+      <p className="flex items-center gap-1.5 font-semibold">
+        {f.frozen ? <Lock className="size-4 text-neon-cyan" aria-hidden /> : <LockOpen className="size-4 text-muted-foreground" aria-hidden />}
+        ล็อกกติกาช่วงเก็บผล: {f.frozen ? (f.frozenAt ? `ล็อกตั้งแต่ ${fmtDate(f.frozenAt)}` : "ล็อกอยู่ (บันทึกล็อกอ่านไม่ได้)") : "ยังไม่ล็อก"}
+      </p>
+      {f.frozen && f.frozenAt ? (
+        <>
+          <p className="text-muted-foreground">
+            ข้อมูลตลาดล่าสุดตอนล็อก {f.dataDate ?? "—"}
+            {f.note ? ` · สมมติฐาน: ${f.note}` : ""}
+          </p>
+          {f.hashes ? (
+            <p className="break-all font-mono text-[11px]" title="sha256 ของค่าใน Setting ตอนล็อก — เผยแพร่คู่กับวันที่ล็อก">
+              {FREEZE_KEYS_SHORT.map(([k, label]) => `${label} ${short(f.hashes?.[k], 10)}`).join(" · ")}
+              {f.preregHash ? ` · prereg hash ${short(f.preregHash, 10)}` : ""}
+            </p>
+          ) : null}
+        </>
+      ) : null}
+      {f.drift.length > 0 ? (
+        <p className="font-semibold text-neon-rose">⚠️ ค่าที่ระบบเทรดใช้ไม่ตรงกับตอนล็อก: {f.drift.map((d) => d.key).join(", ")}</p>
+      ) : f.frozen && f.frozenAt ? (
+        <p className="text-neon-green">ค่าที่ระบบเทรดใช้ตรงกับตอนล็อกทุกตัว</p>
+      ) : null}
+      {f.startedBeforeFreeze ? <p className="text-neon-amber">record เริ่มก่อนล็อก — ช่วงก่อนวันล็อกไม่ได้อยู่ใต้กติกาที่ลงทะเบียนไว้</p> : null}
+      {f.changes.length > 0 ? (
+        <div>
+          <p className="text-muted-foreground">การเปลี่ยนกติกาใน EventLog ระหว่าง record{f.frozen ? " / หลังล็อก" : ""} ({f.changes.length})</p>
+          <ul className="mt-0.5 space-y-0.5">
+            {f.changes.slice(-12).map((c) => (
+              <li key={c.id} className={cn("min-w-0", c.afterFreeze ? "font-semibold text-neon-rose" : "text-foreground/80")}>
+                #{c.id} · {fmtDate(c.ts)} — {c.text}
+                {c.afterFreeze ? " (หลังล็อก)" : ""}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+      {!f.frozen ? (
+        <p className="text-[11px] text-muted-foreground">ล็อกที่แท็บ Evidence ก่อนเริ่มนับ — ระหว่างล็อก config_th / signals_policy / stops_policy เปลี่ยนไม่ได้</p>
+      ) : null}
     </div>
   )
 }
@@ -376,7 +458,7 @@ function TrustPanel({ trust, loading, error }: { trust: DataTrustResponse | null
 // ---------------- view (pure — ทดสอบ/เรนเดอร์ฝั่ง server ได้) ----------------
 
 export interface TrackRecordViewProps {
-  track: TrackRecordResponse | null
+  track: TrackView | null
   trust: DataTrustResponse | null
   trackLoading?: boolean
   trackError?: string | null
@@ -444,6 +526,24 @@ export function TrackRecordView({ track, trust, trackLoading = false, trackError
           >
             {audit.ok ? "audit ✓ chain ครบ" : `audit ✗ พังที่ #${audit.brokenAt}`}
           </Pill>
+          {t.freeze ? (
+            <Pill
+              cls={
+                t.freeze.violated
+                  ? "border-neon-rose/40 bg-neon-rose/10 text-neon-rose"
+                  : t.freeze.frozen
+                    ? "border-neon-cyan/40 bg-neon-cyan/10 text-neon-cyan"
+                    : "border-border bg-foreground/[0.04] text-muted-foreground"
+              }
+              title={
+                t.freeze.frozen
+                  ? `ล็อกกติกาที่ Jev อ่าน (sha256) ตั้งแต่ ${fmtDate(t.freeze.frozenAt)} — ระหว่างล็อกไม่มีการบันทึก policy/config ใหม่`
+                  : "ยังไม่ล็อกกติกา — config_th / signals_policy / stops_policy เปลี่ยนได้ระหว่าง record (ล็อกที่แท็บ Evidence)"
+              }
+            >
+              {t.freeze.violated ? "⚠️ กติกาไม่ตรงกับที่ล็อก" : t.freeze.frozen ? `🔒 ล็อกกติกา ${t.freeze.frozenAt?.slice(0, 10) ?? ""}` : "ยังไม่ล็อกกติกา"}
+            </Pill>
+          ) : null}
           {onRefresh ? (
             <Button size="sm" variant="outline" onClick={onRefresh} className="min-h-9 sm:min-h-8" aria-label="รีเฟรช">
               <RefreshCw className={cn("size-3.5", (trackLoading || trustLoading) && "animate-spin")} aria-hidden />
@@ -536,6 +636,8 @@ export function TrackRecordView({ track, trust, trackLoading = false, trackError
             ["ออกจริง", t.decisions.exits],
             ["tighten", t.decisions.tightens],
             ["รอ human gate", t.decisions.pendingBuys],
+            ["สั่งซื้อ → รอเติม T+1", t.decisions.queuedOrders ?? 0],
+            ["ยกเลิกตอนเติม", t.decisions.cancelledOrders ?? 0],
             ["มนุษย์อนุมัติ", t.decisions.human],
             ["reversal", t.decisions.reversal],
             ["shadow v2", t.decisions.shadow],
@@ -566,7 +668,10 @@ export function TrackRecordView({ track, trust, trackLoading = false, trackError
         desc="EventLog ผูกด้วย sha256 chain · ledger hash = chain ของทุก Decision ของ Jev ในยุคนี้ · snapshot รายวันเก็บ hash + NAV ลง EventLog เพื่อตรวจย้อนหลัง"
         icon={Fingerprint}
         hue="green"
-        status={{ kind: audit.ok && t.tamper.snapshots.ledgerMismatches === 0 ? "ready" : "offline", text: audit.ok && t.tamper.snapshots.ledgerMismatches === 0 ? "ตรวจผ่าน" : "มีปัญหา" }}
+        status={{
+          kind: audit.ok && t.tamper.snapshots.ledgerMismatches === 0 && !t.freeze?.violated ? "ready" : "offline",
+          text: audit.ok && t.tamper.snapshots.ledgerMismatches === 0 && !t.freeze?.violated ? "ตรวจผ่าน" : "มีปัญหา",
+        }}
       >
         <div className="grid gap-3 md:grid-cols-2">
           <div className="min-w-0 space-y-1.5 text-xs">
@@ -599,6 +704,7 @@ export function TrackRecordView({ track, trust, trackLoading = false, trackError
             <p className="text-[11px] text-muted-foreground">ledger hash ย่อ {short(t.tamper.ledgerHash)} · ใช้อ้างอิงเมื่อเผยแพร่ผลงาน</p>
           </div>
         </div>
+        {t.freeze ? <FreezeBlock f={t.freeze} /> : null}
         {t.notes.length > 0 ? (
           <ul className="mt-3 list-disc space-y-0.5 pl-5 text-[11px] text-muted-foreground">
             {t.notes.map((n) => (
@@ -629,7 +735,7 @@ export function TrackRecordView({ track, trust, trackLoading = false, trackError
 // ---------------- tab ----------------
 
 export default function TrackRecordTab() {
-  const track = useApi<TrackRecordResponse>("/api/track-record")
+  const track = useApi<TrackView>("/api/track-record")
   const trust = useApi<DataTrustResponse>("/api/data/trust")
   return (
     <TrackRecordView

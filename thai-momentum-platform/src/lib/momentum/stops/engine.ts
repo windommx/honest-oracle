@@ -475,6 +475,22 @@ export interface PersistClosedTradeOptions {
    * ไม่ระบุ/false = ต้องมีราคาวันออก (เดิม) ไม่งั้นไม่บันทึก
    */
   fillAtLastKnown?: boolean
+  /** ถังผู้ตัดสินใจของ Trade (Trade.src) — ไม่ระบุ = ดูจาก Decision ที่ทำให้เข้าไม้ (entryTradeSrc) */
+  src?: "auto" | "human-approved"
+}
+
+/**
+ * ถังผู้ตัดสินใจของไม้ = source ของ Decision ที่ทำให้เข้าไม้จริง (แถวเติม T+1 "fill" หรือ "buy" แบบเดิม ณ วันเข้า)
+ * มนุษย์อนุมัติ → "human-approved" · อื่น ๆ (Jev อัตโนมัติ / reversal / ไม่พบ) → "auto"
+ * เดิมบันทึก "auto" ทุกไม้ → ถัง human ของ posterior ว่างตลอดในการใช้งานจริง (มีแต่ข้อมูล seed)
+ */
+export async function entryTradeSrc(symbol: string, entryDate: string): Promise<"auto" | "human-approved"> {
+  const d = await db.decision.findFirst({
+    where: { question: "Q_ENTRY", target: symbol, date: entryDate, executed: true, action: { in: ["fill", "buy"] } },
+    orderBy: { id: "desc" },
+    select: { source: true },
+  })
+  return d?.source === "human" ? "human-approved" : "auto"
 }
 
 /** เมื่อ Jev ปิดสถานะ → บันทึกเข้า Trade log (path รายวันจาก closePivot) เพื่อให้ posterior เรียนรู้ตัวเอง */
@@ -530,7 +546,7 @@ export async function persistClosedTrade(
       ret,
       mae: Math.round(mae * 10000) / 10000,
       regime,
-      src: "auto",
+      src: opts.src ?? (await entryTradeSrc(pos.symbol, pos.entryDate)),
       holdDays: xi - ei,
       pathJson: JSON.stringify(path),
       stopPolicy: "jev",

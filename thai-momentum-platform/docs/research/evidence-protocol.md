@@ -17,7 +17,7 @@
 | `bun run evidence:real` → `data/reports/evidence-YYYY-MM-DD.json` | Evidence Board H1–H4 + Signals IC + walk-forward บน DB ปัจจุบัน · ไม่เขียน config/policy | ติดป้าย REAL ให้ข้อมูลจำลอง/ประวัติสั้น (สคริปต์ปฏิเสธเอง) |
 | `/api/research/prereg` (freeze) | ล็อกกติกาการทดลองด้วย sha256 ก่อนเห็นผล | ปรับพารามิเตอร์หลังเห็นผล (curve fitting) |
 | `bun run daily` (cron หลังตลาดปิด) | ดึงข้อมูล → ตรวจ → สมอง Jev → verify → track snapshot → backup → run log | ข้อมูลเสียเข้าสมอง · วันที่ขาดหาย · แก้ประวัติย้อนหลัง |
-| `GET /api/track-record` · แท็บ Track Record | NAV รายวัน vs benchmark · สถิติ · ป้าย SYNTHETIC/REAL · LIVE/REPLAY · ความเชื่อมั่น · audit hash | อ้างผลงานเกินจริง · เลือกช่วงเวลาที่ดูดี |
+| `GET /api/track-record` · แท็บ Track Record | NAV รายวัน vs benchmark (ไม้เข้าที่ราคาปิดวันเติม T+1 — คำสั่งที่ยังรอเติมไม่นับ · methodology A5) · สถิติ · ป้าย SYNTHETIC/REAL · LIVE/REPLAY · ความเชื่อมั่น · audit hash | อ้างผลงานเกินจริง (รวมราคาเข้าที่ซื้อไม่ได้จริงหลังเห็นสัญญาณ EOD) · เลือกช่วงเวลาที่ดูดี |
 | EventLog hash chain (`/api/events/audit`) + ledger hash + track snapshot | ทุกเหตุการณ์ผูกด้วย sha256 · snapshot รายวันเก็บ ledger hash + NAV | แก้ Decision/ราคาย้อนหลังเงียบ ๆ |
 
 ---
@@ -51,15 +51,33 @@ bun run evidence:real            # → data/reports/evidence-YYYY-MM-DD.json + E
 - อ่านผลตามตารางใน **"อะไรนับว่าไม่มี edge"** ด้านล่าง — **ผลขั้นนี้เป็นเพียงเงื่อนไขจำเป็น** (in-sample + survivorship) ไม่ใช่หลักฐานพอ
 - ถ้าขั้นนี้ออกมา "ไม่มี edge" ชัดเจน: หยุดที่นี่ เผยแพร่รายงาน แล้วกลับไปออกแบบสมมติฐานใหม่ (นับเป็น trial ใหม่) — **ห้ามจูนพารามิเตอร์จนกว่าจะผ่าน**
 
-## ขั้นที่ 3 — ล็อกกติกาล่วงหน้า (pre-registration) ก่อนเริ่มนับ live
+## ขั้นที่ 3 — ล็อกกติกาล่วงหน้า (pre-registration + live freeze) ก่อนเริ่มนับ live
 
 1. เขียนสมมติฐานหลัก **ข้อเดียว** และตัวชี้วัดหลัก **ตัวเดียว** ก่อนเริ่ม เช่น
    > "พอร์ตกระดาษ Jev (กติกาปัจจุบัน + config_th ณ วันที่ล็อก) ให้ผลตอบแทนส่วนเกินรายวันเหนือ benchmark equal-weight หุ้นสภาพคล่อง หลังต้นทุน 0.7%/ขา
    > โดย t-stat ≥ 2 เมื่อครบ 120 วันซื้อขาย และ ≥ 30 เทรดที่ปิดแล้ว"
-2. Freeze: `POST /api/research/prereg` (กติกา trial) — จด `hash` + `frozenAt`
-3. บันทึก config ที่ระบบเทรดใช้ (`GET /api/config/th`, `Setting.signals_policy`, `stops_policy`) ลงไฟล์ แล้ว commit/เผยแพร่พร้อม hash และวันที่
-4. **ปิดการเปลี่ยนกติกาอัตโนมัติระหว่างนับ:** ไม่รัน `POST /api/evidence/run` (mode all = auto-apply config) / `GET /api/signals/ic` (เขียน policy) ระหว่างช่วง live
-   ถ้าจำเป็นต้องเปลี่ยนกติกา → **ถือเป็น trial ใหม่**: ล็อกใหม่ เริ่มนับใหม่ และรายงานทั้งสอง trial (ห้ามทิ้ง trial ที่แพ้)
+2. ตั้งกติกาให้เสร็จ **ก่อน** ล็อก (ช่วงนี้ยังเปลี่ยนได้): แท็บ Signals (`GET /api/signals/ic?hold=<ค่าที่จะใช้>` เขียน `signals_policy`) · แท็บ Stops
+   (`GET /api/stops` เขียน `stops_policy`) · `config_th` (แท็บ Evidence / `PUT /api/config/th`) · CPCV deploy `meta_model` ถ้าจะใช้ ·
+   `POST /api/research/prereg` (กติกา trial) — จด `hash` + `frozenAt`
+3. **ล็อกช่วงเก็บผลจริง:** แท็บ Evidence → การ์ด "ล็อกช่วงเก็บผลจริง" (ใส่สมมติฐานจากข้อ 1 เป็นบันทึก) หรือ
+   ```bash
+   curl -X POST -H "Authorization: Bearer $TMP_API_TOKEN" -H "Content-Type: application/json" \
+     -d '{"action":"freeze","note":"<สมมติฐานหลัก + ตัวชี้วัดหลัก>"}' http://127.0.0.1:3000/api/research/freeze
+   ```
+   ระบบเก็บ sha256 ของค่าดิบใน Setting ที่ Jev อ่านเป็นกติกา (`config_th` · `signals_policy` · `stops_policy` · `meta_model` · `prereg_trial`)
+   + วันที่ข้อมูลล่าสุด + prereg hash ลง `Setting.live_freeze` และ EventLog `live_freeze` (hash chain) — ล็อกอยู่แล้วล็อกซ้ำ = 409
+4. **เผยแพร่** ผลของ `GET /api/research/freeze` (`freeze.frozenAt` · `freeze.hashes` · `freeze.preregHash` · `freeze.note`) พร้อมค่าจริงของแต่ละ Setting
+   แล้ว commit/โพสต์ในที่ที่แก้ย้อนหลังไม่ได้ — ใครมีสำเนา DB ตรวจ hash ได้เอง:
+   `printf '%s' "$(sqlite3 app.db "select value from Setting where key='config_th'")" | sha256sum`
+5. **ระหว่างล็อก ระบบกันการเปลี่ยนกติกาเอง** (ไม่ต้องจำว่าห้ามกดอะไร):
+   - `GET /api/signals/ic` และ `GET /api/stops` **เปิดได้ปลอดภัย** — คำนวณและแสดงผลตามปกติแต่ไม่บันทึก policy/Decision/event
+     (`policySaved:false` · `adoption.saved:false` · `frozen:true` + ป้าย "🔒 ล็อกช่วงเก็บผลจริง") · Jev อ่าน policy ที่ล็อกไว้ต่อ
+   - `POST /api/evidence/run` รันแบบอ่านอย่างเดียว (บันทึก ResearchRun — นับเป็น trial — แต่ไม่ auto-apply `config_th`) · `PUT /api/config/th` → 409
+   - ค่าที่ถูกแก้ข้ามด่าน (แก้ตรงใน DB · deploy `meta_model` · reset prereg · seed/`--replace-demo` ที่ล้าง policy) → **drift** ขึ้นป้ายแดงที่แท็บ Evidence /
+     Signals / Stops / Track Record และใน `GET /api/research/freeze` · บันทึกล็อกที่ถูกแก้/ลบตรงใน DB ไม่ตรงกับ EventLog → ขึ้นป้ายแดงเช่นกัน
+6. ถ้าจำเป็นต้องเปลี่ยนกติกา → **ถือเป็น trial ใหม่**: ปลดล็อก (แท็บ Evidence ต้องพิมพ์ `UNFREEZE` + เหตุผล หรือ
+   `{"action":"unfreeze","confirm":"UNFREEZE","reason":"…"}` — เหตุผลและ drift ที่พบลง EventLog) → เปลี่ยน → ล็อกใหม่ → เริ่มนับใหม่
+   และรายงานทั้งสอง trial (ห้ามทิ้ง trial ที่แพ้)
 
 ## ขั้นที่ 4 — Paper trade ทุกวันซื้อขาย อย่างน้อย N เดือน
 
@@ -73,13 +91,16 @@ bun run evidence:real            # → data/reports/evidence-YYYY-MM-DD.json + E
 - ป้าย **LIVE/REPLAY**: รอบตัดสินใจที่ช้ากว่าวันของข้อมูลเกิน 4 วันปฏิทิน = REPLAY — นับเป็นหลักฐาน live ไม่ได้
 - มนุษย์อนุมัติ/ปฏิเสธ gate ได้ตามปกติ (บันทึกเป็น Decision source=human) — แต่ต้องทำก่อนรอบถัดไป และรายงานแยกได้ (track record นับทุกไม้ที่เข้าจริง)
 - ทุกวันที่ผลเปลี่ยน สายพานบันทึก `track_snapshot` (ledger hash + NAV + ขนาดไม้เปิด) ลง EventLog — ทำให้ไม้ที่ปิดภายหลังไม่ต้องประมาณขนาด และตรวจการแก้ย้อนหลังได้
+- แท็บ Track Record (TR4 + ป้ายบนหัว) แสดงวันที่ล็อก และขึ้นป้ายแดงเมื่อกติกาไม่ตรงกับที่ล็อก / มีการเปลี่ยนกติกาใน EventLog หลังล็อก (`freeze.violated`) —
+  หลักฐานนับเฉพาะรอบตัดสินใจหลังวันล็อก (record ที่เริ่มก่อนล็อกขึ้นหมายเหตุ) · ตรวจการ์ดล็อกที่แท็บ Evidence อย่างน้อยสัปดาห์ละครั้ง
 
 ## ขั้นที่ 5 — เผยแพร่ track record พร้อม audit hash
 
 1. ส่งออก `GET /api/track-record` (JSON) + รายงาน `evidence-*.json` ทุกฉบับ (รวมฉบับที่ผลแย่)
-2. เผยแพร่พร้อม: `tamper.latestEvent.hash` · `tamper.ledgerHash` · `liveSince` · `provenance` · `mode` · prereg hash — ใครมีสำเนา DB ตรวจได้ว่า
+2. เผยแพร่พร้อม: `tamper.latestEvent.hash` · `tamper.ledgerHash` · `liveSince` · `provenance` · `mode` · prereg hash · `freeze.frozenAt` + `freeze.hashes` — ใครมีสำเนา DB ตรวจได้ว่า
    - EventLog chain ครบ (`/api/events/audit` → ok) และ hash ล่าสุดตรงกับที่เผยแพร่
    - `tamper.snapshots.ledgerMismatches = 0` (ประวัติการตัดสินใจไม่ถูกแก้หลังบันทึก) · `navMismatches = 0` (ราคาไม่ถูกแก้ย้อนหลัง)
+   - `freeze.violated = false` และ `freeze.hashes` ตรงกับที่เผยแพร่ตอนล็อก (กติกาชุดเดียวตลอดช่วงที่นับ)
 3. เผยแพร่ hash เป็นระยะ (เช่นทุกสัปดาห์) ในที่ที่แก้ย้อนหลังไม่ได้ (git commit / โพสต์สาธารณะ) — hash ที่เผยแพร่ก่อนเป็นเครื่องยืนยันว่าไม่ได้สร้าง track record ขึ้นทีหลัง
 
 ---

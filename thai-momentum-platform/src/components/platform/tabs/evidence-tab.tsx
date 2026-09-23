@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState, type ReactNode } from "react"
+import { useId, useMemo, useState, type ReactNode } from "react"
 import {
   AlertTriangle,
   CalendarDays,
@@ -10,15 +10,30 @@ import {
   History,
   LayoutGrid,
   Loader2,
+  Lock,
+  LockOpen,
   Play,
   RotateCcw,
+  ShieldAlert,
   SlidersHorizontal,
   TrendingDown,
 } from "lucide-react"
-import { fmtPct, postJson, useApi } from "@/hooks/use-api"
+import { fmtPct, postJson, postJsonWithStatus, useApi } from "@/hooks/use-api"
 import { toast } from "@/hooks/use-toast"
+import type { LiveFreezeStatus } from "@/lib/research/freeze"
 import GlobalEnginesPanel from "./global-engines-panel"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -28,11 +43,13 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Switch } from "@/components/ui/switch"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
 import { Term } from "../glossary"
 
@@ -471,11 +488,298 @@ function IcirHeatmap({ cells }: { cells: ScanCell[] }) {
   )
 }
 
+/* ────────────────────────────── ล็อกช่วงเก็บผลจริง (live freeze — GET/POST /api/research/freeze) ────────────────────────────── */
+
+/** คำยืนยันที่ /api/research/freeze ต้องการก่อนปลดล็อก (ไม่ส่ง/ผิด = 409) */
+const UNFREEZE_TOKEN = "UNFREEZE"
+
+const shortHash = (h: string | null | undefined) => (h ? `${h.slice(0, 12)}…` : "—")
+
+function fmtDateTime(iso: string): string {
+  const d = new Date(iso)
+  return Number.isNaN(d.getTime()) ? iso : d.toLocaleString("th-TH", { dateStyle: "medium", timeStyle: "short" })
+}
+
+type FreezeApi = ReturnType<typeof useApi<LiveFreezeStatus>>
+
+function LiveFreezePanel({ api }: { api: FreezeApi }) {
+  const [note, setNote] = useState("")
+  const [busy, setBusy] = useState<"freeze" | "unfreeze" | null>(null)
+  const [confirmOpen, setConfirmOpen] = useState(false)
+  const [typed, setTyped] = useState("")
+  const [reason, setReason] = useState("")
+  const noteId = useId()
+  const typedId = useId()
+  const reasonId = useId()
+  const s = api.data
+  const rec = s?.freeze ?? null
+  const unfreezeReady = typed.trim().toUpperCase() === UNFREEZE_TOKEN && reason.trim().length > 0
+  const broken = !!s && (s.drift.length > 0 || s.integrity.length > 0)
+
+  async function send(body: Record<string, unknown>, ok: { title: string; description: string }, failTitle: string): Promise<boolean> {
+    try {
+      const r = await postJsonWithStatus<LiveFreezeStatus>("/api/research/freeze", body)
+      if (!r.ok) {
+        // 409 (ล็อกอยู่แล้ว / ยังไม่ยืนยัน / ไม่ได้ล็อก) · 400 — แสดงข้อความภาษาไทยจาก server ตรง ๆ
+        toast({ variant: "destructive", title: failTitle, description: r.data?.error ?? `HTTP ${r.status}` })
+        return false
+      }
+      toast(ok)
+      return true
+    } catch (e) {
+      toast({ variant: "destructive", title: failTitle, description: e instanceof Error ? e.message : "เครือข่ายขัดข้อง" })
+      return false
+    } finally {
+      api.refetch()
+    }
+  }
+
+  async function freeze() {
+    if (busy) return
+    setBusy("freeze")
+    const done = await send(
+      { action: "freeze", note },
+      {
+        title: "🔒 ล็อกกติกาแล้ว",
+        description: "เก็บ sha256 ของกติกาทุกชุดที่ Jev อ่านแล้ว — ระหว่างนี้ไม่มีการบันทึก policy/config ใหม่ · เผยแพร่ hash คู่กับวันที่ล็อก",
+      },
+      "ล็อกไม่สำเร็จ",
+    )
+    if (done) setNote("")
+    setBusy(null)
+  }
+
+  async function unfreeze() {
+    if (busy) return
+    setBusy("unfreeze")
+    await send(
+      { action: "unfreeze", confirm: typed.trim().toUpperCase(), reason },
+      { title: "ปลดล็อกแล้ว", description: "จบ trial นี้ — กติกาที่เปลี่ยนหลังจากนี้นับเป็น trial ใหม่ (บันทึกเหตุผลลง EventLog แล้ว)" },
+      "ปลดล็อกไม่สำเร็จ",
+    )
+    setTyped("")
+    setReason("")
+    setBusy(null)
+  }
+
+  return (
+    <Card className={cn("min-w-0", s?.frozen && (broken ? "border-neon-rose/50" : "border-neon-cyan/40"))}>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          {s?.frozen ? <Lock className="size-4 text-neon-cyan" aria-hidden /> : <LockOpen className="size-4 text-muted-foreground" aria-hidden />}
+          ล็อกช่วงเก็บผลจริง (live freeze)
+        </CardTitle>
+        <CardDescription>
+          ก่อนเริ่มนับ paper record ให้ล็อกกติกาที่ Jev อ่าน (config_th · signals_policy · stops_policy · meta_model · prereg) ด้วย sha256 —
+          ระหว่างล็อก เปิดแท็บ Signals/Stops ได้โดยไม่บันทึก policy ใหม่ · Evidence Night รันแบบอ่านอย่างเดียว · แก้ config ถูกปฏิเสธ (409)
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="min-w-0 space-y-3">
+        {api.error && !s ? (
+          <Alert variant="destructive">
+            <AlertTitle>โหลดสถานะล็อกไม่สำเร็จ</AlertTitle>
+            <AlertDescription>{api.error}</AlertDescription>
+          </Alert>
+        ) : !s ? (
+          <Skeleton className="h-24 w-full" />
+        ) : (
+          <>
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge
+                variant="outline"
+                className={
+                  s.frozen ? "border-neon-cyan/40 bg-neon-cyan/10 text-neon-cyan" : "border-border bg-foreground/[0.04] text-muted-foreground"
+                }
+              >
+                {s.frozen ? "🔒 ล็อกอยู่" : "ยังไม่ล็อก"}
+              </Badge>
+              {!broken && <span className="min-w-0 text-xs text-muted-foreground">{s.message}</span>}
+            </div>
+
+            {s.drift.length > 0 && (
+              <Alert variant="destructive">
+                <ShieldAlert aria-hidden />
+                <AlertTitle>⚠️ กติกาที่ระบบเทรดใช้ไม่ตรงกับตอนล็อก: {s.drift.map((d) => d.key).join(", ")}</AlertTitle>
+                <AlertDescription>
+                  <p>มีการแก้ข้ามด่านล็อก (เช่นแก้ตรงใน DB) — Jev อ่านค่าที่ถูกแก้อยู่ · record หลังวันล็อกไม่ใช่ผลของกติกาชุดเดียว</p>
+                  <p>ทางที่ซื่อตรง: คืนค่าเดิมจาก backup (hash ต้องกลับมาตรง) แล้วรายงานช่วงที่ค่าไม่ตรง หรือปลดล็อกแล้วนับเป็น trial ใหม่</p>
+                </AlertDescription>
+              </Alert>
+            )}
+            {s.integrity.length > 0 && (
+              <Alert variant="destructive">
+                <ShieldAlert aria-hidden />
+                <AlertTitle>⚠️ บันทึกล็อกไม่ตรงกับ EventLog</AlertTitle>
+                <AlertDescription>
+                  <ul className="list-disc space-y-0.5 pl-4">
+                    {s.integrity.map((i) => (
+                      <li key={i}>{i}</li>
+                    ))}
+                  </ul>
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {rec && (
+              <dl className="grid min-w-0 grid-cols-1 gap-x-4 gap-y-1 text-xs sm:grid-cols-[auto_minmax(0,1fr)]">
+                <dt className="text-muted-foreground">ล็อกเมื่อ</dt>
+                <dd>{fmtDateTime(rec.frozenAt)}</dd>
+                <dt className="text-muted-foreground">ข้อมูลตลาดล่าสุดตอนล็อก</dt>
+                <dd className="font-mono">{rec.dataDate ?? "—"}</dd>
+                <dt className="text-muted-foreground">สมมติฐาน / บันทึก</dt>
+                <dd className="break-words whitespace-pre-wrap">{rec.note}</dd>
+                {rec.preregHash && (
+                  <>
+                    <dt className="text-muted-foreground">prereg (กติกา trial)</dt>
+                    <dd className="font-mono" title={rec.preregHash}>
+                      {shortHash(rec.preregHash)}
+                    </dd>
+                  </>
+                )}
+              </dl>
+            )}
+
+            <div className="min-w-0 overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>กติกา (Setting)</TableHead>
+                    {rec && <TableHead>sha256 ตอนล็อก</TableHead>}
+                    <TableHead>sha256 ตอนนี้</TableHead>
+                    {rec && <TableHead>สถานะ</TableHead>}
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {s.keys.map(({ key, label }) => {
+                    const drifted = s.drift.some((d) => d.key === key)
+                    return (
+                      <TableRow key={key}>
+                        <TableCell className="min-w-0 text-xs">{label}</TableCell>
+                        {rec && (
+                          <TableCell className="font-mono text-xs" title={rec.hashes[key] ?? "ไม่มีค่า"}>
+                            {shortHash(rec.hashes[key])}
+                          </TableCell>
+                        )}
+                        <TableCell className="font-mono text-xs" title={s.current.hashes[key] ?? "ไม่มีค่า"}>
+                          {shortHash(s.current.hashes[key])}
+                        </TableCell>
+                        {rec && (
+                          <TableCell>
+                            {drifted ? (
+                              <Badge className="border-neon-rose/40 bg-neon-rose/10 text-neon-rose">⚠️ เปลี่ยน</Badge>
+                            ) : (
+                              <Badge variant="outline" className="border-neon-green/40 bg-neon-green/10 text-neon-green">
+                                ตรง ✓
+                              </Badge>
+                            )}
+                          </TableCell>
+                        )}
+                      </TableRow>
+                    )
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+            <p className="text-[11px] text-muted-foreground">
+              — = ไม่มีค่า (ระบบใช้ค่า default หรือปิดชั้นนั้น) · hash = sha256 ของค่าใน Setting ทั้งก้อน ตรวจซ้ำได้จากสำเนา DB · freeze/unfreeze
+              บันทึกลง EventLog (hash chain) พร้อม hash ชุดนี้
+            </p>
+
+            {!s.frozen ? (
+              <div className="space-y-1.5">
+                <Label htmlFor={noteId} className="text-xs">
+                  สมมติฐานหลัก + ตัวชี้วัดหลัก (บันทึกคู่กับ hash — แก้ภายหลังไม่ได้)
+                </Label>
+                <Textarea
+                  id={noteId}
+                  value={note}
+                  onChange={(e) => setNote(e.target.value)}
+                  maxLength={2000}
+                  placeholder="เช่น พอร์ตกระดาษ Jev ให้ผลตอบแทนส่วนเกินรายวันเหนือ benchmark หลังต้นทุน 0.7%/ขา โดย t-stat ≥ 2 เมื่อครบ 120 วันซื้อขาย และ ≥ 30 เทรดที่ปิดแล้ว"
+                  className="min-h-20 text-sm"
+                />
+                <Button onClick={freeze} disabled={busy !== null || note.trim().length === 0} className="h-11 sm:h-9">
+                  {busy === "freeze" ? <Loader2 className="animate-spin" aria-hidden /> : <Lock aria-hidden />}
+                  ล็อกกติกาชุดนี้
+                </Button>
+              </div>
+            ) : (
+              <AlertDialog
+                open={confirmOpen}
+                onOpenChange={(v) => {
+                  setConfirmOpen(v)
+                  // ปิดกล่อง (ยกเลิก/ยืนยัน) = ล้างคำยืนยัน — คำขอที่ส่งไปแล้วใช้ค่าตอนกดยืนยัน
+                  if (!v) {
+                    setTyped("")
+                    setReason("")
+                  }
+                }}
+              >
+                <AlertDialogTrigger asChild>
+                  <Button variant="outline" disabled={busy !== null} className="h-11 sm:h-9">
+                    {busy === "unfreeze" ? <Loader2 className="animate-spin" aria-hidden /> : <LockOpen aria-hidden />}
+                    ปลดล็อก…
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>ปลดล็อกช่วงเก็บผลจริง?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      การปลดล็อกคือการจบ trial ที่ลงทะเบียนไว้ — หลังจากนี้แท็บ Signals/Stops, Evidence Night และการแก้ config
+                      เขียนกติกาได้อีกครั้ง ผลหลังจากนี้นับเป็น trial ใหม่ และต้องรายงานทั้งสอง trial (ห้ามทิ้ง trial ที่แพ้)
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <div className="space-y-3">
+                    <div className="space-y-1.5">
+                      <Label htmlFor={reasonId} className="text-sm">
+                        เหตุผลที่ปลดล็อก (บันทึกลง EventLog)
+                      </Label>
+                      <Textarea id={reasonId} value={reason} onChange={(e) => setReason(e.target.value)} maxLength={500} className="min-h-16 text-sm" />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor={typedId} className="text-sm">
+                        พิมพ์ <span className="rounded bg-muted px-1.5 py-0.5 font-mono font-bold text-neon-rose">{UNFREEZE_TOKEN}</span> เพื่อยืนยัน
+                      </Label>
+                      <Input
+                        id={typedId}
+                        value={typed}
+                        onChange={(e) => setTyped(e.target.value)}
+                        autoComplete="off"
+                        autoCapitalize="characters"
+                        spellCheck={false}
+                        placeholder={UNFREEZE_TOKEN}
+                        className="h-10 font-mono"
+                      />
+                    </div>
+                  </div>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>ยกเลิก</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={unfreeze}
+                      disabled={!unfreezeReady}
+                      className="bg-destructive text-white hover:bg-destructive/90 dark:bg-destructive/60"
+                    >
+                      ยืนยัน ปลดล็อก
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
+          </>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
 /* ────────────────────────────── main ────────────────────────────── */
 
 export default function EvidenceTab() {
   const ev = useApi<EvidenceResponse>("/api/evidence")
   const cfgApi = useApi<ConfigResponse>("/api/config/th")
+  const freezeApi = useApi<LiveFreezeStatus>("/api/research/freeze")
+  // ล็อกช่วงเก็บผลจริงอยู่ → สวิตช์ config ปิด (server ตอบ 409 อยู่แล้ว) · Evidence Night รันแบบอ่านอย่างเดียว
+  const frozen = freezeApi.data?.frozen === true
 
   const [mode, setMode] = useState("all")
   const [running, setRunning] = useState(false)
@@ -560,30 +864,33 @@ export default function EvidenceTab() {
   /* ---------- empty / error state ---------- */
   if ((ev.error && !ev.data) || (ev.data && !report)) {
     return (
-      <Card className="neon-card-cyan">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <ClipboardCheck className="size-5 text-neon-cyan" aria-hidden />
-            Evidence Board — ตลาดไทย &quot;ยอม&quot; ให้เราเก็บเบี้ยช่องไหน
-          </CardTitle>
-          <CardDescription>prior จากวรรณกรรม ≠ คำตอบ — ผู้ตัดสินคือข้อมูลจริง</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {ev.error && (
-            <Alert variant="destructive">
-              <AlertTriangle />
-              <AlertTitle>โหลดหลักฐานไม่สำเร็จ</AlertTitle>
-              <AlertDescription>{ev.error}</AlertDescription>
-            </Alert>
-          )}
-          <p className="text-sm text-muted-foreground">ยังไม่มีหลักฐาน — กดรัน Evidence Night เพื่อให้ตลาดตอบครั้งแรก</p>
-          <Button onClick={() => runEvidence("all")} disabled={running} className="h-11 sm:h-10">
-            {running ? <Loader2 className="animate-spin" aria-hidden /> : <Play aria-hidden />}
-            {running ? "กำลังรัน Evidence Night…" : "รัน Evidence Night (โหมดทั้งหมด)"}
-          </Button>
-          {runError && <p className="text-xs text-neon-rose">{runError}</p>}
-        </CardContent>
-      </Card>
+      <div className="space-y-4 sm:space-y-6">
+        <Card className="neon-card-cyan">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <ClipboardCheck className="size-5 text-neon-cyan" aria-hidden />
+              Evidence Board — ตลาดไทย &quot;ยอม&quot; ให้เราเก็บเบี้ยช่องไหน
+            </CardTitle>
+            <CardDescription>prior จากวรรณกรรม ≠ คำตอบ — ผู้ตัดสินคือข้อมูลจริง</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {ev.error && (
+              <Alert variant="destructive">
+                <AlertTriangle />
+                <AlertTitle>โหลดหลักฐานไม่สำเร็จ</AlertTitle>
+                <AlertDescription>{ev.error}</AlertDescription>
+              </Alert>
+            )}
+            <p className="text-sm text-muted-foreground">ยังไม่มีหลักฐาน — กดรัน Evidence Night เพื่อให้ตลาดตอบครั้งแรก</p>
+            <Button onClick={() => runEvidence("all")} disabled={running} className="h-11 sm:h-10">
+              {running ? <Loader2 className="animate-spin" aria-hidden /> : <Play aria-hidden />}
+              {running ? "กำลังรัน Evidence Night…" : "รัน Evidence Night (โหมดทั้งหมด)"}
+            </Button>
+            {runError && <p className="text-xs text-neon-rose">{runError}</p>}
+          </CardContent>
+        </Card>
+        <LiveFreezePanel api={freezeApi} />
+      </div>
     )
   }
 
@@ -651,6 +958,12 @@ export default function EvidenceTab() {
               {running ? "กำลังรัน…" : "รัน Evidence Night"}
             </Button>
           </div>
+          {frozen && (
+            <p className="flex items-center gap-1.5 text-xs text-neon-amber">
+              <Lock className="size-3.5 shrink-0" aria-hidden />
+              ล็อกช่วงเก็บผลจริงอยู่ — รันได้แบบอ่านอย่างเดียว: บันทึกผลรัน แต่ไม่ auto-apply config_th
+            </p>
+          )}
 
           {runError && (
             <Alert variant="destructive">
@@ -689,6 +1002,9 @@ export default function EvidenceTab() {
           )}
         </CardContent>
       </Card>
+
+      {/* ── 1.5) ล็อกช่วงเก็บผลจริง ─────────────────────────────────── */}
+      <LiveFreezePanel api={freezeApi} />
 
       {/* ── 2) H1–H4 verdict row ────────────────────────────────────── */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -810,7 +1126,7 @@ export default function EvidenceTab() {
                     <Switch
                       checked={!!cfg.calendarOverlay}
                       onCheckedChange={() => toggleConfig("calendarOverlay")}
-                      disabled={cfgPending}
+                      disabled={cfgPending || frozen}
                       aria-label="สลับ calendarOverlay — ซ้อนกติกาปฏิทิน"
                     />
                   </label>
@@ -822,11 +1138,18 @@ export default function EvidenceTab() {
                     <Switch
                       checked={!!cfg.reversalEnabled}
                       onCheckedChange={() => toggleConfig("reversalEnabled")}
-                      disabled={cfgPending}
+                      disabled={cfgPending || frozen}
                       aria-label="สลับ reversalEnabled — เปิดกลยุทธ์ Snap-back Reversal"
                     />
                   </label>
                 </div>
+
+                {frozen && (
+                  <p className="flex items-center gap-1.5 text-[11px] text-neon-amber">
+                    <Lock className="size-3.5 shrink-0" aria-hidden />
+                    ล็อกช่วงเก็บผลจริงอยู่ — แก้ config ไม่ได้จนกว่าจะปลดล็อก (การ์ดล็อกด้านบน) · Jev ใช้ค่าชุดนี้ต่อ
+                  </p>
+                )}
 
                 {/* footer: updatedBy + history timeline */}
                 <div className="space-y-1.5 border-t border-border/60 pt-3">

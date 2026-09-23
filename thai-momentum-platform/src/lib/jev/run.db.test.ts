@@ -11,6 +11,8 @@ interface DayResult {
   status: number
   date: string | null
   message: string | null
+  queued: string[]
+  filled: { symbol: string; fillDate: string }[]
   exits: { target: string; action: string; reason: string }[]
   exitLog: { target: string; action: string; executed: boolean; reason: string }[]
   positions: { symbol: string; entryDate: string }[]
@@ -89,8 +91,18 @@ describe("/api/jev/run — กฎปิดที่ตัดสินเมื�
     expect(r.d2.trades.find((x) => x.symbol === "EDGE")?.holdDays).toBe(5)
     expect(r.d2.positions.some((p) => p.symbol === "FRESH")).toBe(true)
     expect(r.d2.trades.filter((x) => x.symbol === "HALT" || x.symbol === "AGED")).toHaveLength(2)
-    // ไม้ที่เพิ่งเข้าวันที่ 1 (ถ้ามี) ต้องไม่โดน time exit วันที่ 2
-    const boughtDay1 = r.d1.positions.filter((p) => p.entryDate === r.dates.day1).map((p) => p.symbol)
-    for (const s of boughtDay1) expect(exitOf(r.d2, s)?.reason.startsWith("ครบกำหนดถือ") ?? false).toBe(false)
+  })
+
+  it("T+1: ซื้ออัตโนมัติวันที่ 1 (ถ้ามี) ยังไม่เป็นสถานะวันที่ 1 · เติมวันที่ 2 ที่วันเข้า = วันที่ 2 และไม่โดน time exit", () => {
+    // ไม่มี Position ใดลงวันเข้า = วันที่ 1 (เดิม T+0: ซื้อวันที่ 1 ที่ราคาปิดวันที่ 1)
+    expect(r.d1.positions.filter((p) => p.entryDate === r.dates.day1)).toEqual([])
+    for (const s of r.d1.queued) {
+      expect(r.d1.positions.some((p) => p.symbol === s)).toBe(false)
+      const f = r.d2.filled.find((x) => x.symbol === s)
+      if (!f) continue // ถูกยกเลิกตอนเติม (ไม่มีราคา/sector) — ไม่มีสถานะ
+      expect(f.fillDate).toBe(r.dates.day2)
+      expect(r.d2.positions.find((p) => p.symbol === s)?.entryDate).toBe(r.dates.day2)
+      expect(exitOf(r.d2, s)?.reason.startsWith("ครบกำหนดถือ") ?? false).toBe(false)
+    }
   })
 })

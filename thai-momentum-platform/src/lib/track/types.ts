@@ -76,6 +76,10 @@ export interface TrackDecisionCounts {
   tightens: number
   watch: number
   pendingBuys: number
+  /** คำสั่งซื้อที่ส่งเข้าคิว T+1 (อัตโนมัติ + มนุษย์อนุมัติ) — ยังไม่ใช่ไม้จนกว่าจะเติม (ledger นับเสมอ · optional ให้ fixture เก่าใช้ได้) */
+  queuedOrders?: number
+  /** คำสั่งที่ถูกยกเลิกตอนเติม (ไม่มีราคาวันเติม / sector-slot ไม่ผ่าน / มีสถานะแล้ว) */
+  cancelledOrders?: number
   human: number
   reversal: number
   shadow: number

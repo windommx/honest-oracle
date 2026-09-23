@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { db } from "@/lib/db"
 import { emitEvent } from "@/lib/research/events"
+import { liveFreezeFlag, type LiveFreezeFlag } from "@/lib/research/freeze"
 import { mayPersistOnGet } from "@/lib/security/request-principal"
 import { computeRegimeState } from "@/lib/momentum/core"
 import {
@@ -28,6 +29,7 @@ function parseBucket(v: string | null): StopBucket {
 // → posterior T/R + walk-forward 3 arms (fixed10 | bayesT | bayesR) + adoption ตามกติกาที่ล็อกไว้
 //   + ตำแหน่งเปิดแต่ละตัวบน curve — บันทึก policy ลง Setting.stops_policy เมื่อผล "เปลี่ยน" เท่านั้น
 //   และเฉพาะผู้ดูแลที่เรียกจากหน้าเว็บนี้/สคริปต์ (ผู้ชมหรือเว็บอื่นที่พามาเปิดลิงก์ได้ผลคำนวณแต่ไม่บันทึก)
+//   ล็อกช่วงเก็บผลจริง (src/lib/research/freeze.ts) = คำนวณ/ตอบผลได้แต่ไม่บันทึกเลย (adoption.saved=false + frozen=true)
 export async function GET(req: Request) {
   const t0 = Date.now()
   try {
@@ -56,9 +58,9 @@ export async function GET(req: Request) {
     // ---------- persist policy เมื่อผลเปลี่ยน ----------
     // ไม่มีข้อมูลตลาดเลย (DB ใหม่) → ยังไม่มีอะไรให้ตัดสิน — ไม่เขียน policy/Decision ที่ไม่มีวันที่
     const hasMarket = arms.equityCurves.length > 0
-    const prev = await readStopPolicy()
+    const [prev, freeze] = await Promise.all([readStopPolicy(), liveFreezeFlag()])
     const changed = hasMarket && (!prev || prev.arm !== winner || prev.adopted !== passed)
-    const saved = changed && mayPersistOnGet(req)
+    const saved = changed && !freeze.frozen && mayPersistOnGet(req)
     if (saved) {
       const payload = JSON.stringify({
         arm: winner,
@@ -87,7 +89,10 @@ export async function GET(req: Request) {
     }
 
     // ---------- posterior "ตัวจริง" ที่หน้างานใช้ = ตาม policy ----------
-    const policy = await readStopPolicy()
+    // ล็อกอยู่และไม่มี policy ที่ล็อกไว้ = Jev ใช้ stop แบบเดิม (fixed) — ไม่ fallback ไปผู้ชนะที่ไม่ได้บันทึก
+    const stored = await readStopPolicy()
+    const policy: { arm: StopArm; adopted: boolean; decidedAt: string | null } | null =
+      stored ?? (freeze.frozen ? { arm: "fixed10", adopted: false, decidedAt: null } : null)
     const policyArm: StopArm = policy?.arm ?? winner
     const mode: "T" | "R" = policyArm === "bayesR" ? "R" : "T"
     const livePosterior = mode === "T" ? bp.postT : bp.postR
@@ -113,7 +118,7 @@ export async function GET(req: Request) {
       (stale.length > 0 ? ` · ราคาไม่ใช่วันล่าสุด (หยุดซื้อขาย?): ${stale.join(", ")}` : "") +
       (noPrice.length > 0 ? ` · ไม่มีราคาในระบบ (ประเมินไม่ได้): ${noPrice.join(", ")}` : "")
 
-    const resp: StopsResponse = {
+    const resp: StopsResponse & LiveFreezeFlag = {
       latest: arms.equityCurves[arms.equityCurves.length - 1]?.date ?? "",
       bucket,
       policy: {
@@ -144,6 +149,7 @@ export async function GET(req: Request) {
           ? "ยังไม่มีประวัติเทรด — รัน seed (ข้อมูลตัวอย่าง) หรือให้ Jev ปิดสถานะจริงก่อน"
           : `posterior จาก ${bp.nTrades} เทรด (bucket=${bp.pooled && bucket !== "pooled" ? "pooled (fallback)" : bucket}) · live mode=${mode} · s_live=${liveS !== null ? `${(liveS * 100).toFixed(1)}%` : "—"} · policy=${policy?.arm ?? winner}${fillNote}`) +
         priceNote,
+      ...freeze,
     }
     return NextResponse.json(resp)
   } catch (e) {

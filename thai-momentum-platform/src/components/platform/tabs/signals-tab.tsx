@@ -17,6 +17,7 @@ import {
 } from "recharts"
 import { useApi } from "@/hooks/use-api"
 import type { AbResponse, IcResponse, SignalsResponse } from "@/lib/momentum/contracts"
+import type { LiveFreezeFlag } from "@/lib/research/freeze"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -193,7 +194,8 @@ function SectorStream({ sectors }: { sectors: SignalsResponse["sectors"] }) {
 export default function SignalsTab() {
   const [hold, setHold] = useState("10")
   const sig = useApi<SignalsResponse>("/api/signals")
-  const ic = useApi<IcResponse>(`/api/signals/ic?hold=${hold}`)
+  // frozen = ล็อกช่วงเก็บผลจริงอยู่ (server คำนวณแต่ไม่บันทึก policy) — ฟิลด์เสริมจาก /api/signals/ic
+  const ic = useApi<IcResponse & Partial<LiveFreezeFlag>>(`/api/signals/ic?hold=${hold}`)
   const ab = useApi<AbResponse>("/api/signals/ab")
 
   if (sig.error)
@@ -422,6 +424,19 @@ export default function SignalsTab() {
                 <p className="mt-3 text-xs text-neon-green">
                   ✓ บันทึก policy แล้ว — Jev จะใช้น้ำหนักนี้ในรอบถัดไป (alpha เปิดเมื่อมีตัว PROMOTE)
                 </p>
+              )}
+              {ic.data.frozen && (
+                <p className="mt-3 text-xs text-neon-amber">
+                  🔒 ล็อกช่วงเก็บผลจริง — ไม่บันทึก policy ใหม่
+                  {ic.data.frozenAt ? ` (ล็อกเมื่อ ${ic.data.frozenAt.slice(0, 10)})` : ""} · ตารางนี้เป็นผลสอบเพื่อดูเท่านั้น
+                  Jev ใช้ policy ที่ล็อกไว้ (ป้าย policy ด้านบน)
+                </p>
+              )}
+              {(ic.data.freezeDrift?.length ?? 0) > 0 && (
+                <Alert variant="destructive" className="mt-3">
+                  <AlertTitle>⚠️ ค่าที่ระบบเทรดใช้ไม่ตรงกับตอนล็อก: {ic.data.freezeDrift?.join(", ")}</AlertTitle>
+                  <AlertDescription>มีการแก้ข้ามด่านล็อก (เช่นแก้ตรงใน DB) — ตรวจและแก้ที่แท็บ Evidence → การ์ดล็อกช่วงเก็บผลจริง</AlertDescription>
+                </Alert>
               )}
             </>
           )}

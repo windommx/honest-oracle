@@ -5,6 +5,7 @@ import {
   AlertCircle,
   CheckCircle2,
   CircleHelp,
+  Hourglass,
   Loader2,
   PauseCircle,
 } from "lucide-react"
@@ -35,9 +36,11 @@ import type {
   GateActionResult,
   JevRunResponse,
   OverviewResponse,
+  PendingFillRow,
   PendingResponse,
   VerifyResponse,
 } from "@/lib/momentum/contracts"
+import { T1_TAG, fillSourceLabel } from "@/lib/jev/fill-rules"
 import { cn } from "@/lib/utils"
 import ScrollBox from "../scroll-box"
 import { Term } from "../glossary"
@@ -72,7 +75,8 @@ function questionCls(q: string): string {
 
 function actionCls(action: string): string {
   const a = action.toLowerCase()
-  if (a === "buy") return "text-neon-green"
+  if (a === "buy" || a === "fill") return "text-neon-green"
+  if (a === "cancel") return "text-neon-amber"
   if (a === "exit") return "text-neon-rose"
   if (a === "tighten") return "text-neon-amber"
   if (a === "review") return "text-neon-purple"
@@ -110,6 +114,59 @@ function Loading({ rows = 3 }: { rows?: number }) {
       {Array.from({ length: rows }).map((_, i) => (
         <Skeleton key={i} className="h-5 w-full" />
       ))}
+    </div>
+  )
+}
+
+// คำสั่งซื้อที่รอเติม T+1 — ยังไม่ใช่สถานะ (ไม่มีราคาเข้า ไม่นับใน P&L/NAV)
+function PendingFillsTable({ rows }: { rows: PendingFillRow[] }) {
+  return (
+    <div className="overflow-x-auto">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>หุ้น</TableHead>
+            <TableHead>ที่มา</TableHead>
+            <TableHead>วันตัดสินใจ</TableHead>
+            <TableHead>หลังข้อมูล</TableHead>
+            <TableHead className="text-right">slots</TableHead>
+            <TableHead>จะเติม</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {rows.map((o) => (
+            <TableRow key={o.id}>
+              <TableCell className="font-mono font-bold">{o.symbol}</TableCell>
+              <TableCell>
+                <Badge
+                  variant="outline"
+                  className={cn(
+                    "px-1.5 text-[10px]",
+                    o.source === "human" ? "border-neon-purple/40 text-neon-purple" : "text-muted-foreground"
+                  )}
+                >
+                  {fillSourceLabel(o.source)}
+                </Badge>
+              </TableCell>
+              <TableCell className="font-mono text-xs text-muted-foreground">{o.decisionDate}</TableCell>
+              <TableCell className="font-mono text-xs text-muted-foreground">{o.afterDate}</TableCell>
+              <TableCell className="text-right font-mono text-xs">{fmtNum(o.slots, 2)}</TableCell>
+              <TableCell className="text-xs">
+                {o.fillDate === null ? (
+                  <span className="text-muted-foreground">รอข้อมูลวันทำการถัดไป</span>
+                ) : o.fillPx === null ? (
+                  <span className="text-neon-rose">ไม่มีราคา {o.fillDate} → จะถูกยกเลิก</span>
+                ) : (
+                  <span>
+                    ราคาปิด <span className="font-mono">{o.fillDate}</span> ·{" "}
+                    <span className="font-mono">{fmtNum(o.fillPx, 2)}</span> (รอรอบถัดไปบันทึก)
+                  </span>
+                )}
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
     </div>
   )
 }
@@ -213,8 +270,10 @@ export default function JevTab() {
           )}
           <p className="text-xs text-muted-foreground">
             Jev แยกคนตัดสินใจออกจากคนลงมือ — conf ≥ 0.70 + regime risk_on =
-            ซื้ออัตโนมัติในพอร์ตกระดาษ · regime neutral / ติดหลายโผวันแรก
-            (escalate) / pairs = ส่งเข้า Human Gate (default-deny)
+            สั่งซื้ออัตโนมัติในพอร์ตกระดาษ · regime neutral / ติดหลายโผวันแรก
+            (escalate) / pairs = ส่งเข้า Human Gate (default-deny) · คำสั่งซื้อทุกทาง
+            (อัตโนมัติ/มนุษย์อนุมัติ) เติมที่ราคาปิดของวันทำการถัดไป (T+1 เหมือน
+            backtest — Jev ตัดสินหลังตลาดปิด ราคาปิดวันนี้จึงซื้อไม่ได้จริง) · exit ปิดที่ราคาปิดวันนี้
           </p>
           <Button size="lg" onClick={handleRun} disabled={running}>
             {running && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
@@ -245,7 +304,7 @@ export default function JevTab() {
                 ✅ ทำงานอัตโนมัติ ({runResult.executed.length})
               </CardTitle>
               <CardDescription className="text-xs">
-                conf เพียงพอ + regime เปิด → ลงพอร์ตกระดาษทันที
+                เติม T+1 ของคำสั่งค้าง (fill) + exit/tighten ที่ราคาปิดวันนี้
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -350,6 +409,51 @@ export default function JevTab() {
           </Card>
         </div>
       )}
+      {/* คำสั่งซื้อของรอบนี้ (เข้าคิว T+1) + คำสั่งค้างที่ถูกยกเลิกตอนเติม */}
+      {runResult && ((runResult.queued ?? []).length > 0 || (runResult.fills?.cancelled ?? []).length > 0) && (
+        <div className="space-y-1 rounded-lg border p-3 text-xs">
+          {(runResult.queued ?? []).length > 0 && (
+            <p>
+              <span className="font-semibold">📝 สั่งซื้อรอบนี้ ({runResult.queued.length})</span>{" "}
+              <span className="text-muted-foreground">
+                → {T1_TAG}: {runResult.queued.map((o) => `${o.symbol} ${fmtNum(o.slots, 2)} slots`).join(" · ")}
+              </span>
+            </p>
+          )}
+          {(runResult.fills?.cancelled ?? []).map((c) => (
+            <p key={c.id} className="text-muted-foreground">
+              <span className="font-semibold text-neon-amber">ยกเลิก {c.symbol}</span> (คำสั่งวันที่{" "}
+              {c.decisionDate}) — {c.reason}
+            </p>
+          ))}
+        </div>
+      )}
+
+      {/* คำสั่งซื้อรอเติม T+1 — ยังไม่ใช่สถานะ */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Hourglass className="h-4 w-4 text-neon-amber" aria-hidden />
+            {T1_TAG}
+          </CardTitle>
+          <CardDescription className="text-xs">
+            คำสั่งซื้อที่ส่งแล้วแต่ยังไม่ได้ซื้อ — เติมที่ราคาปิดของวันทำการแรกหลัง &quot;หลังข้อมูล&quot;
+            ตอนเริ่มรอบ Jev ถัดไป · ไม่มีราคาวันนั้น (พัก/หยุดซื้อขาย) หรือ sector/slot ไม่ผ่านตอนเติม =
+            ยกเลิก · ยังไม่นับเป็นสถานะ/P&amp;L/NAV
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {pending.error ? (
+            <CardError message={pending.error} />
+          ) : pending.loading && !pending.data ? (
+            <Loading rows={2} />
+          ) : !pending.data || (pending.data.fills ?? []).length === 0 ? (
+            <p className="text-sm text-muted-foreground">ไม่มีคำสั่งซื้อรอเติม</p>
+          ) : (
+            <PendingFillsTable rows={pending.data.fills} />
+          )}
+        </CardContent>
+      </Card>
 
       {/* 3) Human Gate */}
       <Card>
@@ -387,6 +491,11 @@ export default function JevTab() {
                     <p className="font-mono text-xs text-muted-foreground">
                       {p.date}
                     </p>
+                    {p.question === "Q_ENTRY" && p.action === "buy" && (
+                      <p className="text-xs text-muted-foreground">
+                        อนุมัติ = ส่งคำสั่งซื้อ เติมที่ราคาปิดของวันทำการถัดไป (T+1) ไม่ใช่ราคาปิดที่เห็นอยู่
+                      </p>
+                    )}
                   </div>
                   <div className="flex shrink-0 gap-2">
                     <Button

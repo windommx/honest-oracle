@@ -1,6 +1,6 @@
 "use client"
 
-import { AlertCircle, Info } from "lucide-react"
+import { AlertCircle, Hourglass, Info } from "lucide-react"
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
@@ -23,12 +23,15 @@ import {
 import { fmtNum, fmtPct, useApi } from "@/hooks/use-api"
 import { TH_RISK, TH_STRATEGY } from "@/lib/config/thai"
 import type { PortfolioResponse } from "@/lib/momentum/contracts"
+import { T1_TAG, fillSourceLabel } from "@/lib/jev/fill-rules"
 import { cn } from "@/lib/utils"
 import { Term } from "../glossary"
 
 // ค่าจาก config/thai (single source of truth) — เดิม hardcode -10% / 10 สล็อต ไม่ตรงระบบจริง (-9% / 7)
 const RULES = [
-  "ซื้อที่ราคาปิดวันรัน (T+1 จากสัญญาณ)",
+  // เดิมเขียน "ซื้อที่ราคาปิดวันรัน (T+1 จากสัญญาณ)" แต่โค้ดบันทึกราคาปิดของวันตัดสินใจ (T+0) — ตอนนี้ T+1 จริง
+  "ซื้อที่ราคาปิดของวันทำการถัดจากวันตัดสินใจ (T+1 เหมือน backtest) — คำสั่งที่รอเติมแสดงแยก ไม่นับเป็นสถานะ",
+  "หุ้นไม่มีราคาวันเติม (พัก/หยุดซื้อขาย) หรือ sector/slot ไม่ผ่านตอนเติม = ยกเลิกคำสั่ง (ไม่เลื่อนวัน ไม่แต่งราคา)",
   "slots 1.0 ถ้า conf ≥ 0.85 ไม่งั้น 0.5 (ก่อนปรับตาม vol/meta/sector)",
   `stop ตั้งที่ -${Math.round(TH_STRATEGY.stopPct * 100)}% (หุ้นผันผวนสูงแคบลง ×0.8) และ tighten เป็น +2% เมื่อหลุดจากโผ`,
   `สูงสุด ${TH_STRATEGY.maxPos} สล็อต`,
@@ -62,6 +65,7 @@ export default function PortfolioTab() {
   }
 
   const positions = data?.positions ?? []
+  const pendingFills = data?.pendingFills ?? []
   const totals = data?.totals ?? null
   const risk = data?.risk ?? {
     effN: null,
@@ -157,8 +161,9 @@ export default function PortfolioTab() {
           {positions.length === 0 ? (
             <div className="flex flex-col items-center gap-2 py-10 text-center">
               <p className="text-sm text-muted-foreground">
-                ยังไม่มีสถานะ — กด &quot;รันสมอง Jev&quot; ในแท็บ Jev AI
-                เพื่อเริ่ม
+                {pendingFills.length > 0
+                  ? `ยังไม่มีสถานะ — มีคำสั่งซื้อรอเติม T+1 ${pendingFills.length} รายการ (ตารางด้านล่าง)`
+                  : "ยังไม่มีสถานะ — กด \"รันสมอง Jev\" ในแท็บ Jev AI เพื่อเริ่ม"}
               </p>
               <p className="text-xs text-muted-foreground">
                 ระบบเป็น <Term id="paper">PAPER MODE</Term> 100% — ไม่มีคำสั่งเข้าตลาดจริง
@@ -243,6 +248,71 @@ export default function PortfolioTab() {
           )}
         </CardContent>
       </Card>
+
+      {/* 2b) คำสั่งซื้อรอเติม T+1 — แยกจากสถานะ (ยังไม่ได้ซื้อ ไม่นับใน P&L/ความเสี่ยงด้านบน) */}
+      {pendingFills.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Hourglass className="h-4 w-4 text-neon-amber" aria-hidden />
+              {T1_TAG} ({pendingFills.length})
+            </CardTitle>
+            <CardDescription className="text-xs">
+              คำสั่งที่ส่งแล้วแต่ยังไม่ใช่สถานะ — รอบ Jev ถัดไปเติมที่ราคาปิดของวันทำการแรกหลัง
+              &quot;หลังข้อมูล&quot; · ไม่นับในสรุปพอร์ต/Kill Switch/Effective N/exposure
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>หุ้น</TableHead>
+                    <TableHead>ที่มา</TableHead>
+                    <TableHead>วันตัดสินใจ</TableHead>
+                    <TableHead>หลังข้อมูล</TableHead>
+                    <TableHead className="text-right">สล็อต</TableHead>
+                    <TableHead>จะเติม</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {pendingFills.map((o) => (
+                    <TableRow key={o.id}>
+                      <TableCell className="font-mono font-bold">{o.symbol}</TableCell>
+                      <TableCell>
+                        <Badge
+                          variant="outline"
+                          className={cn(
+                            "px-1.5 text-[10px]",
+                            o.source === "human" ? "border-neon-purple/40 text-neon-purple" : "text-muted-foreground"
+                          )}
+                        >
+                          {fillSourceLabel(o.source)}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="font-mono text-xs text-muted-foreground">{o.decisionDate}</TableCell>
+                      <TableCell className="font-mono text-xs text-muted-foreground">{o.afterDate}</TableCell>
+                      <TableCell className="text-right font-mono text-xs">{fmtNum(o.slots, 2)}</TableCell>
+                      <TableCell className="text-xs">
+                        {o.fillDate === null ? (
+                          <span className="text-muted-foreground">รอข้อมูลวันทำการถัดไป</span>
+                        ) : o.fillPx === null ? (
+                          <span className="text-neon-rose">ไม่มีราคา {o.fillDate} → จะถูกยกเลิก</span>
+                        ) : (
+                          <span>
+                            ราคาปิด <span className="font-mono">{o.fillDate}</span> ·{" "}
+                            <span className="font-mono">{fmtNum(o.fillPx, 2)}</span> (รอรอบ Jev ถัดไปบันทึก)
+                          </span>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* 3) กติกาพอร์ต */}
       <Card>

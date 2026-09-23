@@ -64,10 +64,29 @@
 
 ### A5. T+1 fill
 
-- **กติกา**: backtest — สัญญาณที่ปิดวัน d ซื้อที่ **ราคาปิดวัน d+1** (`runBacktest` ขั้น 1) · IC วัด close(d) → close(d+hold) ตามปฏิทินตลาด (หุ้นไม่มีราคาวันปลายทาง = ไม่มีผลตอบแทน ไม่เลื่อนแถว) · Signals v2 / crossZ ใช้ข้อมูลที่ "รู้แล้ว" ณ วันตัดสินเท่านั้น
-- **เหตุผล**: สัญญาณจากราคาปิดวัน d ไม่สามารถซื้อที่ราคาปิดวัน d เดียวกันได้จริง (ตลาดปิดไปแล้ว)
+- **กติกา**: backtest — สัญญาณที่ปิดวัน d ซื้อที่ **ราคาปิดวัน d+1** (`runBacktest` ขั้น 1 · ไม่มีราคาวัน d+1 = ข้าม ไม่เลื่อนวัน) · IC วัด close(d) → close(d+hold) ตามปฏิทินตลาด (หุ้นไม่มีราคาวันปลายทาง = ไม่มีผลตอบแทน ไม่เลื่อนแถว) · Signals v2 / crossZ ใช้ข้อมูลที่ "รู้แล้ว" ณ วันตัดสินเท่านั้น
+- **Jev live (paper) — T+1 เหมือน backtest** (`src/lib/jev/fills.ts`, `src/lib/jev/fill-rules.ts`):
+  1. **ส่งคำสั่ง ไม่ใช่ซื้อ**: ซื้ออัตโนมัติ (risk_on / reversal) และการอนุมัติ Q_ENTRY buy ของมนุษย์ ไม่สร้าง Position — ลงคิว `Setting.jev_pending_fills` (ไม่แก้ schema) พร้อม symbol · slots · stop % และตัวคูณ vol ของวันตัดสิน · ที่มา (auto/human/reversal) · วันตัดสินใจ · **`afterDate` = วันข้อมูลล่าสุดที่รู้ตอนสั่ง** (auto = วันตัดสินใจ · มนุษย์ = วันล่าสุดของ pivot ตอนกดอนุมัติ) · gate id · เหตุผลเดิม · Decision วันตัดสินใจ = `buy` **executed=false** ลงท้าย `รอเติมราคาปิดวันทำการถัดไป (T+1)`
+  2. **เติม**: ตอนเริ่มทุกรอบ `POST /api/jev/run` (สายพาน `scripts/daily.ts` เรียกใน process) ที่ **ราคาปิดของวันแรกใน pivot ที่หลัง `afterDate` อย่างเคร่งครัด** (ปฏิทินข้อมูลเดียวกับ backtest) → Position (entryDate/entryPx = วัน/ราคาเติม · stop = ราคาเติม × (1 − stop% × ตัวคูณ)) + Decision `Q_ENTRY` action **`fill`** executed (date = วันเติม · เหตุผล "เติม T+1 ที่ราคาปิด … ของการตัดสินใจวันที่ …") + EventLog `jev_fill` · อนุมัติเย็นวันเดียวกัน = เติมวันถัดไป · อนุมัติหลังข้อมูลวันถัดไปเข้าแล้ว = เติมวันถัดจากนั้น
+  3. **ยกเลิก (ไม่แต่งราคา ไม่เลื่อนวัน)**: หุ้นไม่มีราคาวันเติม (พัก/หยุดซื้อขาย) — ตรง backtest ที่ข้าม pending ไม่มีราคา · ตรวจ sector/slot ซ้ำกับพอร์ต ณ ตอนเติม (exit ของรอบก่อนออกไปแล้ว · ไม้ที่เติมก่อนในรอบเดียวกันนับด้วย) แล้วไม่ผ่าน (ลดขนาดได้ตามกติกาเดียวกับตอนตัดสินใจ) · มีสถานะหุ้นนั้นอยู่แล้ว · ยุคข้อมูลเปลี่ยน (seed/ล้าง demo) → Decision `cancel` พร้อมเหตุผลไทย (ยุคเปลี่ยน = EventLog อย่างเดียว)
+  4. คำสั่งที่ยังรอเติม = ภาระผูกพันในงบ slots / sector layer / กันซื้อซ้ำของรอบตัดสินใจ แต่ **ไม่ใช่สถานะ** (ไม่ประเมิน exit · ไม่นับใน exposure/P&L/NAV) · แท็บ Jev/พอร์ตแสดงแยก + preview วัน/ราคาที่จะเติม (GET อ่านอย่างเดียว)
+  5. idempotent: รันซ้ำบนข้อมูลเดิมไม่เติม/ส่งซ้ำ (คำสั่งถูกลบหลังเติม · สร้าง Position ก่อน Decision ที่มีแท็กคำสั่ง → พังกลางทาง รอบถัดไปปิดคำสั่งโดยไม่ซื้อซ้ำ · mutex ในโปรเซส + compare-and-swap บนแถว Setting)
+  6. **exit ไม่เปลี่ยน**: T+0 ที่ราคาปิดของวันที่ทริกเกอร์ (เหมือน stop/time exit ของ backtest — B1–B3) · exit ที่มนุษย์อนุมัติบันทึก Trade (`persistClosedTrade`) ก่อนลบ Position แล้ว (เดิมลบเฉย ๆ — Bayes stop/track record ไม่เห็นเทรดที่มนุษย์ปิด)
+  7. **track record**: ledger ใช้แถว `fill` (= Position.entryDate) เป็นไม้เข้า → NAV คิดราคาเข้า = ราคาปิดวันเติม ไม่มี exposure/ต้นทุนในวันสัญญาณ · แถว `buy` executed=true ก่อนวันนี้ (T+0) ยังนับตามวันของมัน · นับ `queuedOrders`/`cancelledOrders` แยกจาก "รอ human gate"
+- **เหตุผล**: สัญญาณจากราคาปิดวัน d ไม่สามารถซื้อที่ราคาปิดวัน d เดียวกันได้จริง (ตลาดปิดไปแล้ว — Jev รันหลังข้อมูล EOD เข้า) · ราคาที่ track record ใช้ต้องเป็นราคาที่ซื้อได้จริงหลังเห็นสัญญาณ ไม่งั้นผล paper 6–12 เดือนมองโลกสวยกว่า backtest ที่ใช้ตัดสินกลยุทธ์ (หลักการ 3)
 - **อ้างอิง**: หลักมาตรฐานของ event study/backtest — López de Prado (2018) บทที่ 11 (backtesting pitfalls)
-- **เปลี่ยนเมื่อ 2026-09-23**: ไม่เปลี่ยน · **ส่วนต่างที่รู้แล้ว**: Jev live (paper) เข้าซื้อที่ราคาปิดของวันที่ตัดสินเอง (T+0) — ดูส่วน C1
+- **เปลี่ยนเมื่อ 2026-09-23**: backtest ไม่เปลี่ยน · **Jev live เปลี่ยนจาก T+0 เป็น T+1** (ส่วนต่าง C1 ปิดแล้ว) · แก้พ่วง: guard "รันไปแล้ว" ของ `/api/jev/run` ไม่นับ Decision ของมนุษย์/แถวเติม — เดิมอนุมัติ gate หลังข้อมูลวันใหม่เข้า (Decision ของมนุษย์ลงวันนั้น) ทำให้รอบของวันนั้นถูกข้ามทั้งรอบ
+- **เทสต์**: `src/lib/jev/fills.db.test.ts` (route จริง 3 วันทำการบน SQLite ชั่วคราว — ล้มบน HEAD 15/16; ข้อที่ผ่านคือเงื่อนไขตั้งต้นของฉาก) · `src/lib/jev/fills.test.ts` (วันเติม/ยกเลิก/sector/ยุคข้อมูล — pure) · `src/lib/track/track.test.ts` (ledger/NAV ใช้วัน/ราคาเติม — ล้มบน HEAD 2/2) · `src/lib/jev/run.db.test.ts` (ไม่มี Position ลงวันสัญญาณ)
+- **หลักฐาน (สำเนา fixture · route จริงใน process)**
+
+| | HEAD (T+0) | ใหม่ (T+1) |
+|---|---|---|
+| demo 2 วันติดกัน (21 → 22 ก.ย. 2026, risk_on) | 21: ซื้อ szw / svr / ksu ที่ราคาปิด 21 (28.159 / 298.273 / 319.393) · 22: szw ออก ret −5.94% · ซื้อ ctk/pb ที่ราคาปิด 22 | 21: 3 คำสั่งเข้าคิว ไม่มี Position · 22: เติมที่ราคาปิด 22 (26.88 / 307.703 / 325.422) · ctk/pb เข้าคิว (เติมวันทำการถัดไป) |
+| demo track record | NAV 21 = 0.9976 · exposure 34.3% (ไม้เข้าวันสัญญาณ) | NAV 21 = 1.0000 · exposure 0% · ไม้เข้า 22 |
+| feed: อนุมัติ gate BA เย็นวันที่ 21 | Position ทันทีที่ 107.75 (ราคาปิด 21 ที่รู้แล้ว) | คำสั่งรอ · รอบ 22 เติมที่ 108.66 |
+| feed: อนุมัติ BA หลังข้อมูล 22 เข้า (ก่อนรอบ 22) | เข้า 108.66 ทันที **และรอบ 22 ถูกข้าม** ("รันไปแล้ว" · Q_REGIME มีแค่ 21) | รอบ 22 รันปกติ (gate ใหม่ 3) · BA รอเติมวันทำการหลัง 22 |
+| demo: มนุษย์อนุมัติ exit ddn | ลบ Position · ไม่มี Trade | Trade ddn 17 → 22 ก.ย. 108.23 → 110.988 ret +1.15% hold 3 |
+| empty | Jev 400 "ยังไม่มีข้อมูล snapshot" | เหมือนเดิม · GET /api/portfolio, /api/jev/pending คืน `pendingFills: []` / `fills: []` |
 
 ### A6. การันตีไม่มองอนาคต (no look-ahead)
 
@@ -200,7 +219,9 @@
 
 ## ส่วน C — ส่วนต่างที่รู้แล้วและยังไม่แก้
 
-- **C1. T+0 ใน Jev live (paper)**: Jev ตัดสินหลังตลาดปิดวัน d และบันทึกราคาเข้าที่ราคาปิดวัน d เดียวกัน ขณะที่ backtest เข้าที่ราคาปิด d+1 (A5) → P&L paper ของ entry มองโลกสวยกว่า backtest (โมเมนตัมมักขึ้นต่อในวันถัดไป) · exit ทั้งสองฝั่งใช้ราคาปิดของวันตัดสิน (ตรงกัน) · ข้อเสนอ: entry live เป็น pending order เติมที่ราคาปิดรอบถัดไป
+- **C1. ~~T+0 ใน Jev live (paper)~~ — ปิดแล้ว 2026-09-23 (A5)**: เดิม Jev ตัดสินหลังตลาดปิดวัน d และบันทึกราคาเข้าที่ราคาปิดวัน d เดียวกัน (ทั้งซื้ออัตโนมัติ และมนุษย์อนุมัติเย็นวันเดียวกัน) ขณะที่ backtest เข้าที่ราคาปิด d+1 · ตอนนี้ entry live ทุกทางเป็นคำสั่งในคิว เติมที่ราคาปิดวันทำการแรกหลัง `afterDate` · exit ทั้งสองฝั่งยังใช้ราคาปิดของวันตัดสิน (ตรงกัน) · ส่วนต่างที่ยังเหลือของเรื่องนี้อยู่ที่ C7–C8
+- **C7. ขั้นตรวจตอนเติมของ live เข้มกว่า backtest**: live ตรวจ sector layer (ชื่อ/น้ำหนัก sector/กลุ่ม) + งบ slots ของรอบที่สั่ง แล้วอาจลดขนาดหรือยกเลิก ขณะที่ runBacktest ตรวจแค่ `maxPos` ตอนเติม (ไม่มี sector layer และขนาดคงที่) — ผล live จึงอาจมีไม้น้อยกว่า/เล็กกว่า backtest ในช่วงที่ sector กระจุก
+- **C8. เวลาที่บันทึกการเติม**: Position ของคำสั่งที่ถึงวันเติมแล้วถูกเขียนตอนเริ่มรอบ Jev ถัดไป (GET อ่านอย่างเดียว แสดง preview วัน/ราคาที่จะเติม) — วัน/ราคาเติมไม่ขึ้นกับเวลาที่เขียน (กำหนดจาก `afterDate`) แต่ track snapshot ของวันที่ยังไม่ได้เขียนจะไม่มีไม้ใหม่ และกลายเป็น `navSuperseded` เมื่อแถว `fill` ของวันนั้นเข้ามา (ไม่ใช่ `navMismatches`) · ถ้าเว้นหลายวันไม่รัน Jev คำสั่งยังเติมที่วันแรกหลัง `afterDate` แต่ exit ของวันที่ไม่ได้รันจะถูกประเมินในรอบที่รันจริง (เหมือนสถานะอื่น)
 - **C2. MAE จากราคาปิด**: ยังไม่มี high/low รายวันครบทุกหุ้น MAE จึงต่ำกว่าความแรง intraday จริง — `liveBackstop = 0.85·s*` เป็นกันชนชั่วคราว
 - **C3. ราคาบังคับปิดของหุ้นเพิกถอน**: ใช้ราคาปิดล่าสุด (B2) ซึ่งสูงเกินจริงถ้าเพิกถอนเพราะฐานะ (Shumway 1997) — แถวเทรดติด `delisted` ไว้แล้วเพื่อทำ sensitivity/haircut เมื่อมีข้อมูลเหตุผลการหยุดซื้อขาย
 - **C4. holdDefault ใช้กับทุกสถานะ**: Position ไม่เก็บที่มา (lite/reversal) — reversal มี hold ของตัวเองใน reason JSON (= 5 เท่ากับค่าเริ่มต้นปัจจุบัน) · สถานะที่เปิดก่อน 2026-09-23 และถือเกิน holdDefault แล้ว จะถูก time exit ในรอบแรกที่รัน
@@ -214,4 +235,5 @@
 1. คัดลอก fixture เป็นไฟล์ชั่วคราว (ห้ามเขียน `db/custom.db` และ `/tmp/fixtures/*.db`) แล้วรันใน subprocess ที่ตั้ง `DATABASE_URL=file:<สำเนา>` และตรวจ `PRAGMA database_list` ก่อนเขียน (แบบเดียวกับ `src/lib/momentum/core.db-harness.ts`)
 2. เรียก handler ของ route ตรง ๆ: `GET /api/stops` → `POST /api/jev/run` (ถอดแถว RawDaily/Snapshot ของวันสุดท้ายออกก่อนเพื่อรันวันก่อนหน้า แล้วใส่กลับ + `markDataChanged()` เพื่อรันวันถัดไป) · `GET /api/flagship` · `GET /api/engines/global`
 3. เปรียบเทียบวิธีเติมราคา: `runStopArms({ fill: "level" })` (สมมติเดิม) vs ค่าเริ่มต้น · `buildPosterior(trades, { fill })`
-4. เทสต์: `bun test src` — ชุดที่เพิ่มในรอบนี้: `stops.test.ts`, `jev/exit.test.ts`, `jev/run.db.test.ts`, `momentum/engine.exits.test.ts`, `risk/sector.unknown.test.ts`, `flagship/g3.test.ts`, `sniper/leadlag.test.ts`, `global-engines/frog-in-pan.test.ts`, `lab/panel-state.test.ts`
+4. เทสต์: `bun test src` — ชุดที่เพิ่มในรอบนี้: `stops.test.ts`, `jev/exit.test.ts`, `jev/run.db.test.ts`, `momentum/engine.exits.test.ts`, `risk/sector.unknown.test.ts`, `flagship/g3.test.ts`, `sniper/leadlag.test.ts`, `global-engines/frog-in-pan.test.ts`, `lab/panel-state.test.ts`, `jev/fills.test.ts`, `jev/fills.db.test.ts` (T+1 — A5)
+5. T+1 (A5): ถอดวันสุดท้ายของสำเนา fixture → `POST /api/jev/run` (วัน d1) → [อนุมัติ gate แรกด้วย `POST /api/jev/pending`] → ใส่แถววันสุดท้ายกลับ + `markDataChanged()` → `GET /api/portfolio` (preview) → `POST /api/jev/run` (วัน d2) → `buildTrackRecord()` — เทียบ Position.entryDate/entryPx กับราคาปิด d1/d2

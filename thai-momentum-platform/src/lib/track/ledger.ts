@@ -2,7 +2,9 @@
 // Ledger ของพอร์ตกระดาษ Jev — สร้าง "ไม้" (leg) จาก Decision + Trade + Position โดยไม่แก้ schema (pure)
 //
 // ที่มาของแต่ละส่วน:
-//   - ไม้เข้า  = Decision Q_ENTRY action=buy executed=true (source lite / reversal / human)
+//   - ไม้เข้า  = Decision Q_ENTRY action=fill executed=true (เติม T+1 — date = วันเติม = Position.entryDate)
+//              + แถว action=buy executed=true แบบเดิม (ก่อน 2026-09-23 เข้า T+0 ที่วันตัดสินใจ — ยังนับตามวันของมัน)
+//              คำสั่งซื้อที่รอเติม (buy executed=false ลงท้าย T1_TAG) ไม่ใช่ไม้เข้า — ไม่อยู่ใน NAV (src/lib/jev/fill-rules.ts)
 //   - ไม้ออก  = Decision Q_EXIT action=exit executed=true ของหุ้นเดียวกัน (ครั้งแรกหลังไม้เข้า)
 //   - ราคา    = Trade (stopPolicy "jev" — ไม้ที่ /api/jev/run ปิดเอง) → Position (ไม้เปิด) → snapshot → ไม่มี
 //   - ขนาด    = Position.slots (ไม้เปิด) → track_snapshot ที่เคยบันทึก → ประมาณจาก conf (1.0 ถ้า ≥ 0.85 ไม่งั้น 0.5)
@@ -13,6 +15,7 @@
 // ============================================================
 
 import { createHash } from "crypto"
+import { isCancelDecision, isFillDecision, isQueuedEntryDecision } from "@/lib/jev/fill-rules"
 
 export const JEV_QUESTIONS = ["Q_REGIME", "Q_ENTRY", "Q_EXIT", "Q_ESCALATE", "Q_PAIRS"] as const
 
@@ -80,7 +83,12 @@ export interface LedgerCounts {
   exits: number
   tightens: number
   watch: number
+  /** buy ที่ส่ง human gate (ยังไม่อนุมัติ/ไม่เข้า) — ไม่รวมคำสั่งที่เข้าคิว T+1 แล้ว */
   pendingBuys: number
+  /** คำสั่งซื้อที่ส่งเข้าคิว T+1 (อัตโนมัติ + มนุษย์อนุมัติ) — เติมแล้วกลายเป็นไม้เข้าที่วันเติม */
+  queuedOrders: number
+  /** คำสั่งที่ถูกยกเลิกตอนเติม (ไม่มีราคาวันเติม / sector-slot ไม่ผ่าน / มีสถานะแล้ว) */
+  cancelledOrders: number
   human: number
   reversal: number
   shadow: number
@@ -148,6 +156,8 @@ export function buildLedger(input: {
     tightens: 0,
     watch: 0,
     pendingBuys: 0,
+    queuedOrders: 0,
+    cancelledOrders: 0,
     human: 0,
     reversal: 0,
     shadow: 0,
@@ -180,16 +190,23 @@ export function buildLedger(input: {
   const modeLabel = counts.runs === 0 ? "NONE" : replayRuns === 0 ? "LIVE" : liveRuns === 0 ? "REPLAY" : "MIXED"
 
   for (const d of epoch) {
-    if (d.source === "human") counts.human++
-    if (d.source === "reversal") counts.reversal++
+    // แถวเติม/ยกเลิกคำสั่ง = ผลของการตัดสินใจเดิม (source เดียวกัน) ไม่ใช่การตัดสินใจใหม่ → ไม่นับซ้ำในถัง human/reversal
+    const execution = isFillDecision(d) || isCancelDecision(d)
+    if (d.source === "human" && !execution) counts.human++
+    if (d.source === "reversal" && !execution) counts.reversal++
     if (d.source.includes("shadow")) counts.shadow++
     if (d.question === "Q_ENTRY" && d.action === "watch") counts.watch++
-    if (d.question === "Q_ENTRY" && d.action === "buy" && !d.executed && !d.source.includes("shadow")) counts.pendingBuys++
+    if (isQueuedEntryDecision(d)) counts.queuedOrders++
+    else if (d.question === "Q_ENTRY" && d.action === "buy" && !d.executed && !d.source.includes("shadow")) counts.pendingBuys++
+    if (isCancelDecision(d)) counts.cancelledOrders++
     if (d.question === "Q_EXIT" && d.action === "tighten" && d.executed) counts.tightens++
   }
 
   // ---- จับคู่ไม้เข้า/ออก ตามลำดับ id ----
-  const entries = epoch.filter((d) => d.question === "Q_ENTRY" && d.action === "buy" && d.executed && !d.source.includes("shadow"))
+  // ไม้เข้า = แถวเติม T+1 (วัน/ราคาเติม) หรือ buy executed แบบเดิม — ไม่ใช่วันของสัญญาณ
+  const entries = epoch.filter(
+    (d) => (isFillDecision(d) || (d.question === "Q_ENTRY" && d.action === "buy" && d.executed)) && !d.source.includes("shadow"),
+  )
   const exits = epoch.filter((d) => d.question === "Q_EXIT" && d.action === "exit" && d.executed)
   counts.entries = entries.length
   counts.exits = exits.length

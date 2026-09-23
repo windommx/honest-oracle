@@ -49,7 +49,7 @@ export async function clearDemoMarketData(): Promise<{ clearedCrossAsset: boolea
   await db.pendingGate.deleteMany({ where: { status: "pending" } })
   await db.trade.deleteMany()
   await db.backtestRun.deleteMany()
-  await db.setting.deleteMany({ where: { key: { in: ["meta_model", "prereg_trial", "signals_policy", "stops_policy"] } } })
+  await db.setting.deleteMany({ where: { key: { in: ["meta_model", "prereg_trial", "signals_policy", "stops_policy", "jev_pending_fills"] } } })
   // CrossAsset ของ seed สังเคราะห์จากผลตอบแทนของตลาดจำลอง — ถ้าคงไว้ crossZ (25% ของ regimeScore) จะเป็นสัญญาณปลอม
   // ปนกับหุ้นจริง จึงล้างด้วย เว้นแต่มีป้ายว่าเป็นข้อมูลจริงจาก `bun run fetch:cross` (Setting cross_asset_source=yahoo)
   let clearedCrossAsset = false

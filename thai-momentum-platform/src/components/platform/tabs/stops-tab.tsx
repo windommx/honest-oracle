@@ -20,6 +20,7 @@ import {
 } from "recharts"
 import { fmtPct, useApi } from "@/hooks/use-api"
 import type { StopBucket, StopMode, StopsResponse } from "@/lib/momentum/contracts"
+import type { LiveFreezeFlag } from "@/lib/research/freeze"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -66,7 +67,8 @@ export default function StopsTab() {
   const [bucket, setBucket] = useState<StopBucket>("pooled")
   // mode = ค่าที่ผู้ใช้เลือก (override) — ถ้ายังไม่แตะ default ตาม policy arm ของระบบ
   const [modeOverride, setModeOverride] = useState<StopMode | null>(null)
-  const { data, error, loading, refetch } = useApi<StopsResponse>(`/api/stops?bucket=${bucket}`)
+  // frozen = ล็อกช่วงเก็บผลจริงอยู่ (server คำนวณแต่ไม่บันทึก stops_policy) — ฟิลด์เสริมจาก /api/stops
+  const { data, error, loading, refetch } = useApi<StopsResponse & Partial<LiveFreezeFlag>>(`/api/stops?bucket=${bucket}`)
   const mode: StopMode = modeOverride ?? (data?.policy.arm === "bayesR" ? "R" : "T")
 
   const post = data ? (mode === "R" ? data.posteriorR : data.posteriorT) : null
@@ -206,6 +208,20 @@ export default function StopsTab() {
         </Badge>
         <span className="text-xs text-muted-foreground">{data.message}</span>
       </div>
+      {data.frozen && (
+        <p className="text-xs text-neon-amber">
+          🔒 ล็อกช่วงเก็บผลจริง — ไม่บันทึก policy ใหม่
+          {data.frozenAt ? ` (ล็อกเมื่อ ${data.frozenAt.slice(0, 10)})` : ""} · ผลแข่ง 3 arm ด้านล่างเป็นข้อมูลเพื่อดู — Jev ใช้ policy
+          ตามป้ายด้านบน (ที่ล็อกไว้)
+        </p>
+      )}
+      {(data.freezeDrift?.length ?? 0) > 0 && (
+        <Alert variant="destructive">
+          <TriangleAlert />
+          <AlertTitle>⚠️ ค่าที่ระบบเทรดใช้ไม่ตรงกับตอนล็อก: {data.freezeDrift?.join(", ")}</AlertTitle>
+          <AlertDescription>มีการแก้ข้ามด่านล็อก (เช่นแก้ตรงใน DB) — ตรวจและแก้ที่แท็บ Evidence → การ์ดล็อกช่วงเก็บผลจริง</AlertDescription>
+        </Alert>
+      )}
 
       {/* ---------- 2. 3-Arm Walk-Forward A/B ---------- */}
       <Card>
