@@ -78,7 +78,7 @@ export default function MarketClock({ className = "" }: { className?: string }) 
     <div
       title={meta.title}
       aria-label={`เวลาประเทศไทย ${ict?.clock ?? "--:--:--"} · ${meta.label}`}
-      className={`hidden h-9 items-center gap-2 rounded-md border border-border bg-foreground/[0.04] px-2.5 transition-colors hover:border-neon-cyan/40 sm:flex ${className}`}
+      className={`hidden h-9 items-center gap-2 rounded-full border border-[#ece3cf] bg-white/90 px-3 shadow-[0_1px_2px_rgba(120,90,20,0.06)] transition-colors hover:border-gold/60 sm:flex ${className}`}
     >
       <span className={`status-dot ${ict ? meta.dot : "status-dot-off"}`} aria-hidden />
       <span

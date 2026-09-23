@@ -134,11 +134,12 @@ import {
 } from "@/lib/platform/dashboard-presets"
 import { resolveGtaaCountdown, weeklyDdRatio } from "@/lib/platform/command-center"
 import OptionsCenter from "../options-center"
+import CommandHero from "../command-hero"
 
 const TOOLTIP_STYLE = {
   backgroundColor: "#ffffff",
-  border: "1px solid #e2e8f0",
-  borderRadius: 8,
+  border: "1px solid #ece3cf",
+  borderRadius: 12,
   fontSize: 12,
   color: "#0f172a",
   boxShadow: "0 4px 10px rgba(16,24,40,0.08)",
@@ -324,34 +325,27 @@ function KpiCard({
   hue?: Hue
   dense?: boolean
 }) {
-  const HUE_RING: Record<Hue, string> = {
-    cyan: "border-l-neon-cyan",
-    magenta: "border-l-neon-magenta",
-    green: "border-l-neon-green",
-    purple: "border-l-neon-purple",
-    amber: "border-l-neon-amber",
-  }
+  // ไทล์แบบ Gold Ivory: ไอคอนในกล่องสีตาม hue · พื้นไล่สีพาสเทลด้านล่าง (.kpi-tile / .kpi-wash-* ใน globals.css)
+  const h: Hue = hue ?? "amber"
   return (
-    <Card className={`min-w-0 gap-1.5 border-l-4 border-l-border ${hue ? HUE_RING[hue] : ""} ${dense ? "py-3" : "py-4"}`}>
-      <CardContent className="space-y-1.5 px-4">
-        <div className="flex min-w-0 items-center justify-between gap-1">
-          <div className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
-            <Icon className="size-3.5 shrink-0" aria-hidden />
-            <span className="truncate">{label}</span>
-          </div>
-          <button
-            type="button"
-            onClick={() => onGoTo(target)}
-            className="-mr-1.5 h-11 shrink-0 rounded-md px-1.5 text-[11px] text-muted-foreground transition-colors hover:text-neon-cyan sm:h-7 sm:text-xs"
-            aria-label={`เปิดแท็บ ${label}`}
-          >
-            ดู →
-          </button>
-        </div>
-        <div className="min-w-0 truncate text-xl font-bold leading-tight">{value}</div>
-        {sub ? <div className="min-w-0 truncate text-xs text-muted-foreground">{sub}</div> : null}
-      </CardContent>
-    </Card>
+    <div className={cn("kpi-tile min-w-0", `kpi-wash-${h}`, dense ? "p-3" : "p-4")}>
+      <div className="flex min-w-0 items-start justify-between gap-2">
+        <span className={cn("flex size-9 shrink-0 items-center justify-center rounded-xl border", HUE_TILE[h])}>
+          <Icon className="size-4" aria-hidden />
+        </span>
+        <button
+          type="button"
+          onClick={() => onGoTo(target)}
+          className="-mr-1.5 -mt-1 h-11 shrink-0 rounded-lg px-2 text-[11px] font-semibold text-muted-foreground transition-colors hover:bg-accent hover:text-gold-ink sm:h-7 sm:text-xs"
+          aria-label={`เปิดแท็บ ${label}`}
+        >
+          ดู →
+        </button>
+      </div>
+      <div className={cn("min-w-0 truncate text-xs font-semibold text-muted-foreground", dense ? "mt-2" : "mt-3")}>{label}</div>
+      <div className="mt-0.5 min-w-0 truncate text-2xl leading-tight font-extrabold tracking-tight tabular-nums">{value}</div>
+      {sub ? <div className="mt-1 min-w-0 truncate text-xs text-muted-foreground">{sub}</div> : null}
+    </div>
   )
 }
 
@@ -372,11 +366,11 @@ interface ModuleRow {
 }
 
 const HUE_TILE: Record<Hue, string> = {
-  cyan: "border-neon-cyan/25 bg-neon-cyan/10 text-neon-cyan",
-  magenta: "border-neon-magenta/25 bg-neon-magenta/10 text-neon-magenta",
-  green: "border-neon-green/25 bg-neon-green/10 text-neon-green",
-  purple: "border-neon-purple/25 bg-neon-purple/10 text-neon-purple",
-  amber: "border-neon-amber/25 bg-neon-amber/10 text-neon-amber",
+  cyan: "border-neon-cyan/20 bg-gradient-to-br from-[#eef3ff] to-[#dfe9ff] text-neon-cyan",
+  magenta: "border-neon-magenta/20 bg-gradient-to-br from-[#fdf0f5] to-[#fbe1ec] text-neon-magenta",
+  green: "border-neon-green/20 bg-gradient-to-br from-[#effaf2] to-[#dcf3e3] text-neon-green",
+  purple: "border-neon-purple/20 bg-gradient-to-br from-[#f4f0fe] to-[#e8e0fc] text-neon-purple",
+  amber: "border-[#ecd48f] bg-gradient-to-br from-[#fdf6df] to-[#f8e7b5] text-gold-ink",
 }
 
 function ModuleCard({ m, dense, onGoTo }: { m: ModuleRow; dense?: boolean; onGoTo: (tab: string) => void }) {
@@ -385,11 +379,11 @@ function ModuleCard({ m, dense, onGoTo }: { m: ModuleRow; dense?: boolean; onGoT
       type="button"
       onClick={() => onGoTo(m.tab)}
       aria-label={`${m.name} — ${m.role} (เปิดแท็บ)`}
-      className="group block h-full w-full min-w-0 rounded-xl border border-border bg-card text-left text-card-foreground shadow-sm transition-all hover:border-neon-cyan/45 hover:shadow-[0_4px_14px_-6px_rgba(14,116,144,0.30)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neon-cyan/50"
+      className="group block h-full w-full min-w-0 rounded-xl border border-border bg-card text-left text-card-foreground shadow-sm transition-all hover:border-gold/60 hover:shadow-[0_8px_20px_-10px_rgba(154,116,18,0.35)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold/60"
     >
       <div className={cn("flex h-full min-w-0 flex-col gap-2 p-4", dense && "gap-1.5 p-3")}>
         <div className="flex min-w-0 items-center gap-2 overflow-hidden">
-          <span className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border", HUE_TILE[m.hue])}>
+          <span className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border", HUE_TILE[m.hue])}>
             <m.icon className="size-4" aria-hidden />
           </span>
           <span className="min-w-0 flex-1 truncate text-sm font-bold">{m.name}</span>
@@ -1168,7 +1162,14 @@ const QUESTION_ICON: Record<string, { icon: LucideIcon; cls: string }> = {
 // main — OverviewTab
 // =====================================================================
 
-export default function OverviewTab({ onGoTo }: { onGoTo: (tab: string) => void }) {
+export default function OverviewTab({
+  onGoTo,
+  onOpenPalette,
+}: {
+  onGoTo: (tab: string) => void
+  /** เปิด Command Palette (ปุ่ม "ค้นหา" บน hero) */
+  onOpenPalette?: () => void
+}) {
   // ---------- ตัวเลือกการจัดวาง + เวลา/ความสด (hydrate หลัง mount ผ่าน microtask กัน cascading render) ----------
   const [prefs, setPrefs] = useState<DashboardPrefs>(DEFAULT_PREFS)
   const [mounted, setMounted] = useState(false)
@@ -1617,13 +1618,24 @@ export default function OverviewTab({ onGoTo }: { onGoTo: (tab: string) => void 
   return (
     <div className={cn("space-y-5", dense && "space-y-3")}>
       {/* ============================================================
+          Hero ต้อนรับ (Gold Ivory) — ทักทาย · ตลาด · breadth · ปุ่มลัด (ซ่อนในโหมดโฟกัสโมดูลเดี่ยว)
+      ============================================================ */}
+      {activeFocus ? null : (
+        <CommandHero
+          ov={ovData}
+          market={sig.data?.market.at(-1) ?? null}
+          pendingCount={pend.data ? pend.data.pending.length : null}
+          onGoTo={onGoTo}
+          onOpenPalette={onOpenPalette}
+        />
+      )}
+
+      {/* ============================================================
           แถบควบคุมกลาง (options ของทั้งแดชบอร์ด) — แสดงเสมอ
       ============================================================ */}
       <div className="flex min-w-0 flex-wrap items-center gap-2">
-        <span className="font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-neon-cyan">
-          COMMAND CENTER 4.0
-        </span>
-        <span className="h-px w-6 bg-neon-cyan/40" aria-hidden />
+        <span className="text-xs font-bold text-gold-ink">แผงโมดูล</span>
+        <span className="h-px w-6 bg-gold/50" aria-hidden />
         <span className="min-w-0 truncate text-xs text-muted-foreground">
           {visibleCount}/{FEATURE_IDS.length} โมดูล{hiddenCount > 0 ? ` · ซ่อน ${hiddenCount}` : ""}
           {activeFocus ? ` · โฟกัส: ${FEATURE_LABELS[activeFocus]}` : ""}

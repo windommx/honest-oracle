@@ -70,8 +70,8 @@ import type {
 
 const TOOLTIP_STYLE = {
   backgroundColor: "#ffffff",
-  border: "1px solid #e2e8f0",
-  borderRadius: 8,
+  border: "1px solid #ece3cf",
+  borderRadius: 12,
   fontSize: 12,
   color: "#0f172a",
   boxShadow: "0 4px 12px rgba(16,24,40,0.08)",
@@ -149,8 +149,8 @@ function EquityChart({ data }: { data: { month: string; strategy: number; benchm
       <AreaChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
         <defs>
           <linearGradient id="gtaaEq" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#0891b2" stopOpacity={0.25} />
-            <stop offset="100%" stopColor="#0891b2" stopOpacity={0.02} />
+            <stop offset="0%" stopColor="#c9a227" stopOpacity={0.28} />
+            <stop offset="100%" stopColor="#c9a227" stopOpacity={0.02} />
           </linearGradient>
         </defs>
         <CartesianGrid stroke="#e2e8f0" strokeDasharray="3 3" vertical={false} />
@@ -170,7 +170,7 @@ function EquityChart({ data }: { data: { month: string; strategy: number; benchm
         <Area
           type="monotone"
           dataKey="strategy"
-          stroke="#0891b2"
+          stroke="#a8841f" // ทองของธีม Gold Ivory
           strokeWidth={2}
           fill="url(#gtaaEq)"
           name="GTAA (เริ่ม 100)"
@@ -464,7 +464,7 @@ function MonteCarloPanel({ mc }: { mc: MonteCarloBundle }) {
             <XAxis dataKey="bucket" tick={{ fontSize: 9 }} interval="preserveStartEnd" minTickGap={24} />
             <YAxis tick={{ fontSize: 10 }} width={32} allowDecimals={false} />
             <Tooltip contentStyle={TOOLTIP_STYLE} labelStyle={{ color: "#64748b" }} cursor={{ fill: "rgba(100,116,139,0.08)" }} />
-            <Bar dataKey="count" fill="#0891b2" fillOpacity={0.55} radius={[3, 3, 0, 0]} name="จำนวนรอบ" />
+            <Bar dataKey="count" fill="#c9a227" fillOpacity={0.6} radius={[4, 4, 0, 0]} name="จำนวนรอบ" />
           </BarChart>
         </ResponsiveContainer>
       </div>

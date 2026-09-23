@@ -26,7 +26,7 @@ export default function TickerTape() {
 
   if (!stocks.length) {
     return (
-      <div className="flex h-9 items-center gap-3 border-b border-neon-cyan/10 bg-background/70 px-4" aria-hidden>
+      <div className="flex h-9 items-center gap-3 border-b border-[#efe6d3] bg-white/55 px-4" aria-hidden>
         {[64, 88, 72, 96, 60, 80, 76].map((w, i) => (
           <div key={i} className="h-2.5 rounded-full bg-foreground/[0.05]" style={{ width: w }} />
         ))}
@@ -38,7 +38,7 @@ export default function TickerTape() {
 
   return (
     <div
-      className="ticker-viewport relative overflow-hidden border-b border-neon-cyan/10 bg-background/70"
+      className="ticker-viewport relative overflow-hidden border-b border-[#efe6d3] bg-white/55"
       role="marquee"
       aria-label="แถบหุ้นโมเมนตัมสูงสุดของวัน (เลื่อนอัตโนมัติ)"
     >
@@ -52,7 +52,7 @@ export default function TickerTape() {
               aria-hidden={!first}
               className="flex shrink-0 items-center gap-1.5 font-mono text-xs"
             >
-              <span className="font-semibold tracking-wide text-foreground">{s.symbol}</span>
+              <span className="font-bold tracking-wide text-foreground">{s.symbol}</span>
               {up ? (
                 <TrendingUp className="size-3 text-neon-green" aria-hidden />
               ) : (

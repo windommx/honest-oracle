@@ -55,27 +55,30 @@ const DOCK_TABS: NavItem[] = DOCK_VALUES.map(
 )
 
 const SIDEBAR_VARS = {
-  "--sidebar": "#fbfcfe", // ขาวนวล — แถบเมนูสว่าง
-  "--sidebar-border": "rgba(148,163,184,0.22)",
-  "--sidebar-accent": "rgba(13,148,136,0.08)",
+  "--sidebar": "#fffdf8", // งาช้างอุ่น — แถบเมนูสว่าง
+  "--sidebar-border": "rgba(214,196,150,0.45)",
+  "--sidebar-accent": "rgba(251,242,218,0.9)",
 } as CSSProperties
+
+/* ป้ายสถานะบน header — ทรงแคปซูล สีตามความหมาย (Gold Ivory) */
+const PILL = "rounded-full px-3 py-1 text-xs font-semibold shadow-[0_1px_2px_rgba(120,90,20,0.06)]"
 
 function regimeBadge(regime: OverviewResponse["regime"]) {
   if (!regime) return null
   if (regime.action === "risk_on")
     return (
-      <Badge className="border-neon-green/35 bg-neon-green/10 text-neon-green shadow-[0_1px_2px_rgba(16,24,40,0.06)]">
+      <Badge className={`${PILL} border-neon-green/30 bg-neon-green/10 text-neon-green`}>
         🟢 risk_on · conf {regime.conf}
       </Badge>
     )
   if (regime.action === "neutral")
     return (
-      <Badge className="border-neon-amber/35 bg-neon-amber/10 text-neon-amber shadow-[0_1px_2px_rgba(16,24,40,0.06)]">
+      <Badge className={`${PILL} border-neon-amber/30 bg-neon-amber/10 text-neon-amber`}>
         🟡 neutral · conf {regime.conf}
       </Badge>
     )
   return (
-    <Badge className="border-neon-rose/35 bg-neon-rose/10 text-neon-rose shadow-[0_1px_2px_rgba(16,24,40,0.06)]">
+    <Badge className={`${PILL} border-neon-rose/30 bg-neon-rose/10 text-neon-rose`}>
       🔴 risk_off · conf {regime.conf}
     </Badge>
   )
@@ -84,16 +87,19 @@ function regimeBadge(regime: OverviewResponse["regime"]) {
 function Brand({ compact = false }: { compact?: boolean }) {
   return (
     <div className="flex min-w-0 items-center gap-2.5">
+      {/* เหรียญทอง — โลโก้แบรนด์ (ไอคอนเดียวกับ favicon) */}
       <div
-        className={`flex shrink-0 items-center justify-center rounded-lg border border-neon-cyan/30 bg-neon-cyan/10 text-neon-cyan shadow-[0_2px_8px_-2px_rgba(14,116,144,0.35)] ${compact ? "h-8 w-8" : "h-9 w-9"}`}
+        className={`flex shrink-0 items-center justify-center rounded-full bg-[radial-gradient(circle_at_32%_26%,#fff4c7_0%,#ecc96b_36%,#c9a227_68%,#9a7412_100%)] text-[#3b2a06] shadow-[0_4px_12px_-4px_rgba(154,116,18,0.65),inset_0_1px_0_rgba(255,255,255,0.65)] ring-1 ring-[#b8912f]/45 ${compact ? "h-8 w-8" : "h-10 w-10"}`}
       >
         <BrainCircuit className={compact ? "h-4 w-4" : "h-5 w-5"} aria-hidden />
       </div>
       <div className="min-w-0 leading-tight group-data-[collapsible=icon]:hidden">
-        <p className={`neon-text-cyan truncate font-bold ${compact ? "text-sm" : "text-sm sm:text-[15px]"}`}>
-          Thai Momentum Platform
+        <p className={`truncate font-extrabold tracking-tight text-foreground ${compact ? "text-sm" : "text-[15px] sm:text-base"}`}>
+          Thai Momentum
         </p>
-        <p className="truncate text-[11px] font-medium text-neon-purple/90">หุ้นไทย × Jev AI</p>
+        <p className="truncate text-[11px] font-medium text-muted-foreground">
+          <span className="font-bold text-gold-ink">Platform</span> · หุ้นไทย × Jev AI
+        </p>
       </div>
     </div>
   )
@@ -105,7 +111,9 @@ function SidebarNav({ tab, onSelect }: { tab: string; onSelect: (v: string) => v
     <>
       {NAV_GROUPS.map((group) => (
         <SidebarGroup key={group.label}>
-          <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
+          <SidebarGroupLabel className="text-[11px] font-semibold text-muted-foreground/90">
+            {group.label}
+          </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {group.items.map((item) => {
@@ -122,8 +130,8 @@ function SidebarNav({ tab, onSelect }: { tab: string; onSelect: (v: string) => v
                       aria-current={active ? "page" : undefined}
                       className={
                         active
-                          ? "min-h-11 gap-2.5 border border-neon-green/30 bg-neon-green/10 text-neon-green shadow-[0_1px_2px_rgba(16,24,40,0.05)] hover:bg-neon-green/15"
-                          : "min-h-11 gap-2.5 text-muted-foreground hover:bg-foreground/[0.04] hover:text-foreground"
+                          ? "min-h-11 gap-2.5 rounded-xl border border-[#e8d49c] bg-gradient-to-r from-[#fdf6df] to-[#fbeecb] font-semibold text-gold-ink shadow-[0_2px_8px_-4px_rgba(154,116,18,0.45)] hover:from-[#fcf1d2] hover:to-[#f9e8bd] hover:text-gold-ink [&>svg]:text-gold-ink"
+                          : "min-h-11 gap-2.5 rounded-xl text-foreground/75 hover:bg-[#fbf4e2] hover:text-foreground"
                       }
                     >
                       <Icon aria-hidden />
@@ -145,7 +153,7 @@ function SidebarStatus() {
   return (
     <div
       title="ระบบออนไลน์ · ทำงานในโหมดจำลอง (Paper mode)"
-      className="flex min-w-0 items-center gap-2 rounded-md border border-neon-green/25 bg-neon-green/[0.06] px-2 py-1.5 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:border-transparent group-data-[collapsible=icon]:bg-transparent group-data-[collapsible=icon]:px-0"
+      className="flex min-w-0 items-center gap-2 rounded-full border border-neon-green/25 bg-neon-green/[0.07] px-3 py-1.5 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:border-transparent group-data-[collapsible=icon]:bg-transparent group-data-[collapsible=icon]:px-0"
     >
       <span className="status-dot status-dot-live" aria-hidden />
       <span className="truncate text-[10px] font-semibold leading-3 tracking-wide text-neon-green group-data-[collapsible=icon]:hidden">
@@ -168,7 +176,7 @@ function MobileDock({
   return (
     <nav
       aria-label="แถบนำทางหลัก (มือถือ)"
-      className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/85 md:hidden"
+      className="fixed inset-x-0 bottom-0 z-30 border-t border-[#efe6d3] bg-[#fffdf8]/95 backdrop-blur supports-[backdrop-filter]:bg-[#fffdf8]/85 md:hidden"
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
     >
       <div className="grid h-14 grid-cols-5">
@@ -182,12 +190,12 @@ function MobileDock({
               onClick={() => onSelect(item.value)}
               aria-current={active ? "page" : undefined}
               className={`relative flex h-full min-w-0 flex-col items-center justify-center gap-0.5 px-1 transition-colors ${
-                active ? "text-neon-green" : "text-muted-foreground hover:text-foreground"
+                active ? "font-semibold text-gold-ink" : "text-muted-foreground hover:text-foreground"
               }`}
             >
               {active && (
                 <span
-                  className="absolute top-0 h-0.5 w-7 rounded-full bg-neon-green shadow-[0_1px_4px_rgba(5,150,105,0.45)]"
+                  className="absolute top-0 h-1 w-8 rounded-full bg-gold shadow-[0_1px_6px_rgba(201,162,39,0.6)]"
                   aria-hidden
                 />
               )}
@@ -225,14 +233,14 @@ function ShellInner() {
   return (
     <>
       {/* ---------- Sidebar (desktop / Sheet มือถือ) — ยุบเป็น icon rail ได้ ---------- */}
-      <Sidebar collapsible="icon" className="border-border/70">
-        <SidebarHeader className="border-b border-border/70 p-3 group-data-[collapsible=icon]:p-2">
+      <Sidebar collapsible="icon" className="border-[#eee5d2]">
+        <SidebarHeader className="border-b border-[#eee5d2] p-3.5 group-data-[collapsible=icon]:p-2">
           <Brand />
         </SidebarHeader>
         <SidebarContent className="px-1 py-2">
           <SidebarNav tab={tab} onSelect={setTab} />
         </SidebarContent>
-        <SidebarFooter className="border-t border-border/70 p-3 group-data-[collapsible=icon]:p-2">
+        <SidebarFooter className="border-t border-[#eee5d2] p-3 group-data-[collapsible=icon]:p-2">
           <SidebarStatus />
         </SidebarFooter>
         <SidebarRail aria-label="สลับซ่อน/แสดงแถบเมนู" />
@@ -241,20 +249,20 @@ function ShellInner() {
       {/* ---------- เนื้อหาหลัก (SidebarInset = <main> เดียวของหน้า) ---------- */}
       {/* min-w-0 จำเป็น: กัน min-width:auto ของ flex item floor ที่ min-content ของ header → หน้าล้นแนวนอน */}
       <SidebarInset className="min-h-svh min-w-0 bg-transparent">
-        <header className="sticky top-0 z-20 border-b border-border/80 bg-white/85 backdrop-blur supports-[backdrop-filter]:bg-white/70">
+        <header className="sticky top-0 z-20 border-b border-[#efe6d3] bg-[#fffdf8]/85 backdrop-blur supports-[backdrop-filter]:bg-[#fffdf8]/70">
           <div className="flex min-h-14 flex-wrap items-center gap-x-2.5 gap-y-1.5 px-3 py-2 sm:px-4">
             <SidebarTrigger className="size-9 shrink-0" aria-label="สลับแถบเมนู (⌘B)" />
             <Separator orientation="vertical" className="hidden !h-5 sm:block" aria-hidden />
 
             {/* Breadcrumb — กลุ่ม / แท็บปัจจุบัน (flex-1 ให้ย่อ/ตัดข้อความแทนพับ header เป็น 2 แถว) */}
             <div
-              className="flex min-w-0 flex-1 items-center gap-1.5 text-sm"
+              className="flex min-w-[8rem] flex-1 items-center gap-1.5 text-sm sm:min-w-[11rem]"
               aria-label="ตำแหน่งปัจจุบัน"
             >
-              <CurrentIcon className="size-4 shrink-0 text-neon-cyan" aria-hidden />
+              <CurrentIcon className="size-4 shrink-0 text-gold-ink" aria-hidden />
               <span className="hidden truncate text-muted-foreground sm:inline">{currentGroup}</span>
               <ChevronRight className="hidden size-3.5 shrink-0 text-muted-foreground/50 sm:inline" aria-hidden />
-              <span className="truncate font-semibold">{currentTab.label}</span>
+              <span className="truncate font-bold">{currentTab.label}</span>
             </div>
 
             <div className="ml-auto flex flex-wrap items-center gap-2">
@@ -263,11 +271,11 @@ function ShellInner() {
                 type="button"
                 onClick={() => setPaletteOpen(true)}
                 aria-label="เปิด Command Palette เพื่อไปที่แท็บอื่น (⌘K)"
-                className="hidden h-9 w-52 items-center gap-2 rounded-md border border-border bg-foreground/[0.03] px-3 text-xs text-muted-foreground transition-colors hover:border-neon-cyan/50 hover:bg-neon-cyan/[0.06] hover:text-foreground md:flex xl:w-64"
+                className="hidden h-10 w-48 items-center gap-2 rounded-full border border-[#ece3cf] bg-white/90 px-4 text-sm text-muted-foreground shadow-[0_1px_2px_rgba(120,90,20,0.06)] transition-colors hover:border-gold/60 hover:text-foreground md:flex 2xl:w-72"
               >
-                <Search className="size-3.5 shrink-0" aria-hidden />
-                <span>ไปที่แท็บ / ค้นหา…</span>
-                <kbd className="ml-auto rounded border border-border bg-foreground/[0.04] px-1.5 py-0.5 font-mono text-[10px] tracking-wider">
+                <Search className="size-4 shrink-0" aria-hidden />
+                <span className="truncate whitespace-nowrap">ค้นหาแท็บ…</span>
+                <kbd className="ml-auto rounded-md border border-[#ece3cf] bg-[#faf7f0] px-1.5 py-0.5 font-mono text-[10px] tracking-wider">
                   ⌘K
                 </kbd>
               </button>
@@ -276,7 +284,7 @@ function ShellInner() {
                 size="icon"
                 onClick={() => setPaletteOpen(true)}
                 aria-label="เปิดเมนูค้นหา (Command Palette)"
-                className="size-9 shrink-0 border-border bg-foreground/[0.03] hover:border-neon-cyan/50 hover:bg-neon-cyan/10 hover:text-neon-cyan md:hidden"
+                className="size-10 shrink-0 rounded-full border-[#ece3cf] bg-white/90 hover:border-gold/60 hover:bg-accent hover:text-gold-ink md:hidden"
               >
                 <Search aria-hidden />
               </Button>
@@ -285,13 +293,16 @@ function ShellInner() {
               <div className="hidden sm:block">{regimeBadge(ov?.regime ?? null)}</div>
               <Badge
                 variant="outline"
-                className="border-neon-cyan/30 bg-neon-cyan/5 font-mono text-neon-cyan"
+                title="วันที่ข้อมูลล่าสุดในระบบ (snapshot)"
+                className={`${PILL} gap-1.5 border-[#c7d7fb] bg-[#eef3ff] text-neon-cyan`}
               >
-                {ov?.latestDate ?? "—"}
+                <span className="size-1.5 rounded-full bg-neon-cyan" aria-hidden />
+                <span className="hidden 2xl:inline">SNAPSHOT · </span>
+                <span className="font-mono">{ov?.latestDate ?? "—"}</span>
               </Badge>
               <Badge
                 variant="secondary"
-                className="hidden border border-border bg-foreground/[0.04] text-xs text-foreground lg:inline-flex"
+                className={`${PILL} hidden border border-[#ecd48f] bg-[#fdf5dc] text-gold-ink 2xl:inline-flex`}
               >
                 📄 PAPER MODE 100%
               </Badge>
@@ -310,7 +321,7 @@ function ShellInner() {
               ErrorBoundary อยู่ใต้ key เดียวกัน → แท็บพังแท็บเดียว shell ยังใช้ได้ และสลับแท็บ = รีเซ็ต */}
           <div key={tab} className="animate-in fade-in slide-in-from-bottom-2 duration-300">
             <ErrorBoundary label={currentTab.label} variant="tab">
-              {tab === "overview" && <OverviewTab onGoTo={setTab} />}
+              {tab === "overview" && <OverviewTab onGoTo={setTab} onOpenPalette={() => setPaletteOpen(true)} />}
               {tab === "map" && <MapTab />}
               {tab === "analytics" && <AnalyticsTab />}
               {tab === "flagship" && <FlagshipTab />}
@@ -332,7 +343,7 @@ function ShellInner() {
         </section>
 
         {/* ---------- Terminal status bar (footer ติดล่างเสมอ) ---------- */}
-        <footer className="mt-auto border-t border-border/80 bg-white/85 pb-[calc(3.5rem+env(safe-area-inset-bottom))] backdrop-blur md:pb-0">
+        <footer className="mt-auto border-t border-[#efe6d3] bg-[#fffdf8]/80 pb-[calc(3.5rem+env(safe-area-inset-bottom))] backdrop-blur md:pb-0">
           <div className="mx-auto flex w-full max-w-7xl flex-col gap-1.5 px-4 py-3 text-[11px] text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
             <div className="flex flex-wrap items-center gap-x-3.5 gap-y-1">
               <span className="flex items-center gap-1.5 font-medium">
@@ -349,7 +360,7 @@ function ShellInner() {
             </div>
             <p className="font-mono">
               AmiBroker → Platform → Jev → Human Gate · {ov?.totalDates ?? 0} วันในระบบ ·{" "}
-              <span className="text-neon-cyan">v2.0</span>
+              <span className="font-semibold text-gold-ink">v2.0</span>
             </p>
           </div>
         </footer>

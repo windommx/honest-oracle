@@ -20,7 +20,7 @@ import type { CpcvResponse } from "@/lib/momentum/contracts"
 
 const TOOLTIP_STYLE = {
   backgroundColor: "#ffffff",
-  border: "1px solid #e2e8f0",
+  border: "1px solid #ece3cf",
   borderRadius: 10,
   fontSize: 12,
   color: "#0f172a",
@@ -31,7 +31,7 @@ const TICK = { fill: "#64748b", fontSize: 10 } as const
 const GRID = "rgba(100,116,139,0.18)"
 const GREEN = "#059669"
 const ROSE = "#e11d48"
-const CYAN = "#0891b2"
+const CYAN = "#1d4ed8" // น้ำเงินข้อมูลของธีม Gold Ivory (= neon-cyan)
 const MAGENTA = "#db2777"
 const AMBER = "#d97706"
 const PURPLE = "#7c3aed"

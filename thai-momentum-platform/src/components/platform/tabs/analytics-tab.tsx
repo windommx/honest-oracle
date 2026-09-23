@@ -49,7 +49,7 @@ import {
 
 const TOOLTIP_STYLE = {
   backgroundColor: "#ffffff",
-  border: "1px solid #e2e8f0",
+  border: "1px solid #ece3cf",
   borderRadius: 9,
   fontSize: 12,
   color: "#0f172a",

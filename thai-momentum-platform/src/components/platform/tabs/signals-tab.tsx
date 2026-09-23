@@ -28,8 +28,8 @@ import { cn } from "@/lib/utils"
 
 const TOOLTIP_STYLE = {
   backgroundColor: "#ffffff",
-  border: "1px solid #e2e8f0",
-  borderRadius: 8,
+  border: "1px solid #ece3cf",
+  borderRadius: 12,
   fontSize: 12,
   color: "#0f172a",
   boxShadow: "0 4px 10px rgba(16,24,40,0.08)",

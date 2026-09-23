@@ -630,7 +630,7 @@ export default function ResearchTab() {
                         <span className="text-muted-foreground">#{e.id}</span>{" "}
                         <span className="text-[#f59e0b]">{e.kind}</span>{" "}
                         <span className="text-muted-foreground">({e.actor})</span>{" "}
-                        <span className="text-[#0e7490]">{e.payload.slice(0, 110)}{e.payload.length > 110 ? "…" : ""}</span>{" "}
+                        <span className="text-neon-cyan">{e.payload.slice(0, 110)}{e.payload.length > 110 ? "…" : ""}</span>{" "}
                         <span className="text-muted-foreground">{fmtTime(e.ts)}</span>
                       </div>
                     ))}
