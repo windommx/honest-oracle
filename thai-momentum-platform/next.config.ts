@@ -12,6 +12,8 @@ const nextConfig: NextConfig = {
     ignoreBuildErrors: true,
   },
   reactStrictMode: false,
+  // ไม่ใช้ next/image — ปิดตัวปรับรูป (/_next/image) ทั้ง endpoint ลดพื้นผิวโจมตี (เคยมี CVE RCE ผ่าน AVIF)
+  images: { unoptimized: true },
 };
 
 export default nextConfig;
