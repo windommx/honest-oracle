@@ -15,6 +15,7 @@ import { QUICK_FIXES, quickFix } from "@/lib/master-engine/quickfix";
 import { renderMaster, type MasterRender } from "@/lib/master-engine/offline";
 import { LOUDNESS_TARGETS, type LoudnessTargetId } from "@/lib/master-engine/loudness";
 import { encodeWav, wavFilename } from "@/lib/audio-io/wav";
+import { DITHER_LABEL, DITHER_MODES, ditherFloorDbfs, type DitherMode } from "@/lib/audio-io/dither";
 import { Knob } from "@/components/knob";
 import { toast } from "../rush/_toast";
 import { downloadBlob } from "../rush/_utils";
@@ -22,6 +23,7 @@ import { ACCEPTED_FILES, UnsupportedAudioError, loadAudioFile, type LoadedAudio 
 import { MasterClient, audioWorkletSupported } from "./_engine-client";
 import { Waveform } from "./_waveform";
 import { EqCurve } from "./_eq-curve";
+import { MultibandPanel } from "./_multiband";
 import { Meters } from "./_meters";
 import { AuditFace } from "./_audit-face";
 import { ALL_KNOBS, PANELS } from "./_panels";
@@ -70,10 +72,15 @@ export default function MasterPage() {
     gainReductionDb: 0,
     /** 1 when the device runs at the file's own rate. */
     rateRatio: 1,
+    /** Live per-band reduction from the multiband: low, mid, high. */
+    bandReductionDb: [0, 0, 0] as readonly number[],
   });
   const [targetId, setTargetId] = useState<LoudnessTargetId>("streaming");
   const [render, setRender] = useState<MasterRender | null>(null);
   const [depth, setDepth] = useState<(typeof EXPORT_DEPTHS)[number]>(24);
+  /** TPDF by default: rounding a master to an integer depth without dither
+   *  leaves an error correlated with the signal, heard as grain on fades. */
+  const [dither, setDither] = useState<DitherMode>("tpdf");
 
   const client = useRef<MasterClient | null>(null);
   if (client.current === null && typeof window !== "undefined") client.current = new MasterClient();
@@ -92,6 +99,7 @@ export default function MasterPage() {
         shortTermLufs: s.shortTermLufs,
         gainReductionDb: s.gainReductionDb,
         rateRatio: s.rateRatio,
+        bandReductionDb: s.bandReductionDb,
       });
     };
     // The worklet stops itself at the end of a non-looping file, and the page
@@ -266,13 +274,16 @@ export default function MasterPage() {
           targetLufs: target.lufs,
         });
         setRender(result);
-        const bytes = encodeWav([result.left, result.right], result.sampleRate, depth);
+        const bytes = encodeWav([result.left, result.right], result.sampleRate, depth, dither);
         const base = audio.name.replace(/\.[^.]+$/, "");
         const filename = wavFilename(`${base}-mastered-${presetId || "custom"}`);
         downloadBlob(filename, bytes, "audio/wav");
+        const floor = ditherFloorDbfs(dither, depth);
         toast(
           `บันทึก ${filename} — ${result.integratedLufs.toFixed(1)} LUFS · ` +
-            `${(bytes.byteLength / 1024 / 1024).toFixed(1)} MB · เรนเดอร์ ${(result.elapsedMs / 1000).toFixed(1)} วินาที`,
+            `${(bytes.byteLength / 1024 / 1024).toFixed(1)} MB · ${depth} บิต · ` +
+            (Number.isFinite(floor) ? `พื้นเสียงซ่า ${floor.toFixed(1)} dBFS` : "ไม่ได้ใส่ dither") +
+            ` · เรนเดอร์ ${(result.elapsedMs / 1000).toFixed(1)} วินาที`,
           { variant: "success" }
         );
       } catch (err) {
@@ -281,7 +292,7 @@ export default function MasterPage() {
         setBusy("");
       }
     });
-  }, [audio, settings, depth, presetId, target.lufs]);
+  }, [audio, settings, depth, dither, presetId, target.lufs]);
 
   const setBand = useCallback(
     (index: number, band: EqBand) => {
@@ -390,6 +401,25 @@ export default function MasterPage() {
                 {EXPORT_DEPTHS.map((d) => (
                   <option key={d} value={d}>
                     {d} บิต
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="w-36 shrink-0">
+              <select
+                className="input text-xs"
+                value={dither}
+                onChange={(e) => setDither(e.target.value as DitherMode)}
+                aria-label="Dither ตอนลดความละเอียดบิต"
+                title={
+                  Number.isFinite(ditherFloorDbfs(dither, depth))
+                    ? `พื้นเสียงซ่าที่ได้ ${ditherFloorDbfs(dither, depth).toFixed(1)} dBFS`
+                    : "ตัดตรง ๆ — ความเพี้ยนจะเกาะไปกับสัญญาณ"
+                }
+              >
+                {DITHER_MODES.map((m) => (
+                  <option key={m} value={m}>
+                    {DITHER_LABEL[m]}
                   </option>
                 ))}
               </select>
@@ -550,6 +580,14 @@ export default function MasterPage() {
           {MASTER_PRESETS.find((p) => p.id === presetId)?.note}
         </p>
       )}
+
+      <section className="mt-5">
+        <MultibandPanel
+          settings={settings.multiband}
+          onChange={(change) => update({ multiband: { ...settings.multiband, ...change } })}
+          reductionDb={status.bandReductionDb}
+        />
+      </section>
 
       <section className="mt-5 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {PANELS.map((panel) => (

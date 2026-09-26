@@ -7,6 +7,9 @@
 // ║                                                                    ║
 // ║   1 EQ          shape before anything measures the signal, so the  ║
 // ║                 de-esser and limiter react to the finished tone    ║
+// ║   1b Multiband  split and control each part of the spectrum before ║
+// ║                 anything downstream has to cope with a low end     ║
+// ║                 that is still moving                               ║
 // ║   2 De-Esser    before saturation, which would multiply an ess     ║
 // ║   3 De-Chirp    same reason, and before anything adds top end      ║
 // ║   4 Punch       transients intact, before they get squashed        ║
@@ -30,6 +33,7 @@ import { DeChirp, DeEsser, TransientShaper } from "./dynamics";
 import { AnalogLife, TapeHiss } from "./drift";
 import { ConsoleSaturator } from "./saturation";
 import { EqStage } from "./eq";
+import { MultibandCompressor, type BandIndex } from "./multiband";
 import { Exciter } from "./exciter";
 import { Limiter } from "./limiter";
 import { LoudnessMeter } from "./loudness";
@@ -46,6 +50,8 @@ export interface MasterMeters {
   gainReductionDb: number;
   /** Negative. What the de-esser is doing right now. */
   deEssDb: number;
+  /** Negative, one per multiband band: low, mid, high. */
+  bandReductionDb: [number, number, number];
 }
 
 export class MasterChain {
@@ -53,6 +59,7 @@ export class MasterChain {
   private current: MasterSettings;
 
   private readonly eq: EqStage;
+  private readonly multiband: MultibandCompressor;
   private readonly deEsser: DeEsser;
   private readonly deChirp: DeChirp;
   private readonly punch: TransientShaper;
@@ -70,6 +77,7 @@ export class MasterChain {
   constructor(sampleRate: number, settings: MasterUpdate = {}) {
     this.sampleRate = sampleRate;
     this.eq = new EqStage(sampleRate);
+    this.multiband = new MultibandCompressor(sampleRate);
     this.deEsser = new DeEsser(sampleRate);
     this.deChirp = new DeChirp(sampleRate);
     this.punch = new TransientShaper(sampleRate);
@@ -96,6 +104,7 @@ export class MasterChain {
   private apply(): void {
     const s = this.current;
     this.eq.setSettings(s);
+    this.multiband.setSettings(s.multiband);
     this.deEsser.setAmount(s.deEsser);
     this.deChirp.setAmount(s.deChirp);
     this.punch.setAmount(s.punch);
@@ -134,6 +143,11 @@ export class MasterChain {
       shortTermLufs: this.meter.shortTermLufs,
       gainReductionDb: this.limiter.currentReductionDb,
       deEssDb: this.deEsser.reductionDb,
+      bandReductionDb: [
+        this.multiband.reductionDb(0),
+        this.multiband.reductionDb(1 as BandIndex),
+        this.multiband.reductionDb(2 as BandIndex),
+      ],
     };
   }
 
@@ -143,6 +157,7 @@ export class MasterChain {
 
   reset(): void {
     this.eq.reset();
+    this.multiband.reset();
     this.deEsser.reset();
     this.deChirp.reset();
     this.punch.reset();
@@ -175,6 +190,14 @@ export class MasterChain {
 
       l = this.eq.tickLeft(l);
       r = this.eq.tickRight(r);
+
+      // Right after the EQ: the bands should see the tone the operator set,
+      // and everything downstream should see a mix whose low end is already
+      // under control rather than one still moving under the de-esser and
+      // the limiter.
+      this.multiband.process(l, r);
+      l = this.multiband.outLeft;
+      r = this.multiband.outRight;
 
       this.deEsser.detect(l, r);
       l = this.deEsser.tickLeft(l);

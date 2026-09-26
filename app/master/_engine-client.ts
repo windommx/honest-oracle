@@ -34,6 +34,8 @@ export interface MasterEngineStatus {
   /** 1 when the device is running at the file's own rate. Anything else means
    *  the audition is being resampled and does not match the export exactly. */
   rateRatio: number;
+  /** Multiband reduction, low to high. */
+  bandReductionDb: readonly number[];
 }
 
 export function audioWorkletSupported(): boolean {
@@ -126,6 +128,7 @@ export class MasterClient {
           shortTermLufs: data.shortTermLufs,
           gainReductionDb: data.gainReductionDb,
           rateRatio: data.rateRatio,
+          bandReductionDb: data.bandReductionDb,
         });
       };
 

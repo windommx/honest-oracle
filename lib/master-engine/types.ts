@@ -16,7 +16,63 @@ export interface EqBand {
 
 export const EQ_BAND_COUNT = 5;
 
+export const BAND_COUNT = 3;
+export type BandIndex = 0 | 1 | 2;
+
+export interface BandSettings {
+  /** dB. Above this the band starts to compress. */
+  thresholdDb: number;
+  /** 1 is no compression; 4 is firm; 20 is a limiter. */
+  ratio: number;
+  attackSeconds: number;
+  releaseSeconds: number;
+  /** dB of make-up applied after the band is compressed. */
+  makeupDb: number;
+  /** Silences the other two, for hearing what this band actually contains. */
+  solo: boolean;
+  bypass: boolean;
+}
+
+export interface MultibandSettings {
+  enabled: boolean;
+  /** Low/mid split, in Hz. */
+  crossoverLowHz: number;
+  /** Mid/high split, in Hz. */
+  crossoverHighHz: number;
+  bands: BandSettings[];
+}
+
+export const DEFAULT_BAND: BandSettings = {
+  thresholdDb: -18,
+  ratio: 2,
+  attackSeconds: 0.01,
+  releaseSeconds: 0.12,
+  makeupDb: 0,
+  solo: false,
+  bypass: false,
+};
+
+export const DEFAULT_MULTIBAND: MultibandSettings = {
+  enabled: false,
+  // 120Hz keeps the kick and bass together below it; 2.5kHz puts the
+  // presence region and the cymbals in the top band without splitting a
+  // vocal's fundamental from its consonants.
+  crossoverLowHz: 120,
+  crossoverHighHz: 2500,
+  bands: [
+    { ...DEFAULT_BAND, thresholdDb: -20, ratio: 2.5, attackSeconds: 0.02, releaseSeconds: 0.18 },
+    { ...DEFAULT_BAND },
+    { ...DEFAULT_BAND, thresholdDb: -24, ratio: 1.8, attackSeconds: 0.005, releaseSeconds: 0.08 },
+  ],
+};
+
+export const BAND_LABEL = ["ต่ำ", "กลาง", "สูง"] as const;
+
 export interface MasterSettings {
+  /** Split the spectrum and compress each part on its own. Declared first
+   *  because it sits early in the chain, right after the EQ. */
+  multiband: MultibandSettings;
+
   /** Seconds. Applied at the very end so a fade-out actually reaches silence. */
   fadeInSeconds: number;
   fadeOutSeconds: number;
@@ -91,7 +147,13 @@ export function defaultEqBands(): EqBand[] {
 /** The starting point. These are the values the reference screenshot shows,
  *  which are a reasonable general-purpose master rather than a null setting —
  *  `NEUTRAL` below is the one that changes nothing. */
+const cloneMultiband = (m: MultibandSettings): MultibandSettings => ({
+  ...m,
+  bands: m.bands.map((b) => ({ ...b })),
+});
+
 export const DEFAULT_MASTER: MasterSettings = {
+  multiband: cloneMultiband(DEFAULT_MULTIBAND),
   fadeInSeconds: 0,
   fadeOutSeconds: 0,
   lowCut: true,
@@ -120,6 +182,7 @@ export const DEFAULT_MASTER: MasterSettings = {
 /** Every stage off. The A/B reference: rendering with this must return the
  *  input unchanged, which a test asserts sample for sample. */
 export const NEUTRAL: MasterSettings = {
+  multiband: cloneMultiband({ ...DEFAULT_MULTIBAND, enabled: false }),
   fadeInSeconds: 0,
   fadeOutSeconds: 0,
   lowCut: false,
@@ -147,5 +210,6 @@ export const NEUTRAL: MasterSettings = {
 
 export type MasterUpdate = Partial<MasterSettings>;
 
-export const dbToGain = (db: number) => Math.pow(10, db / 20);
-export const gainToDb = (g: number) => (g <= 1e-9 ? -180 : 20 * Math.log10(g));
+// Re-exported so every existing `from "./types"` keeps working; they live in
+// db.ts because types.ts imports multiband.ts and multiband.ts needs them.
+export { dbToGain, gainToDb } from "./db";

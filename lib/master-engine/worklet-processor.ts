@@ -55,6 +55,10 @@ export interface MasterStatus {
   momentaryLufs: number;
   shortTermLufs: number;
   gainReductionDb: number;
+  /** Multiband reduction, low to high. A multiband is the one processor where
+   *  a setting is not enough to know what is happening — two bands can be set
+   *  identically and do completely different work. */
+  bandReductionDb: [number, number, number];
 }
 
 declare const sampleRate: number;
@@ -241,6 +245,7 @@ class MasterProcessor extends AudioWorkletProcessor {
       momentaryLufs: meters.momentaryLufs,
       shortTermLufs: meters.shortTermLufs,
       gainReductionDb: meters.gainReductionDb,
+      bandReductionDb: meters.bandReductionDb,
     };
     this.port.postMessage(status);
     this.peak = 0;

@@ -124,7 +124,34 @@
     }
   };
 
+  // lib/master-engine/db.ts
+  var dbToGain = (db) => Math.pow(10, db / 20);
+  var gainToDb = (g) => g <= 1e-9 ? -180 : 20 * Math.log10(g);
+
   // lib/master-engine/types.ts
+  var BAND_COUNT = 3;
+  var DEFAULT_BAND = {
+    thresholdDb: -18,
+    ratio: 2,
+    attackSeconds: 0.01,
+    releaseSeconds: 0.12,
+    makeupDb: 0,
+    solo: false,
+    bypass: false
+  };
+  var DEFAULT_MULTIBAND = {
+    enabled: false,
+    // 120Hz keeps the kick and bass together below it; 2.5kHz puts the
+    // presence region and the cymbals in the top band without splitting a
+    // vocal's fundamental from its consonants.
+    crossoverLowHz: 120,
+    crossoverHighHz: 2500,
+    bands: [
+      { ...DEFAULT_BAND, thresholdDb: -20, ratio: 2.5, attackSeconds: 0.02, releaseSeconds: 0.18 },
+      { ...DEFAULT_BAND },
+      { ...DEFAULT_BAND, thresholdDb: -24, ratio: 1.8, attackSeconds: 5e-3, releaseSeconds: 0.08 }
+    ]
+  };
   var LOW_CUT_HZ = 30;
   var HI_CUT_HZ = 18e3;
   var TONE_BASS_HZ = 90;
@@ -145,7 +172,12 @@
       { freq: 1e4, gainDb: 0, q: 0.7, kind: "highShelf", enabled: true }
     ];
   }
+  var cloneMultiband = (m) => ({
+    ...m,
+    bands: m.bands.map((b) => ({ ...b }))
+  });
   var DEFAULT_MASTER = {
+    multiband: cloneMultiband(DEFAULT_MULTIBAND),
     fadeInSeconds: 0,
     fadeOutSeconds: 0,
     lowCut: true,
@@ -171,6 +203,7 @@
     ceilingDb: -1
   };
   var NEUTRAL = {
+    multiband: cloneMultiband({ ...DEFAULT_MULTIBAND, enabled: false }),
     fadeInSeconds: 0,
     fadeOutSeconds: 0,
     lowCut: false,
@@ -195,8 +228,6 @@
     masterVolDb: 0,
     ceilingDb: 0
   };
-  var dbToGain = (db) => Math.pow(10, db / 20);
-  var gainToDb = (g) => g <= 1e-9 ? -180 : 20 * Math.log10(g);
 
   // lib/master-engine/dynamics.ts
   var EnvelopeFollower = class {
@@ -765,6 +796,165 @@
     }
   };
 
+  // lib/master-engine/multiband.ts
+  var BUTTERWORTH_Q = Math.SQRT1_2;
+  var Crossover = class {
+    constructor() {
+      __publicField(this, "lowA", new Biquad());
+      __publicField(this, "lowB", new Biquad());
+      __publicField(this, "highA", new Biquad());
+      __publicField(this, "highB", new Biquad());
+      __publicField(this, "low", 0);
+      __publicField(this, "high", 0);
+    }
+    setFrequency(hz, sampleRate2) {
+      const lp = lowpass(hz, BUTTERWORTH_Q, sampleRate2);
+      const hp = highpass(hz, BUTTERWORTH_Q, sampleRate2);
+      this.lowA.setCoefficients(lp);
+      this.lowB.setCoefficients(lp);
+      this.highA.setCoefficients(hp);
+      this.highB.setCoefficients(hp);
+    }
+    reset() {
+      this.lowA.reset();
+      this.lowB.reset();
+      this.highA.reset();
+      this.highB.reset();
+    }
+    split(x) {
+      this.low = this.lowB.tick(this.lowA.tick(x));
+      this.high = this.highB.tick(this.highA.tick(x));
+    }
+  };
+  var BandCompressor = class {
+    constructor(sampleRate2) {
+      __publicField(this, "follower");
+      __publicField(this, "settings", { ...DEFAULT_BAND });
+      __publicField(this, "currentGain", 1);
+      this.follower = new EnvelopeFollower(sampleRate2, DEFAULT_BAND.attackSeconds, DEFAULT_BAND.releaseSeconds);
+    }
+    setSettings(s) {
+      this.settings = s;
+      this.follower.setTimes(Math.max(1e-4, s.attackSeconds), Math.max(1e-3, s.releaseSeconds));
+    }
+    reset() {
+      this.follower.reset();
+      this.currentGain = 1;
+    }
+    get reductionDb() {
+      return gainToDb(this.currentGain);
+    }
+    /** Detector on the mono sum, gain applied to both channels: compressing the
+     *  two separately moves the image on every transient. */
+    gainFor(detector) {
+      const level = this.follower.tick(Math.abs(detector));
+      const s = this.settings;
+      if (s.bypass || s.ratio <= 1) {
+        this.currentGain = 1;
+        return dbToGain(s.makeupDb);
+      }
+      const levelDb = gainToDb(Math.max(level, 1e-9));
+      const over = levelDb - s.thresholdDb;
+      if (over <= 0) {
+        this.currentGain = 1;
+        return dbToGain(s.makeupDb);
+      }
+      const knee = 6;
+      const compressed = over < knee ? over * over * (1 / s.ratio - 1) / (2 * knee) : over * (1 / s.ratio - 1) + knee * (1 - 1 / s.ratio) / 2;
+      this.currentGain = dbToGain(compressed);
+      return this.currentGain * dbToGain(s.makeupDb);
+    }
+  };
+  var MultibandCompressor = class {
+    constructor(sampleRate2) {
+      __publicField(this, "sampleRate");
+      __publicField(this, "lowSplitL", new Crossover());
+      __publicField(this, "lowSplitR", new Crossover());
+      __publicField(this, "highSplitL", new Crossover());
+      __publicField(this, "highSplitR", new Crossover());
+      /**
+       * All-pass partners for the low band.
+       *
+       * The mid and high bands both pass through the UPPER crossover; the low band
+       * does not, so it has to be sent through that crossover's own allpass —
+       * LP + HP of the same filter, magnitude-flat with exactly the phase the
+       * other two picked up. Setting these to the LOWER crossover instead, which
+       * reads as the natural pairing, applies the wrong phase and leaves the sum
+       * dipping across the whole overlap region.
+       */
+      __publicField(this, "compensateL", new Crossover());
+      __publicField(this, "compensateR", new Crossover());
+      __publicField(this, "compressors");
+      __publicField(this, "settings", DEFAULT_MULTIBAND);
+      __publicField(this, "outLeft", 0);
+      __publicField(this, "outRight", 0);
+      this.sampleRate = sampleRate2;
+      this.compressors = Array.from({ length: BAND_COUNT }, () => new BandCompressor(sampleRate2));
+      this.setSettings(DEFAULT_MULTIBAND);
+    }
+    setSettings(settings) {
+      this.settings = settings;
+      const low = Math.min(Math.max(30, settings.crossoverLowHz), settings.crossoverHighHz - 50);
+      const high = Math.min(Math.max(low + 50, settings.crossoverHighHz), this.sampleRate * 0.45);
+      for (const c of [this.lowSplitL, this.lowSplitR]) c.setFrequency(low, this.sampleRate);
+      for (const c of [this.highSplitL, this.highSplitR]) c.setFrequency(high, this.sampleRate);
+      for (const c of [this.compensateL, this.compensateR]) c.setFrequency(high, this.sampleRate);
+      settings.bands.forEach((b, i) => this.compressors[i]?.setSettings(b));
+    }
+    get active() {
+      return this.settings.enabled;
+    }
+    reductionDb(band) {
+      return this.compressors[band].reductionDb;
+    }
+    reset() {
+      for (const c of [
+        this.lowSplitL,
+        this.lowSplitR,
+        this.highSplitL,
+        this.highSplitR,
+        this.compensateL,
+        this.compensateR
+      ]) {
+        c.reset();
+      }
+      for (const c of this.compressors) c.reset();
+    }
+    process(left, right) {
+      if (!this.settings.enabled) {
+        this.outLeft = left;
+        this.outRight = right;
+        return;
+      }
+      this.lowSplitL.split(left);
+      this.lowSplitR.split(right);
+      this.highSplitL.split(this.lowSplitL.high);
+      this.highSplitR.split(this.lowSplitR.high);
+      this.compensateL.split(this.lowSplitL.low);
+      this.compensateR.split(this.lowSplitR.low);
+      const lowL = this.compensateL.low + this.compensateL.high;
+      const lowR = this.compensateR.low + this.compensateR.high;
+      const midL = this.highSplitL.low;
+      const midR = this.highSplitR.low;
+      const highL = this.highSplitL.high;
+      const highR = this.highSplitR.high;
+      const soloing = this.settings.bands.some((b) => b.solo);
+      const bandL = [lowL, midL, highL];
+      const bandR = [lowR, midR, highR];
+      let outL = 0;
+      let outR = 0;
+      for (let i = 0; i < BAND_COUNT; i++) {
+        const band = this.settings.bands[i];
+        const gain = this.compressors[i].gainFor((bandL[i] + bandR[i]) * 0.5);
+        if (soloing && !band.solo) continue;
+        outL += bandL[i] * gain;
+        outR += bandR[i] * gain;
+      }
+      this.outLeft = outL;
+      this.outRight = outR;
+    }
+  };
+
   // lib/master-engine/exciter.ts
   var EXCITER_CROSSOVER_HZ = 3e3;
   var EVEN_MAX = 0.35;
@@ -1109,6 +1299,7 @@
       __publicField(this, "sampleRate");
       __publicField(this, "current");
       __publicField(this, "eq");
+      __publicField(this, "multiband");
       __publicField(this, "deEsser");
       __publicField(this, "deChirp");
       __publicField(this, "punch");
@@ -1123,6 +1314,7 @@
       __publicField(this, "peakSeen", 0);
       this.sampleRate = sampleRate2;
       this.eq = new EqStage(sampleRate2);
+      this.multiband = new MultibandCompressor(sampleRate2);
       this.deEsser = new DeEsser(sampleRate2);
       this.deChirp = new DeChirp(sampleRate2);
       this.punch = new TransientShaper(sampleRate2);
@@ -1146,6 +1338,7 @@
     apply() {
       const s = this.current;
       this.eq.setSettings(s);
+      this.multiband.setSettings(s.multiband);
       this.deEsser.setAmount(s.deEsser);
       this.deChirp.setAmount(s.deChirp);
       this.punch.setAmount(s.punch);
@@ -1180,7 +1373,12 @@
         momentaryLufs: this.meter.momentaryLufs,
         shortTermLufs: this.meter.shortTermLufs,
         gainReductionDb: this.limiter.currentReductionDb,
-        deEssDb: this.deEsser.reductionDb
+        deEssDb: this.deEsser.reductionDb,
+        bandReductionDb: [
+          this.multiband.reductionDb(0),
+          this.multiband.reductionDb(1),
+          this.multiband.reductionDb(2)
+        ]
       };
     }
     resetMeters() {
@@ -1188,6 +1386,7 @@
     }
     reset() {
       this.eq.reset();
+      this.multiband.reset();
       this.deEsser.reset();
       this.deChirp.reset();
       this.punch.reset();
@@ -1210,6 +1409,9 @@
         if (!Number.isFinite(r)) r = 0;
         l = this.eq.tickLeft(l);
         r = this.eq.tickRight(r);
+        this.multiband.process(l, r);
+        l = this.multiband.outLeft;
+        r = this.multiband.outRight;
         this.deEsser.detect(l, r);
         l = this.deEsser.tickLeft(l);
         r = this.deEsser.tickRight(r);
@@ -1404,7 +1606,8 @@
         peak: this.peak,
         momentaryLufs: meters.momentaryLufs,
         shortTermLufs: meters.shortTermLufs,
-        gainReductionDb: meters.gainReductionDb
+        gainReductionDb: meters.gainReductionDb,
+        bandReductionDb: meters.bandReductionDb
       };
       this.port.postMessage(status);
       this.peak = 0;

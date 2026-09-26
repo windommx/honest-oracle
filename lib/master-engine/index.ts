@@ -12,6 +12,7 @@ export * from "./saturation";
 export * from "./exciter";
 export * from "./drift";
 export * from "./limiter";
+export * from "./multiband";
 export * from "./stereo";
 export * from "./loudness";
 export * from "./chain";

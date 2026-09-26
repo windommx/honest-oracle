@@ -16,6 +16,8 @@
 // ║  builds that exact shape of file and reads it back.                ║
 // ╚══════════════════════════════════════════════════════════════════╝
 
+import { ditherRngFor, quantiseChannel, type DitherMode } from "./dither";
+
 /** 16 and 24 are integer PCM; 32 means IEEE float. */
 export type BitDepth = 16 | 24 | 32;
 
@@ -78,7 +80,17 @@ function ascii(view: DataView, offset: number): string {
 export function encodeWav(
   channels: Float32Array[],
   sampleRate: number,
-  bitDepth: BitDepth = 16
+  bitDepth: BitDepth = 16,
+  /**
+   * How to get from float to integers.
+   *
+   * Defaults to "none" so every existing caller and test keeps the exact bytes
+   * it had. /master passes a real mode: rounding a master to 16 bits without
+   * dither leaves an error CORRELATED with the signal, which is heard as grain
+   * on fades and reverb tails rather than as a noise floor.
+   */
+  dither: DitherMode = "none",
+  ditherSeed = 0x5eed
 ): Uint8Array<ArrayBuffer> {
   if (channels.length === 0) throw new RangeError("encodeWav needs at least one channel");
   const frames = channels[0].length;
@@ -115,23 +127,29 @@ export function encodeWav(
   tag(36, "data");
   view.setUint32(40, dataBytes, true);
 
+  // Integer depths are quantised a channel at a time, because noise shaping
+  // carries error state forward sample to sample and interleaving would feed
+  // the left channel's error into the right one's.
+  const quantised =
+    bitDepth === 32
+      ? null
+      : channels.map((ch, c) =>
+          quantiseChannel(ch, { bitDepth, mode: dither }, ditherRngFor(c, ditherSeed))
+        );
+
   let offset = HEADER_BYTES;
   for (let frame = 0; frame < frames; frame++) {
     for (let c = 0; c < channelCount; c++) {
-      const raw = channels[c][frame];
       if (bitDepth === 32) {
-        view.setFloat32(offset, raw, true);
+        view.setFloat32(offset, channels[c][frame], true);
         offset += 4;
         continue;
       }
-      // Clamp before scaling: a sample above 1 would wrap to a large negative
-      // value, heard as a loud click rather than as clipping.
-      const sample = Math.max(-1, Math.min(1, raw));
+      const v = quantised![c][frame];
       if (bitDepth === 16) {
-        view.setInt16(offset, Math.round(sample * INT16_SCALE), true);
+        view.setInt16(offset, v, true);
         offset += 2;
       } else {
-        const v = Math.round(sample * INT24_SCALE);
         view.setUint8(offset, v & 0xff);
         view.setUint8(offset + 1, (v >> 8) & 0xff);
         view.setUint8(offset + 2, (v >> 16) & 0xff);
