@@ -29,6 +29,41 @@ four concrete refusals, each enforced by a test rather than by good intentions:
 | `protocol.ts` | Score → care plan, by a rule table that ships alongside the plan |
 | `music.ts` | The iso-principle tempo ramp and the breath pacers |
 | `trend.ts` | Change over time, in points, with no extrapolation |
+| `reliability.ts` | Reliable Change Index and the Jacobson–Truax outcome categories |
+| `adherence.ts` | Practice dose by week, with empty weeks counted as zeros |
+| `association.ts` | Whether dose and symptoms move together, with a power gate |
+| `stats.ts` | log Γ, the incomplete beta, Student's *t*, ranks, and exact Spearman |
+
+## Three thresholds, not one
+
+`trend.ts` asks whether a change is big enough to *matter* (the published
+MCID). `reliability.ts` asks the prior question — whether it is bigger than the
+instrument's own measurement error — and they are different sizes:
+
+| | GAD-7 | PHQ-9 |
+|---|---|---|
+| Reliable change (RCI, p < .05) | 4 points | **6 points** |
+| Conventional MCID | 4 points | **5 points** |
+
+PHQ-9's conventional MCID sits *below* its reliable-change threshold, so a
+5-point PHQ-9 change is "clinically important" by the usual convention and
+statistically indistinguishable from answering the questionnaire twice. Both
+numbers are reported, separately, wherever a change is shown.
+
+## What the association test will not do
+
+`association.ts` answers "does practising help?" and its most common answer is
+that the question cannot be answered yet. Below five paired observations, no
+arrangement of the data can reach p < .05 — the smallest attainable two-tailed
+p is 2/n!, which is .083 at four pairs — so it returns no number at all rather
+than a decorative one. Above that floor the bar stays high (|ρ| ≥ .89 at six
+pairs), and that bar is reported next to the observed value so a null result
+reads as *too few measurements to see it* rather than as *no effect*.
+
+The p-values are exact by enumerating all n! orderings up to n = 8, because the
+large-sample approximation is anti-conservative at the sizes a fortnightly
+assessment schedule actually produces — a test measures that, and
+`criticalRho` reproduces the published table of critical values for ρ.
 
 ## Two decisions worth knowing about
 

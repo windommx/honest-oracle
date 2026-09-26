@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const LINKS = [
+  { href: "/therapy/dashboard", th: "ภาพรวม" },
   { href: "/therapy/assess", th: "ประเมิน" },
   { href: "/therapy/interventions", th: "การรักษา" },
   { href: "/therapy/session", th: "ดนตรี/หายใจ" },
