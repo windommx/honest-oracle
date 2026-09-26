@@ -6,6 +6,7 @@ import {
   addNote, listNotes, updateNote, deleteNote,
   compileBook, chaptersForEpub, chapterHeading, exportMarkdown, exportText, bookProgress, countBookWords,
   notesToCodex, mergeCodexIntoDraft, sendCodexToPromptTool, DRAFT_KEY, CODEX_MARK_BEGIN,
+  linkPlotCardToChapter, sceneCoverage,
   type WritingChapter, type WritingNote,
 } from "./_writing-store";
 import { splitChapters } from "@/lib/bookisdom-engine/chapters";
@@ -194,6 +195,51 @@ describe("plot board → outline for the prompt tool", () => {
     expect((await listPlotLines(b.id)).map((l) => l.title)).toEqual(["เส้นรัก"]);
   });
 
+  it("linking a card to a chapter is real, undoable, and drives sceneCoverage's real counts", async () => {
+    const b = await createBook({ title: "coverage", lang: "th" });
+    const [ch1] = await listChapters(b.id);
+    const ch2 = await addChapter(b.id, "สอง");
+    const line = await addPlotLine(b.id, "หลัก");
+    const c1 = await addPlotCard(line.id, 0, "เปิดเรื่อง");
+    const c2 = await addPlotCard(line.id, 0, "อีกมุมฉากเดียวกัน"); // same scene, second card
+    const c3 = await addPlotCard(line.id, 1, "ฉากถัดไป");
+    expect(sceneCoverage([c1, c2, c3])).toEqual({ totalScenes: 2, scenesWritten: 0, totalCards: 3, cardsWritten: 0 });
+
+    await linkPlotCardToChapter(c1.id, ch1.id);
+    let cards = await listPlotCards(b.id);
+    // scene 0 counts as written because ONE of its two cards is linked — cardsWritten counts only that one
+    expect(sceneCoverage(cards)).toEqual({ totalScenes: 2, scenesWritten: 1, totalCards: 3, cardsWritten: 1 });
+
+    await linkPlotCardToChapter(c3.id, ch2.id);
+    cards = await listPlotCards(b.id);
+    expect(sceneCoverage(cards)).toEqual({ totalScenes: 2, scenesWritten: 2, totalCards: 3, cardsWritten: 2 });
+
+    await linkPlotCardToChapter(c1.id, null); // undo
+    cards = await listPlotCards(b.id);
+    expect(cards.find((c) => c.id === c1.id)!.chapterId).toBeNull();
+    expect(sceneCoverage(cards).cardsWritten).toBe(1);
+  });
+
+  it("plotToOutline shows which cards are already written, by real chapter heading, only when asked", async () => {
+    const b = await createBook({ title: "outline+written", lang: "th" });
+    const [ch1] = await listChapters(b.id);
+    await updateChapter(ch1.id, { title: "เปิดฉาก" });
+    const line = await addPlotLine(b.id, "หลัก");
+    const written = await addPlotCard(line.id, 0, "เปิดเรื่อง", "ฝนตก");
+    await linkPlotCardToChapter(written.id, ch1.id);
+    await addPlotCard(line.id, 1, "ยังไม่เขียน");
+    const cards = await listPlotCards(b.id);
+    const lines = await listPlotLines(b.id);
+
+    const plain = plotToOutline(lines, cards);
+    expect(plain).not.toContain("เขียนแล้ว");
+
+    const withWritten = plotToOutline(lines, cards, { chapters: await listChapters(b.id), lang: "th" });
+    expect(withWritten).toContain("เปิดเรื่อง — ฝนตก (เขียนแล้ว: บทที่ 1: เปิดฉาก)");
+    expect(withWritten).toContain("ยังไม่เขียน");
+    expect(withWritten).not.toMatch(/ยังไม่เขียน.*เขียนแล้ว/); // the unwritten card gets no such note
+  });
+
   it("applying a template adds a NEW line with one card per beat at its computed column, leaving existing cards alone", async () => {
     const b = await createBook({ title: "tpl", lang: "th" });
     const mine = await addPlotLine(b.id, "ของฉัน");
@@ -260,7 +306,7 @@ describe("print export", () => {
 });
 
 // ═══ Backup ═══
-import { exportBundle, parseBundle, importBundle, BUNDLE_FORMAT } from "./_writing-store";
+import { exportBundle, parseBundle, importBundle, BUNDLE_FORMAT, type BookBundle } from "./_writing-store";
 
 describe("backup — a bundle is the writer's own complete copy; import never overwrites", () => {
   it("exports everything that belongs to the book, and import brings it back as a NEW copy with the original intact", async () => {
@@ -272,7 +318,8 @@ describe("backup — a bundle is the writer's own complete copy; import never ov
     await takeSnapshot(c1.id, "v1");
     await addNote({ bookId: b.id, type: "CHARACTER", title: "มะลิ", content: "นักข่าว" });
     const line = await addPlotLine(b.id, "หลัก");
-    await addPlotCard(line.id, 2, "พลิก", "x");
+    const plotCard = await addPlotCard(line.id, 2, "พลิก", "x");
+    await linkPlotCardToChapter(plotCard.id, c1.id);
     await recordWritingDelta(b.id, 0, 40, new Date(2026, 8, 1));
 
     const bundle = await exportBundle([b.id]);
@@ -297,6 +344,10 @@ describe("backup — a bundle is the writer's own complete copy; import never ov
     expect(copyCh.map((x) => [x.title, x.content])).toEqual([["หนึ่ง", "เนื้อหาบทหนึ่ง"], ["สอง", "เนื้อหาบทสอง"]]);
     expect(copyCh[0].id).not.toBe(c1.id);
     expect(await listSnapshots(copyCh[0].id)).toHaveLength(1);
+    // the plot card's chapterId must follow into the COPY's chapter, never point back at the original
+    const copyCard = (await listPlotCards(copy.id))[0];
+    expect(copyCard.chapterId).toBe(copyCh[0].id);
+    expect(copyCard.chapterId).not.toBe(c1.id);
     expect((await listNotes(copy.id)).map((n) => n.title)).toEqual(["มะลิ"]);
     const copyCards = await listPlotCards(copy.id);
     expect(copyCards).toHaveLength(1); expect(copyCards[0].plotLineId).not.toBe(line.id);
@@ -316,5 +367,22 @@ describe("backup — a bundle is the writer's own complete copy; import never ov
   it("orphans in a bundle (a chapter whose book is missing) are skipped, not half-imported", async () => {
     const r = await importBundle({ format: BUNDLE_FORMAT, exportedAt: "x", books: [], chapters: [{ id: "c", bookId: "ghost", title: "t", content: "", order: 1, createdAt: 0, updatedAt: 0 }], notes: [], snapshots: [], plotLines: [], plotCards: [], writingDays: [] });
     expect(r.chapters).toBe(0);
+  });
+
+  it("a plot card whose linked chapter is missing from the bundle imports UNLINKED, never dangling", async () => {
+    const bundle: BookBundle = {
+      format: BUNDLE_FORMAT, exportedAt: "x",
+      books: [{ id: "b1", title: "book", subtitle: "", author: "", genre: "", lang: "th" as const, status: "DRAFT" as const, targetWords: 0, createdAt: 0, updatedAt: 0 }],
+      chapters: [], notes: [], snapshots: [],
+      plotLines: [{ id: "l1", bookId: "b1", title: "line", order: 1 }],
+      plotCards: [{ id: "pc1", plotLineId: "l1", colIndex: 0, title: "card", description: "", createdAt: 0, chapterId: "missing-chapter" }],
+      writingDays: [],
+    };
+    const r = await importBundle(bundle);
+    expect(r.plotCards).toBe(1);
+    const books = await listBooks();
+    const copy = books.find((x) => x.title === "book (นำเข้า)")!;
+    const [card] = await listPlotCards(copy.id);
+    expect(card.chapterId).toBeNull();
   });
 });

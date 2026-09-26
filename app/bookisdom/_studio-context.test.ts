@@ -12,7 +12,7 @@ describe("composeStudioContext — what the room knows becomes the run's context
     const chapters = [ch({ id: "c1", title: "หนึ่ง", content: "ก".repeat(2000) + "จบบทหนึ่ง", order: 1 }), ch({ id: "c2", title: "สอง", content: "เริ่มบทสอง", order: 2 })];
     const notes = [note({ type: "CHARACTER", title: "มะลิ", content: "นักข่าว\nอยาก: หาความจริง" }), note({ type: "PLOT", title: "ไม่เข้า codex" })];
     const lines: PlotLine[] = [{ id: "l", bookId: "b", title: "หลัก", order: 1 }];
-    const cards: PlotCard[] = [{ id: "k", plotLineId: "l", colIndex: 0, title: "เปิดเรื่อง", description: "ฝนตก", createdAt: 0 }];
+    const cards: PlotCard[] = [{ id: "k", plotLineId: "l", colIndex: 0, title: "เปิดเรื่อง", description: "ฝนตก", createdAt: 0, chapterId: null }];
     const ctx = composeStudioContext({ book, chapters, notes, plotLines: lines, plotCards: cards, targetChapterId: "c2" });
     expect(ctx.parts).toEqual({ codex: true, outline: true, previous: true });
     expect(ctx.system).toContain("เงาเมืองใต้"); expect(ctx.system).toContain("มะลิ"); expect(ctx.system).toContain("หาความจริง");

@@ -355,7 +355,7 @@ export default function WritePage() {
             </div>
           )}
           {book && pane === "plot" ? (
-            <PlotBoard bookId={book.id} />
+            <PlotBoard bookId={book.id} lang={book.lang} />
           ) : book && chapter ? (
             <ChapterEditor
               key={chapter.id}

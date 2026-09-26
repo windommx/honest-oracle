@@ -1,14 +1,15 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Camera, RotateCcw, Volume2, Square, LayoutTemplate, Send, Plus, ChevronLeft, ChevronRight, Activity } from "lucide-react";
+import { Camera, RotateCcw, Volume2, Square, LayoutTemplate, Send, Plus, ChevronLeft, ChevronRight, Activity, BookOpen, X } from "lucide-react";
 import { toast } from "./_toast";
 import { DeleteButton } from "./_ui";
 import {
   takeSnapshot, listSnapshots, restoreSnapshot, deleteSnapshot,
   listPlotLines, addPlotLine, renamePlotLine, deletePlotLine, listPlotCards, addPlotCard, updatePlotCard, deletePlotCard, applyTemplate,
+  linkPlotCardToChapter, sceneCoverage, listChapters, chapterHeading,
   plotToOutline, sendOutlineToPromptTool, heatmapWeeks, heatLevel, HEAT_BUCKETS, notesToCodex,
-  type ChapterSnapshot, type PlotLine, type PlotCard, type WritingDay, type WritingNote,
+  type ChapterSnapshot, type PlotLine, type PlotCard, type WritingDay, type WritingNote, type WritingChapter,
 } from "./_writing-store";
 import { STORY_TEMPLATES } from "@/lib/bookisdom-engine/story-templates";
 
@@ -208,24 +209,30 @@ export function WritingHeatmap({ days }: { days: WritingDay[] }) {
 }
 
 // ── plot board ───────────────────────────────────────────────────────────
-export function PlotBoard({ bookId }: { bookId: string }) {
+export function PlotBoard({ bookId, lang }: { bookId: string; lang: "th" | "en" }) {
   const [lines, setLines] = useState<PlotLine[]>([]);
   const [cards, setCards] = useState<PlotCard[]>([]);
+  const [chapters, setChapters] = useState<WritingChapter[]>([]);
   const [tpl, setTpl] = useState(STORY_TEMPLATES[2].id);
   const [scenes, setScenes] = useState("12");
   const [adding, setAdding] = useState<{ lineId: string; col: number } | null>(null);
   const [draft, setDraft] = useState("");
   const [editing, setEditing] = useState<string | null>(null);
-  const refresh = async () => { setLines(await listPlotLines(bookId)); setCards(await listPlotCards(bookId)); };
+  const refresh = async () => {
+    setLines(await listPlotLines(bookId)); setCards(await listPlotCards(bookId)); setChapters(await listChapters(bookId));
+  };
   useEffect(() => { void refresh(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [bookId]);
 
   const cols = Math.max(6, cards.reduce((m, c) => Math.max(m, c.colIndex + 1), 0));
+  const orderedChapters = useMemo(() => [...chapters].sort((a, b) => a.order - b.order), [chapters]);
+  const chapterLabel = useMemo(() => new Map(orderedChapters.map((c, i) => [c.id, chapterHeading(i + 1, c.title, lang)])), [orderedChapters, lang]);
+  const coverage = useMemo(() => sceneCoverage(cards), [cards]);
   async function submitAdd() {
     if (!adding || !draft.trim()) { setAdding(null); return; }
     await addPlotCard(adding.lineId, adding.col, draft); setDraft(""); setAdding(null); await refresh();
   }
   function sendOutline() {
-    const text = plotToOutline(lines, cards);
+    const text = plotToOutline(lines, cards, { chapters, lang });
     if (!text) { toast("ผังยังว่าง — วางเทมเพลตหรือเพิ่มการ์ดก่อน", { variant: "error" }); return; }
     const r = sendOutlineToPromptTool(text);
     toast(r.ok ? "ส่งผังเป็น outline ให้เครื่องมือ prompt แล้ว — เปิดเครื่องมือเพื่อใช้" : `ส่งไม่สำเร็จ: ${r.reason}`, { variant: r.ok ? "info" : "error", duration: 6000 });
@@ -236,7 +243,7 @@ export function PlotBoard({ bookId }: { bookId: string }) {
     <div className="card-premium rounded-3xl p-4" data-testid="plot-board">
       <div className="flex flex-wrap items-center gap-2 mb-3">
         <span className="eyebrow-brand">ผังเรื่อง</span>
-        <span className="text-[0.65rem] text-faint">{lines.length} เส้น · {cards.length} การ์ด · {cols} ฉาก</span>
+        <span className="text-[0.65rem] text-faint">{lines.length} เส้น · {cards.length} การ์ด · {cols} ฉาก · เขียนแล้ว {coverage.scenesWritten}/{coverage.totalScenes} ฉาก ({coverage.cardsWritten}/{coverage.totalCards} การ์ด)</span>
         <div className="ml-auto flex flex-wrap items-center gap-2">
           <select value={tpl} onChange={(e) => setTpl(e.target.value)} className="input w-auto text-xs py-1" aria-label="เทมเพลตโครงเรื่อง">
             {STORY_TEMPLATES.map((s) => <option key={s.id} value={s.id}>{s.emoji} {s.nameTh} ({s.beats.length} จังหวะ)</option>)}
@@ -279,6 +286,23 @@ export function PlotBoard({ bookId }: { bookId: string }) {
                             <button onClick={async () => { await updatePlotCard(c.id, { colIndex: c.colIndex + 1 }); await refresh(); }} className="text-faint hover:text-[#111827] p-0.5" aria-label="เลื่อนการ์ดไปขวา"><ChevronRight className="w-3 h-3" /></button>
                             <span className="ml-auto"><DeleteButton onDelete={async () => { await deletePlotCard(c.id); await refresh(); }} what={`การ์ด ${c.title}`} idleClass="text-faint hover:text-red-700 p-0.5" armedClass="text-[10px] font-semibold px-1.5 py-0.5 rounded-lg bg-red-50 border border-red-500/60 text-red-700 whitespace-nowrap" /></span>
                           </div>
+                          {c.chapterId && chapterLabel.get(c.chapterId) ? (
+                            <div className="flex items-center gap-1 mt-1 pt-1 border-t border-black/5 text-[0.62rem] text-[#1d4ed8]">
+                              <BookOpen className="w-3 h-3 flex-shrink-0" />
+                              <span className="truncate flex-1" title={chapterLabel.get(c.chapterId)!}>{chapterLabel.get(c.chapterId)}</span>
+                              <button onClick={async () => { await linkPlotCardToChapter(c.id, null); await refresh(); }} className="text-faint hover:text-red-700 flex-shrink-0" aria-label={`เลิกผูกการ์ด ${c.title} กับบท`} title="เลิกผูกกับบท"><X className="w-3 h-3" /></button>
+                            </div>
+                          ) : orderedChapters.length > 0 ? (
+                            <select
+                              defaultValue=""
+                              onChange={async (e) => { if (e.target.value) { await linkPlotCardToChapter(c.id, e.target.value); await refresh(); } }}
+                              className="w-full mt-1 pt-1 border-t border-black/5 text-[0.62rem] text-faint bg-transparent outline-none"
+                              aria-label={`ผูกการ์ด ${c.title} กับบท`}
+                            >
+                              <option value="">+ ผูกกับบทที่เขียนแล้ว</option>
+                              {orderedChapters.map((ch) => <option key={ch.id} value={ch.id}>{chapterLabel.get(ch.id)}</option>)}
+                            </select>
+                          ) : null}
                         </div>
                       ))}
                       {adding && adding.lineId === l.id && adding.col === col ? (

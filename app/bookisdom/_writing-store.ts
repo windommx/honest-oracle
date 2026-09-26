@@ -356,15 +356,41 @@ export async function listPlotCards(bookId: string): Promise<PlotCard[]> {
   const lineOrder = new Map(lines.map((l) => [l.id, l.order]));
   return rows.sort((a, b) => a.colIndex - b.colIndex || (lineOrder.get(a.plotLineId) ?? 0) - (lineOrder.get(b.plotLineId) ?? 0) || a.createdAt - b.createdAt);
 }
-export async function addPlotCard(plotLineId: string, colIndex: number, title: string, description = ""): Promise<PlotCard> {
-  const card: PlotCard = { id: newId(), plotLineId, colIndex: Math.max(0, Math.floor(colIndex)), title: title.trim(), description: description.trim(), createdAt: Date.now() };
+export async function addPlotCard(plotLineId: string, colIndex: number, title: string, description = "", chapterId: string | null = null): Promise<PlotCard> {
+  const card: PlotCard = { id: newId(), plotLineId, colIndex: Math.max(0, Math.floor(colIndex)), title: title.trim(), description: description.trim(), createdAt: Date.now(), chapterId };
   await db()?.plotCards.put(card);
   return card;
 }
-export async function updatePlotCard(id: string, patch: Partial<Pick<PlotCard, "title" | "description" | "colIndex">>): Promise<void> {
+export async function updatePlotCard(id: string, patch: Partial<Pick<PlotCard, "title" | "description" | "colIndex" | "chapterId">>): Promise<void> {
   await db()?.plotCards.update(id, patch);
 }
 export async function deletePlotCard(id: string): Promise<void> { await db()?.plotCards.delete(id); }
+
+/** Link a card to the chapter it was actually written into, or null to unlink. A tiny
+ *  dedicated wrapper over updatePlotCard so call sites read as intent, not a raw patch. */
+export async function linkPlotCardToChapter(cardId: string, chapterId: string | null): Promise<void> {
+  await updatePlotCard(cardId, { chapterId });
+}
+
+/** Real, disclosed counts of how much of the planned board has actually been written —
+ *  NOT a "completion score". A scene counts as "written" the moment ANY of its cards
+ *  points at a chapter; a card counts as "written" only if its OWN chapterId is set. */
+export interface SceneCoverage { totalScenes: number; scenesWritten: number; totalCards: number; cardsWritten: number }
+export function sceneCoverage(cards: PlotCard[]): SceneCoverage {
+  const scenes = new Map<number, boolean>();
+  let cardsWritten = 0;
+  for (const c of cards) {
+    const written = !!c.chapterId;
+    if (written) cardsWritten++;
+    scenes.set(c.colIndex, (scenes.get(c.colIndex) ?? false) || written);
+  }
+  return {
+    totalScenes: scenes.size,
+    scenesWritten: Array.from(scenes.values()).filter(Boolean).length,
+    totalCards: cards.length,
+    cardsWritten,
+  };
+}
 
 /** Lay a structure template on the board as a NEW plot line — never over existing cards. */
 export async function applyTemplate(bookId: string, templateId: string, sceneCount?: number): Promise<PlotLine | null> {
@@ -380,16 +406,25 @@ export async function applyTemplate(bookId: string, templateId: string, sceneCou
 /** The board as an outline: scenes in column order; each scene lists its cards as
  *  "[เส้นเรื่อง] title — description". This is the text the prompt tool's `outline` field
  *  takes, so a planned board becomes the chapter plan the master prompt is built from. */
-export function plotToOutline(lines: PlotLine[], cards: PlotCard[]): string {
+export function plotToOutline(lines: PlotLine[], cards: PlotCard[], written?: { chapters: WritingChapter[]; lang: "th" | "en" }): string {
   const byLine = new Map(lines.map((l) => [l.id, l.title]));
   const lineOrder = new Map(lines.map((l) => [l.id, l.order]));
+  const chapterLabel = (() => {
+    if (!written) return () => null;
+    const ordered = [...written.chapters].sort((a, b) => a.order - b.order);
+    const byId = new Map(ordered.map((c, i) => [c.id, chapterHeading(i + 1, c.title, written.lang)]));
+    return (chapterId: string | null) => (chapterId ? (byId.get(chapterId) ?? null) : null);
+  })();
   const maxCol = cards.reduce((m, c) => Math.max(m, c.colIndex), -1);
   const out: string[] = [];
   for (let col = 0; col <= maxCol; col++) {
     const here = cards.filter((c) => c.colIndex === col).sort((a, b) => (lineOrder.get(a.plotLineId) ?? 0) - (lineOrder.get(b.plotLineId) ?? 0) || a.createdAt - b.createdAt);
     if (!here.length) continue;
     out.push(`ฉาก ${col + 1}:`);
-    for (const c of here) out.push(`  - [${byLine.get(c.plotLineId) ?? "?"}] ${c.title}${c.description ? ` — ${c.description}` : ""}`);
+    for (const c of here) {
+      const label = chapterLabel(c.chapterId);
+      out.push(`  - [${byLine.get(c.plotLineId) ?? "?"}] ${c.title}${c.description ? ` — ${c.description}` : ""}${label ? ` (เขียนแล้ว: ${label})` : ""}`);
+    }
   }
   return out.join("\n");
 }
@@ -535,7 +570,12 @@ export async function importBundle(bundle: BookBundle): Promise<ImportResult> {
     }
     for (const c of bundle.plotCards) {
       const plotLineId = lineMap.get(c.plotLineId); if (!plotLineId) continue;
-      await d.plotCards.put({ ...c, id: newId(), plotLineId, createdAt: c.createdAt ?? now }); res.plotCards++;
+      // A card's chapterId must point at the COPY's chapter, never the original book's —
+      // otherwise the imported card would silently cross-link into someone else's chapter.
+      // A card whose linked chapter didn't come across (shouldn't happen; chapters and
+      // cards for one book always export together) is imported unlinked, not dangling.
+      const chapterId = c.chapterId ? (chMap.get(c.chapterId) ?? null) : null;
+      await d.plotCards.put({ ...c, id: newId(), plotLineId, chapterId, createdAt: c.createdAt ?? now }); res.plotCards++;
     }
     for (const w of bundle.writingDays) {
       const bookId = bookMap.get(w.bookId); if (!bookId) continue;

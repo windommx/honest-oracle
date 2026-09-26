@@ -37,6 +37,12 @@ export interface WritingNote {
 
 export interface ChapterSnapshot { id: string; chapterId: string; label: string; content: string; words: number; createdAt: number }
 export interface PlotLine { id: string; bookId: string; title: string; order: number }
-export interface PlotCard { id: string; plotLineId: string; colIndex: number; title: string; description: string; createdAt: number }
+export interface PlotCard {
+  id: string; plotLineId: string; colIndex: number; title: string; description: string; createdAt: number;
+  /** The chapter this planned beat was actually written into, or null if still unwritten.
+   *  Explicit null (never undefined) — IndexedDB structured-clone of undefined is not
+   *  something to depend on; null is unambiguous and matches WritingNote.bookId's style. */
+  chapterId: string | null;
+}
 /** Words WRITTEN on a local calendar day (positive deltas between saves), per book. */
 export interface WritingDay { key: string; date: string; bookId: string; words: number }
