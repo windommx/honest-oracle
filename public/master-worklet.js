@@ -165,11 +165,11 @@
   var ESS_HIGH_HZ = 11e3;
   function defaultEqBands() {
     return [
-      { freq: 32, gainDb: 0, q: 0.7, kind: "lowShelf", enabled: true },
-      { freq: 60, gainDb: 0, q: 1, kind: "peaking", enabled: true },
-      { freq: 220, gainDb: 0, q: 1, kind: "peaking", enabled: true },
-      { freq: 2500, gainDb: 0, q: 1, kind: "peaking", enabled: true },
-      { freq: 1e4, gainDb: 0, q: 0.7, kind: "highShelf", enabled: true }
+      { freq: 32, gainDb: 0, q: 0.7, kind: "lowShelf", enabled: true, channel: "both" },
+      { freq: 60, gainDb: 0, q: 1, kind: "peaking", enabled: true, channel: "both" },
+      { freq: 220, gainDb: 0, q: 1, kind: "peaking", enabled: true, channel: "both" },
+      { freq: 2500, gainDb: 0, q: 1, kind: "peaking", enabled: true, channel: "both" },
+      { freq: 1e4, gainDb: 0, q: 0.7, kind: "highShelf", enabled: true, channel: "both" }
     ];
   }
   var cloneMultiband = (m) => ({
@@ -743,7 +743,10 @@
 
   // lib/master-engine/eq.ts
   var BUTTERWORTH_4TH = [0.5412, 1.3066];
-  function eqSections(settings, sampleRate2) {
+  function usesMidSide(settings) {
+    return settings.eq.some((b) => b.enabled && b.gainDb !== 0 && b.channel !== "both");
+  }
+  function eqSections(settings, sampleRate2, channel) {
     const out = [];
     if (settings.lowCut) {
       for (const q of BUTTERWORTH_4TH) out.push(highpass(LOW_CUT_HZ, q, sampleRate2));
@@ -753,6 +756,7 @@
     }
     for (const band of settings.eq) {
       if (!band.enabled || band.gainDb === 0) continue;
+      if (channel && band.channel !== "both" && band.channel !== channel) continue;
       if (band.kind === "lowShelf") out.push(lowShelf(band.freq, band.gainDb, band.q, sampleRate2));
       else if (band.kind === "highShelf") out.push(highShelf(band.freq, band.gainDb, band.q, sampleRate2));
       else out.push(peaking(band.freq, band.gainDb, band.q, sampleRate2));
@@ -763,36 +767,88 @@
     if (settings.treble !== 0) out.push(highShelf(TONE_TREBLE_HZ, settings.treble, 0.7, sampleRate2));
     return out;
   }
-  var EqStage = class {
-    constructor(sampleRate2) {
-      __publicField(this, "sampleRate");
+  var SectionChain = class {
+    constructor() {
       __publicField(this, "filters", []);
       __publicField(this, "sections", []);
-      this.sampleRate = sampleRate2;
     }
-    setSettings(settings) {
-      const next = eqSections(settings, this.sampleRate);
+    set(next) {
       while (this.filters.length < next.length) this.filters.push(new StereoBiquad());
       if (this.filters.length > next.length) this.filters.length = next.length;
       for (let i = 0; i < next.length; i++) this.filters[i].setCoefficients(next[i]);
       this.sections = next;
     }
-    /** The exact list the audio is running through, for the display. */
-    get currentSections() {
+    get current() {
       return this.sections;
     }
     reset() {
       for (const f of this.filters) f.reset();
     }
-    tickLeft(x) {
+    a(x) {
       let y = x;
       for (let i = 0; i < this.filters.length; i++) y = this.filters[i].tickLeft(y);
       return y;
     }
-    tickRight(x) {
+    b(x) {
       let y = x;
       for (let i = 0; i < this.filters.length; i++) y = this.filters[i].tickRight(y);
       return y;
+    }
+  };
+  var EqStage = class {
+    constructor(sampleRate2) {
+      __publicField(this, "sampleRate");
+      /** Used when every band works on both channels: one chain per channel. */
+      __publicField(this, "stereo", new SectionChain());
+      /** Used when any band is mid- or side-only. */
+      __publicField(this, "mid", new SectionChain());
+      __publicField(this, "side", new SectionChain());
+      __publicField(this, "midSide", false);
+      /** Written by process(). Fields rather than a tuple — this runs per sample. */
+      __publicField(this, "outLeft", 0);
+      __publicField(this, "outRight", 0);
+      this.sampleRate = sampleRate2;
+    }
+    setSettings(settings) {
+      this.midSide = usesMidSide(settings);
+      if (this.midSide) {
+        this.mid.set(eqSections(settings, this.sampleRate, "mid"));
+        this.side.set(eqSections(settings, this.sampleRate, "side"));
+        this.stereo.set([]);
+      } else {
+        this.stereo.set(eqSections(settings, this.sampleRate));
+        this.mid.set([]);
+        this.side.set([]);
+      }
+    }
+    /** The list the LEFT channel runs through, for the display. In mid/side mode
+     *  there is no single such list, and the caller asks for the two by name. */
+    get currentSections() {
+      return this.midSide ? this.mid.current : this.stereo.current;
+    }
+    get sideSections() {
+      return this.midSide ? this.side.current : this.stereo.current;
+    }
+    get isMidSide() {
+      return this.midSide;
+    }
+    reset() {
+      this.stereo.reset();
+      this.mid.reset();
+      this.side.reset();
+    }
+    process(left, right) {
+      if (!this.midSide) {
+        this.outLeft = this.stereo.a(left);
+        this.outRight = this.stereo.b(right);
+        return;
+      }
+      const m = (left + right) * 0.5;
+      const s = (left - right) * 0.5;
+      const filteredMid = this.mid.a(m);
+      const filteredSide = this.side.b(s);
+      this.outLeft = filteredMid + filteredSide;
+      this.outRight = filteredMid - filteredSide;
     }
   };
 
@@ -1353,9 +1409,16 @@
       this.limiter.setCeilingDb(s.ceilingDb);
       this.volume = dbToGain(s.masterVolDb);
     }
-    /** The coefficient list the audio is running through, for the EQ display. */
+    /** The coefficient list the audio is running through, for the EQ display.
+     *  In mid/side mode this is the MID chain; the side one is beside it. */
     get eqSections() {
       return this.eq.currentSections;
+    }
+    get eqSideSections() {
+      return this.eq.sideSections;
+    }
+    get eqIsMidSide() {
+      return this.eq.isMidSide;
     }
     /**
      * Delay the chain introduces, in samples.
@@ -1407,8 +1470,9 @@
         let r = inRight[i];
         if (!Number.isFinite(l)) l = 0;
         if (!Number.isFinite(r)) r = 0;
-        l = this.eq.tickLeft(l);
-        r = this.eq.tickRight(r);
+        this.eq.process(l, r);
+        l = this.eq.outLeft;
+        r = this.eq.outRight;
         this.multiband.process(l, r);
         l = this.multiband.outLeft;
         r = this.multiband.outRight;

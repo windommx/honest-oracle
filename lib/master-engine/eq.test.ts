@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { EqStage, eqSections, responseCurve, responseDbAt } from "./eq";
+import { EqStage, eqSections, responseCurve, responseDbAt, usesMidSide } from "./eq";
 import {
   DEFAULT_MASTER,
   HI_CUT_HZ,
@@ -11,6 +11,8 @@ import {
   defaultEqBands,
   type MasterSettings,
 } from "./types";
+
+import { magnitudeAt } from "@/lib/synth-engine/analysis";
 
 const SR = 48000;
 const settings = (over: Partial<MasterSettings> = {}): MasterSettings => ({
@@ -29,7 +31,8 @@ function measuredGainDb(s: MasterSettings, freq: number): number {
   let sumOut = 0;
   for (let i = 0; i < settle + measure; i++) {
     const x = Math.sin((2 * Math.PI * freq * i) / SR);
-    const y = stage.tickLeft(x);
+    stage.process(x, x);
+    const y = stage.outLeft;
     if (i >= settle) {
       sumIn += x * x;
       sumOut += y * y;
@@ -57,11 +60,11 @@ describe("the curve on screen is the audio", () => {
       name: "overlapping parametric bands",
       s: settings({
         eq: [
-          { freq: 40, gainDb: 3, q: 0.7, kind: "lowShelf", enabled: true },
-          { freq: 90, gainDb: -4, q: 1.4, kind: "peaking", enabled: true },
-          { freq: 140, gainDb: 5, q: 2, kind: "peaking", enabled: true },
-          { freq: 3000, gainDb: -3, q: 1, kind: "peaking", enabled: true },
-          { freq: 9000, gainDb: 4, q: 0.7, kind: "highShelf", enabled: true },
+          { freq: 40, gainDb: 3, q: 0.7, kind: "lowShelf", enabled: true, channel: "both" },
+          { freq: 90, gainDb: -4, q: 1.4, kind: "peaking", enabled: true, channel: "both" },
+          { freq: 140, gainDb: 5, q: 2, kind: "peaking", enabled: true, channel: "both" },
+          { freq: 3000, gainDb: -3, q: 1, kind: "peaking", enabled: true, channel: "both" },
+          { freq: 9000, gainDb: 4, q: 0.7, kind: "highShelf", enabled: true, channel: "both" },
         ],
       }),
       probes: [40, 90, 140, 400, 3000, 12000],
@@ -126,7 +129,8 @@ describe("EqStage", () => {
     expect(stage.currentSections).toHaveLength(0);
     for (let i = 0; i < 1000; i++) {
       const x = Math.sin(i / 7) * 0.5;
-      expect(stage.tickLeft(x)).toBe(x);
+      stage.process(x, x);
+      expect(stage.outLeft).toBe(x);
     }
   });
 
@@ -146,26 +150,34 @@ describe("EqStage", () => {
     bands[2].gainDb = 6;
     stage.setSettings(settings({ eq: bands }));
     let last = 0;
-    for (let i = 0; i < 4800; i++) last = stage.tickLeft(Math.sin((2 * Math.PI * 220 * i) / SR));
+    for (let i = 0; i < 4800; i++) {
+      stage.process(Math.sin((2 * Math.PI * 220 * i) / SR), 0);
+      last = stage.outLeft;
+    }
 
     bands[2].gainDb = 6.5;
     stage.setSettings(settings({ eq: bands }));
-    const next = stage.tickLeft(Math.sin((2 * Math.PI * 220 * 4800) / SR));
+    stage.process(Math.sin((2 * Math.PI * 220 * 4800) / SR), 0);
+    const next = stage.outLeft;
     expect(Math.abs(next - last)).toBeLessThan(0.1);
   });
 
   it("keeps the two channels independent", () => {
     const stage = new EqStage(SR);
     stage.setSettings(settings({ bass: 6, lowCut: true }));
-    for (let i = 0; i < 2000; i++) stage.tickLeft(Math.sin(i / 3));
-    expect(stage.tickRight(0)).toBe(0);
+    for (let i = 0; i < 2000; i++) stage.process(Math.sin(i / 3), 0);
+    stage.process(0, 0);
+    expect(stage.outRight).toBe(0);
   });
 
   it("stays finite on a long loud run", () => {
     const stage = new EqStage(SR);
     stage.setSettings({ ...DEFAULT_MASTER, eq: defaultEqBands(), hiCut: true });
     let last = 0;
-    for (let i = 0; i < SR * 3; i++) last = stage.tickLeft(Math.sin(i / 2.3) * 0.99);
+    for (let i = 0; i < SR * 3; i++) {
+      stage.process(Math.sin(i / 2.3) * 0.99, 0);
+      last = stage.outLeft;
+    }
     expect(Number.isFinite(last)).toBe(true);
   });
 });
@@ -189,6 +201,112 @@ describe("responseCurve", () => {
         expect(p.freq).toBeLessThan(rate / 2);
         expect(Number.isFinite(p.db)).toBe(true);
       }
+    }
+  });
+});
+
+describe("mid/side EQ", () => {
+  /** A signal that is pure MID: identical in both channels. */
+  const midOnly = (hz: number, n = SR) => {
+    const ch = new Float32Array(n);
+    for (let i = 0; i < n; i++) ch[i] = Math.sin((2 * Math.PI * hz * i) / SR) * 0.4;
+    return { l: ch, r: ch };
+  };
+  /** A signal that is pure SIDE: equal and opposite. */
+  const sideOnly = (hz: number, n = SR) => {
+    const l = new Float32Array(n);
+    const r = new Float32Array(n);
+    for (let i = 0; i < n; i++) {
+      const v = Math.sin((2 * Math.PI * hz * i) / SR) * 0.4;
+      l[i] = v;
+      r[i] = -v;
+    }
+    return { l, r };
+  };
+
+  const through = (s: MasterSettings, input: { l: Float32Array; r: Float32Array }) => {
+    const stage = new EqStage(SR);
+    stage.setSettings(s);
+    const l = new Float32Array(input.l.length);
+    const r = new Float32Array(input.r.length);
+    for (let i = 0; i < input.l.length; i++) {
+      stage.process(input.l[i], input.r[i]);
+      l[i] = stage.outLeft;
+      r[i] = stage.outRight;
+    }
+    return { l, r };
+  };
+
+  const bandAt = (channel: "both" | "mid" | "side", gainDb: number) => {
+    const bands = defaultEqBands();
+    bands[3] = { freq: 1000, gainDb, q: 1, kind: "peaking", enabled: true, channel };
+    return settings({ eq: bands });
+  };
+
+  const levelDb = (before: Float32Array, after: Float32Array, hz: number) => {
+    const from = Math.round(SR * 0.4);
+    return 20 * Math.log10(magnitudeAt(after.subarray(from), hz, SR) / magnitudeAt(before.subarray(from), hz, SR));
+  };
+
+  it("a mid band moves centred content and leaves the sides alone", () => {
+    const centre = midOnly(1000);
+    const sides = sideOnly(1000);
+    const s = bandAt("mid", 6);
+    expect(levelDb(centre.l, through(s, centre).l, 1000)).toBeCloseTo(6, 0);
+    expect(levelDb(sides.l, through(s, sides).l, 1000)).toBeCloseTo(0, 1);
+  });
+
+  it("a side band does the opposite", () => {
+    const centre = midOnly(1000);
+    const sides = sideOnly(1000);
+    const s = bandAt("side", 6);
+    expect(levelDb(sides.l, through(s, sides).l, 1000)).toBeCloseTo(6, 0);
+    expect(levelDb(centre.l, through(s, centre).l, 1000)).toBeCloseTo(0, 1);
+  });
+
+  it("a 'both' band moves everything, exactly as it did before", () => {
+    const centre = midOnly(1000);
+    const sides = sideOnly(1000);
+    const s = bandAt("both", 6);
+    expect(levelDb(centre.l, through(s, centre).l, 1000)).toBeCloseTo(6, 0);
+    expect(levelDb(sides.l, through(s, sides).l, 1000)).toBeCloseTo(6, 0);
+  });
+
+  it("the mid/side path is not taken unless a band asks for it", () => {
+    // Filtering mid and side with the same curve is arithmetically identical
+    // to filtering left and right with it, so the extra two chains would cost
+    // work and change nothing.
+    expect(usesMidSide(bandAt("both", 6))).toBe(false);
+    expect(usesMidSide(bandAt("mid", 6))).toBe(true);
+    // A band set to mid but flat still does not need it.
+    expect(usesMidSide(bandAt("mid", 0))).toBe(false);
+  });
+
+  it("left and right stay identical for a centred source", () => {
+    // A mid/side round trip that leaks would put a difference between the
+    // channels where the source had none.
+    const centre = midOnly(1000, SR / 2);
+    const out = through(bandAt("mid", 5), centre);
+    for (let i = 0; i < out.l.length; i += 97) expect(out.l[i]).toBeCloseTo(out.r[i], 6);
+  });
+
+  it("the two chains report their own curves", () => {
+    const stage = new EqStage(SR);
+    stage.setSettings(bandAt("side", 6));
+    expect(stage.isMidSide).toBe(true);
+    expect(responseDbAt([...stage.sideSections], 1000, SR)).toBeCloseTo(6, 1);
+    expect(responseDbAt([...stage.currentSections], 1000, SR)).toBeCloseTo(0, 1);
+  });
+
+  it("cuts and the tone stack still apply to the whole signal", () => {
+    const bands = defaultEqBands();
+    bands[3] = { freq: 1000, gainDb: 4, q: 1, kind: "peaking", enabled: true, channel: "mid" };
+    const s = settings({ eq: bands, lowCut: true, treble: 3 });
+    const stage = new EqStage(SR);
+    stage.setSettings(s);
+    for (const sections of [stage.currentSections, stage.sideSections]) {
+      expect(responseDbAt([...sections], 20, SR), "low cut missing from one side").toBeLessThan(-10);
+      expect(responseDbAt([...sections], 16000, SR), "treble missing from one side").toBeGreaterThan(2);
     }
   });
 });

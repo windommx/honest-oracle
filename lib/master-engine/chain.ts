@@ -120,9 +120,18 @@ export class MasterChain {
     this.volume = dbToGain(s.masterVolDb);
   }
 
-  /** The coefficient list the audio is running through, for the EQ display. */
+  /** The coefficient list the audio is running through, for the EQ display.
+   *  In mid/side mode this is the MID chain; the side one is beside it. */
   get eqSections(): readonly BiquadCoefficients[] {
     return this.eq.currentSections;
+  }
+
+  get eqSideSections(): readonly BiquadCoefficients[] {
+    return this.eq.sideSections;
+  }
+
+  get eqIsMidSide(): boolean {
+    return this.eq.isMidSide;
   }
 
   /**
@@ -188,8 +197,9 @@ export class MasterChain {
       if (!Number.isFinite(l)) l = 0;
       if (!Number.isFinite(r)) r = 0;
 
-      l = this.eq.tickLeft(l);
-      r = this.eq.tickRight(r);
+      this.eq.process(l, r);
+      l = this.eq.outLeft;
+      r = this.eq.outRight;
 
       // Right after the EQ: the bands should see the tone the operator set,
       // and everything downstream should see a mix whose low end is already

@@ -13,6 +13,8 @@ import {
 import { MASTER_PRESETS } from "@/lib/master-engine/presets";
 import { QUICK_FIXES, quickFix } from "@/lib/master-engine/quickfix";
 import { renderMaster, type MasterRender } from "@/lib/master-engine/offline";
+import { balanceDistanceDb, spectralBalance, type SpectralBalance } from "@/lib/master-engine/spectrum";
+import { DEFAULT_STRENGTH, describeMatch, matchToReference } from "@/lib/master-engine/match";
 import { LOUDNESS_TARGETS, type LoudnessTargetId } from "@/lib/master-engine/loudness";
 import { encodeWav, wavFilename } from "@/lib/audio-io/wav";
 import { DITHER_LABEL, DITHER_MODES, ditherFloorDbfs, type DitherMode } from "@/lib/audio-io/dither";
@@ -24,6 +26,7 @@ import { MasterClient, audioWorkletSupported } from "./_engine-client";
 import { Waveform } from "./_waveform";
 import { EqCurve } from "./_eq-curve";
 import { MultibandPanel } from "./_multiband";
+import { ReferencePanel } from "./_reference";
 import { Meters } from "./_meters";
 import { AuditFace } from "./_audit-face";
 import { ALL_KNOBS, PANELS } from "./_panels";
@@ -77,6 +80,9 @@ export default function MasterPage() {
   });
   const [targetId, setTargetId] = useState<LoudnessTargetId>("streaming");
   const [render, setRender] = useState<MasterRender | null>(null);
+  const [reference, setReference] = useState<{ name: string; balance: SpectralBalance } | null>(null);
+  const [matchStrength, setMatchStrength] = useState(DEFAULT_STRENGTH);
+  const [matchNote, setMatchNote] = useState<string | null>(null);
   const [depth, setDepth] = useState<(typeof EXPORT_DEPTHS)[number]>(24);
   /** TPDF by default: rounding a master to an integer depth without dither
    *  leaves an error correlated with the signal, heard as grain on fades. */
@@ -293,6 +299,58 @@ export default function MasterPage() {
       }
     });
   }, [audio, settings, depth, dither, presetId, target.lufs]);
+
+  /**
+   * The balance of the MASTERED result, so the comparison is against what
+   * would actually be shipped rather than against the raw file.
+   *
+   * LATCHED, not derived away. Applying the match changes the EQ, which
+   * invalidates the render — and deriving this straight from `render` made the
+   * whole reference panel vanish the instant the operator pressed the button,
+   * taking the bars and the note that explained what had just happened with
+   * it. It stays on screen, marked stale, until the next measurement.
+   */
+  const [subjectBalance, setSubjectBalance] = useState<SpectralBalance | null>(null);
+  useEffect(() => {
+    if (render) setSubjectBalance(spectralBalance([render.left, render.right], render.sampleRate));
+  }, [render]);
+  const balanceIsStale = subjectBalance !== null && render === null;
+
+  const distanceDb = useMemo(
+    () => (subjectBalance && reference ? balanceDistanceDb(subjectBalance, reference.balance) : Infinity),
+    [subjectBalance, reference]
+  );
+
+  const loadReference = useCallback(async (file: File) => {
+    setBusy("loading");
+    try {
+      const loaded = await loadAudioFile(file, () => client.current?.context ?? null);
+      const balance = spectralBalance([loaded.left, loaded.right], loaded.sampleRate);
+      if (!balance.db.some((d) => Number.isFinite(d))) {
+        throw new RangeError("ไฟล์อ้างอิงเงียบหรือสั้นเกินกว่าจะวัดสมดุลเสียงได้");
+      }
+      setReference({ name: loaded.name, balance });
+      setMatchNote(null);
+      toast(`อ้างอิง: ${loaded.name} — วัดสมดุลเสียง ${loaded.seconds.toFixed(0)} วินาทีแล้ว`, {
+        variant: "success",
+      });
+    } catch (err) {
+      toast(err instanceof Error ? err.message : `อ่าน ${file.name} ไม่สำเร็จ`, { variant: "error" });
+    } finally {
+      setBusy("");
+    }
+  }, []);
+
+  const applyMatch = useCallback(() => {
+    if (!subjectBalance || !reference) return;
+    const result = matchToReference(subjectBalance, reference.balance, {
+      bands: settings.eq,
+      sampleRate: engineRate,
+      strength: matchStrength,
+    });
+    update({ eq: result.bands });
+    setMatchNote(describeMatch(result, distanceDb));
+  }, [subjectBalance, reference, settings.eq, engineRate, matchStrength, distanceDb, update]);
 
   const setBand = useCallback(
     (index: number, band: EqBand) => {
@@ -580,6 +638,25 @@ export default function MasterPage() {
           {MASTER_PRESETS.find((p) => p.id === presetId)?.note}
         </p>
       )}
+
+      <section className="mt-5">
+        <ReferencePanel
+          subject={subjectBalance}
+          reference={reference}
+          distanceDb={distanceDb}
+          matchNote={matchNote}
+          stale={balanceIsStale}
+          busy={busy === "loading"}
+          onLoad={(file) => void loadReference(file)}
+          onClear={() => {
+            setReference(null);
+            setMatchNote(null);
+          }}
+          onApply={applyMatch}
+          strength={matchStrength}
+          onStrengthChange={setMatchStrength}
+        />
+      </section>
 
       <section className="mt-5">
         <MultibandPanel

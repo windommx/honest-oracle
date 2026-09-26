@@ -26,6 +26,7 @@ import {
   TONE_MID_HZ,
   TONE_MUD_HZ,
   TONE_TREBLE_HZ,
+  type EqChannel,
   type MasterSettings,
 } from "./types";
 
@@ -34,12 +35,27 @@ import {
  *  sections with these Qs give a maximally flat 24dB/oct. */
 const BUTTERWORTH_4TH = [0.5412, 1.3066];
 
+/** True when at least one band is not working on both channels, which is what
+ *  makes the mid/side path necessary. */
+export function usesMidSide(settings: MasterSettings): boolean {
+  return settings.eq.some((b) => b.enabled && b.gainDb !== 0 && b.channel !== "both");
+}
+
 /**
  * Every biquad the EQ section runs, in order.
  *
  * The single source of truth for both the sound and the picture.
+ *
+ * `channel` selects which bands apply: omitted, every band (the left/right
+ * path, used when no band is mid- or side-only). Given "mid" or "side", the
+ * cuts and the tone stack — which always apply to the whole signal — plus the
+ * bands assigned to that side of the image.
  */
-export function eqSections(settings: MasterSettings, sampleRate: number): BiquadCoefficients[] {
+export function eqSections(
+  settings: MasterSettings,
+  sampleRate: number,
+  channel?: Exclude<EqChannel, "both">
+): BiquadCoefficients[] {
   const out: BiquadCoefficients[] = [];
 
   if (settings.lowCut) {
@@ -54,6 +70,7 @@ export function eqSections(settings: MasterSettings, sampleRate: number): Biquad
     // biquad at unity still costs five multiplies a sample per channel, and a
     // master chain has plenty of those already.
     if (!band.enabled || band.gainDb === 0) continue;
+    if (channel && band.channel !== "both" && band.channel !== channel) continue;
     if (band.kind === "lowShelf") out.push(lowShelf(band.freq, band.gainDb, band.q, sampleRate));
     else if (band.kind === "highShelf") out.push(highShelf(band.freq, band.gainDb, band.q, sampleRate));
     else out.push(peaking(band.freq, band.gainDb, band.q, sampleRate));
@@ -98,17 +115,12 @@ export function responseCurve(
 
 /** Runs the sections. Rebuilt whenever the settings change, which on a master
  *  is a knob move rather than a per-sample event. */
-export class EqStage {
-  private readonly sampleRate: number;
+/** Holds one list of sections and runs it over a stereo pair. */
+class SectionChain {
   private filters: StereoBiquad[] = [];
   private sections: BiquadCoefficients[] = [];
 
-  constructor(sampleRate: number) {
-    this.sampleRate = sampleRate;
-  }
-
-  setSettings(settings: MasterSettings): void {
-    const next = eqSections(settings, this.sampleRate);
+  set(next: BiquadCoefficients[]): void {
     // Reuse the filter objects where the count is unchanged, so a knob move
     // swaps coefficients instead of throwing away the filter state — which
     // would click on every turn of the knob.
@@ -118,8 +130,7 @@ export class EqStage {
     this.sections = next;
   }
 
-  /** The exact list the audio is running through, for the display. */
-  get currentSections(): readonly BiquadCoefficients[] {
+  get current(): readonly BiquadCoefficients[] {
     return this.sections;
   }
 
@@ -127,15 +138,86 @@ export class EqStage {
     for (const f of this.filters) f.reset();
   }
 
-  tickLeft(x: number): number {
+  a(x: number): number {
     let y = x;
     for (let i = 0; i < this.filters.length; i++) y = this.filters[i].tickLeft(y);
     return y;
   }
 
-  tickRight(x: number): number {
+  b(x: number): number {
     let y = x;
     for (let i = 0; i < this.filters.length; i++) y = this.filters[i].tickRight(y);
     return y;
+  }
+}
+
+export class EqStage {
+  private readonly sampleRate: number;
+  /** Used when every band works on both channels: one chain per channel. */
+  private readonly stereo = new SectionChain();
+  /** Used when any band is mid- or side-only. */
+  private readonly mid = new SectionChain();
+  private readonly side = new SectionChain();
+  private midSide = false;
+
+  constructor(sampleRate: number) {
+    this.sampleRate = sampleRate;
+  }
+
+  setSettings(settings: MasterSettings): void {
+    // Only when a band actually asks for it. Running the mid/side path for a
+    // setting that does not need it would cost two more filter chains and
+    // change nothing — filtering the mid and side of a signal with the same
+    // curve is arithmetically identical to filtering left and right with it.
+    this.midSide = usesMidSide(settings);
+    if (this.midSide) {
+      this.mid.set(eqSections(settings, this.sampleRate, "mid"));
+      this.side.set(eqSections(settings, this.sampleRate, "side"));
+      this.stereo.set([]);
+    } else {
+      this.stereo.set(eqSections(settings, this.sampleRate));
+      this.mid.set([]);
+      this.side.set([]);
+    }
+  }
+
+  /** The list the LEFT channel runs through, for the display. In mid/side mode
+   *  there is no single such list, and the caller asks for the two by name. */
+  get currentSections(): readonly BiquadCoefficients[] {
+    return this.midSide ? this.mid.current : this.stereo.current;
+  }
+
+  get sideSections(): readonly BiquadCoefficients[] {
+    return this.midSide ? this.side.current : this.stereo.current;
+  }
+
+  get isMidSide(): boolean {
+    return this.midSide;
+  }
+
+  reset(): void {
+    this.stereo.reset();
+    this.mid.reset();
+    this.side.reset();
+  }
+
+  /** Written by process(). Fields rather than a tuple — this runs per sample. */
+  outLeft = 0;
+  outRight = 0;
+
+  process(left: number, right: number): void {
+    if (!this.midSide) {
+      this.outLeft = this.stereo.a(left);
+      this.outRight = this.stereo.b(right);
+      return;
+    }
+    const m = (left + right) * 0.5;
+    const s = (left - right) * 0.5;
+    // Each chain gets its own filter state through the a/b pair, so the mid
+    // chain's history never leaks into the side chain's.
+    const filteredMid = this.mid.a(m);
+    const filteredSide = this.side.b(s);
+    this.outLeft = filteredMid + filteredSide;
+    this.outRight = filteredMid - filteredSide;
   }
 }

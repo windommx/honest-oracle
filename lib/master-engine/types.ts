@@ -4,6 +4,18 @@
 export const CONSOLE_MODELS = ["clean", "tape", "tube", "transformer", "console"] as const;
 export type ConsoleModel = (typeof CONSOLE_MODELS)[number];
 
+/**
+ * Which part of the stereo image a band works on.
+ *
+ * "mid" is the centre — the kick, the bass, the lead vocal. "side" is what
+ * differs between the channels — the room, the widened guitars, the reverb.
+ * Being able to separate them is most of what mastering EQ is for: lifting
+ * 10kHz on the sides adds air without putting a lisp on the vocal, and
+ * cutting 200Hz on the mid alone tightens the bass without thinning the
+ * guitars around it.
+ */
+export type EqChannel = "both" | "mid" | "side";
+
 export interface EqBand {
   /** Centre (peaking) or corner (shelf) frequency in Hz. */
   freq: number;
@@ -12,6 +24,7 @@ export interface EqBand {
   /** Band 1 is a low shelf and band 5 a high shelf; the rest are bells. */
   kind: "lowShelf" | "peaking" | "highShelf";
   enabled: boolean;
+  channel: EqChannel;
 }
 
 export const EQ_BAND_COUNT = 5;
@@ -136,11 +149,11 @@ export const TONE_RANGE_DB = 6;
 
 export function defaultEqBands(): EqBand[] {
   return [
-    { freq: 32, gainDb: 0, q: 0.7, kind: "lowShelf", enabled: true },
-    { freq: 60, gainDb: 0, q: 1, kind: "peaking", enabled: true },
-    { freq: 220, gainDb: 0, q: 1, kind: "peaking", enabled: true },
-    { freq: 2500, gainDb: 0, q: 1, kind: "peaking", enabled: true },
-    { freq: 10000, gainDb: 0, q: 0.7, kind: "highShelf", enabled: true },
+    { freq: 32, gainDb: 0, q: 0.7, kind: "lowShelf", enabled: true, channel: "both" },
+    { freq: 60, gainDb: 0, q: 1, kind: "peaking", enabled: true, channel: "both" },
+    { freq: 220, gainDb: 0, q: 1, kind: "peaking", enabled: true, channel: "both" },
+    { freq: 2500, gainDb: 0, q: 1, kind: "peaking", enabled: true, channel: "both" },
+    { freq: 10000, gainDb: 0, q: 0.7, kind: "highShelf", enabled: true, channel: "both" },
   ];
 }
 

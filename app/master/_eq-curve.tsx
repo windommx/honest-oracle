@@ -1,9 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { eqSections, responseCurve } from "@/lib/master-engine/eq";
+import { eqSections, responseCurve, usesMidSide } from "@/lib/master-engine/eq";
 import { MAX_Q, MIN_Q } from "@/lib/master-engine/biquad";
-import type { EqBand, MasterSettings } from "@/lib/master-engine/types";
+import type { EqBand, EqChannel, MasterSettings } from "@/lib/master-engine/types";
 import { BG, GOLD, GOLD_BRIGHT, GROUP_COLOR, TEXT_FAINT } from "./_tokens";
 
 // ╔══════════════════════════════════════════════════════════════════╗
@@ -28,6 +28,13 @@ const SPECTRUM_FLOOR_DB = -96;
 const DPR_CAP = 2;
 
 const GRID_HZ = [50, 100, 200, 500, 1000, 2000, 5000, 10000];
+
+const CHANNEL_ORDER: EqChannel[] = ["both", "mid", "side"];
+const CHANNEL_LABEL: Record<EqChannel, string> = { both: "ทั้งคู่", mid: "กลาง", side: "ข้าง" };
+const CHANNEL_MARK: Record<EqChannel, string> = { both: "", mid: "M", side: "S" };
+
+const cycleChannel = (c: EqChannel): EqChannel =>
+  CHANNEL_ORDER[(CHANNEL_ORDER.indexOf(c) + 1) % CHANNEL_ORDER.length];
 const GRID_DB = [-12, -6, 0, 6, 12];
 
 const xOf = (hz: number, width: number) =>
@@ -59,9 +66,27 @@ export function EqCurve({
   const [width, setWidth] = useState(800);
   const [dragging, setDragging] = useState<number | null>(null);
 
+  // Two curves when any band is mid- or side-only, because there is then no
+  // single response — drawing one of them and calling it "the" curve would be
+  // the same lie the whole page is built to avoid.
+  const midSide = usesMidSide(settings);
   const curve = useMemo(
-    () => responseCurve(eqSections(settings, sampleRate), sampleRate, 300, MIN_HZ, MAX_HZ),
-    [settings, sampleRate]
+    () =>
+      responseCurve(
+        eqSections(settings, sampleRate, midSide ? "mid" : undefined),
+        sampleRate,
+        300,
+        MIN_HZ,
+        MAX_HZ
+      ),
+    [settings, sampleRate, midSide]
+  );
+  const sideCurve = useMemo(
+    () =>
+      midSide
+        ? responseCurve(eqSections(settings, sampleRate, "side"), sampleRate, 300, MIN_HZ, MAX_HZ)
+        : null,
+    [settings, sampleRate, midSide]
   );
 
   useEffect(() => {
@@ -155,9 +180,15 @@ export function EqCurve({
     };
   }, [dragging, drag]);
 
-  const path = curve
-    .map((p, i) => `${i === 0 ? "M" : "L"}${xOf(p.freq, width).toFixed(1)},${yOf(Math.max(MIN_DB, p.db), height).toFixed(1)}`)
-    .join(" ");
+  const pathOf = (points: { freq: number; db: number }[]) =>
+    points
+      .map(
+        (p, i) =>
+          `${i === 0 ? "M" : "L"}${xOf(p.freq, width).toFixed(1)},${yOf(Math.max(MIN_DB, p.db), height).toFixed(1)}`
+      )
+      .join(" ");
+  const path = pathOf(curve);
+  const sidePath = sideCurve ? pathOf(sideCurve) : null;
 
   const nudge = (index: number, e: React.KeyboardEvent) => {
     const band = settings.eq[index];
@@ -171,6 +202,7 @@ export function EqCurve({
     else if (e.key === "PageDown") next = { ...band, q: Math.max(MIN_Q, band.q / 1.3) };
     else if (e.key === "Home") next = { ...band, gainDb: 0 };
     else if (e.key === " " || e.key === "Enter") next = { ...band, enabled: !band.enabled };
+    else if (e.key === "m" || e.key === "M") next = { ...band, channel: cycleChannel(band.channel) };
     if (!next) return;
     e.preventDefault();
     onBandChange(index, next);
@@ -184,7 +216,7 @@ export function EqCurve({
         width={width}
         height={height}
         role="group"
-        aria-label="เส้นตอบสนอง EQ — ห้าจุดลากได้"
+        aria-label="เส้นตอบสนอง EQ — ห้าจุดลากได้ กด M สลับ กลาง/ข้าง"
       >
         {GRID_HZ.map((hz) => (
           <g key={hz}>
@@ -210,6 +242,19 @@ export function EqCurve({
         ))}
 
         <path d={path} fill="none" stroke={GOLD_BRIGHT} strokeWidth={2} />
+        {sidePath && (
+          <path d={sidePath} fill="none" stroke={GROUP_COLOR.stereo} strokeWidth={2} strokeDasharray="5 3" />
+        )}
+        {midSide && (
+          <g>
+            <text x={width - 6} y={14} fontSize={9} textAnchor="end" fill={GOLD_BRIGHT}>
+              เส้นทึบ = กลาง (mid)
+            </text>
+            <text x={width - 6} y={26} fontSize={9} textAnchor="end" fill={GROUP_COLOR.stereo}>
+              เส้นประ = ข้าง (side)
+            </text>
+          </g>
+        )}
 
         {settings.eq.map((band, i) => {
           const cx = xOf(band.freq, width);
@@ -234,6 +279,19 @@ export function EqCurve({
               <text x={cx} y={cy + 3} fontSize={9} textAnchor="middle" fill={BG} pointerEvents="none">
                 {i + 1}
               </text>
+              {band.channel !== "both" && (
+                <text
+                  x={cx + 11}
+                  y={cy - 8}
+                  fontSize={9}
+                  fontWeight="bold"
+                  textAnchor="middle"
+                  fill={GROUP_COLOR.stereo}
+                  pointerEvents="none"
+                >
+                  {CHANNEL_MARK[band.channel]}
+                </text>
+              )}
               {/* A real focusable control per node: dragging is not available
                   from a keyboard, and five bands that only a mouse can reach
                   is five controls that do not exist for some users. */}
@@ -248,7 +306,7 @@ export function EqCurve({
                 aria-valuemin={MIN_GAIN_DB}
                 aria-valuemax={RANGE_DB}
                 aria-valuenow={band.gainDb}
-                aria-valuetext={`${band.freq} เฮิรตซ์ ${band.gainDb > 0 ? "+" : ""}${band.gainDb} เดซิเบล Q ${band.q.toFixed(2)}${band.enabled ? "" : " (ปิดอยู่)"}`}
+                aria-valuetext={`${band.freq} เฮิรตซ์ ${band.gainDb > 0 ? "+" : ""}${band.gainDb} เดซิเบล Q ${band.q.toFixed(2)} ช่อง ${CHANNEL_LABEL[band.channel]}${band.enabled ? "" : " (ปิดอยู่)"}`}
                 onKeyDown={(e) => nudge(i, e)}
                 className="outline-none focus-visible:stroke-white"
                 strokeWidth={1}
