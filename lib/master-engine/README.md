@@ -90,6 +90,34 @@ measurement that triggered it, the threshold it crossed, and the control that
 fixes it. Its "ok" state says, in words, that nothing tripped a check — a test
 asserts that wording, so the claim cannot quietly get stronger.
 
+## Where the render runs
+
+`renderMaster()` is a pure function, so it runs anywhere. The page runs it in
+a Web Worker — `render-worker.ts`, bundled to `public/master-render-worker.js`
+by the same script that bundles the worklets, and checked against a fresh
+bundle by `render-worker.test.ts` so the shipped artifact cannot drift from
+the source.
+
+Three things follow from being off the main thread, none of which is about
+speed: the tab still paints and responds while a three-minute master renders
+(measured at 13ms to answer a DOM query during an 10s render, against a frozen
+tab before); the render reports where it is, because it already runs in chunks
+and a chunk boundary is provably invisible to the audio; and it can be
+cancelled, because terminating a worker is instant whereas a main-thread loop
+cannot be interrupted at all.
+
+A browser that cannot give us a worker falls back to running it here, and the
+page says so before the freeze rather than after it.
+
+## Receiving audio from SynthPro
+
+`lib/audio-io/handoff.ts` passes float buffers between products through
+IndexedDB, so a pattern rendered in SynthPro reaches MasterPro without a file:
+no 16-bit quantisation, no download folder, no second decode. Taking the
+handoff deletes it, which makes it a destructive read inside an effect —
+see `app/master/_use-handoff.ts` for why that is harder than it looks and what
+it cost to find out.
+
 ## Tests
 
 ```bash

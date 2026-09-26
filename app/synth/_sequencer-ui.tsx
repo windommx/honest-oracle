@@ -1,7 +1,7 @@
 "use client";
 
 import { memo, useEffect, useMemo, useState } from "react";
-import { Download, Eraser, Play, Square } from "lucide-react";
+import { Download, Eraser, Play, SlidersHorizontal, Square } from "lucide-react";
 import { DRUM_IDS, type DrumId } from "@/lib/synth-engine/drums";
 import type { SequencerPattern } from "@/lib/synth-engine/sequencer";
 import {
@@ -35,7 +35,11 @@ export interface SequencerPanelProps {
   onPreviewNote: (note: number) => void;
   onPreviewDrum: (id: DrumId) => void;
   onExport: () => void;
-  exporting: boolean;
+  /** Render this pattern and hand it straight to MasterPro, no file in
+   *  between. Null when there is nowhere to hand it to. */
+  onSendToMaster: (() => void) | null;
+  /** "" when idle; otherwise which of the two is running. */
+  exporting: "" | "file" | "master";
   /** False before the audio engine has been started. */
   canPlay: boolean;
 }
@@ -62,6 +66,7 @@ export const SequencerPanel = memo(function SequencerPanel({
   onPreviewNote,
   onPreviewDrum,
   onExport,
+  onSendToMaster,
   exporting,
   canPlay,
 }: SequencerPanelProps) {
@@ -146,12 +151,25 @@ export const SequencerPanel = memo(function SequencerPanel({
           <button
             type="button"
             onClick={onExport}
-            disabled={exporting || !patternHasContent(pattern)}
+            disabled={exporting !== "" || !patternHasContent(pattern)}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/10 text-xs text-gray-300 hover:border-gold/40 transition disabled:opacity-30"
           >
             <Download className="w-3.5 h-3.5" aria-hidden />
-            {exporting ? "กำลังเรนเดอร์…" : "บันทึก .wav"}
+            {exporting === "file" ? "กำลังเรนเดอร์…" : "บันทึก .wav"}
           </button>
+
+          {onSendToMaster && (
+            <button
+              type="button"
+              onClick={onSendToMaster}
+              disabled={exporting !== "" || !patternHasContent(pattern)}
+              title="เรนเดอร์แล้วส่งไป MasterPro โดยไม่ผ่านไฟล์ — ไม่มีการลดเหลือ 16 บิตระหว่างทาง"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/10 text-xs text-gray-300 hover:border-gold/40 transition disabled:opacity-30"
+            >
+              <SlidersHorizontal className="w-3.5 h-3.5" aria-hidden />
+              {exporting === "master" ? "กำลังส่ง…" : "ส่งไป MasterPro"}
+            </button>
+          )}
         </div>
       </div>
 

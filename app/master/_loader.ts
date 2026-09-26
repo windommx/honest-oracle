@@ -25,8 +25,10 @@ export interface LoadedAudio {
   right: Float32Array;
   sampleRate: number;
   seconds: number;
-  /** How it was read, so the UI can be specific about what it did. */
-  via: "wav" | "browser";
+  /** How it was read, so the UI can be specific about what it did.
+   *  "handoff" is audio another product rendered and passed over in memory —
+   *  no file, and therefore no decode and no quantisation on the way. */
+  via: "wav" | "browser" | "handoff";
   /** Source bit depth, when the file said. */
   bitDepth?: number;
   /** Non-finite samples the decoder replaced with silence. A float file can

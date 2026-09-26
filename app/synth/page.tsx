@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Play, Square, Volume2 } from "lucide-react";
 import { DEFAULT_PATCH, PRESETS } from "@/lib/synth-engine/presets";
 import { LFO_TARGETS, OSC_SOURCES, type LfoTarget, type OscSource, type SynthPatch } from "@/lib/synth-engine/types";
@@ -14,7 +15,7 @@ import { Spectrum } from "./_spectrum";
 import { PANELS } from "./_panels";
 import { SequencerPanel } from "./_sequencer-ui";
 import { demoPattern } from "./_pattern";
-import { exportPatternToWav } from "./_export";
+import { exportPatternToWav, sendPatternToMaster } from "./_export";
 import { SynthClient, audioWorkletSupported } from "./_engine-client";
 import { GROUP_COLOR, TEXT_FAINT } from "./_tokens";
 
@@ -53,7 +54,8 @@ export default function SynthPage() {
   const [status, setStatus] = useState({ activeVoices: 0, peak: 0, step: -1 });
   const [pattern, setPattern] = useState<SequencerPattern>(demoPattern);
   const [looping, setLooping] = useState(false);
-  const [exporting, setExporting] = useState(false);
+  const [exporting, setExporting] = useState<"" | "file" | "master">("");
+  const router = useRouter();
 
   const client = useRef<SynthClient | null>(null);
   if (client.current === null && typeof window !== "undefined") client.current = new SynthClient();
@@ -117,7 +119,7 @@ export default function SynthPage() {
   }, []);
 
   const exportWav = useCallback(() => {
-    setExporting(true);
+    setExporting("file");
     afterPaint(() => {
       try {
         const result = exportPatternToWav({
@@ -135,10 +137,46 @@ export default function SynthPage() {
       } catch (err) {
         toast(err instanceof Error ? err.message : "เรนเดอร์ไฟล์ไม่สำเร็จ", { variant: "error" });
       } finally {
-        setExporting(false);
+        setExporting("");
       }
     });
   }, [pattern, patch, presetId]);
+
+  /**
+   * Render and open MasterPro on the result, with no file in between.
+   *
+   * Only navigates once the buffers are actually stored. A push that happens
+   * regardless would land the operator on an empty MasterPro whenever the
+   * store refused — which is every private window, among other places — and
+   * they would have no way to tell that from the feature being broken.
+   */
+  const sendToMaster = useCallback(() => {
+    setExporting("master");
+    afterPaint(() => {
+      void sendPatternToMaster({
+        pattern,
+        patch,
+        presetName: presetId || "patch",
+        sampleRate: client.current?.sampleRate || 48000,
+      })
+        .then((result) => {
+          if (!result) {
+            toast("ส่งต่อไม่สำเร็จ — เบราว์เซอร์นี้เก็บข้อมูลชั่วคราวไม่ได้ ลองบันทึกเป็นไฟล์แทน", {
+              variant: "error",
+            });
+            return;
+          }
+          toast(`ส่ง ${result.name} ไป MasterPro แล้ว — ${result.seconds.toFixed(1)} วินาที`, {
+            variant: "success",
+          });
+          router.push("/master");
+        })
+        .catch((err: unknown) => {
+          toast(err instanceof Error ? err.message : "ส่งต่อไม่สำเร็จ", { variant: "error" });
+        })
+        .finally(() => setExporting(""));
+    });
+  }, [pattern, patch, presetId, router]);
 
   const update = useCallback((key: keyof SynthPatch, value: number | LfoTarget | OscSource) => {
     // Outside the updater. React double-invokes updaters in StrictMode and may
@@ -334,6 +372,7 @@ export default function SynthPage() {
           onPreviewNote={previewNote}
           onPreviewDrum={hitDrum}
           onExport={exportWav}
+          onSendToMaster={sendToMaster}
           exporting={exporting}
           canPlay={running}
         />
@@ -427,11 +466,12 @@ export default function SynthPage() {
           <Link href="/therapy/session" className="text-gold">
             MindBridge
           </Link>{" "}
-          ด้วย — และไฟล์ที่บันทึกจากที่นี่เอาไปต่อที่{" "}
+          ด้วย — และงานจากที่นี่ส่งต่อไป{" "}
           <Link href="/master" className="text-gold">
             MasterPro
           </Link>{" "}
-          ได้เลย
+          ได้ตรง ๆ ด้วยปุ่ม “ส่งไป MasterPro” ซึ่งส่งตัวเลขทศนิยมที่เรนเดอร์ได้ไปทั้งก้อน
+          ไม่ผ่านไฟล์ จึงไม่มีการลดเหลือ 16 บิตแล้วถอดรหัสกลับระหว่างทาง
         </p>
       </footer>
     </main>

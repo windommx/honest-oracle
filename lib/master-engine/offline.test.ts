@@ -1,5 +1,12 @@
 import { describe, it, expect } from "vitest";
-import { MAX_MASTER_SECONDS, renderMaster, waveformPeaks } from "./offline";
+import {
+  MAX_MASTER_SECONDS,
+  RENDER_CHUNK_FRAMES,
+  renderMaster,
+  waveformPeaks,
+  type RenderProgress,
+} from "./offline";
+import { MasterChain, applyFades } from "./chain";
 import { MASTER_PRESETS, getMasterPreset } from "./presets";
 import { DEFAULT_MASTER, NEUTRAL, dbToGain, defaultEqBands } from "./types";
 import { encodeWav, decodeWav } from "@/lib/audio-io/wav";
@@ -162,6 +169,100 @@ describe("renderMaster", () => {
     for (let i = 0; i < out.left.length; i += 101) {
       expect(decoded.channels[0][i]).toBeCloseTo(out.left[i], 6);
     }
+  });
+});
+
+describe("chunking the render is a reporting decision, not an audio one", () => {
+  // The render runs in chunks so it can report where it is. That is only
+  // sound if the chunk boundary is invisible — the chain is sample-serial
+  // and holds every filter's state internally, so it should be, but "should
+  // be" is exactly the claim that turns out false when one stage quietly
+  // does something per-call. So this runs the same input through one
+  // unbroken process() and demands the bytes match.
+  const settings = { ...DEFAULT_MASTER };
+  const input = music(4.2); // several chunks, and a partial one at the end
+
+  function unchunked(): { left: Float32Array; right: Float32Array } {
+    const chain = new MasterChain(SR, settings);
+    const latency = chain.latencySamples;
+    const frames = input.left.length;
+    const padded = frames + latency;
+    const inL = new Float32Array(padded);
+    const inR = new Float32Array(padded);
+    inL.set(input.left, 0);
+    inR.set(input.right, 0);
+    const wetL = new Float32Array(padded);
+    const wetR = new Float32Array(padded);
+    chain.process(inL, inR, wetL, wetR);
+    const left = wetL.slice(latency, latency + frames);
+    const right = wetR.slice(latency, latency + frames);
+    applyFades([left, right], SR, settings.fadeInSeconds, settings.fadeOutSeconds);
+    return { left, right };
+  }
+
+  it("spans more than one chunk, so the comparison means something", () => {
+    expect(input.left.length).toBeGreaterThan(RENDER_CHUNK_FRAMES * 2);
+    expect(input.left.length % RENDER_CHUNK_FRAMES).not.toBe(0);
+  });
+
+  it("is bit-identical to one unbroken pass", () => {
+    const chunked = renderMaster({ ...input, sampleRate: SR, settings });
+    const whole = unchunked();
+    // Not toBeCloseTo: a chunk boundary that disturbed any filter's state
+    // would show as a small, local difference, which rounding tolerance is
+    // exactly the wrong tool for finding.
+    expect(Array.from(chunked.left)).toEqual(Array.from(whole.left));
+    expect(Array.from(chunked.right)).toEqual(Array.from(whole.right));
+  });
+});
+
+describe("progress reporting", () => {
+  const collect = (seconds: number): RenderProgress[] => {
+    const events: RenderProgress[] = [];
+    renderMaster({
+      ...music(seconds),
+      sampleRate: SR,
+      settings: DEFAULT_MASTER,
+      onProgress: (p) => events.push(p),
+    });
+    return events;
+  };
+
+  it("reports both phases, render before measure", () => {
+    const phases = collect(3).map((p) => p.phase);
+    expect(phases).toContain("render");
+    expect(phases).toContain("measure");
+    expect(phases.lastIndexOf("render")).toBeLessThan(phases.indexOf("measure"));
+  });
+
+  it("never goes backwards and ends at one", () => {
+    const events = collect(4.2);
+    const renderPhase = events.filter((p) => p.phase === "render");
+    expect(renderPhase.length).toBeGreaterThan(2);
+    for (let i = 1; i < renderPhase.length; i++) {
+      expect(renderPhase[i].fraction).toBeGreaterThanOrEqual(renderPhase[i - 1].fraction);
+    }
+    expect(renderPhase[0].fraction).toBe(0);
+    expect(renderPhase[renderPhase.length - 1].fraction).toBe(1);
+    expect(events[events.length - 1]).toEqual({ phase: "measure", fraction: 1 });
+  });
+
+  it("stays inside 0..1 even for a file shorter than one chunk", () => {
+    for (const p of collect(0.2)) {
+      expect(p.fraction).toBeGreaterThanOrEqual(0);
+      expect(p.fraction).toBeLessThanOrEqual(1);
+    }
+  });
+
+  it("changes nothing about the result", () => {
+    const quiet = renderMaster({ ...music(1), sampleRate: SR, settings: DEFAULT_MASTER });
+    const loud = renderMaster({
+      ...music(1),
+      sampleRate: SR,
+      settings: DEFAULT_MASTER,
+      onProgress: () => {},
+    });
+    expect(Array.from(loud.left)).toEqual(Array.from(quiet.left));
   });
 });
 

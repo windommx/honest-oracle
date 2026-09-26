@@ -22,6 +22,29 @@ import { MAX_SAMPLE_RATE, MIN_SAMPLE_RATE } from "@/lib/audio-io/wav";
  *  is 1.4GB of Float32 and would take the tab down. */
 export const MAX_MASTER_SECONDS = 1800;
 
+/** How far along a render is, and at which of its two phases.
+ *
+ *  Two phases rather than one bar, because they are not the same kind of
+ *  work and pretending otherwise would be a lie told by the progress bar:
+ *  the chain runs sample by sample and its position IS known, while the
+ *  audit is three whole-file passes with no useful interior position. The UI
+ *  shows a real bar for the first and says what it is doing for the second. */
+export interface RenderProgress {
+  phase: "render" | "measure";
+  /** 0..1 within the phase. The measure phase only ever reports 0 and 1. */
+  fraction: number;
+}
+
+/** Frames per chunk of the render loop.
+ *
+ *  Only a reporting granularity: the chain is sample-serial and holds all its
+ *  state internally, so chunking cannot change the output — which
+ *  offline.test.ts asserts byte for byte rather than assuming. 2^16 frames is
+ *  ~1.4s of audio at 48kHz, so a three-minute track reports about 130 times:
+ *  often enough to look continuous, rarely enough that the postMessage
+ *  traffic is nothing next to the DSP. */
+export const RENDER_CHUNK_FRAMES = 1 << 16;
+
 export interface MasterRenderOptions {
   left: Float32Array;
   right: Float32Array;
@@ -29,6 +52,10 @@ export interface MasterRenderOptions {
   settings: MasterSettings;
   /** The delivery loudness the audit compares against. */
   targetLufs?: number;
+  /** Called as the work advances. Synchronous — on the main thread it runs
+   *  inside the same blocking call and can only feed a worker's postMessage
+   *  or a test; it is the worker that makes it visible. */
+  onProgress?: (progress: RenderProgress) => void;
 }
 
 export interface MasterRender {
@@ -79,7 +106,20 @@ export function renderMaster(options: MasterRenderOptions): MasterRender {
 
   const wetL = new Float32Array(padded);
   const wetR = new Float32Array(padded);
-  chain.process(inL, inR, wetL, wetR);
+  const report = options.onProgress;
+  report?.({ phase: "render", fraction: 0 });
+  for (let at = 0; at < padded; at += RENDER_CHUNK_FRAMES) {
+    const to = Math.min(padded, at + RENDER_CHUNK_FRAMES);
+    // Views, not copies: subarray shares the buffer, so this is the same
+    // memory the single call would have written.
+    chain.process(
+      inL.subarray(at, to),
+      inR.subarray(at, to),
+      wetL.subarray(at, to),
+      wetR.subarray(at, to)
+    );
+    report?.({ phase: "render", fraction: to / padded });
+  }
 
   // Drop the latency from the front: what is left lines up sample for sample
   // with the input.
@@ -93,7 +133,9 @@ export function renderMaster(options: MasterRenderOptions): MasterRender {
   // peak pass evaluates four interpolations per sample per channel. Computing
   // them again here doubled the cost and the peak memory of every measure and
   // every export, on the main thread, inside one animation frame.
+  report?.({ phase: "measure", fraction: 0 });
   const audit = auditMaster([outL, outR], sampleRate, { targetLufs: options.targetLufs ?? -14 });
+  report?.({ phase: "measure", fraction: 1 });
   return {
     left: outL,
     right: outR,

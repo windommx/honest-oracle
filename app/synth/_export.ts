@@ -17,6 +17,7 @@
 
 import { renderPattern } from "@/lib/synth-engine/offline";
 import { encodeWav, wavFilename } from "@/lib/synth-engine/wav";
+import { putHandoff } from "@/lib/audio-io/handoff";
 import { downloadBlob } from "../rush/_utils";
 import type { SequencerPattern } from "@/lib/synth-engine/sequencer";
 import type { SynthPatch } from "@/lib/synth-engine/types";
@@ -57,4 +58,46 @@ export function exportPatternToWav(request: ExportRequest): ExportResult {
   downloadBlob(filename, bytes, "audio/wav");
 
   return { filename, seconds: render.seconds, peak: render.peak, byteLength: bytes.byteLength };
+}
+
+/** What the receiving page calls this, and shows as its provenance. */
+export const HANDOFF_SOURCE = "SynthPro";
+
+export interface HandoffResult {
+  name: string;
+  seconds: number;
+  peak: number;
+}
+
+/**
+ * Render the same pattern and hand it to MasterPro directly.
+ *
+ * Same renderPattern, deliberately: the thing mastered is the thing the
+ * export writes, not a second rendering of it that could differ. What it
+ * skips is only the file — no 16-bit quantisation, no download folder, no
+ * second decode. MasterPro receives the float buffers this produced.
+ *
+ * Resolves to null when the handoff could not be stored, so the caller knows
+ * not to navigate. Sending the operator to an empty page is worse than
+ * telling them it did not work.
+ */
+export async function sendPatternToMaster(request: ExportRequest): Promise<HandoffResult | null> {
+  const render = renderPattern({
+    pattern: request.pattern,
+    patch: request.patch,
+    sampleRate: request.sampleRate,
+    repeats: request.repeats ?? EXPORT_REPEATS,
+  });
+
+  const name = wavFilename(
+    `synthpro-${request.presetName || "patch"}-${Math.round(request.pattern.bpm)}bpm`
+  );
+  const stored = await putHandoff({
+    from: HANDOFF_SOURCE,
+    name,
+    left: render.left,
+    right: render.right,
+    sampleRate: render.sampleRate,
+  });
+  return stored ? { name, seconds: render.seconds, peak: render.peak } : null;
 }

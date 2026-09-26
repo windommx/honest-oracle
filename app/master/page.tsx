@@ -12,22 +12,26 @@ import {
 } from "@/lib/master-engine/types";
 import { MASTER_PRESETS } from "@/lib/master-engine/presets";
 import { QUICK_FIXES, quickFix } from "@/lib/master-engine/quickfix";
-import { renderMaster, type MasterRender } from "@/lib/master-engine/offline";
+import { type MasterRender, type RenderProgress } from "@/lib/master-engine/offline";
 import { balanceDistanceDb, spectralBalance, type SpectralBalance } from "@/lib/master-engine/spectrum";
 import { DEFAULT_STRENGTH, describeMatch, matchToReference } from "@/lib/master-engine/match";
 import { LOUDNESS_TARGETS, type LoudnessTargetId } from "@/lib/master-engine/loudness";
 import { encodeWav, wavFilename } from "@/lib/audio-io/wav";
 import { DITHER_LABEL, DITHER_MODES, ditherFloorDbfs, type DitherMode } from "@/lib/audio-io/dither";
+
 import { Knob } from "@/components/knob";
 import { toast } from "../rush/_toast";
 import { downloadBlob } from "../rush/_utils";
 import { ACCEPTED_FILES, UnsupportedAudioError, loadAudioFile, type LoadedAudio } from "./_loader";
 import { MasterClient, audioWorkletSupported } from "./_engine-client";
+import { useIncomingHandoff } from "./_use-handoff";
+import { isCancelled, startRender, workerAvailable, type RenderJob } from "./_render-client";
 import { Waveform } from "./_waveform";
 import { EqCurve } from "./_eq-curve";
 import { MultibandPanel } from "./_multiband";
 import { ReferencePanel } from "./_reference";
 import { Meters } from "./_meters";
+import { RenderProgressBar } from "./_render-progress";
 import { AuditFace } from "./_audit-face";
 import { ALL_KNOBS, PANELS } from "./_panels";
 import { GROUP_COLOR, TEXT_FAINT } from "./_tokens";
@@ -41,21 +45,6 @@ const CONSOLE_LABEL: Record<ConsoleModel, string> = {
 };
 
 const EXPORT_DEPTHS = [16, 24] as const;
-
-/**
- * Run `work` after the browser has painted.
- *
- * requestAnimationFrame callbacks run BEFORE style, layout and paint, so a
- * long synchronous job started inside one blocks the very frame that was
- * meant to show the loading state — the page freezes with the button still
- * reading its idle label, which is the symptom the rAF was added to prevent.
- * A timeout scheduled from inside the frame lands after the paint. Not a
- * nested rAF: those are suspended in a background tab, so switching away
- * mid-export would leave the button stuck disabled.
- */
-function afterPaint(work: () => void): void {
-  requestAnimationFrame(() => setTimeout(work, 0));
-}
 
 export default function MasterPage() {
   const [settings, setSettings] = useState<MasterSettings>(DEFAULT_MASTER);
@@ -87,6 +76,12 @@ export default function MasterPage() {
   /** TPDF by default: rounding a master to an integer depth without dither
    *  leaves an error correlated with the signal, heard as grain on fades. */
   const [dither, setDither] = useState<DitherMode>("tpdf");
+  const [progress, setProgress] = useState<RenderProgress | null>(null);
+  /** The render in flight, so a second press can abandon the first rather
+   *  than queueing behind it. */
+  const job = useRef<RenderJob | null>(null);
+  const [offThread, setOffThread] = useState(true);
+  useEffect(() => setOffThread(workerAvailable()), []);
 
   const client = useRef<MasterClient | null>(null);
   if (client.current === null && typeof window !== "undefined") client.current = new MasterClient();
@@ -186,34 +181,46 @@ export default function MasterPage() {
     client.current?.setSettings(next);
   }, []);
 
+  /** Take a decoded buffer as the thing being mastered, whatever produced it.
+   *  Shared by the file picker and the handoff from SynthPro, so the two
+   *  cannot drift — the audio thread, the transport and the meters all have
+   *  to be told about a new source, and forgetting one of them in one of the
+   *  two paths is the obvious failure this prevents. */
+  const adopt = useCallback(
+    async (loaded: LoadedAudio) => {
+      setAudio(loaded);
+      setRender(null);
+      setPlaying(false);
+      const c = client.current;
+      c?.setPlaying(false);
+
+      // Reopen the context at the file's own rate when it is already running
+      // at a different one. That is what keeps the audition and the export
+      // the same computation: the chain is built at the context rate, so a
+      // mismatch means the EQ curve on screen belongs to different filters
+      // than the ones the export will use.
+      if (c?.running && c.sampleRate !== loaded.sampleRate) {
+        await c.stop();
+        setRunning(false);
+        const state = await c.start(settings, loaded.sampleRate);
+        setRunning(state === "running");
+        if (state === "running") {
+          c.setLoop(looping);
+          c.setMastered(mastered);
+        }
+      }
+      c?.load(loaded.left, loaded.right, loaded.sampleRate);
+      setStatus((s) => ({ ...s, frame: 0, frames: loaded.left.length, rateRatio: 1 }));
+    },
+    [settings, looping, mastered]
+  );
+
   const openFile = useCallback(
     async (file: File) => {
       setBusy("loading");
       try {
         const loaded = await loadAudioFile(file, () => client.current?.context ?? null);
-        setAudio(loaded);
-        setRender(null);
-        setPlaying(false);
-        const c = client.current;
-        c?.setPlaying(false);
-
-        // Reopen the context at the file's own rate when it is already running
-        // at a different one. That is what keeps the audition and the export
-        // the same computation: the chain is built at the context rate, so a
-        // mismatch means the EQ curve on screen belongs to different filters
-        // than the ones the export will use.
-        if (c?.running && c.sampleRate !== loaded.sampleRate) {
-          await c.stop();
-          setRunning(false);
-          const state = await c.start(settings, loaded.sampleRate);
-          setRunning(state === "running");
-          if (state === "running") {
-            c.setLoop(looping);
-            c.setMastered(mastered);
-          }
-        }
-        c?.load(loaded.left, loaded.right, loaded.sampleRate);
-        setStatus((s) => ({ ...s, frame: 0, frames: loaded.left.length, rateRatio: 1 }));
+        await adopt(loaded);
 
         const repaired = loaded.repairedSamples
           ? ` · ซ่อมแซมพลิ้น ${loaded.repairedSamples} แซมเปิลที่ไม่ใช่ตัวเลข`
@@ -235,7 +242,37 @@ export default function MasterPage() {
         setBusy("");
       }
     },
-    [settings, looping, mastered]
+    [adopt]
+  );
+
+  /**
+   * Audio another product rendered, waiting in memory.
+   *
+   * `adopt` goes through a ref rather than being listed as a dependency: it
+   * changes whenever the settings do, and the handoff is read once.
+   * useIncomingHandoff owns the once-ness, and documents at length why that
+   * is harder than it looks.
+   */
+  const adoptRef = useRef(adopt);
+  adoptRef.current = adopt;
+  useIncomingHandoff(
+    useCallback((waiting) => {
+      void adoptRef.current({
+        name: waiting.name,
+        left: waiting.left,
+        right: waiting.right,
+        sampleRate: waiting.sampleRate,
+        seconds: waiting.left.length / waiting.sampleRate,
+        via: "handoff",
+        repairedSamples: 0,
+      });
+      toast(
+        `รับงานจาก ${waiting.from} — ${waiting.name} · ` +
+          `${(waiting.left.length / waiting.sampleRate).toFixed(1)} วินาที · ` +
+          `${waiting.sampleRate / 1000} kHz · ส่งเป็นตัวเลขทศนิยมตรง ๆ ไม่ผ่านไฟล์`,
+        { variant: "success" }
+      );
+    }, [])
   );
 
   const togglePlay = useCallback(async () => {
@@ -246,42 +283,74 @@ export default function MasterPage() {
     setPlaying(next);
   }, [audio, playing, ensureEngine]);
 
-  const measure = useCallback(() => {
-    if (!audio) return;
-    setBusy("rendering");
-    afterPaint(() => {
-      try {
-        const result = renderMaster({
-          left: audio.left,
-          right: audio.right,
-          sampleRate: audio.sampleRate,
-          settings,
-          targetLufs: target.lufs,
-        });
-        setRender(result);
-      } catch (err) {
-        toast(err instanceof Error ? err.message : "ตรวจไม่สำเร็จ", { variant: "error" });
-      } finally {
-        setBusy("");
-      }
-    });
-  }, [audio, settings, target.lufs]);
+  /**
+   * One render, off the main thread, with the result handed to `then`.
+   *
+   * Every press supersedes the one before it: an operator who nudges a knob
+   * and presses again should not wait out the render they just made obsolete,
+   * and two renders racing to call setRender is how a stale measurement ends
+   * up on screen under fresh settings.
+   */
+  const run = useCallback(
+    (what: "rendering" | "exporting", then: (result: MasterRender) => void) => {
+      if (!audio) return;
+      job.current?.cancel();
+      setBusy(what);
+      setProgress({ phase: "render", fraction: 0 });
+      const started = startRender({
+        left: audio.left,
+        right: audio.right,
+        sampleRate: audio.sampleRate,
+        settings,
+        targetLufs: target.lufs,
+        onProgress: setProgress,
+      });
+      job.current = started;
+      started.result.then(
+        (result) => {
+          if (job.current !== started) return;
+          job.current = null;
+          setBusy("");
+          setProgress(null);
+          setRender(result);
+          then(result);
+        },
+        (err) => {
+          if (job.current !== started) return;
+          job.current = null;
+          setBusy("");
+          setProgress(null);
+          // A cancellation is something the operator asked for, not a failure
+          // to report back to them.
+          if (isCancelled(err)) return;
+          toast(
+            err instanceof Error ? err.message : what === "exporting" ? "บันทึกไม่สำเร็จ" : "ตรวจไม่สำเร็จ",
+            { variant: "error" }
+          );
+        }
+      );
+    },
+    [audio, settings, target.lufs]
+  );
 
-  const exportFile = useCallback(() => {
-    if (!audio) return;
-    setBusy("exporting");
-    afterPaint(() => {
-      try {
-        const result = renderMaster({
-          left: audio.left,
-          right: audio.right,
-          sampleRate: audio.sampleRate,
-          settings,
-          targetLufs: target.lufs,
-        });
-        setRender(result);
+  // A render outliving the page would keep a worker and a copy of the file
+  // alive with nobody to receive either.
+  useEffect(() => () => job.current?.cancel(), []);
+
+  const cancelRender = useCallback(() => {
+    job.current?.cancel();
+    job.current = null;
+    setBusy("");
+    setProgress(null);
+  }, []);
+
+  const measure = useCallback(() => run("rendering", () => {}), [run]);
+
+  const exportFile = useCallback(
+    () =>
+      run("exporting", (result) => {
         const bytes = encodeWav([result.left, result.right], result.sampleRate, depth, dither);
-        const base = audio.name.replace(/\.[^.]+$/, "");
+        const base = audio!.name.replace(/\.[^.]+$/, "");
         const filename = wavFilename(`${base}-mastered-${presetId || "custom"}`);
         downloadBlob(filename, bytes, "audio/wav");
         const floor = ditherFloorDbfs(dither, depth);
@@ -292,13 +361,9 @@ export default function MasterPage() {
             ` · เรนเดอร์ ${(result.elapsedMs / 1000).toFixed(1)} วินาที`,
           { variant: "success" }
         );
-      } catch (err) {
-        toast(err instanceof Error ? err.message : "บันทึกไม่สำเร็จ", { variant: "error" });
-      } finally {
-        setBusy("");
-      }
-    });
-  }, [audio, settings, depth, dither, presetId, target.lufs]);
+      }),
+    [run, audio, depth, dither, presetId]
+  );
 
   /**
    * The balance of the MASTERED result, so the comparison is against what
@@ -483,6 +548,9 @@ export default function MasterPage() {
               </select>
             </div>
           </div>
+          {busy === "exporting" && (
+            <RenderProgressBar progress={progress} offThread={offThread} onCancel={cancelRender} />
+          )}
         </div>
       </header>
 
@@ -502,7 +570,11 @@ export default function MasterPage() {
             <span className="text-[0.65rem] tabular-nums" style={{ color: TEXT_FAINT }}>
               {audio.sampleRate / 1000} kHz
               {audio.bitDepth ? ` · ${audio.bitDepth} บิต` : ""} ·{" "}
-              {audio.via === "wav" ? "อ่านเองจาก WAV" : "เบราว์เซอร์ถอดรหัสให้"}
+              {audio.via === "wav"
+                ? "อ่านเองจาก WAV"
+                : audio.via === "handoff"
+                  ? "รับตรงจาก SynthPro"
+                  : "เบราว์เซอร์ถอดรหัสให้"}
             </span>
           )}
         </div>
@@ -708,6 +780,9 @@ export default function MasterPage() {
               {busy === "rendering" ? "กำลังวัด…" : "ตรวจ"}
             </button>
           </div>
+          {busy === "rendering" && (
+            <RenderProgressBar progress={progress} offThread={offThread} onCancel={cancelRender} />
+          )}
           <AuditFace audit={render?.audit ?? null} />
           {render && (
             <p className="mt-3 text-[0.65rem]" style={{ color: TEXT_FAINT }}>
@@ -729,6 +804,11 @@ export default function MasterPage() {
         <p className="mt-1.5">
           ลิมิเตอร์รับประกันยอด <em>ต่อแซมเปิล</em> เท่านั้น ยอดคลื่นจริงระหว่างแซมเปิลวัดแยกและรายงานในส่วนตรวจผล —
           ไม่ได้เคลมว่าจัดการให้แล้ว
+        </p>
+        <p className="mt-1.5">
+          การเรนเดอร์ทำใน Web Worker คนละเธรดกับหน้าจอ หน้าจึงไม่ค้างระหว่างตรวจหรือบันทึก และยกเลิกกลางคันได้
+          — เบราว์เซอร์ที่ใช้ Worker ไม่ได้จะถอยไปเรนเดอร์บนเธรดหลักและบอกไว้ตรงแถบความคืบหน้าว่าหน้าจะค้าง
+          ไม่ใช่เงียบแล้วค้างเฉย ๆ
         </p>
       </footer>
     </main>

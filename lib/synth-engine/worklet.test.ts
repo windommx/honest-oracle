@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { readFileSync, existsSync } from "node:fs";
-import { OUTFILE, buildWorklet } from "../../scripts/build-worklet";
+import { OUTFILE, buildBundle } from "../../scripts/build-worklet";
 
 describe("the worklet artifact cannot drift from its source", () => {
   it("public/synth-worklet.js exists", () => {
@@ -15,7 +15,7 @@ describe("the worklet artifact cannot drift from its source", () => {
     // mean the browser plays one engine while the suite verifies another, which
     // is exactly the drift every other guard in this repo exists to prevent.
     const committed = readFileSync(OUTFILE, "utf8");
-    const fresh = await buildWorklet(false);
+    const fresh = await buildBundle(false);
     expect(committed, "public/synth-worklet.js is stale — run `npm run build:worklet`").toBe(fresh);
   }, 30_000);
 

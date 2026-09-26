@@ -1,13 +1,13 @@
 import { describe, it, expect } from "vitest";
 import { readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
-import { WORKLETS, buildWorklet } from "../../scripts/build-worklet";
+import { BUNDLES, buildBundle } from "../../scripts/build-worklet";
 import { loadWorkletFile } from "@/lib/synth-engine/worklet-harness";
 import { peak, rms } from "@/lib/synth-engine/analysis";
 import { DEFAULT_MASTER, NEUTRAL, defaultEqBands } from "./types";
 import type { MasterStatus } from "./worklet-processor";
 
-const TARGET = WORKLETS.find((w) => w.outfile.includes("master-worklet"))!;
+const TARGET = BUNDLES.find((b) => b.outfile.includes("master-worklet"))!;
 const OUTFILE = join(process.cwd(), TARGET.outfile);
 const SR = 48000;
 
@@ -31,7 +31,7 @@ describe("the master worklet artifact cannot drift from its source", () => {
 
   it("matches a fresh bundle of lib/master-engine", async () => {
     const committed = readFileSync(OUTFILE, "utf8");
-    const fresh = await buildWorklet(false, TARGET);
+    const fresh = await buildBundle(false, TARGET);
     expect(committed, "public/master-worklet.js is stale — run `npm run build:worklet`").toBe(fresh);
   }, 30_000);
 
