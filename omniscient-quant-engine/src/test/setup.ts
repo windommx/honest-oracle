@@ -8,6 +8,7 @@
 // ============================================================
 
 import { afterAll } from "bun:test"
+import { GlobalRegistrator } from "@happy-dom/global-registrator"
 import { mkdtempSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import path from "node:path"
@@ -24,3 +25,28 @@ Object.assign(process.env, { NODE_ENV: "test" })
 process.env.OQE_LLM_PROVIDER = "none"
 // hook ใน preload = global afterAll (หลัง test ทุกไฟล์จบ)
 afterAll(() => rmSync(dir, { recursive: true, force: true }))
+
+// ---------- DOM สำหรับ component test (React Testing Library) ----------
+// happy-dom แทนที่ global ของ Node หลายตัว (fetch/Request/Response/Headers/AbortSignal) ด้วยของตัวเอง —
+// test ของชั้น LLM/security ต้องใช้ของ Node จริง จึงเก็บไว้ก่อนแล้วคืนค่าหลังลงทะเบียน (document/window ยังเป็นของ happy-dom)
+const nodeGlobals = {
+  fetch: globalThis.fetch,
+  Request: globalThis.Request,
+  Response: globalThis.Response,
+  Headers: globalThis.Headers,
+  FormData: globalThis.FormData,
+  AbortController: globalThis.AbortController,
+  AbortSignal: globalThis.AbortSignal,
+  URL: globalThis.URL,
+  URLSearchParams: globalThis.URLSearchParams,
+  TextEncoder: globalThis.TextEncoder,
+  TextDecoder: globalThis.TextDecoder,
+  setTimeout: globalThis.setTimeout,
+  clearTimeout: globalThis.clearTimeout,
+  setInterval: globalThis.setInterval,
+  clearInterval: globalThis.clearInterval,
+  queueMicrotask: globalThis.queueMicrotask,
+  structuredClone: globalThis.structuredClone,
+}
+GlobalRegistrator.register({ url: "http://localhost:3000", width: 1440, height: 900 })
+Object.assign(globalThis, nodeGlobals)
