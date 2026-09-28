@@ -4,7 +4,7 @@
 
 > **ข้อมูลทั้งหมดเป็น synthetic เพื่อการสาธิต** (22 หุ้น × 750 วันทำการ จาก generator ที่ seed ตายตัว) — ไม่ใช่ราคาตลาดจริง ทุกหน้าติดป้าย "ไม่ใช่คำแนะนำการลงทุน" · ตัวเลขทุกตัวพิสูจน์ว่า "ท่อถูก" ไม่ใช่ "edge มีจริง"
 
-โฟลเดอร์นี้คือ **การบูรณะซอร์สต้นฉบับแบบ 1:1** จาก workspace ของ z.ai (8 commit, 27–28 ก.ย. 2569, HEAD `a3d421b`) — โค้ดแอป, schema, DB snapshot และ `worklog.md` ครบทุกบรรทัด สิ่งที่ไม่ได้นำมาคือของที่ผูกกับ container เดิม (`.zscripts/`, `Caddyfile`, `.env` ที่ชี้ path ใน container, `examples/`, `tool-results/`) และสิ่งที่เพิ่มในรอบบูรณะ (Task 15 ใน `worklog.md`) คือเกตคุณภาพ ชั้นความปลอดภัย ชั้น LLM ที่ซื่อสัตย์ test suite และเอกสาร — สรุปสถาปัตยกรรม/ไทม์ไลน์ทั้งหมด: **[`docs/PROJECT-SUMMARY.md`](docs/PROJECT-SUMMARY.md)**
+โฟลเดอร์นี้คือ **การบูรณะซอร์สต้นฉบับแบบ 1:1** จาก workspace ของ z.ai (8 commit, 27–28 ก.ย. 2569, HEAD `a3d421b`) — โค้ดแอป, schema, DB snapshot และ `worklog.md` ครบทุกบรรทัด สิ่งที่ไม่ได้นำมาคือของที่ผูกกับ container เดิม (`.zscripts/`, `Caddyfile`, `.env` ที่ชี้ path ใน container, `examples/`, `tool-results/`) และสิ่งที่เพิ่มในรอบบูรณะ (Task 15 ใน `worklog.md`) คือเกตคุณภาพ ชั้นความปลอดภัย ชั้น LLM ที่ซื่อสัตย์ test suite และเอกสาร — สรุปสถาปัตยกรรม/ไทม์ไลน์ทั้งหมด: **[`docs/PROJECT-SUMMARY.md`](docs/PROJECT-SUMMARY.md)** · ประเมิน 360 องศา 10 มิติ พร้อมหลักฐานและเส้นทางสู่ 10/10: **[`docs/scorecard.md`](docs/scorecard.md)**
 
 ## Stack
 
@@ -92,7 +92,7 @@ CI ของแอปนี้อยู่ที่ `.github/workflows/omniscien
 | `src/proxy.ts` · `src/lib/security/` | ด่านสิทธิ์ทุกคำขอ: โหมด local/auth, Basic/Bearer, CSRF, rate limit |
 | `src/test/` · `deploy/smoke.ts` · `deploy/docker-entrypoint.sh` | DB ชั่วคราวของ bun test · API smoke ของ standalone · entrypoint ของ image |
 | `prisma/schema.prisma` | 7 model: Stock, Price, Fundamental (PIT announceDate), FundFlow, JournalEntry, AuditReport, SynthesisReport |
-| `docs/PROJECT-SUMMARY.md` · `worklog.md` | สรุปสถาปัตยกรรม/ไทม์ไลน์ · บันทึกงานทุก task ของ agent ที่สร้างระบบ (Task 0–14) + รอบบูรณะ (Task 15) |
+| `docs/PROJECT-SUMMARY.md` · `docs/scorecard.md` · `worklog.md` | สรุปสถาปัตยกรรม/ไทม์ไลน์ · ประเมิน 360 องศา · บันทึกงานทุก task ของ agent ที่สร้างระบบ (Task 0–14) + รอบบูรณะ (Task 15) + ประเมิน (Task 16) |
 
 ## หลักการที่ระบบยึด
 

@@ -348,3 +348,16 @@ Stage Summary:
 - แอปอยู่ที่ `omniscient-quant-engine/` ใน repo honest-oracle เป็นแอปอิสระ (tsconfig/toolchain/CI ของตัวเอง) — เอนจิน/UI/prompt/schema ของต้นฉบับไม่ถูกแตะ นอกจาก Apex ที่เคารพคำสั่ง Risk MDX แล้ว
 - "เสร็จ" ในความหมายของ repo นี้: `bun run verify` เขียว = CI เขียว, ใช้งานนอก container z.ai ได้ (LLM เลือกได้/ปิดได้อย่างซื่อสัตย์), เปิดให้เครื่องอื่นใช้ได้อย่างปลอดภัย, มีเอกสารครบ
 - ข้อจำกัดที่รู้ตัว: ข้อมูล synthetic ล้วน · LLM ยังไม่ได้ทดสอบกับผู้ให้บริการจริง · Docker image ยังไม่ได้ build · board/decision ยังแสดง sizePct ก่อน MDX (Apex คือขนาดสุดท้าย)
+---
+Task ID: 16 (ประเมิน 360 องศา)
+Agent: Claude Code (session claude/funny-hopper-2z0g9h)
+Task: "ประเมิน 360 องศา" — ให้คะแนน 10 มิติแบบเดียวกับ thai-momentum-platform/docs/scorecard.md พร้อมหลักฐานที่ตรวจได้และเส้นทางสู่ 10/10
+
+Work Log:
+- รวบรวมหลักฐาน 3 ชั้น: (1) เกต/CI/smoke/audit จาก Task 15 (2) รีวิวโค้ดและ worklog: เกณฑ์ gates ฝังในโค้ด ไม่มี prereg/hash, worklog Task 1-4 บันทึกการจูน threshold และเลือก seed ให้ regime ปลายทางดีบนข้อมูลชุดเดียวกับที่รายงานผล, ESLint ปิดกฎสำคัญ, component 28 ไฟล์ไม่มี test, ไม่มี error.tsx, งานหนัก synchronous (3) ตรวจในเบราว์เซอร์จริงครั้งแรกของแอปนี้: Playwright + axe-core บน build โปรดักชัน (ไม่ตั้งค่า LLM) ทั้ง 12 มุมมอง desktop 1440 + 3 มุมมอง mobile 390
+- ผล browser: overflow แนวนอน 0 ทุกมุมมอง · page error 0 · console warning 0 · console error 3 = log 503 ของปุ่ม AI ที่ตั้งใจ · ปุ่มไม่มีชื่อ 0 · ปฏิสัมพันธ์ 6/6 ผ่าน (⌘K→SCB, แชท/หลอมรวม/audit ตอบ 503 ภาษาไทย, journal seed ผ่าน CSRF, แถว Risk MDX ใน Apex) · โหลดหน้าแรกเย็น 4.6 s · axe พบ violation ทุกมุมมอง: color-contrast 14–68 โหนด/มุมมอง, nested-interactive 22 (watchlist), scrollable-region-focusable 1–2, aria-* ผิด 2–6, aria-hidden-focus 1, เป้าสัมผัส < 24px 13 จุด (ticker) — เป็น backlog แก้ได้ในโค้ด
+- เขียน docs/scorecard.md: คะแนนก่อน/หลัง Task 15 ต่อมิติ (เฉลี่ย 4.0 → 5.3), มุมมอง 7 ฝ่าย, ตารางหลักฐานทั้งหมด, นิยาม 10/10, ขั้นตอนนอกโค้ด M0–M5, backlog โค้ด 11 ข้อเรียงตามผลต่อคะแนน, เช็คลิสต์กฎหมาย, ธุรกิจ · ลิงก์จาก README
+
+Stage Summary:
+- คะแนนหลังบูรณะ: เครื่องมือ 8.5 · วิจัย 6 · หลักฐานจริง 2 · ข้อมูล 3 · วิศวกรรม 7.5 · ความปลอดภัย 7 · UX/UI 7.5 · ปฏิบัติการ 5 · กฎหมาย 4 · ธุรกิจ 2 → เฉลี่ย 5.3 (ก่อน 4.0)
+- สิ่งที่ดึงคะแนนมากที่สุดแก้ด้วยโค้ดไม่ได้ (ข้อมูลจริง เวลา ผู้ใช้) · สิ่งที่แก้ด้วยโค้ดได้ก่อนเลย: ล็อกกติกา + ป้าย "จูนบนข้อมูลจำลอง", robustness ข้าม seed, adapter ข้อมูลจริง, worker thread, component/E2E test + เปิดกฎ lint, /terms, backup/log, Docker verify, axe fixes
