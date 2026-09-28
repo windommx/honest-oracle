@@ -70,3 +70,9 @@ Webhook endpoint:
 
 แพลตฟอร์มโมเมนตัมหุ้นไทย (Jev × Momentum System) บูรณะจากซอร์สต้นฉบับแบบ 1:1 เป็นแอป Next.js 16 อิสระ มี `package.json` และฐานข้อมูล SQLite ของตัวเอง
 ไม่ผูกกับแอปหลักในโฟลเดอร์ราก (root `tsconfig.json` exclude โฟลเดอร์นี้ไว้) — วิธีรันและเอกสารทั้งหมดอยู่ที่ `thai-momentum-platform/README.md`
+
+
+## Omniscient Quant Engine (แอปแยกใน `omniscient-quant-engine/`)
+
+แพลตฟอร์ม quant หลายมุมมองครบวงจร (7 Layers: PIT data → Multi-View factors → Copula dependence → walk-forward → CVaR sizing → 5-Gate execution → Meta-Risk/Apex) บูรณะแบบ 1:1 จาก workspace ต้นฉบับ (z.ai, 27–28 ก.ย. 2569) เป็นแอป Next.js 16 อิสระ มี `package.json`, ฐานข้อมูล SQLite และ CI ของตัวเอง (`.github/workflows/omniscient-quant-engine.yml`)
+ข้อมูลตลาดเป็น **synthetic เพื่อการสาธิต** ทั้งหมด ไม่ใช่คำแนะนำการลงทุน — ไม่ผูกกับแอปหลักในโฟลเดอร์ราก (root `tsconfig.json` exclude โฟลเดอร์นี้ไว้) วิธีรัน ความปลอดภัย การตั้งค่า LLM และเอกสารทั้งหมดอยู่ที่ `omniscient-quant-engine/README.md`

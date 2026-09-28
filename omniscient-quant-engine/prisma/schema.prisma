@@ -1,0 +1,126 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────────────────────
+// L0 DATA & PROVENANCE — point-in-time market panel
+// ─────────────────────────────────────────────────────────────
+
+model Stock {
+  id       String       @id @default(cuid())
+  symbol   String       @unique
+  name     String
+  sector   String
+  theme    String
+  beta     Float
+  prices   Price[]
+  fundamentals Fundamental[]
+  flows    FundFlow[]
+}
+
+model Price {
+  id      String  @id @default(cuid())
+  stockId String
+  stock   Stock   @relation(fields: [stockId], references: [id], onDelete: Cascade)
+  date    DateTime
+  open    Float
+  high    Float
+  low     Float
+  close   Float
+  volume  Float
+  @@unique([stockId, date])
+  @@index([date])
+}
+
+model Fundamental {
+  id            String   @id @default(cuid())
+  stockId       String
+  stock         Stock    @relation(fields: [stockId], references: [id], onDelete: Cascade)
+  announceDate  DateTime // point-in-time key: วันที่เผยแพร่จริง (กัน look-ahead bias)
+  period        String   // เช่น "2025-Q1"
+  pe            Float
+  pb            Float
+  roe           Float
+  de            Float
+  revenueGrowth Float
+  netProfitM    Float
+  @@unique([stockId, announceDate])
+}
+
+model FundFlow {
+  id       String  @id @default(cuid())
+  stockId  String
+  stock    Stock   @relation(fields: [stockId], references: [id], onDelete: Cascade)
+  date     DateTime
+  netFlowM Float   // ล้านบาท (net buy +)
+  @@unique([stockId, date])
+}
+
+// ─────────────────────────────────────────────────────────────
+// L6 EXECUTION & MONITORING — trade journal (ground truth)
+// ─────────────────────────────────────────────────────────────
+
+model JournalEntry {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  runDate   DateTime
+  symbol    String
+  signal    String // ENTRY_PULLBACK | ENTRY_MOMENTUM | NO_TRADE
+  gates     Json // {g1,g2,g3,g4,g5} snapshot
+  price     Float
+  entryLow  Float?
+  entryHigh Float?
+  trigger   Float?
+  stopStruct Float?
+  stopHard  Float?
+  sizePct   Float?
+  cvar      Float?
+  probUp    Float?
+  status    String   @default("PLANNED") // PLANNED | EXECUTED | CLOSED | SKIPPED
+  pnlPct    Float?
+  notes     String?
+  @@index([symbol])
+  @@index([status])
+}
+
+model AuditReport {
+  id                 String   @id @default(cuid())
+  createdAt          DateTime @default(now())
+  summary            String
+  rootCause          String
+  recommendedAction  String
+  riskAdjustment     Float
+  confidence         Float
+  gateAttributionRef Json?
+  raw                Json
+}
+
+// ─────────────────────────────────────────────────────────────
+// หลอมรวม — convergent-evidence synthesis reports (append-only)
+// ─────────────────────────────────────────────────────────────
+
+model SynthesisReport {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  symbol    String
+  runDate   String // วันที่ตลาดของ panel (YYYY-MM-DD)
+  price     Float
+  score     Int // คะแนนบรรจบ −100…+100
+  agreement Float // 0–1
+  nLong     Int
+  nShort    Int
+  nNeutral  Int
+  verdict   String // STRONG_LONG | LEAN_LONG | MIXED | LEAN_SHORT | STRONG_SHORT
+  regime    String
+  strands   Json // EvidenceStrand[] snapshot
+  dossier   Json // full dossier (kill switches, roadmap, attribution …)
+  narrative Json // LLM เรียบเรียง: headline/summary/convergence/risks
+  @@index([symbol, createdAt])
+  @@index([createdAt])
+}

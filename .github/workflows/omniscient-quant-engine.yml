@@ -1,0 +1,77 @@
+name: omniscient-quant-engine
+
+# แอป omniscient-quant-engine/ (Next.js 16 + Bun + Prisma/SQLite) — root `npm run verify` (web-tests.yml) ไม่ครอบคลุมโฟลเดอร์นี้
+# จึงมี gate ของตัวเอง: ทุกคำสั่งรันได้เหมือนกันบนเครื่อง (cd omniscient-quant-engine && bun run verify) — CI เขียวหมายถึงสิ่งเดียวกับรันเองเขียว
+on:
+  push:
+    paths:
+      - 'omniscient-quant-engine/**'
+      - '.github/workflows/omniscient-quant-engine.yml'
+  pull_request:
+    paths:
+      - 'omniscient-quant-engine/**'
+      - '.github/workflows/omniscient-quant-engine.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: omniscient-quant-engine-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NEXT_TELEMETRY_DISABLED: '1'
+  PRISMA_HIDE_UPDATE_MESSAGE: '1'
+
+defaults:
+  run:
+    working-directory: omniscient-quant-engine
+
+jobs:
+  web:
+    runs-on: ubuntu-latest
+    name: verify (typecheck · lint · test · build · API smoke · audit)
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: '1.3.11'
+      # server โปรดักชัน (.next/standalone/server.js) รันด้วย node 22 — เหมือน Dockerfile และ `bun run start`
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Cache bun dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: bun-${{ runner.os }}-${{ hashFiles('omniscient-quant-engine/bun.lock') }}
+          restore-keys: |
+            bun-${{ runner.os }}-
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      - name: Prisma generate
+        run: bunx prisma generate
+      - name: Typecheck
+        run: bun run typecheck
+      - name: Lint
+        run: bun run lint
+      # preload src/test/setup.ts สร้าง SQLite ชั่วคราวจาก prisma/schema.prisma — ไม่แตะ db/custom.db
+      - name: Unit + engine invariant tests
+        run: bun run test
+      - name: Ops tests (smoke checker)
+        run: bun run test:ops
+      - name: Build (standalone)
+        run: bun run build
+        env:
+          # build ไม่ควรต่อ DB (route เป็น dynamic ทั้งหมด) — ไฟล์ชั่วคราวทำให้ล้มชัดเจนถ้ามีหน้าใดเรียก DB ตอน build
+          DATABASE_URL: file:${{ runner.temp }}/build.db
+      # เปิด server จริงบนสำเนาของ db/custom.db → ทุก route: status ที่คาด + JSON เคร่งครัด (ไม่มี NaN/Infinity)
+      # + POST ที่เรียก LLM โดยไม่ตั้งค่าต้องตอบ 503 (ไม่ใช่ 500)
+      - name: API smoke test (standalone server, demo DB)
+        run: bun run smoke
+      # ทางที่สอง: DB เปล่า → API แรก seed ข้อมูลจำลองเอง
+      - name: API smoke test (standalone server, empty DB → auto-seed)
+        run: bun deploy/smoke.ts --db empty --port 3211
+      - name: Dependency audit (fail on critical)
+        run: bun audit --audit-level=critical

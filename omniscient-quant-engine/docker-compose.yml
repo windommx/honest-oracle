@@ -1,0 +1,53 @@
+# ============================================================
+# Omniscient Quant Engine — docker compose (เว็บ + volume ข้อมูล)
+#
+#   cp .env.example .env          # แล้วตั้ง OQE_AUTH_PASSWORD (บังคับ — ดูด้านล่าง) และ LLM ถ้าต้องการปุ่ม AI
+#   docker compose up -d --build
+#   curl -s http://127.0.0.1:3000/api/health
+#
+# app     เว็บ (node server.js) ฟังที่ 127.0.0.1:3000 ของเครื่อง host — เปิดสู่ภายนอกผ่าน reverse proxy ที่มี TLS เท่านั้น
+# volume  oqe-data → /data (app.db) — ครั้งแรก seed จาก demo DB ใน image (ไม่แตะ db/custom.db ของ repo)
+#
+# โหมด auth บังคับ: คำขอจาก browser บน host มาถึง container ผ่าน docker bridge (X-Forwarded-For = 172.x ไม่ใช่ loopback)
+# โหมด local (ไม่มีรหัสผ่าน) จึงตอบ 403 ทุกหน้า — compose จะไม่ยอมเริ่มถ้าไม่ได้ตั้ง OQE_AUTH_PASSWORD
+# ============================================================
+
+name: omniscient-quant-engine
+
+services:
+  app:
+    build:
+      context: .
+      target: runtime
+      args:
+        OQE_GIT_SHA: ${OQE_GIT_SHA:-}
+    image: omniscient-quant-engine:${OQE_IMAGE_TAG:-latest}
+    env_file:
+      - path: .env
+        required: true
+    environment:
+      DATABASE_URL: file:/data/app.db
+      TZ: Asia/Bangkok
+      PORT: "3000"
+      HOSTNAME: 0.0.0.0
+      OQE_AUTH_PASSWORD: ${OQE_AUTH_PASSWORD:?ตั้ง OQE_AUTH_PASSWORD ใน .env ก่อน (รหัสสุ่มยาว ≥ 12 ตัวอักษร)}
+    ports:
+      # เฉพาะ loopback ของ host — เปิดสู่ LAN/อินเทอร์เน็ตผ่าน reverse proxy (Caddy/nginx) ที่ทำ TLS แล้วตั้ง
+      # OQE_ALLOWED_ORIGINS=https://โดเมน และ OQE_HSTS=1
+      - "127.0.0.1:${OQE_HOST_PORT:-3000}:3000"
+    volumes:
+      - oqe-data:/data
+    restart: unless-stopped
+    stop_grace_period: 20s
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.status===200?0:1),()=>process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      start_period: 40s
+      retries: 3
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "5" }
+
+volumes:
+  oqe-data:
