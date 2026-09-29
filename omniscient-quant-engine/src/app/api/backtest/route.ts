@@ -1,12 +1,15 @@
 import { NextResponse } from 'next/server';
+import { serverError } from '@/lib/http/responses';
 import { getBacktest } from '@/lib/quant/engine/api';
+import { rulesStamp } from '@/lib/quant/engine/rules-registry';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
-    const bt = await getBacktest();
+    const [bt, rules] = await Promise.all([getBacktest(), rulesStamp()]);
     return NextResponse.json({
+      rules,
       metrics: bt.metrics,
       equity: bt.equity,
       attribution: bt.attribution,
@@ -17,7 +20,6 @@ export async function GET() {
         .reverse(),
     });
   } catch (e) {
-    console.error('backtest error', e);
-    return NextResponse.json({ error: 'backtest failed', detail: String(e) }, { status: 500 });
+    return serverError('backtest failed', e);
   }
 }

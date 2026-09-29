@@ -10,7 +10,8 @@ import { NextResponse, type NextRequest } from "next/server"
 import { BASIC_CHALLENGE } from "@/lib/security/auth"
 import { getSecurityConfig } from "@/lib/security/config"
 import { localOnlyHtml, unauthorizedHtml } from "@/lib/security/messages"
-import { isHttpsRequest } from "@/lib/security/net"
+import { sharedSecurityEvents } from "@/lib/security/events"
+import { clientKey, isHttpsRequest } from "@/lib/security/net"
 import { decideAccess } from "@/lib/security/policy"
 import { sharedLimiter } from "@/lib/security/rate-limit"
 
@@ -29,6 +30,10 @@ export function proxy(request: NextRequest) {
   if (decision.kind === "allow") {
     res = NextResponse.next()
   } else {
+    // 401 ครั้งแรกที่ยังไม่ส่งรหัส = ขั้นตอนปกติของ browser (challenge) ไม่ใช่เหตุการณ์ — log เฉพาะที่ส่งค่าผิด/ถูกจำกัด/ถูกกัน
+    if (decision.code !== "unauthenticated") {
+      sharedSecurityEvents().deny({ code: decision.code, status: decision.status, method: request.method, path: pathname, client: clientKey(request.headers) })
+    }
     const headers: Record<string, string> = { "Cache-Control": "no-store" }
     if (decision.retryAfterSec !== undefined) headers["Retry-After"] = String(decision.retryAfterSec)
     if (decision.challenge) headers["WWW-Authenticate"] = BASIC_CHALLENGE

@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server';
+import { serverError } from '@/lib/http/responses';
 import { db } from '@/lib/db';
 import { getBacktest, getProbs, getBoard } from '@/lib/quant/engine/api';
 import { loadMarketState, ensureSeeded } from '@/lib/quant/engine/panel';
 import { buildMetaRiskDossier } from '@/lib/quant/engine/meta-risk';
+import { rulesStamp } from '@/lib/quant/engine/rules-registry';
 
 export const dynamic = 'force-dynamic';
 
@@ -33,9 +35,8 @@ export async function GET(
       probs[sym] ?? 0.5,
     );
     if (!dossier) return NextResponse.json({ error: 'symbol not found' }, { status: 404 });
-    return NextResponse.json({ dossier });
+    return NextResponse.json({ dossier, rules: await rulesStamp() });
   } catch (e) {
-    console.error('meta-risk GET error', e);
-    return NextResponse.json({ error: 'meta-risk failed', detail: String(e) }, { status: 500 });
+    return serverError('meta-risk failed', e);
   }
 }

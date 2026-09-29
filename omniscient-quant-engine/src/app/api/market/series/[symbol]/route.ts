@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { serverError } from '@/lib/http/responses';
 import { getSeries } from '@/lib/quant/engine/terminal';
 
 export const dynamic = 'force-dynamic';
@@ -17,7 +18,6 @@ export async function GET(
     if (!data) return NextResponse.json({ error: 'symbol not found' }, { status: 404 });
     return NextResponse.json(data);
   } catch (e) {
-    console.error('series error', e);
-    return NextResponse.json({ error: 'series failed', detail: String(e) }, { status: 500 });
+    return serverError('series failed', e);
   }
 }

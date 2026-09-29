@@ -1,9 +1,11 @@
 import { NextResponse } from 'next/server';
+import { serverError } from '@/lib/http/responses';
 import { db } from '@/lib/db';
 import { ensureSeeded, loadMarketState } from '@/lib/quant/engine/panel';
 import { getBacktest, getBoard, getProbs } from '@/lib/quant/engine/api';
 import { buildApexDossier } from '@/lib/quant/engine/apex';
 import { buildMetaRiskDossier } from '@/lib/quant/engine/meta-risk';
+import { rulesStamp } from '@/lib/quant/engine/rules-registry';
 
 export const dynamic = 'force-dynamic';
 
@@ -36,9 +38,8 @@ export async function GET(
     );
     const dossier = buildApexDossier(state, sym, bt, probs[sym] ?? 0.5, { riskMdx: meta?.riskMdx ?? null });
     if (!dossier) return NextResponse.json({ error: 'symbol not found' }, { status: 404 });
-    return NextResponse.json({ dossier });
+    return NextResponse.json({ dossier, rules: await rulesStamp() });
   } catch (e) {
-    console.error('apex GET error', e);
-    return NextResponse.json({ error: 'apex failed', detail: String(e) }, { status: 500 });
+    return serverError('apex failed', e);
   }
 }

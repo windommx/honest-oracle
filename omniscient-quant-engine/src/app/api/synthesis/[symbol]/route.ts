@@ -1,9 +1,12 @@
 import { NextResponse } from 'next/server';
+import { serverError } from '@/lib/http/responses';
+import { logAction } from '@/lib/audit';
 import { chatCompletion, extractJsonObject, llmErrorResponse } from '@/lib/llm';
 import { db } from '@/lib/db';
 import { getFactorModel, getBacktest } from '@/lib/quant/engine/api';
 import { loadMarketState, ensureSeeded } from '@/lib/quant/engine/panel';
 import { buildSynthesisDossier, renderReport, type SynthesisDossier } from '@/lib/quant/engine/synthesis';
+import { rulesStamp } from '@/lib/quant/engine/rules-registry';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 120;
@@ -43,15 +46,14 @@ export async function GET(
         verdict: true, regime: true,
       },
     });
-    return NextResponse.json({ dossier, history });
+    return NextResponse.json({ dossier, history, rules: await rulesStamp() });
   } catch (e) {
-    console.error('synthesis GET error', e);
-    return NextResponse.json({ error: 'synthesis failed', detail: String(e) }, { status: 500 });
+    return serverError('synthesis failed', e);
   }
 }
 
 export async function POST(
-  _req: Request,
+  req: Request,
   { params }: { params: Promise<{ symbol: string }> },
 ) {
   try {
@@ -94,7 +96,10 @@ export async function POST(
       content = out.text;
     } catch (e) {
       const r = llmErrorResponse(e);
-      if (r) return NextResponse.json(r.body, { status: r.status, headers: { 'Cache-Control': 'no-store' } });
+      if (r) {
+        void logAction(req, 'synthesis.run', r.status, { symbol: dossier.symbol, error: r.body.error });
+        return NextResponse.json(r.body, { status: r.status, headers: { 'Cache-Control': 'no-store' } });
+      }
       throw e;
     }
     let narrative: Narrative;
@@ -133,6 +138,7 @@ export async function POST(
       },
     });
 
+    void logAction(req, 'synthesis.run', 200, { symbol: dossier.symbol, savedId: saved.id, score: dossier.score });
     return NextResponse.json({
       dossier,
       narrative,
@@ -140,7 +146,6 @@ export async function POST(
       savedId: saved.id,
     });
   } catch (e) {
-    console.error('synthesis POST error', e);
-    return NextResponse.json({ error: 'synthesis generate failed', detail: String(e) }, { status: 500 });
+    return serverError('synthesis generate failed', e);
   }
 }

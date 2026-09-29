@@ -14,8 +14,10 @@ export type AuthMode = "auth" | "local"
 
 export interface SecurityConfig {
   mode: AuthMode
-  /** รหัสผ่าน (สิทธิ์เต็ม) — null = โหมด local */
+  /** รหัสผ่านผู้ดูแล (สิทธิ์เต็ม) — null = โหมด local */
   password: string | null
+  /** รหัสผ่านผู้ชม (อ่านอย่างเดียว: GET/HEAD) — ใช้ได้เฉพาะเมื่อมี password */
+  viewerPassword: string | null
   /** Bearer token สำหรับสคริปต์/cron (เฉพาะ /api/*) */
   apiToken: string | null
   /** OQE_ALLOW_REMOTE_NOAUTH=1 — เปิดให้เครื่องอื่นเข้าได้โดยไม่มีรหัสผ่าน (ไม่ปลอดภัย) */
@@ -63,11 +65,20 @@ export function parseOriginList(raw: string | undefined, warnings: string[] = []
 export function readSecurityConfig(env: Env = process.env): SecurityConfig {
   const warnings: string[] = []
   const password = clean(env.OQE_AUTH_PASSWORD)
+  let viewerPassword = clean(env.OQE_VIEWER_PASSWORD)
   const apiToken = clean(env.OQE_API_TOKEN)
   const allowRemoteNoAuth = truthy(env.OQE_ALLOW_REMOTE_NOAUTH)
   const allowedOrigins = parseOriginList(env.OQE_ALLOWED_ORIGINS, warnings)
   const hsts = truthy(env.OQE_HSTS)
 
+  if (!password && viewerPassword) {
+    warnings.push("ตั้ง OQE_VIEWER_PASSWORD โดยไม่มี OQE_AUTH_PASSWORD — ละเว้นรหัสผู้ชม ระบบยังอยู่โหมด local (เฉพาะเครื่องนี้)")
+    viewerPassword = null
+  }
+  if (password && viewerPassword && password === viewerPassword) {
+    warnings.push("OQE_VIEWER_PASSWORD ซ้ำกับ OQE_AUTH_PASSWORD — ปิดบทบาทผู้ชม (ทุกคนที่รู้รหัสจะได้สิทธิ์ผู้ดูแล)")
+    viewerPassword = null
+  }
   if (password && password.length < MIN_PASSWORD) {
     warnings.push(`OQE_AUTH_PASSWORD สั้นกว่า ${MIN_PASSWORD} ตัวอักษร — ควรใช้รหัสยาวแบบสุ่ม`)
   }
@@ -84,6 +95,7 @@ export function readSecurityConfig(env: Env = process.env): SecurityConfig {
   return {
     mode: password ? "auth" : "local",
     password,
+    viewerPassword,
     apiToken,
     allowRemoteNoAuth,
     allowedOrigins,
@@ -94,7 +106,7 @@ export function readSecurityConfig(env: Env = process.env): SecurityConfig {
 
 // cache ต่อ "ลายนิ้วมือ" ของ env ที่เกี่ยวข้อง — proxy เรียกทุก request
 // เก็บบน globalThis: proxy กับ route handler เป็น bundle แยกกันแต่อยู่ process เดียว → เตือนครั้งเดียวต่อค่า
-const ENV_KEYS = ["OQE_AUTH_PASSWORD", "OQE_API_TOKEN", "OQE_ALLOW_REMOTE_NOAUTH", "OQE_ALLOWED_ORIGINS", "OQE_HSTS"] as const
+const ENV_KEYS = ["OQE_AUTH_PASSWORD", "OQE_VIEWER_PASSWORD", "OQE_API_TOKEN", "OQE_ALLOW_REMOTE_NOAUTH", "OQE_ALLOWED_ORIGINS", "OQE_HSTS"] as const
 
 const holder = globalThis as unknown as {
   __oqeSecurityConfig?: { fp: string; cfg: SecurityConfig }

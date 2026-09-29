@@ -5,6 +5,8 @@ import { checkCsrf, isAllowedOrigin } from "./csrf"
 import { clientKey, isLoopbackIp, isLoopbackRequest, splitHostPort } from "./net"
 import { decideAccess } from "./policy"
 import { matchRateRule, TokenBucketLimiter } from "./rate-limit"
+import { requestActor } from "./request-actor"
+import { SecurityEventLog } from "./events"
 
 const H = (h: Record<string, string> = {}) => new Headers(h)
 const LOCAL = { host: "localhost:3000" }
@@ -120,6 +122,7 @@ describe("security/rate-limit", () => {
     expect(matchRateRule("GET", "/api/apex/TSE")?.name).toBe("heavy-report")
     expect(matchRateRule("GET", "/api/board")).toBeNull()
     expect(matchRateRule("GET", "/api/synthesis/TSE")?.name).toBe("heavy-report")
+    expect(matchRateRule("GET", "/api/research/robustness")?.name).toBe("heavy-report")
   })
 })
 
@@ -175,5 +178,65 @@ describe("security/policy — decideAccess", () => {
     for (let i = 0; i < 5; i++) last = decideAccess({ method: "POST", pathname: "/api/audit", headers: H({ ...LOCAL, origin: "http://localhost:3000" }), config: localCfg, limiter, now: 5000 })
     expect(last).toMatchObject({ kind: "deny", status: 429, code: "rate_limited" })
     expect((last as { retryAfterSec?: number }).retryAfterSec).toBeGreaterThan(0)
+  })
+})
+
+describe("security/viewer role — อ่านอย่างเดียว", () => {
+  const cfg = readSecurityConfig({ OQE_AUTH_PASSWORD: "correct-horse-battery", OQE_VIEWER_PASSWORD: "viewer-only-password", OQE_API_TOKEN: "token-token-token-token-1" })
+  const viewer = { ...REMOTE, authorization: `Basic ${b64("guest:viewer-only-password")}` }
+  const admin = { ...REMOTE, authorization: `Basic ${b64("u:correct-horse-battery")}` }
+  const json = { origin: "http://192.168.1.20:3000", "content-type": "application/json", "content-length": "2" }
+
+  test("config: ผู้ชมต้องมีรหัสผู้ดูแลก่อน · รหัสซ้ำกัน → ปิดบทบาทผู้ชมพร้อมคำเตือน", () => {
+    expect(cfg.viewerPassword).toBe("viewer-only-password")
+    const noAdmin = readSecurityConfig({ OQE_VIEWER_PASSWORD: "viewer-only-password" })
+    expect(noAdmin.mode).toBe("local")
+    expect(noAdmin.viewerPassword).toBeNull()
+    expect(noAdmin.warnings.some((w) => w.includes("OQE_VIEWER_PASSWORD"))).toBe(true)
+    const same = readSecurityConfig({ OQE_AUTH_PASSWORD: "correct-horse-battery", OQE_VIEWER_PASSWORD: "correct-horse-battery" })
+    expect(same.viewerPassword).toBeNull()
+    expect(same.warnings.some((w) => w.includes("ปิดบทบาทผู้ชม"))).toBe(true)
+  })
+
+  test("ผู้ชม: GET หน้าเว็บ/API ผ่าน (role viewer) · POST/PATCH/DELETE → 403 read_only · ผู้ดูแลแก้ไขได้", () => {
+    expect(decideAccess({ method: "GET", pathname: "/", headers: H(viewer), config: cfg })).toMatchObject({ kind: "allow", principal: { role: "viewer", via: "basic" } })
+    expect(decideAccess({ method: "GET", pathname: "/api/board", headers: H(viewer), config: cfg })).toMatchObject({ kind: "allow", principal: { role: "viewer" } })
+    for (const method of ["POST", "PATCH", "DELETE", "PUT"]) {
+      const d = decideAccess({ method, pathname: "/api/journal", headers: H({ ...viewer, ...json }), config: cfg })
+      expect(d).toMatchObject({ kind: "deny", status: 403, code: "read_only", api: true })
+    }
+    // เรียก LLM (ใช้โควตา) ก็เป็น POST → ผู้ชมทำไม่ได้
+    expect(decideAccess({ method: "POST", pathname: "/api/audit", headers: H({ ...viewer, ...json }), config: cfg })).toMatchObject({ kind: "deny", code: "read_only" })
+    expect(decideAccess({ method: "POST", pathname: "/api/journal", headers: H({ ...admin, ...json }), config: cfg })).toMatchObject({ kind: "allow", principal: { role: "admin", via: "basic" } })
+    // รหัสผิดยังเป็น 401 ตามเดิม (ไม่ตกไปเป็นผู้ชม)
+    expect(decideAccess({ method: "GET", pathname: "/", headers: H({ ...REMOTE, authorization: `Basic ${b64("u:nope")}` }), config: cfg })).toMatchObject({ kind: "deny", status: 401 })
+  })
+
+  test("requestActor: บอก 'ทาง' ที่เข้ามาให้ ActionLog — token / basic / viewer / local / open / unknown", () => {
+    const req = (headers: Record<string, string> = {}) => new Request("http://x.example/api/journal", { headers })
+    expect(requestActor(req({ authorization: "Bearer token-token-token-token-1" }), cfg)).toBe("token")
+    expect(requestActor(req({ authorization: admin.authorization }), cfg)).toBe("basic")
+    expect(requestActor(req({ authorization: viewer.authorization }), cfg)).toBe("viewer")
+    expect(requestActor(req({ authorization: "Bearer wrong" }), cfg)).toBe("unknown")
+    expect(requestActor(req(), cfg)).toBe("unknown")
+    expect(requestActor(req(), readSecurityConfig({}))).toBe("local")
+    expect(requestActor(req(), readSecurityConfig({ OQE_ALLOW_REMOTE_NOAUTH: "1" }))).toBe("open")
+  })
+})
+
+describe("security/events — log การปฏิเสธแบบไม่ท่วม", () => {
+  test("1 บรรทัด/นาที ต่อ (code, client) · นับที่ถูกกดทิ้ง · client/code ต่างกันแยกกัน · ไม่มี header/query ใน log", () => {
+    const lines: Array<Record<string, unknown>> = []
+    const ev = new SecurityEventLog((msg, fields) => lines.push({ msg, ...fields }))
+    const base = { code: "bad_password", status: 401, method: "GET", path: "/api/board", client: "203.0.113.9" }
+    expect(ev.deny(base, 0)).toBe(true)
+    for (let i = 1; i <= 9; i++) expect(ev.deny(base, i * 1000)).toBe(false)
+    expect(ev.deny({ ...base, client: "198.51.100.1" }, 5000)).toBe(true)
+    expect(ev.deny({ ...base, code: "rate_limited", status: 429 }, 5000)).toBe(true)
+    expect(ev.deny(base, 61_000)).toBe(true)
+    expect(lines).toHaveLength(4)
+    expect(lines[0]).toEqual({ msg: "security.deny", ...base, suppressedSinceLast: 0 })
+    expect(lines[3].suppressedSinceLast).toBe(9)
+    expect(Object.keys(lines[0]).sort()).toEqual(["client", "code", "method", "msg", "path", "status", "suppressedSinceLast"])
   })
 })

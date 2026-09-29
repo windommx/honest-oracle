@@ -1,4 +1,7 @@
 import { NextResponse } from 'next/server';
+import { serverError } from '@/lib/http/responses';
+import { logAction } from '@/lib/audit';
+import { rulesStamp } from '@/lib/quant/engine/rules-registry';
 import { chatCompletion, extractJsonObject, llmErrorResponse } from '@/lib/llm';
 import { db } from '@/lib/db';
 import { getBoard, getBacktest } from '@/lib/quant/engine/api';
@@ -14,15 +17,21 @@ export async function GET() {
     });
     return NextResponse.json({ reports });
   } catch (e) {
-    console.error('audit GET error', e);
-    return NextResponse.json({ error: 'audit fetch failed', detail: String(e) }, { status: 500 });
+    return serverError('audit fetch failed', e);
   }
 }
 
-export async function POST() {
+/** ค่าจาก LLM อาจไม่ใช่ตัวเลข/หลุดช่วง — บังคับให้อยู่ใน [0,1] ก่อนบันทึก */
+function unit(v: unknown, fallback: number): number {
+  const n = typeof v === 'number' ? v : Number(v);
+  return Number.isFinite(n) ? Math.min(1, Math.max(0, n)) : fallback;
+}
+const text = (v: unknown, max: number) => String(v ?? '').slice(0, max);
+
+export async function POST(req: Request) {
   try {
     // gather evidence
-    const [board, bt] = await Promise.all([getBoard(), getBacktest()]);
+    const [board, bt, rules] = await Promise.all([getBoard(), getBacktest(), rulesStamp()]);
     const journal = await db.journalEntry.findMany({ orderBy: { createdAt: 'desc' }, take: 40 });
     const journalSummary = journal.map((j) => ({
       symbol: j.symbol,
@@ -62,7 +71,10 @@ export async function POST() {
       content = out.text;
     } catch (e) {
       const r = llmErrorResponse(e);
-      if (r) return NextResponse.json(r.body, { status: r.status, headers: { 'Cache-Control': 'no-store' } });
+      if (r) {
+        void logAction(req, 'audit.run', r.status, { error: r.body.error });
+        return NextResponse.json(r.body, { status: r.status, headers: { 'Cache-Control': 'no-store' } });
+      }
       throw e;
     }
     let parsed: Record<string, unknown> = {};
@@ -80,18 +92,18 @@ export async function POST() {
 
     const report = await db.auditReport.create({
       data: {
-        summary: String(parsed.summary ?? ''),
-        rootCause: String(parsed.rootCause ?? ''),
-        recommendedAction: String(parsed.recommendedAction ?? ''),
-        riskAdjustment: Number(parsed.riskAdjustment ?? 1),
-        confidence: Number(parsed.confidence ?? 0.5),
-        gateAttributionRef: (parsed.gateNotes ?? []) as object,
-        raw: { ...parsed, evidenceDigest: { metrics: bt.metrics, regime: board.regime } },
+        summary: text(parsed.summary, 2000),
+        rootCause: text(parsed.rootCause, 2000),
+        recommendedAction: text(parsed.recommendedAction, 2000),
+        riskAdjustment: unit(parsed.riskAdjustment, 1),
+        confidence: unit(parsed.confidence, 0.5),
+        gateAttributionRef: (Array.isArray(parsed.gateNotes) ? parsed.gateNotes.slice(0, 10) : []) as object,
+        raw: { ...parsed, evidenceDigest: { metrics: bt.metrics, regime: board.regime, rulesHash: rules.hash, rulesVersion: rules.version } },
       },
     });
+    void logAction(req, 'audit.run', 200, { reportId: report.id, confidence: report.confidence, riskAdjustment: report.riskAdjustment });
     return NextResponse.json({ report });
   } catch (e) {
-    console.error('audit POST error', e);
-    return NextResponse.json({ error: 'audit failed', detail: String(e) }, { status: 500 });
+    return serverError('audit failed', e);
   }
 }

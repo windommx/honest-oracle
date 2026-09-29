@@ -16,11 +16,12 @@
 import type { MarketState } from './types';
 import { evaluateGates, currentRegimeSummary } from './gates';
 import type { BacktestResult } from './backtest';
-import { mean, clamp, psi } from '../stats';
+import { mean, clamp, psi, wilsonInterval, bootstrapInterval } from '../stats';
 import { mulberry32, gaussianFactory, studentTFactory } from '../rng';
 import { microstructureMetrics, type MicroMetrics } from './micro';
 import { reflexivityPhase } from './meta-risk';
 import type { RiskMdx } from './mdx';
+import { RULES } from './rules';
 
 /** คำสั่ง size override จาก Risk MDX (meta-risk) ที่ Apex ต้องเคารพ — NONE = ไม่ได้ส่ง MDX มา (ขนาดไม่ถูกหั่น) */
 export type MdxOverride = RiskMdx['override'] | 'NONE';
@@ -51,6 +52,14 @@ export interface KellySizing {
   edgeGuard: boolean; // Kelly ≤ 0 → ไม่มี edge ห้ามเดิมพัน
   source: string;
   note: string;
+  /** จำนวนไม้ที่ใช้ประมาณ p และ R */
+  nTrades: number;
+  /** Wilson 95% CI ของ P(win) */
+  pCI: [number, number];
+  /** bootstrap 95% CI ของ R (avgWin/avgLoss) — R ประมาณจากไม้ไม่กี่สิบไม้จึงกว้างมาก */
+  rCI: [number, number];
+  /** f* ที่ขอบล่างของ CI (p_lo, R_lo) — ถ้า ≤ 0 แปลว่า edge ยังไม่แน่นอนพอทางสถิติ */
+  fullKellyLow: number;
 }
 
 export function kellyVolSizing(
@@ -75,21 +84,34 @@ export function kellyVolSizing(
   const r = avgLossPct > 1e-9 ? avgWinPct / avgLossPct : 0;
 
   const fullKelly = Math.max(0, p - (1 - p) / Math.max(0.01, r));
-  const kellyFraction = 0.5; // ครึ่ง Kelly — กรอบ 0.25–0.5 ของ Part V
+  // ความไม่แน่นอนของ p และ R: ไม้ ~70 ไม้ให้ CI กว้าง — แสดงคู่กับค่ากลางเสมอ (ไม่แสดง = หลอกตัวเองว่าแม่น)
+  const pW = wilsonInterval(wins.length, pool.length);
+  const rets = pool.map((tr) => tr.fwdRet);
+  const rStat = (xs: number[]) => {
+    const w = xs.filter((x) => x > 0);
+    const l = xs.filter((x) => x <= 0);
+    if (!w.length || !l.length) return NaN;
+    return (mean(w) * 100) / Math.max(1e-9, Math.abs(mean(l)) * 100);
+  };
+  const rBoot = pool.length ? bootstrapInterval(rets, rStat, mulberry32(4242 + pool.length), 400) : { lo: r, hi: r };
+  // percentile bootstrap ของอัตราส่วนเบ้ได้จนไม่ครอบค่ากลาง — ขยายให้ครอบ R เสมอ (แสดงผลไม่ขัดกันเอง, f*_low ≤ f*)
+  const rB = { lo: Math.min(rBoot.lo, r), hi: Math.max(rBoot.hi, r) };
+  const fullKellyLow = pW.lo - (1 - pW.lo) / Math.max(0.01, rB.lo);
+  const kellyFraction = RULES.kelly.fraction; // ครึ่ง Kelly — กรอบ 0.25–0.5 ของ Part V
   const fracKelly = fullKelly * kellyFraction;
-  const edgeGuard = fullKelly <= 0.001 || pool.length < 20;
+  const edgeGuard = fullKelly <= RULES.kelly.edgeEps || pool.length < RULES.kelly.minTrades;
 
-  const targetVol = 0.20;
-  const volTargetMult = clamp(targetVol / Math.max(0.05, volAnn), 0.25, 1.25);
+  const targetVol = RULES.kelly.targetVol;
+  const volTargetMult = clamp(targetVol / Math.max(0.05, volAnn), RULES.kelly.volMultMin, RULES.kelly.volMultMax);
   // drawdown throttle: maxDD ยิ่งลึกยิ่งถ่อมตัว (proxy ของ DD ปัจจุบันจาก walk-forward)
-  const ddThrottle = Math.max(0.25, 1 - Math.max(0, maxDDPct / 100) / 0.2);
+  const ddThrottle = Math.max(RULES.kelly.ddFloor, 1 - Math.max(0, maxDDPct / 100) / RULES.kelly.ddRef);
   const uncertaintyHaircut = knightHaircut;
 
   const riskPerTradePct = fracKelly * 100 * volTargetMult * ddThrottle * uncertaintyHaircut;
   // ระยะความเสี่ยง: วัดจาก fill แย่สุดใน entry zone (ราคาสูงสุด) ถึง stop แข็ง — conservative
   const lossAtStopPct = Math.max(0.5, ((entryRef - stopHard) / entryRef) * 100);
-  const kellySizePct = Math.min(25, (riskPerTradePct / lossAtStopPct) * 100);
-  const sizeBeforeMdxPct = edgeGuard ? 0 : Math.min(kellySizePct, cvarSizePct, 25);
+  const kellySizePct = Math.min(RULES.kelly.capPct, (riskPerTradePct / lossAtStopPct) * 100);
+  const sizeBeforeMdxPct = edgeGuard ? 0 : Math.min(kellySizePct, cvarSizePct, RULES.kelly.capPct);
   // Risk MDX (7 มิติ) ออกคำสั่งบังคับ: HALF ลดครึ่ง · ZERO ห้ามเปิดไม้ใหม่ — Apex คือขนาดสุดท้ายจึงต้องเคารพคำสั่งนี้
   const mdxOverride: MdxOverride = mdx ? mdx.override : 'NONE';
   const finalSizePct = sizeBeforeMdxPct * MDX_OVERRIDE_FACTOR[mdxOverride];
@@ -134,6 +156,10 @@ export function kellyVolSizing(
     edgeGuard,
     source,
     note,
+    nTrades: pool.length,
+    pCI: [+pW.lo.toFixed(3), +pW.hi.toFixed(3)],
+    rCI: [+rB.lo.toFixed(2), +rB.hi.toFixed(2)],
+    fullKellyLow: +fullKellyLow.toFixed(4),
   };
 }
 
@@ -493,7 +519,7 @@ export function buildApexDossier(
   const t = N - 1;
   const row = s.rows[t];
 
-  const ev = evaluateGates(state, symbol, t, { riskBudgetPct: 1.0, probUp });
+  const ev = evaluateGates(state, symbol, t, { riskBudgetPct: RULES.risk.budgetPct, probUp });
   const plan = ev.plan;
   const micro = microstructureMetrics(state, symbol);
   if (!micro) return null;

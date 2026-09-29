@@ -22,6 +22,7 @@ import { mean, psi } from '../stats';
 import { mulberry32 } from '../rng';
 import { microstructureMetrics } from './micro';
 import { buildRiskMdx, buildAntifragility, type RiskMdx, type AntifragilityIndex } from './mdx';
+import { RULES } from './rules';
 
 // ───────────────────────── 1. Ruin Math ─────────────────────────
 
@@ -64,7 +65,7 @@ function simRuin(
   drawdownScaled: boolean,
   paths: number,
   seed: number,
-  tradesPerYear = 48,
+  tradesPerYear: number = RULES.ruin.tradesPerYear,
 ): RuinPathStats {
   const rand = mulberry32(seed);
   const R = avgLoss > 1e-9 ? Math.abs(avgWin / avgLoss) : 1.5; // reward:risk (หน่วยเป็น % ทั้งคู่ → ratio ปลอดหน่วย)
@@ -299,7 +300,7 @@ export function buildMetaRiskDossier(
   const t = N - 1;
   const row = s.rows[t];
   const reg = currentRegimeSummary(state);
-  const ev = evaluateGates(state, symbol, t, { riskBudgetPct: 1.0, probUp });
+  const ev = evaluateGates(state, symbol, t, { riskBudgetPct: RULES.risk.budgetPct, probUp });
   const plan = ev.plan;
 
   // ── R/R: reward ใช้ high 20 วัน (conservative target), risk = entryMid − stopStruct
@@ -321,8 +322,8 @@ export function buildMetaRiskDossier(
   const riskPerTrade = Math.max(0.25, Math.min(2, plan.cvar * (plan.sizePct / 100) * 100));
 
   // ── Risk of Ruin: fixed vs drawdown-scaled (antifragile throttle)
-  const ruinFixed = simRuin(p, avgWinPct, avgLossPct, riskPerTrade, false, 3000, 777001);
-  const ruinScaled = simRuin(p, avgWinPct, avgLossPct, riskPerTrade, true, 3000, 777001);
+  const ruinFixed = simRuin(p, avgWinPct, avgLossPct, riskPerTrade, false, RULES.ruin.paths, 777001);
+  const ruinScaled = simRuin(p, avgWinPct, avgLossPct, riskPerTrade, true, RULES.ruin.paths, 777001);
 
   // ── defense layers (ใช้ board rows ที่ประเมินด้วย eval แบบเต็มแล้ว — ไม่ประเมินซ้ำ)
   const sameThemeActive = board.rows.filter((r) => r.symbol !== symbol && r.theme === s.theme && r.signal !== 'NO_TRADE').length;
@@ -364,7 +365,7 @@ export function buildMetaRiskDossier(
 
   // ── absorbing barrier verdict
   const deathsTriggered = deaths.filter((d) => d.triggered).length;
-  const inGame = ruinScaled.pRuin50 <= 5 && portLossPct <= 2 && totalPlannedPct <= 80;
+  const inGame = ruinScaled.pRuin50 <= RULES.ruin.pRuin50Max && portLossPct <= RULES.ruin.portLossMaxPct && totalPlannedPct <= RULES.ruin.plannedMaxPct;
   const absorbingBarrier = {
     inGame,
     verdict: inGame

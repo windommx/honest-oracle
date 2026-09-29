@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { serverError } from '@/lib/http/responses';
 import { getFactorModel, getVolcano } from '@/lib/quant/engine/api';
 
 export const dynamic = 'force-dynamic';
@@ -27,7 +28,6 @@ export async function GET() {
       },
     });
   } catch (e) {
-    console.error('factors error', e);
-    return NextResponse.json({ error: 'factors failed', detail: String(e) }, { status: 500 });
+    return serverError('factors failed', e);
   }
 }

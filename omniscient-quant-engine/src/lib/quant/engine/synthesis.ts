@@ -32,6 +32,7 @@ import type { FactorModelResult } from './factors';
 import type { BacktestResult } from './backtest';
 import { reflexivityPhase } from './meta-risk';
 import { microstructureMetrics } from './micro';
+import { RULES } from './rules';
 
 export type Vote = 'LONG' | 'SHORT' | 'NEUTRAL';
 
@@ -123,11 +124,11 @@ export function buildSynthesisDossier(
   const mult = (gate?: string): { eff: number; trusted: boolean } => {
     if (!gate) return { eff: 1, trusted: false };
     const trusted = trustMap[gate] ?? false;
-    return { eff: trusted ? 1 : 0.5, trusted };
+    return { eff: trusted ? 1 : RULES.synthesis.untrustedMultiplier, trusted };
   };
 
-  const ev = evaluateGates(state, symbol, t, { riskBudgetPct: 1.0 });
-  const risk = riskAssessment(s.rows.slice(-100), 1.0, 4, 4000, 909090);
+  const ev = evaluateGates(state, symbol, t, { riskBudgetPct: RULES.risk.budgetPct });
+  const risk = riskAssessment(s.rows.slice(-100), RULES.risk.budgetPct, RULES.risk.nu, RULES.risk.synthesisPaths, 909090);
   const sectorCloses = state.stocks.filter((x) => x.sector === s.sector);
   const sectorPe = median(sectorCloses.map((x) => x.rows[t].pe).filter(Number.isFinite));
   const sectorPb = median(sectorCloses.map((x) => x.rows[t].pb).filter(Number.isFinite));
@@ -141,7 +142,7 @@ export function buildSynthesisDossier(
       state.fMomentum.slice(Math.max(0, t - 41), t + 1),
     );
     const { vote, detail } = regimeToVote(reg.regime, momSlope);
-    const w = 0.9, m = mult('G1');
+    const w = RULES.synthesis.weights.G1_REGIME, m = mult('G1');
     strands.push({
       key: 'G1_REGIME', label: 'สภาพตลาด (Regime)', layer: 'L1·L6', gate: 'G1',
       vote, weight: w, effWeight: +(w * m.eff).toFixed(2), trusted: m.trusted,
@@ -164,7 +165,7 @@ export function buildSynthesisDossier(
       vote = 'LONG';
       detail = `หางล่างบาง (LTD ${fmt(row.ltd)}) — กันชนตอนตลาดสั่นดีกว่าค่ากลาง`;
     }
-    const w = 0.7, m = mult('G2');
+    const w = RULES.synthesis.weights.G2_DEPENDENCE, m = mult('G2');
     strands.push({
       key: 'G2_DEPENDENCE', label: 'การพึ่งพาตลาด (Copula)', layer: 'L2', gate: 'G2',
       vote, weight: w, effWeight: +(w * m.eff).toFixed(2), trusted: m.trusted,
@@ -191,7 +192,7 @@ export function buildSynthesisDossier(
       detail = `${ev.phaseLabel} — โครงสร้างยังลบ ไม่ต้านเทรนด์`;
     }
     if (row.rsi14 > 78 && vote === 'LONG') detail += ' (แต่ RSI ร้อน — บริหารด้วย G5)';
-    const w = 0.9, m = mult('G3');
+    const w = RULES.synthesis.weights.G3_TECHNICAL, m = mult('G3');
     strands.push({
       key: 'G3_TECHNICAL', label: 'เทคนิค (Wyckoff-lite)', layer: 'L1', gate: 'G3',
       vote, weight: w, effWeight: +(w * m.eff).toFixed(2), trusted: m.trusted,
@@ -213,7 +214,7 @@ export function buildSynthesisDossier(
     } else {
       detail = `CVaR ${(risk.cvar975 * 100).toFixed(1)}% → ขนาดทุนสูงสุด ${risk.maxSizePct.toFixed(0)}% — ใช้ได้แต่ไม่ฟุ่มเฟือย`;
     }
-    const w = 0.6, m = mult('G4');
+    const w = RULES.synthesis.weights.G4_RISK, m = mult('G4');
     strands.push({
       key: 'G4_RISK', label: 'ความเสี่ยง (CVaR Sizing)', layer: 'L5', gate: 'G4',
       vote, weight: w, effWeight: +(w * m.eff).toFixed(2), trusted: m.trusted,
@@ -238,7 +239,7 @@ export function buildSynthesisDossier(
       vote = 'SHORT';
       detail = `RSI ${row.rsi14.toFixed(0)} ร้อนเกิน — ไล่ราคา = รับความเสี่ยง execution ฟรี ๆ`;
     }
-    const w = 0.4, m = mult('G5');
+    const w = RULES.synthesis.weights.G5_EXECUTION, m = mult('G5');
     strands.push({
       key: 'G5_EXECUTION', label: 'จังหวะเข้า (Execution)', layer: 'L6', gate: 'G5',
       vote, weight: w, effWeight: +(w * m.eff).toFixed(2), trusted: m.trusted,
@@ -259,7 +260,7 @@ export function buildSynthesisDossier(
       vote = 'SHORT';
       detail = `โมเดลให้ P(ขึ้น) = ${(p * 100).toFixed(0)}% — ต่ำกว่ากลาง ไม่สนับสนุนการซื้อ`;
     }
-    const w = 0.8;
+    const w = RULES.synthesis.weights.ML_PROB;
     strands.push({
       key: 'ML_PROB', label: 'โมเดล ML (P·up 21d)', layer: 'L4',
       vote, weight: w, effWeight: w, trusted: true,
@@ -281,7 +282,7 @@ export function buildSynthesisDossier(
     }
     strands.push({
       key: 'FLOW', label: 'เงินไหลสถาบัน 5d', layer: 'L1',
-      vote, weight: 0.6, effWeight: 0.6, trusted: true,
+      vote, weight: RULES.synthesis.weights.FLOW, effWeight: RULES.synthesis.weights.FLOW, trusted: true,
       value: `${fmt(row.flow5, 1)} MB`,
       detail,
     });
@@ -304,7 +305,7 @@ export function buildSynthesisDossier(
     }
     strands.push({
       key: 'VALUATION', label: 'มูลค่าเทียบหมวด', layer: 'L1',
-      vote, weight: 0.5, effWeight: 0.5, trusted: true,
+      vote, weight: RULES.synthesis.weights.VALUATION, effWeight: RULES.synthesis.weights.VALUATION, trusted: true,
       value: `P/E ${row.pe.toFixed(1)} vs ${sectorPe.toFixed(1)} · P/B ${row.pb.toFixed(2)} vs ${sectorPb.toFixed(2)}`,
       detail,
     });
@@ -340,7 +341,7 @@ export function buildSynthesisDossier(
     }
     strands.push({
       key: 'FACTOR', label: 'การจัดวางบน Factor (L3)', layer: 'L3',
-      vote, weight: 0.6, effWeight: 0.6, trusted: true,
+      vote, weight: RULES.synthesis.weights.FACTOR, effWeight: RULES.synthesis.weights.FACTOR, trusted: true,
       value,
       detail,
     });
@@ -359,7 +360,7 @@ export function buildSynthesisDossier(
     }
     strands.push({
       key: 'FUNDAMENTAL', label: 'พื้นฐาน (PIT)', layer: 'L0',
-      vote, weight: 0.5, effWeight: 0.5, trusted: true,
+      vote, weight: RULES.synthesis.weights.FUNDAMENTAL, effWeight: RULES.synthesis.weights.FUNDAMENTAL, trusted: true,
       value: `revG ${fmt(row.revG, 1)}% · ROE ${row.roe.toFixed(1)}% · D/E ${row.de.toFixed(2)}`,
       detail,
     });
@@ -379,7 +380,7 @@ export function buildSynthesisDossier(
     }
     strands.push({
       key: 'HUB', label: 'ตำแหน่งในเครือข่าย', layer: 'L3',
-      vote, weight: 0.3, effWeight: 0.3, trusted: true,
+      vote, weight: RULES.synthesis.weights.HUB, effWeight: RULES.synthesis.weights.HUB, trusted: true,
       value: hub ? `HUB ×${hub.degree}` : edgeCount ? `edge ×${edgeCount}` : 'isolated',
       detail,
     });
@@ -391,7 +392,7 @@ export function buildSynthesisDossier(
     let vote: Vote = 'NEUTRAL';
     if (reflex.phase === 'IGNITION' || reflex.phase === 'RUNNING') vote = 'LONG';
     else if (reflex.phase === 'EXHAUSTION' || reflex.phase === 'COLLAPSE') vote = 'SHORT';
-    const w = 0.65;
+    const w = RULES.synthesis.weights.REFLEXIVITY;
     strands.push({
       key: 'REFLEXIVITY', label: 'วงจรสะท้อนกลับ (Reflexivity)', layer: 'L7',
       vote, weight: w, effWeight: w, trusted: true,
@@ -422,7 +423,7 @@ export function buildSynthesisDossier(
     }
     strands.push({
       key: 'MICROSTRUCTURE', label: 'Microstructure (CLV/สเปรด)', layer: 'L7',
-      vote, weight: 0.55, effWeight: 0.55, trusted: true,
+      vote, weight: RULES.synthesis.weights.MICROSTRUCTURE, effWeight: RULES.synthesis.weights.MICROSTRUCTURE, trusted: true,
       value,
       detail,
     });
@@ -442,13 +443,13 @@ export function buildSynthesisDossier(
   const agreement = aligned > 0 ? +(agreeW / aligned).toFixed(2) : 0;
 
   let verdict: SynthesisVerdict;
-  if (score >= 55 && agreement >= 0.6) {
+  if (score >= RULES.synthesis.bands.strong && agreement >= RULES.synthesis.bands.agreeMin) {
     verdict = { code: 'STRONG_LONG', label: 'หลักฐานบรรจบขาขึ้น', action: 'หลอมรวมแล้วชี้ทิศเดียวกันแน่น — ลงมือตามแผน พร้อมเคารพ stop ทุกข้อ' };
-  } else if (score >= 25) {
+  } else if (score >= RULES.synthesis.bands.lean) {
     verdict = { code: 'LEAN_LONG', label: 'เอียงขาขึ้น', action: 'ทิศดีแต่ยังมีเสียงแทรก — เข้าได้ตาม entry zone ขนาดทุนตาม G4' };
-  } else if (score > -25) {
+  } else if (score > -RULES.synthesis.bands.lean) {
     verdict = { code: 'MIXED', label: 'หลักฐานยังไม่บรรจบ', action: 'สายหลักฐานขัดกัน — ความเสี่ยงอยู่ที่ "เดา" จึงไม่ควรเสี่ยง ให้จดเฝ้าดู' };
-  } else if (score > -55) {
+  } else if (score > -RULES.synthesis.bands.strong) {
     verdict = { code: 'LEAN_SHORT', label: 'เอียงขาลง', action: 'แรงต้านมาจากหลายสาย — งดซื้อ ถือไว้ตรวจสอบอีกครั้งเมื่อหลักฐานเปลี่ยน' };
   } else {
     verdict = { code: 'STRONG_SHORT', label: 'หลักฐานบรรจบขาลง', action: 'ทุกสายชี้ไปทางเดียวกันทางลบ — ห้ามซื้อ พิจารณาลดถ้าถืออยู่' };

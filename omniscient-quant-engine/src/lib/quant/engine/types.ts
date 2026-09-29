@@ -98,6 +98,8 @@ export interface MarketState {
   fMomentum: number[];
   fFlow: number[];
   stocks: StockPanel[];
+  /** คุณภาพข้อมูลจาก buildPanel: ช่องที่เติมด้วยราคาปิดล่าสุด + จำนวนวันหัว panel ที่ตัดทิ้ง */
+  qc?: { filledCells: number; trimmedLeadingDays: number };
 }
 
 export interface GateSnapshot {

@@ -13,6 +13,7 @@
 import type { MarketState, GateSnapshot, TradePlan, DayRow } from './types';
 import { riskAssessment } from './risk';
 import { linregSlope, mean, std, clamp } from '../stats';
+import { RULES } from './rules';
 
 export type Phase = 0 | 1 | 2 | 3 | 4 | 5;
 
@@ -69,16 +70,16 @@ export function evaluateGates(
   // ── G1 Regime (market-level) ──
   const stress = state.fStress[t];
   // 42-day slope: จับ "recovery arc" ไม่ให้สั่นตาม noise ระยะสั้น
-  const momWin = state.fMomentum.slice(Math.max(0, t - 42), t + 1);
+  const momWin = state.fMomentum.slice(Math.max(0, t - RULES.gates.g1.momWindow), t + 1);
   const momSlope = linregSlope(
     momWin.map((_, i) => i),
     momWin,
   );
-  const g1 = stress < 0.8 && momSlope > -0.005;
+  const g1 = stress < RULES.gates.g1.stressMax && momSlope > RULES.gates.g1.momSlopeMin;
 
   // ── G2 Dependence (stock-level) ──
   const decoupled = row.decoupled;
-  const g2 = decoupled || row.ltd < 0.35;
+  const g2 = decoupled || row.ltd < RULES.gates.g2.ltdMax;
 
   // ── G3 Technical ──
   const closes = state.stocks.find((s) => s.symbol === symbol)!.rows.map((r) => r.close);
@@ -88,30 +89,30 @@ export function evaluateGates(
     ? (ma50s[t] / ma50s[t - 10] - 1) * 100
     : 0;
   const { phase, label } = phaseOf(row, ma50s[t], ma150s[t], ma50Slope);
-  const volConfirm = row.volRatio >= 0.75 && row.volRatio <= 2.6;
-  const noDiv = row.obvSlope > -0.18 && row.ret21 > -0.08;
-  const g3 = phase >= 4 && volConfirm && noDiv;
+  const volConfirm = row.volRatio >= RULES.gates.g3.volRatioMin && row.volRatio <= RULES.gates.g3.volRatioMax;
+  const noDiv = row.obvSlope > RULES.gates.g3.obvSlopeMin && row.ret21 > RULES.gates.g3.ret21Min;
+  const g3 = phase >= RULES.gates.g3.phaseMin && volConfirm && noDiv;
 
   // ── G4 Risk ──
-  const riskBudget = opts.riskBudgetPct ?? 1.0;
+  const riskBudget = opts.riskBudgetPct ?? RULES.risk.budgetPct;
   const rowsForRisk = stock.rows.slice(Math.max(0, t - 99), t + 1);
   // light mode: parametric Student-t(4) approximation (เร็ว ~200×) สำหรับ history/backtest
   const light = opts.light ?? false;
   const risk = light
     ? parametricRisk(rowsForRisk, row.close, riskBudget)
-    : riskAssessment(rowsForRisk, riskBudget, 4, 8000, 424242 + t);
+    : riskAssessment(rowsForRisk, riskBudget, RULES.risk.nu, RULES.risk.lightPaths, 424242 + t);
   const maxSize = risk.maxSizePct;
-  const g4 = maxSize >= 8;
+  const g4 = maxSize >= RULES.gates.g4.minSizePct;
 
   // ── G5 Execution ──
-  const g5 = row.rsi14 <= 80;
+  const g5 = row.rsi14 <= RULES.gates.g5.rsiMax;
 
   const gates: GateSnapshot = { g1, g2, g3, g4, g5 };
 
   // momentum trigger: 20d high + OBV new high
-  const high20 = Math.max(...stock.rows.slice(Math.max(0, t - 19), t).map((r) => r.close)) * 1.005;
-  const obvRecent = stock.rows.slice(Math.max(0, t - 20), t + 1).map((r) => r.obvSlope);
-  const obvHigh = Math.max(...obvRecent) > 0.05;
+  const high20 = Math.max(...stock.rows.slice(Math.max(0, t - (RULES.gates.momentum.highWindow - 1)), t).map((r) => r.close)) * RULES.gates.momentum.breakoutBuffer;
+  const obvRecent = stock.rows.slice(Math.max(0, t - RULES.gates.momentum.highWindow), t + 1).map((r) => r.obvSlope);
+  const obvHigh = Math.max(...obvRecent) > RULES.gates.momentum.obvHighMin;
   const breakout = row.close > high20 && obvHigh;
 
   const failingGates = (Object.entries(gates) as Array<[string, boolean]>)
@@ -143,11 +144,11 @@ export function evaluateGates(
     failingGates,
     killSwitch: 'Θ re-couple (thetaZ > 0) + F_stress ไหลขึ้น + OBV divergence → ปิดทุกไม้ทันที',
     reasons: {
-      g1: `F_stress=${stress.toFixed(2)} (ต้อง < 0.8) · F_momentum slope=${momSlope >= 0 ? '+' : ''}${(momSlope * 100).toFixed(1)}/42d`,
-      g2: `${decoupled ? 'DECOUPLE = True' : 'coupled'} · LTD=${row.ltd.toFixed(2)} (ผ่านถ้า < 0.35) · Θ=${row.theta.toFixed(2)}`,
+      g1: `F_stress=${stress.toFixed(2)} (ต้อง < ${RULES.gates.g1.stressMax}) · F_momentum slope=${momSlope >= 0 ? '+' : ''}${(momSlope * 100).toFixed(1)}/42d`,
+      g2: `${decoupled ? 'DECOUPLE = True' : 'coupled'} · LTD=${row.ltd.toFixed(2)} (ผ่านถ้า < ${RULES.gates.g2.ltdMax}) · Θ=${row.theta.toFixed(2)}`,
       g3: `${label} · volRatio=${row.volRatio.toFixed(2)} · OBV slope=${row.obvSlope.toFixed(2)}`,
       g4: `max size=${maxSize.toFixed(1)}% ของพอร์ต (CVaR 1d = ${(risk.cvar975 * 100).toFixed(2)}%)`,
-      g5: `RSI=${row.rsi14.toFixed(1)} (ห้าม chase ถ้า > 80)`,
+      g5: `RSI=${row.rsi14.toFixed(1)} (ห้าม chase ถ้า > ${RULES.gates.g5.rsiMax})`,
     },
   };
 

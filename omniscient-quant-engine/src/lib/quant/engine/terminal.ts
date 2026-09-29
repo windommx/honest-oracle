@@ -13,6 +13,7 @@ import { getGenerated } from './panel';
 import { loadMarketState } from './panel';
 import { getBoard, getProbs } from './api';
 import { evaluateGates } from './gates';
+import { RULES } from './rules';
 import { db } from '@/lib/db';
 import { chatCompletion } from '@/lib/llm';
 import { mean, std } from '../stats';
@@ -395,7 +396,7 @@ export async function getAnalyst(symbol: string): Promise<AnalystBrief | null> {
   const s = state.stocks[si];
   const row = s.rows[N - 1];
   const probs = await getProbs();
-  const ev = evaluateGates(state, symbol, N - 1, { riskBudgetPct: 1.0, probUp: probs[symbol] });
+  const ev = evaluateGates(state, symbol, N - 1, { riskBudgetPct: RULES.risk.budgetPct, probUp: probs[symbol] });
 
   // indicators จาก series
   const gen = getGenerated();

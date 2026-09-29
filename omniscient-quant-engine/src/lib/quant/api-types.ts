@@ -50,6 +50,7 @@ export interface BoardRowT {
 }
 
 export interface BoardResponse {
+  rules?: RulesStampT;
   regime: RegimeInfo;
   rows: BoardRowT[];
   summary: {
@@ -183,7 +184,9 @@ export interface DependenceResponse {
 }
 
 export interface BacktestResponse {
+  rules?: RulesStampT;
   metrics: {
+    hitRateCI?: [number, number];
     nDays: number;
     nSignals: number;
     hitRate: number;
@@ -233,6 +236,15 @@ export interface AuditReportT {
   confidence: number;
   gateAttributionRef: unknown;
   raw: Record<string, unknown>;
+}
+
+export interface RulesStampT {
+  hash: string;
+  hashShort: string;
+  version: string;
+  registered: { hash: string; hashShort: string; at: string; note: string | null; actor: string; version: string } | null;
+  matchesRegistered: boolean;
+  tunedOn: string;
 }
 
 export interface SystemStatus {
@@ -474,6 +486,10 @@ export interface KellySizingT {
   edgeGuard: boolean;
   source: string;
   note: string;
+  nTrades: number;
+  pCI: [number, number];
+  rCI: [number, number];
+  fullKellyLow: number;
 }
 
 export interface CrisisScenarioT {

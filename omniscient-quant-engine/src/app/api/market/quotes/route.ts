@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { serverError } from '@/lib/http/responses';
 import { getQuotes } from '@/lib/quant/engine/terminal';
 
 export const dynamic = 'force-dynamic';
@@ -8,7 +9,6 @@ export async function GET() {
     const data = await getQuotes();
     return NextResponse.json(data);
   } catch (e) {
-    console.error('quotes error', e);
-    return NextResponse.json({ error: 'quotes failed', detail: String(e) }, { status: 500 });
+    return serverError('quotes failed', e);
   }
 }

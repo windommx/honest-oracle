@@ -107,7 +107,8 @@ export const RATE_RULES: readonly RateRule[] = [
       p === "/api/backtest" ||
       p.startsWith("/api/apex/") ||
       p.startsWith("/api/meta-risk/") ||
-      p.startsWith("/api/synthesis/"),
+      p.startsWith("/api/synthesis/") ||
+      p === "/api/research/robustness",
     spec: perMin(60, 30),
     label: "รายงานที่คำนวณหนัก",
   },

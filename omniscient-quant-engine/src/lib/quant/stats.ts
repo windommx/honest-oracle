@@ -448,3 +448,40 @@ export const clamp = (v: number, lo: number, hi: number): number =>
   Math.min(Math.max(v, lo), hi);
 
 export const logistic = (z: number): number => 1 / (1 + Math.exp(-z));
+
+// ───────────────────────── Confidence intervals ─────────────────────────
+
+/** Wilson score interval ของสัดส่วน k/n (z=1.96 → 95%) — ใช้กับ hit rate / P(win) ที่ n เล็ก */
+export function wilsonInterval(k: number, n: number, z = 1.96): { lo: number; hi: number } {
+  if (n <= 0) return { lo: 0, hi: 1 };
+  const p = k / n;
+  const z2 = z * z;
+  const denom = 1 + z2 / n;
+  const center = (p + z2 / (2 * n)) / denom;
+  const half = (z * Math.sqrt((p * (1 - p)) / n + z2 / (4 * n * n))) / denom;
+  return { lo: Math.max(0, center - half), hi: Math.min(1, center + half) };
+}
+
+/**
+ * Bootstrap percentile CI ของสถิติใด ๆ จากตัวอย่าง (seed ตายตัว → deterministic)
+ * rand = generator ใน [0,1) เช่น mulberry32(seed) — ส่งเข้ามาเพื่อไม่ผูกโมดูลนี้กับ rng
+ */
+export function bootstrapInterval<T>(
+  sample: T[],
+  stat: (xs: T[]) => number,
+  rand: () => number,
+  reps = 400,
+  alpha = 0.05,
+): { lo: number; hi: number } {
+  const n = sample.length;
+  if (n === 0) return { lo: 0, hi: 0 };
+  const stats: number[] = new Array(reps);
+  const draw: T[] = new Array(n);
+  for (let r = 0; r < reps; r++) {
+    for (let i = 0; i < n; i++) draw[i] = sample[Math.floor(rand() * n)];
+    stats[r] = stat(draw);
+  }
+  const finite = stats.filter(Number.isFinite).sort((a, b) => a - b);
+  if (finite.length === 0) return { lo: 0, hi: 0 };
+  return { lo: quantile(finite, alpha / 2), hi: quantile(finite, 1 - alpha / 2) };
+}

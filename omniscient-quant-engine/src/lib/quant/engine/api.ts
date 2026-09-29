@@ -13,6 +13,7 @@ import { evaluateGates, currentRegimeSummary, type GateEval } from './gates';
 import { runBacktest, currentProbs, type BacktestResult } from './backtest';
 import { riskAssessment, type RiskResult } from './risk';
 import { kde1d, kendallTau, claytonThetaFromTau, mean, psi } from '../stats';
+import { RULES } from './rules';
 
 interface AnalyticsBox {
   key: string;
@@ -137,7 +138,7 @@ export async function getBoard() {
   const regime = getRegime(b);
   const probs = await getProbs();
   const rows: BoardRow[] = state.stocks.map((s) => {
-    const ev = evaluateGates(state, s.symbol, N - 1, { riskBudgetPct: 1.0, probUp: probs[s.symbol] });
+    const ev = evaluateGates(state, s.symbol, N - 1, { riskBudgetPct: RULES.risk.budgetPct, probUp: probs[s.symbol] });
     const r = s.rows[N - 1];
     return {
       symbol: s.symbol,
@@ -203,8 +204,8 @@ export async function getDecision(symbol: string) {
   if (si < 0) return null;
   const s = state.stocks[si];
   const probs = await getProbs();
-  const ev: GateEval = evaluateGates(state, symbol, N - 1, { riskBudgetPct: 1.0, probUp: probs[symbol] });
-  const risk: RiskResult = riskAssessment(s.rows.slice(-100), 1.0, 4, 20000, 777);
+  const ev: GateEval = evaluateGates(state, symbol, N - 1, { riskBudgetPct: RULES.risk.budgetPct, probUp: probs[symbol] });
+  const risk: RiskResult = riskAssessment(s.rows.slice(-100), RULES.risk.budgetPct, RULES.risk.nu, RULES.risk.paths, 777);
 
   const L = 250;
   const priceSeries = s.rows.slice(N - L).map((r) => ({

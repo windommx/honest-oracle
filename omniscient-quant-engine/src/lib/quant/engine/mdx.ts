@@ -30,6 +30,7 @@ import { crisisStressTest } from './apex';
 import type { currentRegimeSummary } from './gates';
 import type { ReflexivityState } from './meta-risk';
 import { clamp } from '../stats';
+import { RULES } from './rules';
 
 // ───────────────────────── types ─────────────────────────
 
@@ -111,7 +112,7 @@ export function buildRiskMdx(input: MdxInput): RiskMdx {
   const crisisBonus = reg.regime.includes('CRISIS') ? 20 : reg.regime.includes('DISTRIBUTION') ? 10 : 0;
   const slopePenalty = reg.momentumSlope20 < -0.005 ? 10 : 0;
   const d1: MdxDim = {
-    key: 'MARKET', name: 'สภาพตลาด (Market)', weight: 0.12,
+    key: 'MARKET', name: 'สภาพตลาด (Market)', weight: RULES.mdx.weights.MARKET,
     score: Math.round(clamp(stressScore + crisisBonus + slopePenalty, 0, 100)),
     band: 'ต่ำ',
     evidence: `F_stress ${reg.stress.toFixed(2)} · regime ${reg.regime} · โมเมนตัม ${reg.momentumSlope20 >= 0 ? '+' : ''}${(reg.momentumSlope20 * 100).toFixed(1)}/21d · หุ้น decouple ทั้งกระดาน ${reg.decoupleCount} ตัว`,
@@ -120,7 +121,7 @@ export function buildRiskMdx(input: MdxInput): RiskMdx {
   // ── D2 LIQUIDITY (⭐ emphasis) ──
   const d2: MdxDim = micro
     ? {
-        key: 'LIQUIDITY', name: 'สภาพคล่อง (Liquidity)', weight: 0.2,
+        key: 'LIQUIDITY', name: 'สภาพคล่อง (Liquidity)', weight: RULES.mdx.weights.LIQUIDITY,
         score: Math.round(
           clamp((micro.spreadBps / 250) * 100, 0, 100) * 0.3 +
           clamp((micro.amihudBps / 200) * 100, 0, 100) * 0.2 +
@@ -131,7 +132,7 @@ export function buildRiskMdx(input: MdxInput): RiskMdx {
         evidence: `spread ${micro.spreadBps.toFixed(0)} bps · impact ${micro.amihudBps.toFixed(0)} bps/1%ADV · exit ${micro.exitComplexity}/100 · ADV20 ${micro.adv20MB.toFixed(0)}MB${micro.volRatio < 0.6 ? ' · volume แห้ง (volRatio < 0.6)' : ''}`,
       }
     : {
-        key: 'LIQUIDITY', name: 'สภาพคล่อง (Liquidity)', weight: 0.2,
+        key: 'LIQUIDITY', name: 'สภาพคล่อง (Liquidity)', weight: RULES.mdx.weights.LIQUIDITY,
         score: 50, band: 'กลาง',
         evidence: 'ยังประเมินไม่ได้ (ไม่มีข้อมูล OHLCV ดิบของหุ้นนี้) — ถือว่าเสี่ยงกลางไว้ก่อน',
       };
@@ -146,7 +147,7 @@ export function buildRiskMdx(input: MdxInput): RiskMdx {
   const streakScore = step(input.losingStreak, [[3, 90], [2, 65], [1, 40]], 20);
   const planScore = input.planReady ? 20 : 50;
   const d3: MdxDim = {
-    key: 'BEHAVIORAL', name: 'พฤติกรรม (Behavioral)', weight: 0.18,
+    key: 'BEHAVIORAL', name: 'พฤติกรรม (Behavioral)', weight: RULES.mdx.weights.BEHAVIORAL,
     score: Math.round((mirageScore + chaseScore + reflexScore + streakScore + planScore) / 5),
     band: 'ต่ำ',
     evidence: [
@@ -165,7 +166,7 @@ export function buildRiskMdx(input: MdxInput): RiskMdx {
   else if (psiStress > 0.1) d4Score += 12;
   if (input.mlHitRate > 0 && input.mlHitRate < 45) d4Score += 15;
   const d4: MdxDim = {
-    key: 'MODEL', name: 'โมเดล/AI (Model Risk)', weight: 0.15,
+    key: 'MODEL', name: 'โมเดล/AI (Model Risk)', weight: RULES.mdx.weights.MODEL,
     score: Math.round(clamp(d4Score, 0, 100)),
     band: 'ต่ำ',
     evidence: `เงื่อนไขตายยิงแล้ว ${input.deathsTriggered}/5 · calibration คลาดเคลื่อน ${input.calibrationSkew.toFixed(1)} จุด · PSI ${psiStress.toFixed(3)}${psiStress > 0.2 ? ' HEAVY' : ''} · hit rate ${input.mlHitRate.toFixed(1)}%`,
@@ -179,7 +180,7 @@ export function buildRiskMdx(input: MdxInput): RiskMdx {
   else if (plan.sizePct > 15) d5Score += 15;
   if (input.cashImpliedPct < 20) d5Score += 15;
   const d5: MdxDim = {
-    key: 'CONCENTRATION', name: 'การกระจุกตัว (Concentration)', weight: 0.12,
+    key: 'CONCENTRATION', name: 'การกระจุกตัว (Concentration)', weight: RULES.mdx.weights.CONCENTRATION,
     score: Math.round(clamp(d5Score, 0, 100)),
     band: 'ต่ำ',
     evidence: `สัญญาณ active ธีมเดียวกัน ${input.sameThemeActive} ตัว (cap 2) · ใช้เงินรวมทุกสัญญาณ ${input.totalPlannedPct.toFixed(0)}% · ไม้นี้ ${plan.sizePct.toFixed(1)}% · cash โดยนัย ${input.cashImpliedPct.toFixed(0)}% (เป้า ≥ 20%)`,
@@ -191,7 +192,7 @@ export function buildRiskMdx(input: MdxInput): RiskMdx {
   const gapScore = micro ? clamp((micro.gapCount60 / 4) * 100, 0, 100) : 50;
   const ruinScore = step(input.ruinScaledP50, [[8, 90], [2, 55]], 20);
   const d6: MdxDim = {
-    key: 'TAIL', name: 'หางหนา (Tail Risk)', weight: 0.15,
+    key: 'TAIL', name: 'หางหนา (Tail Risk)', weight: RULES.mdx.weights.TAIL,
     score: Math.round(cvarScore * 0.3 + ltdScore * 0.25 + gapScore * 0.15 + ruinScore * 0.3),
     band: 'ต่ำ',
     evidence: `CVaR97.5 ${(plan.cvar * 100).toFixed(1)}%/วัน · LTD ${row.ltd.toFixed(2)}${row.ltd >= 0.5 ? ' (หางล่างหนา)' : ''} · gap >3σ ใน 60 วัน ${micro?.gapCount60 ?? '—'} ครั้ง · P(ruin −50%) scaled ${input.ruinScaledP50}%`,
@@ -202,7 +203,7 @@ export function buildRiskMdx(input: MdxInput): RiskMdx {
   const rrScore = stepDown(input.rr, [[1, 85], [1.5, 60], [2, 40]], 20);
   const distScore = row.close > plan.entryHigh ? 55 : 20;
   const d7: MdxDim = {
-    key: 'EXECUTION', name: 'การปฏิบัติจริง (Execution)', weight: 0.08,
+    key: 'EXECUTION', name: 'การปฏิบัติจริง (Execution)', weight: RULES.mdx.weights.EXECUTION,
     score: Math.round(slipScore * 0.4 + rrScore * 0.35 + distScore * 0.25),
     band: 'ต่ำ',
     evidence: `slippage ${micro ? micro.slippagePct.toFixed(2) : '—'}%/ฝั่ง (เข้า+ออก = ${micro ? (micro.slippagePct * 2).toFixed(2) : '—'}%) · R/R 1:${input.rr.toFixed(2)}${input.rr < 1.5 ? ' (ต่ำกว่า 1:1.5)' : ''} · ราคา${row.close > plan.entryHigh ? 'สูงกว่าโซนเข้า = เสี่ยงไล่ราคา' : 'อยู่ไม่ไกลโซนเข้า'}`,
@@ -211,7 +212,7 @@ export function buildRiskMdx(input: MdxInput): RiskMdx {
   const dims = [d1, d2, d3, d4, d5, d6, d7].map((x) => ({ ...x, band: bandOf(x.score) }));
   const composite = Math.round(dims.reduce((a, x) => a + x.weight * x.score, 0));
   const band = bandOf(composite);
-  const override: RiskMdx['override'] = composite >= 75 ? 'ZERO' : composite >= 50 ? 'HALF' : 'OK';
+  const override: RiskMdx['override'] = composite >= RULES.mdx.overrideZero ? 'ZERO' : composite >= RULES.mdx.overrideHalf ? 'HALF' : 'OK';
   const overrideNote =
     override === 'ZERO'
       ? `MDX ${composite} (วิกฤต) — ห้ามเปิดไม้ใหม่จนกว่ามิติเสี่ยงจะลดลง ขนาดไม้ที่คำนวณไว้ (${plan.sizePct.toFixed(1)}%) ถูก override เป็น 0`
@@ -220,7 +221,7 @@ export function buildRiskMdx(input: MdxInput): RiskMdx {
         : `MDX ${composite} — ความเสี่ยงรวมอยู่ในกรอบ ใช้ขนาดไม้ตามแผน ${plan.sizePct.toFixed(1)}% พร้อมเคารพ stop เดิม`;
 
   const top = [...dims].sort((a, b) => b.score - a.score)[0];
-  const topRisk = top.score >= 50
+  const topRisk = top.score >= RULES.mdx.topRiskMin
     ? { key: top.key, name: top.name, score: top.score, evidence: top.evidence }
     : null;
 

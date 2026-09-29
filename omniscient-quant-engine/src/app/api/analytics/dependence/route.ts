@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { serverError } from '@/lib/http/responses';
 import { getThetaMatrix } from '@/lib/quant/engine/api';
 
 export const dynamic = 'force-dynamic';
@@ -8,7 +9,6 @@ export async function GET() {
     const data = await getThetaMatrix();
     return NextResponse.json(data);
   } catch (e) {
-    console.error('dependence error', e);
-    return NextResponse.json({ error: 'dependence failed', detail: String(e) }, { status: 500 });
+    return serverError('dependence failed', e);
   }
 }

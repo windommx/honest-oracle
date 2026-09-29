@@ -1,4 +1,7 @@
 import { NextResponse } from 'next/server';
+import { z } from 'zod';
+import { logAction } from '@/lib/audit';
+import { readJson, serverError } from '@/lib/http/responses';
 import { getAnalyst, askAnalyst } from '@/lib/quant/engine/terminal';
 import { llmErrorResponse } from '@/lib/llm';
 
@@ -15,26 +18,30 @@ export async function GET(
     if (!data) return NextResponse.json({ error: 'symbol not found' }, { status: 404 });
     return NextResponse.json(data);
   } catch (e) {
-    console.error('analyst GET error', e);
-    return NextResponse.json({ error: 'analyst failed', detail: String(e) }, { status: 500 });
+    return serverError('analyst failed', e);
   }
 }
+
+const ChatBody = z.object({ question: z.string().trim().min(1, 'ต้องมีคำถาม').max(600) });
 
 export async function POST(
   req: Request,
   { params }: { params: Promise<{ symbol: string }> },
 ) {
+  const body = await readJson(req, ChatBody);
+  if (!body.ok) return body.res;
+  const { symbol } = await params;
+  const sym = symbol.toUpperCase();
   try {
-    const { symbol } = await params;
-    const body = (await req.json().catch(() => ({}))) as { question?: string };
-    const question = (body.question ?? '').trim();
-    if (!question) return NextResponse.json({ error: 'question required' }, { status: 400 });
-    const answer = await askAnalyst(symbol.toUpperCase(), question.slice(0, 600));
+    const answer = await askAnalyst(sym, body.data.question);
+    void logAction(req, 'analyst.chat', 200, { symbol: sym, chars: body.data.question.length });
     return NextResponse.json({ answer });
   } catch (e) {
     const r = llmErrorResponse(e);
-    if (r) return NextResponse.json(r.body, { status: r.status, headers: { 'Cache-Control': 'no-store' } });
-    console.error('analyst POST error', e);
-    return NextResponse.json({ error: 'chat failed', detail: String(e) }, { status: 500 });
+    if (r) {
+      void logAction(req, 'analyst.chat', r.status, { symbol: sym, error: r.body.error });
+      return NextResponse.json(r.body, { status: r.status, headers: { 'Cache-Control': 'no-store' } });
+    }
+    return serverError('chat failed', e);
   }
 }

@@ -6,6 +6,7 @@ export const MSG = {
   unauthenticated: "ต้องยืนยันตัวตนก่อน — ส่ง HTTP Basic auth ด้วยรหัสผ่าน OQE_AUTH_PASSWORD หรือ Authorization: Bearer <OQE_API_TOKEN>",
   badPassword: "รหัสผ่านไม่ถูกต้อง",
   badToken: "API token ไม่ถูกต้อง",
+  viewerReadOnly: "บัญชีผู้ชมเป็นแบบอ่านอย่างเดียว — การแก้ไข/รันงานต้องใช้รหัสผู้ดูแล",
   localOnly:
     "แพลตฟอร์มนี้ยังไม่ได้ตั้งรหัสผ่าน จึงเปิดให้ใช้เฉพาะบนเครื่องที่รันเซิร์ฟเวอร์ (http://localhost) — " +
     "ถ้าต้องการเปิดจากเครื่องอื่น ให้ตั้ง OQE_AUTH_PASSWORD ในไฟล์ .env แล้วรีสตาร์ต",

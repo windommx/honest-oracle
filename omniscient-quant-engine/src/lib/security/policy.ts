@@ -12,7 +12,7 @@
 
 import { checkApiToken, checkPassword, parseBasic, parseBearer } from "./auth"
 import type { SecurityConfig } from "./config"
-import { checkCsrf } from "./csrf"
+import { checkCsrf, isMutationMethod } from "./csrf"
 import { MSG } from "./messages"
 import { clientKey, isLoopbackRequest, type HeaderGetter } from "./net"
 import { isApiPath, isPublicPath, isStaticAssetPath } from "./paths"
@@ -20,6 +20,7 @@ import { AUTH_FAIL_GLOBAL_RATE, AUTH_FAIL_RATE, matchRateRule, type TokenBucketL
 
 export type Principal =
   | { role: "admin"; via: "basic" | "token" | "local" | "open" }
+  | { role: "viewer"; via: "basic" }
   | { role: null; via: "public" }
 
 export type AccessDecision =
@@ -108,17 +109,24 @@ export function decideAccess(input: AccessInput): AccessDecision {
     if (!principal) {
       const basic = parseBasic(authorization)
       if (basic) {
-        if (!checkPassword(basic.password, config.password)) {
+        if (checkPassword(basic.password, config.password)) {
+          principal = { role: "admin", via: "basic" }
+        } else if (config.viewerPassword && checkPassword(basic.password, config.viewerPassword)) {
+          principal = { role: "viewer", via: "basic" }
+        } else {
           const sec = authFailLimited(input, now)
           if (sec !== null) return deny(429, "rate_limited", MSG.authRateLimited(sec), api, { retryAfterSec: sec })
           return deny(401, "bad_password", MSG.badPassword, api, { challenge: true })
         }
-        principal = { role: "admin", via: "basic" }
       }
     }
     if (!principal) {
       if (isPublicPath(pathname)) return { kind: "allow", principal: PUBLIC }
       return deny(401, "unauthenticated", MSG.unauthenticated, api, { challenge: true })
+    }
+    // ผู้ชม = อ่านอย่างเดียว (GET/HEAD) — แก้ journal / seed / เรียก LLM ไม่ได้
+    if (principal.role === "viewer" && isMutationMethod(method)) {
+      return deny(403, "read_only", MSG.viewerReadOnly, api)
     }
   }
 

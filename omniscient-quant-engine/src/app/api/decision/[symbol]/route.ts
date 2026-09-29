@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { serverError } from '@/lib/http/responses';
 import { getDecision } from '@/lib/quant/engine/api';
 
 export const dynamic = 'force-dynamic';
@@ -15,7 +16,6 @@ export async function GET(
     }
     return NextResponse.json(detail);
   } catch (e) {
-    console.error('decision error', e);
-    return NextResponse.json({ error: 'decision failed', detail: String(e) }, { status: 500 });
+    return serverError('decision failed', e);
   }
 }

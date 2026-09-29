@@ -124,3 +124,47 @@ model SynthesisReport {
   @@index([symbol, createdAt])
   @@index([createdAt])
 }
+
+// ─────────────────────────────────────────────────────────────
+// ธรรมาภิบาล — pre-registration ของกติกา · ที่มาของข้อมูล · บันทึกการกระทำ (Task 17)
+// ─────────────────────────────────────────────────────────────
+
+model RuleRegistration {
+  id           String   @id @default(cuid())
+  createdAt    DateTime @default(now())
+  rulesHash    String // sha256 ของ RULES (canonical JSON) ณ เวลาที่ล็อก
+  rulesVersion String
+  rules        Json // snapshot ของกติกาทั้งชุด
+  note         String?
+  actor        String   @default("unknown") // local | basic | token | open | script
+  @@index([rulesHash])
+  @@index([createdAt])
+}
+
+model DataSource {
+  id        String    @id @default(cuid())
+  createdAt DateTime  @default(now())
+  kind      String // synthetic | real
+  source    String // เช่น "generator seed 20250902" | "yahoo" | "csv"
+  license   String? // เงื่อนไขสิทธิ์ใช้ข้อมูลที่ผู้นำเข้าบันทึก
+  note      String?
+  stocks    Int
+  prices    Int
+  firstDate DateTime?
+  lastDate  DateTime?
+  seed      Int?
+  @@index([createdAt])
+}
+
+model ActionLog {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  actor     String // local | basic | viewer | token | open | script
+  action    String // journal.create | journal.update | journal.delete | journal.seed | data.seed | data.ingest | rules.register | audit.run | synthesis.run | analyst.chat
+  method    String
+  path      String
+  status    Int
+  detail    Json?
+  @@index([createdAt])
+  @@index([action])
+}

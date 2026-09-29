@@ -11,10 +11,11 @@ import {
   kendallTau, claytonThetaFromTau, mean, std, pearson, quantile, linregSlope, clamp,
 } from '../stats';
 import { mulberry32, gaussianFactory, tradingDates } from '../rng';
+import { RULES } from './rules';
 
 let genCache: GeneratedMarket | null = null;
 
-export function getGenerated(seed = 20250902): GeneratedMarket {
+export function getGenerated(seed: number = RULES.seed): GeneratedMarket {
   if (!genCache) genCache = generateMarket(seed);
   return genCache;
 }
@@ -115,7 +116,7 @@ function asofFundamentals(
 function computeDependence(ret: number[], marketRet: number[]): {
   theta: number[]; thetaZ: number[]; ltd: number[]; decoupled: boolean[];
 } {
-  const W = 60;
+  const W = RULES.dependence.window;
   const theta: number[] = new Array(ret.length).fill(2);
   const corr: number[] = new Array(ret.length).fill(0);
   for (let i = W; i < ret.length; i++) {
@@ -128,7 +129,7 @@ function computeDependence(ret: number[], marketRet: number[]): {
   // rolling z (120d) of theta
   const thetaZ: number[] = new Array(ret.length).fill(0);
   for (let i = 0; i < ret.length; i++) {
-    const lo = Math.max(W, i - 119);
+    const lo = Math.max(W, i - (RULES.dependence.zWindow - 1));
     const w = theta.slice(lo, i + 1);
     if (w.length < 40) {
       thetaZ[i] = 0;
@@ -139,7 +140,7 @@ function computeDependence(ret: number[], marketRet: number[]): {
     thetaZ[i] = (theta[i] - m) / s;
   }
   // lower tail dependence proxy: correlation conditional on market bottom quintile
-  const mQ = quantile(marketRet.slice(W), 0.2);
+  const mQ = quantile(marketRet.slice(W), RULES.dependence.ltdBottomQuantile);
   const ltd: number[] = new Array(ret.length).fill(0);
   for (let i = W; i < ret.length; i++) {
     const a: number[] = [];
@@ -152,29 +153,116 @@ function computeDependence(ret: number[], marketRet: number[]): {
     }
     ltd[i] = a.length > 12 ? Math.max(0, pearson(a, b)) * 0.9 : 0.5;
   }
-  const decoupled = thetaZ.map((z) => z < -1.5);
+  const decoupled = thetaZ.map((z) => z < RULES.dependence.decoupleZ);
   return { theta, thetaZ, ltd, decoupled };
 }
 
 // ─────────────────────── market state builder ───────────────────────
 
-export async function buildMarketState(): Promise<MarketState> {
-  const gen = getGenerated();
-  const dates = gen.dates;
+/**
+ * ข้อมูลดิบรูปเดียวกับตาราง DB (Stock + Price + Fundamental + FundFlow)
+ * ข้อมูลจำลองทุก seed, ข้อมูลใน DB และข้อมูลจริงที่ ingest เข้ามา ผ่านตัวสร้าง panel ตัวเดียวกัน (buildPanel)
+ * → ผล robustness ของ seed demo = ผลของแท็บ Backtest บน DB demo เป๊ะ (ไม่มีท่อคู่ขนานที่คำนวณต่างกัน)
+ */
+export interface PanelStockInput {
+  symbol: string;
+  name: string;
+  sector: string;
+  theme: string;
+  beta: number;
+  prices: Array<{ date: Date; close: number; volume: number }>;
+  fundamentals: Array<{ announceDate: Date; pe: number; pb: number; roe: number; de: number; revenueGrowth: number }>;
+  flows: Array<{ date: Date; netFlowM: number }>;
+}
+
+export function generatedToPanelInput(gen: GeneratedMarket): PanelStockInput[] {
+  return gen.stocks.map((s) => ({
+    symbol: s.def.symbol,
+    name: s.def.name,
+    sector: s.def.sector,
+    theme: s.def.theme,
+    beta: s.def.beta,
+    prices: s.series.close.map((c, t) => ({ date: s.series.dates[t], close: c, volume: s.series.volume[t] })),
+    fundamentals: s.fundamentals.map((f) => ({ announceDate: f.announceDate, pe: f.pe, pb: f.pb, roe: f.roe, de: f.de, revenueGrowth: f.revenueGrowth })),
+    flows: s.flows.map((f) => ({ date: f.date, netFlowM: f.netFlowM })),
+  }));
+}
+
+/**
+ * สร้าง MarketState จากข้อมูลดิบ (pure — ไม่แตะ DB)
+ *  - ปฏิทิน = union ของวันที่มีราคา ตัดช่วงหัวที่บางหุ้นยังไม่มีราคา (เริ่มที่วันแรกที่ทุกตัวมีราคา)
+ *  - ช่องว่างกลางทาง (หยุดพักการซื้อขาย/ข้อมูลหาย) เติมด้วยราคาปิดล่าสุด ปริมาณ 0 — นับไว้ใน qc
+ *  - market proxy = ดัชนีผลตอบแทนเฉลี่ยเท่ากันของหุ้นใน panel (เริ่ม 1000)
+ */
+export function buildPanel(input: PanelStockInput[]): MarketState {
+  const keyOf = (d: Date) => d.toISOString().slice(0, 10);
+  const dateSet = new Map<string, number>();
+  for (const s of input) for (const p of s.prices) if (Number.isFinite(p.close) && p.close > 0) dateSet.set(keyOf(p.date), p.date.getTime());
+  let allDates = [...dateSet.values()].sort((a, b) => a - b).map((ms) => new Date(ms));
+  const firstByStock = input.map((s) => {
+    const ts = s.prices.filter((p) => Number.isFinite(p.close) && p.close > 0).map((p) => p.date.getTime());
+    return ts.length ? Math.min(...ts) : Infinity;
+  });
+  const commonStart = Math.max(...firstByStock);
+  const trimmedLeading = allDates.filter((d) => d.getTime() < commonStart).length;
+  allDates = allDates.filter((d) => d.getTime() >= commonStart);
+  const dates = allDates;
   const N = dates.length;
 
+  let filled = 0;
+  const perStockCloses: number[][] = [];
+  const perStockVols: number[][] = [];
+  for (const s of input) {
+    const byDate = new Map<string, { close: number; volume: number }>();
+    for (const p of s.prices) if (Number.isFinite(p.close) && p.close > 0) byDate.set(keyOf(p.date), { close: p.close, volume: p.volume });
+    const closes = new Array<number>(N);
+    const vols = new Array<number>(N);
+    let last = NaN;
+    for (let t = 0; t < N; t++) {
+      const hit = byDate.get(keyOf(dates[t]));
+      if (hit) {
+        last = hit.close;
+        closes[t] = hit.close;
+        vols[t] = Number.isFinite(hit.volume) ? hit.volume : 0;
+      } else {
+        filled++;
+        closes[t] = last;
+        vols[t] = 0;
+      }
+    }
+    perStockCloses.push(closes);
+    perStockVols.push(vols);
+  }
+
+  // market proxy returns (equal weight)
+  const marketRet = new Array<number>(N).fill(0);
+  for (let t = 1; t < N; t++) {
+    let acc = 0;
+    let cnt = 0;
+    for (let s = 0; s < perStockCloses.length; s++) {
+      const c0 = perStockCloses[s][t - 1];
+      const c1 = perStockCloses[s][t];
+      if (Number.isFinite(c0) && Number.isFinite(c1) && c0 > 0) {
+        acc += c1 / c0 - 1;
+        cnt++;
+      }
+    }
+    marketRet[t] = cnt ? acc / cnt : 0;
+  }
+  const marketClose: number[] = new Array<number>(N).fill(1000);
+  for (let t = 1; t < N; t++) marketClose[t] = marketClose[t - 1] * (1 + marketRet[t]);
+  const marketVol20 = rollingStd(marketRet, 20).map((v) => v * Math.sqrt(252));
+
   // regime: risk_off if below MA100 or vol20 in top quartile
-  const ma100 = rollingSma(gen.marketClose, 100);
-  const volQ75 = quantile(gen.marketVol20.slice(150), 0.75);
-  const regime = gen.marketClose.map((c, t) =>
-    t >= 100 && (c < ma100[t] || gen.marketVol20[t] > volQ75) ? 'risk_off' : 'risk_on',
+  const ma100 = rollingSma(marketClose, RULES.regime.maWindow);
+  const volQ75 = quantile(marketVol20.slice(150), RULES.regime.volQuantile);
+  const regime = marketClose.map((c, t) =>
+    t >= 100 && (c < ma100[t] || marketVol20[t] > volQ75) ? 'risk_off' : 'risk_on',
   ) as MarketState['regime'];
 
-  const marketRet = pctChange(gen.marketClose, 1);
-
-  const stocks: StockPanel[] = gen.stocks.map((s) => {
-    const closes = s.series.close;
-    const vols = s.series.volume;
+  const stocks: StockPanel[] = input.map((s, si) => {
+    const closes = perStockCloses[si];
+    const vols = perStockVols[si];
     const rets = pctChange(closes, 1);
     const ret5 = pctChange(closes, 5);
     const ret21 = pctChange(closes, 21);
@@ -185,14 +273,16 @@ export async function buildMarketState(): Promise<MarketState> {
     const obv = obvSlope21(closes, vols);
     const max252: number[] = new Array(N).fill(NaN);
     for (let t = 0; t < N; t++) {
-      max252[t] = Math.max(...closes.slice(Math.max(0, t - 251), t + 1));
+      const win = closes.slice(Math.max(0, t - 251), t + 1).filter(Number.isFinite);
+      max252[t] = win.length ? Math.max(...win) : NaN;
     }
     const ma20 = rollingSma(closes, 20);
-    const ma50 = rollingSma(closes, 50);
     const dep = computeDependence(rets, marketRet);
 
-    // fund flow 5d smoothed
-    const flowRaw = s.flows.map((f) => f.netFlowM);
+    // fund flow 5d smoothed (วันที่ไม่มีข้อมูล = 0)
+    const flowByDate = new Map<string, number>();
+    for (const f of s.flows) flowByDate.set(keyOf(f.date), f.netFlowM);
+    const flowRaw = dates.map((d) => flowByDate.get(keyOf(d)) ?? 0);
     const flow5 = flowRaw.map((_, t) => mean(flowRaw.slice(Math.max(0, t - 4), t + 1)));
 
     // PIT fundamentals as-of
@@ -232,14 +322,7 @@ export async function buildMarketState(): Promise<MarketState> {
         z: {} as Record<FeatureKey, number>,
       });
     }
-    return {
-      symbol: s.def.symbol,
-      name: s.def.name,
-      sector: s.def.sector,
-      theme: s.def.theme,
-      beta: s.def.beta,
-      rows,
-    };
+    return { symbol: s.symbol, name: s.name, sector: s.sector, theme: s.theme, beta: s.beta, rows };
   });
 
   // ── cross-sectional z-scores per date (over stocks) ──
@@ -247,7 +330,7 @@ export async function buildMarketState(): Promise<MarketState> {
     for (const key of FEATURE_KEYS) {
       const vals = stocks.map((st) => {
         const v = st.rows[t][key as keyof DayRow];
-        return typeof v === 'number' ? v : 0;
+        return typeof v === 'number' && Number.isFinite(v) ? v : 0;
       });
       const m = mean(vals);
       const sd = std(vals) || 1e-9;
@@ -274,11 +357,22 @@ export async function buildMarketState(): Promise<MarketState> {
     }
     return out;
   };
-  const fStress = tz(rawStress);
-  const fMomentum = tz(rawMomentum);
-  const fFlow = tz(rawFlow);
 
-  return { dates, marketClose: gen.marketClose, regime, fStress, fMomentum, fFlow, stocks };
+  return {
+    dates,
+    marketClose,
+    regime,
+    fStress: tz(rawStress),
+    fMomentum: tz(rawMomentum),
+    fFlow: tz(rawFlow),
+    stocks,
+    qc: { filledCells: filled, trimmedLeadingDays: trimmedLeading },
+  };
+}
+
+/** MarketState จากข้อมูลจำลอง (ค่าเริ่มต้น = seed ของ demo) — ท่อเดียวกับข้อมูลใน DB */
+export async function buildMarketState(genIn?: GeneratedMarket): Promise<MarketState> {
+  return buildPanel(generatedToPanelInput(genIn ?? getGenerated()));
 }
 
 // ─────────────────────── DB-backed state w/ cache ───────────────────────
@@ -392,8 +486,8 @@ export async function loadMarketState(): Promise<MarketState> {
 }
 
 /**
- * Build the in-memory panel from DB tables (L0 provenance) — falls back to
- * generator content is NOT used here: the DB is the single source of truth.
+ * Build the in-memory panel from DB tables (L0 provenance) — DB คือแหล่งความจริงเดียว
+ * DB ว่าง → ใช้ข้อมูลจำลองของ demo (seed ของ RULES)
  */
 async function buildFromDb(): Promise<MarketState> {
   const dbStocks = await db.stock.findMany({
@@ -403,161 +497,8 @@ async function buildFromDb(): Promise<MarketState> {
       flows: { orderBy: { date: 'asc' } },
     },
   });
-  if (dbStocks.length === 0) {
-    return buildMarketState();
-  }
-
-  // canonical dates = union of price dates from DB
-  const dateSet = new Set<number>();
-  for (const s of dbStocks) for (const p of s.prices) dateSet.add(p.date.getTime());
-  const dates = [...dateSet].sort((a, b) => a - b).map((ms) => new Date(ms));
-  const N = dates.length;
-  const keyOf = (d: Date) => d.toISOString().slice(0, 10);
-
-  // market proxy = equal-weight return index from DB closes (starts at 1000)
-  const perStockRet: number[][] = [];
-  const stocks: StockPanel[] = [];
-  const perStockCloses: number[][] = [];
-
-  for (const s of dbStocks) {
-    const byDate = new Map<string, { close: number; volume: number }>();
-    for (const p of s.prices) byDate.set(keyOf(p.date), { close: p.close, volume: p.volume });
-    const closes = dates.map((d) => byDate.get(keyOf(d))?.close ?? NaN);
-    perStockCloses.push(closes);
-  }
-  // market proxy returns (equal weight, skipping NaN)
-  const marketRet = new Array<number>(N).fill(0);
-  for (let t = 1; t < N; t++) {
-    let acc = 0;
-    let cnt = 0;
-    for (let s = 0; s < perStockCloses.length; s++) {
-      const c0 = perStockCloses[s][t - 1];
-      const c1 = perStockCloses[s][t];
-      if (Number.isFinite(c0) && Number.isFinite(c1) && c0 > 0) {
-        acc += c1 / c0 - 1;
-        cnt++;
-      }
-    }
-    marketRet[t] = cnt ? acc / cnt : 0;
-  }
-  const marketClose: number[] = new Array<number>(N).fill(1000);
-  for (let t = 1; t < N; t++) marketClose[t] = marketClose[t - 1] * (1 + marketRet[t]);
-  const marketVol20 = rollingStd(marketRet, 20).map((v) => v * Math.sqrt(252));
-
-  const ma100 = rollingSma(marketClose, 100);
-  const volQ75 = quantile(marketVol20.slice(150), 0.75);
-  const regime = marketClose.map((c, t) =>
-    t >= 100 && (c < ma100[t] || marketVol20[t] > volQ75) ? 'risk_off' : 'risk_on',
-  ) as MarketState['regime'];
-
-  for (let si = 0; si < dbStocks.length; si++) {
-    const s = dbStocks[si];
-    const closes = perStockCloses[si];
-    const byDate = new Map<string, number>();
-    for (const p of s.prices) byDate.set(keyOf(p.date), p.volume);
-    const vols = dates.map((d) => byDate.get(keyOf(d)) ?? 0);
-    const rets = pctChange(closes, 1);
-    const ret5 = pctChange(closes, 5);
-    const ret21 = pctChange(closes, 21);
-    const vol21raw = rollingStd(rets, 21).map((v) => v * Math.sqrt(252));
-    const rsi = rsi14(closes);
-    const vma5 = rollingSma(vols, 5);
-    const vma60 = rollingSma(vols, 60);
-    const obv = obvSlope21(closes, vols);
-    const max252: number[] = new Array(N).fill(NaN);
-    for (let t = 0; t < N; t++) {
-      const win = closes.slice(Math.max(0, t - 251), t + 1).filter(Number.isFinite);
-      max252[t] = win.length ? Math.max(...win) : NaN;
-    }
-    const ma20 = rollingSma(closes, 20);
-    const dep = computeDependence(rets, marketRet);
-    const flowByDate = new Map<string, number>();
-    for (const f of s.flows) flowByDate.set(keyOf(f.date), f.netFlowM);
-    const flowRaw = dates.map((d) => flowByDate.get(keyOf(d)) ?? 0);
-    const flow5 = flowRaw.map((_, t) => mean(flowRaw.slice(Math.max(0, t - 4), t + 1)));
-    const fundPoints: FundPoint[] = s.fundamentals.map((f) => ({
-      announce: f.announceDate.getTime(),
-      pe: f.pe, pb: f.pb, roe: f.roe, de: f.de, revG: f.revenueGrowth,
-    }));
-
-    const rows: DayRow[] = [];
-    for (let t = 0; t < N; t++) {
-      const fund = asofFundamentals(fundPoints, dates[t].getTime());
-      rows.push({
-        t,
-        date: dates[t],
-        close: closes[t],
-        ret1: rets[t],
-        ret5: ret5[t],
-        ret21: ret21[t],
-        vol21: vol21raw[t] || 0,
-        rsi14: rsi[t],
-        volRatio: vma60[t] ? vma5[t] / vma60[t] : 1,
-        obvSlope: obv[t],
-        distHigh: closes[t] / max252[t] - 1,
-        ma20Gap: ma20[t] ? closes[t] / ma20[t] - 1 : 0,
-        flow5: flow5[t],
-        theta: dep.theta[t],
-        thetaZ: dep.thetaZ[t],
-        ltd: dep.ltd[t],
-        decoupled: dep.decoupled[t],
-        pe: fund?.pe ?? 0,
-        pb: fund?.pb ?? 0,
-        roe: fund?.roe ?? 0,
-        de: fund?.de ?? 0,
-        revG: fund?.revG ?? 0,
-        z: {} as Record<FeatureKey, number>,
-      });
-    }
-    stocks.push({
-      symbol: s.symbol,
-      name: s.name,
-      sector: s.sector,
-      theme: s.theme,
-      beta: s.beta,
-      rows,
-    });
-  }
-
-  for (let t = 0; t < N; t++) {
-    for (const key of FEATURE_KEYS) {
-      const vals = stocks.map((st) => {
-        const v = st.rows[t][key as keyof DayRow];
-        return typeof v === 'number' ? v : 0;
-      });
-      const m = mean(vals);
-      const sd = std(vals) || 1e-9;
-      stocks.forEach((st, i) => {
-        st.rows[t].z[key] = (vals[i] - m) / sd;
-      });
-    }
-  }
-
-  const rawStress = dates.map((_, t) => mean(stocks.map((s) => s.rows[t].vol21)));
-  const rawMomentum = dates.map((_, t) => mean(stocks.map((s) => s.rows[t].ret21)));
-  const rawFlow = dates.map(
-    (_, t) => (stocks.filter((s) => s.rows[t].flow5 > 0).length / stocks.length) * 2 - 1,
-  );
-  const tz = (x: number[], w = 120) => {
-    const out = new Array<number>(x.length).fill(0);
-    for (let i = 0; i < x.length; i++) {
-      const lo = Math.max(0, i - w + 1);
-      const seg = x.slice(lo, i + 1);
-      if (seg.length < 30) continue;
-      out[i] = (x[i] - mean(seg)) / (std(seg) || 1e-9);
-    }
-    return out;
-  };
-
-  return {
-    dates,
-    marketClose,
-    regime,
-    fStress: tz(rawStress),
-    fMomentum: tz(rawMomentum),
-    fFlow: tz(rawFlow),
-    stocks,
-  };
+  if (dbStocks.length === 0) return buildMarketState();
+  return buildPanel(dbStocks);
 }
 
 /** Re-export for modules needing dates w/o state */

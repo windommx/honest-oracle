@@ -1,14 +1,15 @@
 import { NextResponse } from 'next/server';
+import { serverError } from '@/lib/http/responses';
 import { getBoard } from '@/lib/quant/engine/api';
+import { rulesStamp } from '@/lib/quant/engine/rules-registry';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
-    const board = await getBoard();
-    return NextResponse.json(board);
+    const [board, rules] = await Promise.all([getBoard(), rulesStamp()]);
+    return NextResponse.json({ ...board, rules });
   } catch (e) {
-    console.error('board error', e);
-    return NextResponse.json({ error: 'board failed', detail: String(e) }, { status: 500 });
+    return serverError('board failed', e);
   }
 }

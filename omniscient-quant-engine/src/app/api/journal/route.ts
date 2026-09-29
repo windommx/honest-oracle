@@ -1,92 +1,138 @@
 import { NextResponse } from 'next/server';
+import { z } from 'zod';
 import { db } from '@/lib/db';
+import { logAction } from '@/lib/audit';
+import { isNotFoundError, notFound, readJson, serverError, validate } from '@/lib/http/responses';
 import { seedDemoJournal } from '@/lib/quant/engine/api';
 
 export const dynamic = 'force-dynamic';
 
+const SIGNALS = ['ENTRY_PULLBACK', 'ENTRY_MOMENTUM', 'NO_TRADE'] as const;
+const STATUSES = ['PLANNED', 'EXECUTED', 'CLOSED', 'SKIPPED'] as const;
+
+const optNum = z.number().nullable().optional();
+const notes = z.string().max(2000).nullable().optional();
+
+const CreateSchema = z.object({
+  runDate: z.iso.datetime({ offset: true }).optional(),
+  symbol: z.string().trim().toUpperCase().regex(/^[A-Z0-9][A-Z0-9.&-]{0,14}$/, 'สัญลักษณ์หุ้น A–Z/0–9 ไม่เกิน 15 ตัว'),
+  signal: z.enum(SIGNALS).default('NO_TRADE'),
+  gates: z
+    .record(z.string().max(40), z.unknown())
+    .default({})
+    .refine((g) => Object.keys(g).length <= 40 && JSON.stringify(g).length <= 4000, 'gates ใหญ่เกินไป'),
+  price: z.number().nonnegative(),
+  entryLow: optNum,
+  entryHigh: optNum,
+  trigger: optNum,
+  stopStruct: optNum,
+  stopHard: optNum,
+  sizePct: z.number().min(0).max(100).nullable().optional(),
+  cvar: optNum,
+  probUp: z.number().min(0).max(1).nullable().optional(),
+  status: z.enum(STATUSES).default('PLANNED'),
+  pnlPct: optNum,
+  notes,
+});
+
+const PatchSchema = z
+  .object({
+    id: z.string().min(1).max(64),
+    status: z.enum(STATUSES).optional(),
+    pnlPct: optNum,
+    notes,
+  })
+  .strict();
+
+const ListQuery = z.object({ status: z.enum(STATUSES).optional() });
+
 export async function GET(req: Request) {
+  const url = new URL(req.url);
+  const q = validate(ListQuery, { status: url.searchParams.get('status') ?? undefined });
+  if (!q.ok) return q.res;
   try {
-    const url = new URL(req.url);
-    const status = url.searchParams.get('status') ?? undefined;
     const entries = await db.journalEntry.findMany({
-      where: status ? { status } : undefined,
+      where: q.data.status ? { status: q.data.status } : undefined,
       orderBy: { createdAt: 'desc' },
       take: 100,
     });
     return NextResponse.json({ entries });
   } catch (e) {
-    console.error('journal GET error', e);
-    return NextResponse.json({ error: 'journal failed', detail: String(e) }, { status: 500 });
+    return serverError('journal failed', e);
   }
 }
 
 export async function POST(req: Request) {
+  const body = await readJson(req, CreateSchema);
+  if (!body.ok) return body.res;
+  const b = body.data;
   try {
-    const body = await req.json();
     const entry = await db.journalEntry.create({
       data: {
-        runDate: body.runDate ? new Date(body.runDate) : new Date(),
-        symbol: String(body.symbol ?? '').toUpperCase(),
-        signal: String(body.signal ?? 'NO_TRADE'),
-        gates: body.gates ?? {},
-        price: Number(body.price ?? 0),
-        entryLow: body.entryLow != null ? Number(body.entryLow) : null,
-        entryHigh: body.entryHigh != null ? Number(body.entryHigh) : null,
-        trigger: body.trigger != null ? Number(body.trigger) : null,
-        stopStruct: body.stopStruct != null ? Number(body.stopStruct) : null,
-        stopHard: body.stopHard != null ? Number(body.stopHard) : null,
-        sizePct: body.sizePct != null ? Number(body.sizePct) : null,
-        cvar: body.cvar != null ? Number(body.cvar) : null,
-        probUp: body.probUp != null ? Number(body.probUp) : null,
-        status: String(body.status ?? 'PLANNED'),
-        pnlPct: body.pnlPct != null ? Number(body.pnlPct) : null,
-        notes: body.notes ?? null,
+        runDate: b.runDate ? new Date(b.runDate) : new Date(),
+        symbol: b.symbol,
+        signal: b.signal,
+        gates: b.gates as object,
+        price: b.price,
+        entryLow: b.entryLow ?? null,
+        entryHigh: b.entryHigh ?? null,
+        trigger: b.trigger ?? null,
+        stopStruct: b.stopStruct ?? null,
+        stopHard: b.stopHard ?? null,
+        sizePct: b.sizePct ?? null,
+        cvar: b.cvar ?? null,
+        probUp: b.probUp ?? null,
+        status: b.status,
+        pnlPct: b.pnlPct ?? null,
+        notes: b.notes ?? null,
       },
     });
-    return NextResponse.json({ entry });
+    void logAction(req, 'journal.create', 201, { id: entry.id, symbol: entry.symbol, signal: entry.signal, status: entry.status });
+    return NextResponse.json({ entry }, { status: 201 });
   } catch (e) {
-    console.error('journal POST error', e);
-    return NextResponse.json({ error: 'journal create failed', detail: String(e) }, { status: 500 });
+    return serverError('journal create failed', e);
   }
 }
 
 export async function PATCH(req: Request) {
+  const body = await readJson(req, PatchSchema);
+  if (!body.ok) return body.res;
+  const { id, ...rest } = body.data;
+  const data: { status?: string; pnlPct?: number | null; notes?: string | null } = {};
+  if (rest.status !== undefined) data.status = rest.status;
+  if (rest.pnlPct !== undefined) data.pnlPct = rest.pnlPct;
+  if (rest.notes !== undefined) data.notes = rest.notes;
   try {
-    const body = await req.json();
-    const { id, ...rest } = body;
-    if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 });
-    const allowed: Record<string, unknown> = {};
-    for (const k of ['status', 'pnlPct', 'notes'] as const) {
-      if (rest[k] !== undefined) allowed[k] = rest[k];
-    }
-    const entry = await db.journalEntry.update({ where: { id }, data: allowed });
+    const entry = await db.journalEntry.update({ where: { id }, data });
+    void logAction(req, 'journal.update', 200, { id, fields: Object.keys(data) });
     return NextResponse.json({ entry });
   } catch (e) {
-    console.error('journal PATCH error', e);
-    return NextResponse.json({ error: 'journal update failed', detail: String(e) }, { status: 500 });
+    if (isNotFoundError(e)) return notFound(`ไม่พบรายการ journal id=${id}`);
+    return serverError('journal update failed', e);
   }
 }
 
 export async function DELETE(req: Request) {
+  const id = new URL(req.url).searchParams.get('id');
+  const q = validate(z.string().min(1).max(64), id);
+  if (!q.ok) return q.res;
   try {
-    const url = new URL(req.url);
-    const id = url.searchParams.get('id');
-    if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 });
-    await db.journalEntry.delete({ where: { id } });
+    await db.journalEntry.delete({ where: { id: q.data } });
+    void logAction(req, 'journal.delete', 200, { id: q.data });
     return NextResponse.json({ ok: true });
   } catch (e) {
-    console.error('journal DELETE error', e);
-    return NextResponse.json({ error: 'journal delete failed', detail: String(e) }, { status: 500 });
+    if (isNotFoundError(e)) return notFound(`ไม่พบรายการ journal id=${q.data}`);
+    return serverError('journal delete failed', e);
   }
 }
 
-export async function PUT() {
+export async function PUT(req: Request) {
   // PUT = seed demo journal entries from decision board
   try {
     const count = await seedDemoJournal();
+    void logAction(req, 'journal.seed', 200, { count });
     return NextResponse.json({ ok: true, count });
   } catch (e) {
-    console.error('journal seed error', e);
-    return NextResponse.json({ error: 'journal seed failed', detail: String(e) }, { status: 500 });
+    return serverError('journal seed failed', e);
   }
 }

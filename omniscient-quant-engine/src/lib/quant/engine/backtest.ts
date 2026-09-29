@@ -10,7 +10,8 @@
 
 import type { MarketState } from './types';
 import { evaluateGates } from './gates';
-import { mean, std, mannWhitneyU, logistic, clamp } from '../stats';
+import { mean, std, mannWhitneyU, logistic, clamp, wilsonInterval } from '../stats';
+import { RULES } from './rules';
 
 export interface BtTrade {
   date: string;
@@ -51,6 +52,8 @@ export interface BacktestResult {
     calmar: number;
     profitFactor: number;
     expectancy: number; // % ต่อไม้ (win%×avgWin − loss%×avgLoss)
+    /** Wilson 95% CI ของ hit rate (%) — ไม้น้อย = ช่วงกว้าง ต้องแสดงคู่กับค่ากลางเสมอ */
+    hitRateCI: [number, number];
   };
   attribution: AttributionRow[];
   calibration: Array<{ bucket: string; predicted: number; actual: number; n: number }>;
@@ -102,16 +105,22 @@ function featuresAt(state: MarketState, si: number, t: number): number[] {
   return [r.thetaZ, r.ltd, r.z.ret21, r.volRatio, r.rsi14 / 100, r.z.flow5, r.z.vol21];
 }
 
+/** Wilson 95% CI ของ hit rate → [lo, hi] ในหน่วย % (ทศนิยม 1 ตำแหน่ง) */
+function wilsonPct(k: number, n: number): [number, number] {
+  const w = wilsonInterval(k, n);
+  return [+(w.lo * 100).toFixed(1), +(w.hi * 100).toFixed(1)];
+}
+
 export function runBacktest(
   state: MarketState,
   opts: { train?: number; test?: number; embargo?: number; pThr?: number; lookback?: number } = {},
 ): BacktestResult {
-  const train = opts.train ?? 252;
-  const test = opts.test ?? 21;
-  const embargo = opts.embargo ?? 5;
-  const pThr = opts.pThr ?? 0.55;
+  const train = opts.train ?? RULES.backtest.train;
+  const test = opts.test ?? RULES.backtest.test;
+  const embargo = opts.embargo ?? RULES.backtest.embargo;
+  const pThr = opts.pThr ?? RULES.backtest.pThr;
   const N = state.dates.length;
-  const startT = Math.max(140, N - (opts.lookback ?? 640));
+  const startT = Math.max(140, N - (opts.lookback ?? RULES.backtest.lookback));
   const S = state.stocks.length;
 
   const trades: BtTrade[] = [];
@@ -233,7 +242,7 @@ export function runBacktest(
       : { p: 1, u: 0, z: 0 };
     const edge = mp - mf;
     const verdict: AttributionRow['verdict'] =
-      pass.length < 30 ? 'INSUFFICIENT' : edge > 0.0002 && mwu.p < 0.2 ? 'SPEAKS_TRUTH' : 'NOISE';
+      pass.length < RULES.backtest.attribution.minPass ? 'INSUFFICIENT' : edge > RULES.backtest.attribution.edgeMin && mwu.p < RULES.backtest.attribution.pMax ? 'SPEAKS_TRUTH' : 'NOISE';
     return {
       gate: g.toUpperCase(),
       meanWhenPass: +mp.toFixed(5),
@@ -265,6 +274,7 @@ export function runBacktest(
       nDays: Math.floor(trades.length / S),
       nSignals: sig.length,
       hitRate: sig.length ? +(mean(sig.map((tr) => (tr.fwdRet > 0 ? 1 : 0))) * 100).toFixed(1) : 0,
+      hitRateCI: wilsonPct(sig.filter((tr) => tr.fwdRet > 0).length, sig.length),
       cumStrat: +(cumStrat * 100).toFixed(2),
       cumBase: +(cumBase * 100).toFixed(2),
       sharpe: +sharpe.toFixed(2),
@@ -281,12 +291,12 @@ export function runBacktest(
 }
 
 /** P(up) สำหรับวันปัจจุบัน (train ทั้งหมดยกเว้น embargo 5 วันสุดท้าย — honest) */
-export function currentProbs(state: MarketState, pThrFloor = 0.4): Record<string, number> {
+export function currentProbs(state: MarketState, pThrFloor = RULES.probs.floor): Record<string, number> {
   const N = state.dates.length;
-  const trainEnd = N - 5; // embargo
+  const trainEnd = N - RULES.probs.embargo; // embargo
   const X: number[][] = [];
   const y: number[] = [];
-  for (let t = Math.max(180, N - 400); t < trainEnd; t++) {
+  for (let t = Math.max(RULES.probs.minStart, N - RULES.probs.window); t < trainEnd; t++) {
     for (let si = 0; si < state.stocks.length; si++) {
       const fwd = state.stocks[si].rows[t + 1]?.ret1;
       if (fwd === undefined || !Number.isFinite(fwd)) continue;
@@ -297,7 +307,7 @@ export function currentProbs(state: MarketState, pThrFloor = 0.4): Record<string
   const model = fitLogit(X, y, 260, 0.3);
   const out: Record<string, number> = {};
   state.stocks.forEach((s, si) => {
-    out[s.symbol] = +clamp(predictLogit(model, featuresAt(state, si, N - 1)), pThrFloor, 0.95).toFixed(3);
+    out[s.symbol] = +clamp(predictLogit(model, featuresAt(state, si, N - 1)), pThrFloor, RULES.probs.cap).toFixed(3);
   });
   return out;
 }

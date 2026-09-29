@@ -2,7 +2,9 @@ import { describe, expect, test } from "bun:test"
 import {
   bhFdr, clamp, claytonThetaFromTau, cohensD, hypergeomSf, kde1d, kendallTau, linregSlope,
   mannWhitneyU, mean, median, normalCdf, normalSf, pca, pearson, psi, quantile, std, zscoreSeries,
+  wilsonInterval, bootstrapInterval,
 } from "./stats"
+import { mulberry32 } from "./rng"
 
 describe("stats — descriptive", () => {
   test("mean/std/median/quantile", () => {
@@ -117,5 +119,37 @@ describe("stats — dependence & factors", () => {
     expect(k.xs[0]).toBeLessThanOrEqual(10)
     expect(k.xs[39]).toBeGreaterThanOrEqual(16)
     expect(k.ys.every((y) => y >= 0)).toBe(true)
+  })
+})
+
+describe("stats — confidence intervals", () => {
+  test("wilsonInterval: ครอบ p̂ เสมอ · อยู่ใน [0,1] · n ใหญ่ขึ้น → แคบลง · ค่าอ้างอิง 50/100 ≈ [0.404, 0.596]", () => {
+    const w = wilsonInterval(50, 100)
+    expect(w.lo).toBeCloseTo(0.4038, 3)
+    expect(w.hi).toBeCloseTo(0.5962, 3)
+    for (const [k, n] of [[0, 10], [10, 10], [3, 7], [700, 1000]]) {
+      const ci = wilsonInterval(k, n)
+      expect(ci.lo).toBeGreaterThanOrEqual(0)
+      expect(ci.hi).toBeLessThanOrEqual(1)
+      expect(ci.lo).toBeLessThanOrEqual(k / n)
+      expect(ci.hi).toBeGreaterThanOrEqual(k / n)
+    }
+    const narrow = wilsonInterval(5000, 10000)
+    expect(narrow.hi - narrow.lo).toBeLessThan(w.hi - w.lo)
+    expect(wilsonInterval(0, 0)).toEqual({ lo: 0, hi: 1 }) // ไม่มีข้อมูล = ไม่รู้อะไรเลย
+  })
+
+  test("bootstrapInterval: deterministic ต่อ seed · ครอบค่าเฉลี่ยของตัวอย่าง · ตัวอย่างว่าง → 0", () => {
+    const rand = mulberry32(7)
+    const xs = Array.from({ length: 200 }, () => rand() * 2 - 1 + 0.1)
+    const a = bootstrapInterval(xs, mean, mulberry32(42), 300)
+    const b = bootstrapInterval(xs, mean, mulberry32(42), 300)
+    expect(a).toEqual(b)
+    expect(a.lo).toBeLessThan(mean(xs))
+    expect(a.hi).toBeGreaterThan(mean(xs))
+    expect(bootstrapInterval([], mean, mulberry32(1))).toEqual({ lo: 0, hi: 0 })
+    // สถิติที่ให้ NaN บางรอบถูกข้าม ไม่ทำให้ CI เป็น NaN
+    const odd = bootstrapInterval([1, -1], (s) => (s.every((v) => v > 0) ? NaN : mean(s)), mulberry32(3), 100)
+    expect(Number.isFinite(odd.lo) && Number.isFinite(odd.hi)).toBe(true)
   })
 })
