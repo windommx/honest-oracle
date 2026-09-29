@@ -17,7 +17,7 @@ export function isApiPath(pathname: string): boolean {
   return pathname === "/api" || pathname.startsWith("/api/")
 }
 
-/** เข้าได้โดยไม่ต้องยืนยันตัวตน (โหมด auth): health check ของ monitor / Docker */
+/** เข้าได้โดยไม่ต้องยืนยันตัวตน (โหมด auth): health check ของ monitor / Docker + หน้าข้อกำหนด (ไม่มีข้อมูลของผู้ใช้) */
 export function isPublicPath(pathname: string): boolean {
-  return pathname === "/api/health"
+  return pathname === "/api/health" || pathname === "/terms"
 }

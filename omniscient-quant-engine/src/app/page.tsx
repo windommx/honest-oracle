@@ -10,24 +10,13 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import {
-  LayoutDashboard,
-  Layers,
-  Waypoints,
-  Target,
-  ShieldHalf,
-  History,
-  Sparkles,
-  Loader2,
-  FlaskConical,
-  ShieldAlert,
-  Crown,
-} from 'lucide-react';
 import { TerminalSidebar } from '@/components/terminal/sidebar';
 import { TerminalTopbar } from '@/components/terminal/topbar';
 import TerminalView from '@/components/terminal/terminal-view';
 import { CommandCenter } from '@/components/dashboard/command-center';
-import { PulseDot } from '@/components/dashboard/primitives';
+import { AppFooter } from '@/components/app-footer';
+import { FirstRunGuide } from '@/components/first-run-guide';
+import { AppMetaProvider, dataKindTag, useAppMeta } from '@/components/providers/app-meta';
 import { OverviewTab } from '@/components/quant/overview-tab';
 import { MultiviewTab } from '@/components/quant/multiview-tab';
 import { DependenceTab } from '@/components/quant/dependence-tab';
@@ -80,7 +69,16 @@ type ViewKey =
   | 'auditor';
 
 export default function Home() {
+  return (
+    <AppMetaProvider>
+      <HomeShell />
+    </AppMetaProvider>
+  );
+}
+
+function HomeShell() {
   const { toast } = useToast();
+  const { meta } = useAppMeta();
   const [view, setView] = useState<ViewKey>('dashboard');
   const [symbol, setSymbol] = useState('TSE');
   const [navOpen, setNavOpen] = useState(false);
@@ -102,14 +100,22 @@ export default function Home() {
   const journalQ = useApi<{ entries: JournalEntryT[] }>(view === 'backtest' ? '/api/journal' : null);
   const auditQ = useApi<{ reports: AuditReportT[] }>(view === 'auditor' ? '/api/audit' : null);
 
+  // refresh ของ useApi เป็น callback คงที่ — ดึงออกมาเป็นตัวแปรเพื่อให้ dependency ของ hook ชัดเจน
+  const { refresh: refreshBoard } = boardQ;
+  const { refresh: refreshFactors } = factorsQ;
+  const { refresh: refreshDependence } = dependenceQ;
+  const { refresh: refreshDecision } = decisionQ;
+  const { refresh: refreshBacktest } = btQ;
+  const { refresh: refreshJournal } = journalQ;
+
   const refreshAll = useCallback(() => {
     setTick((t) => t + 1);
-    boardQ.refresh();
-    factorsQ.refresh();
-    dependenceQ.refresh();
-    decisionQ.refresh();
-    btQ.refresh();
-  }, [boardQ.refresh, factorsQ.refresh, dependenceQ.refresh, decisionQ.refresh, btQ.refresh]);
+    refreshBoard();
+    refreshFactors();
+    refreshDependence();
+    refreshDecision();
+    refreshBacktest();
+  }, [refreshBoard, refreshFactors, refreshDependence, refreshDecision, refreshBacktest]);
 
   // ⌘K / Ctrl+K เปิด search
   useEffect(() => {
@@ -161,29 +167,29 @@ export default function Home() {
     setSeeding(true);
     try {
       await apiCall('/api/journal', { method: 'PUT' });
-      journalQ.refresh();
+      refreshJournal();
       toast({ title: 'เติมตัวอย่างแล้ว', description: 'Journal มีรายการจาก Decision Board ล่าสุด' });
     } catch (e) {
       toast({ title: 'เติมไม่สำเร็จ', description: e instanceof Error ? e.message : 'unknown error', variant: 'destructive' });
     } finally {
       setSeeding(false);
     }
-  }, [journalQ.refresh, toast]);
+  }, [refreshJournal, toast]);
 
   const handleUpdateEntry = useCallback(
-    async (id: string, patch: { status?: string; pnlPct?: number; notes?: string }) => {
+    async (id: string, patch: { status?: string; pnlPct?: number | null; notes?: string }) => {
       try {
         await apiCall('/api/journal', {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ id, ...patch }),
         });
-        journalQ.refresh();
+        refreshJournal();
       } catch (e) {
         toast({ title: 'อัปเดตไม่สำเร็จ', description: e instanceof Error ? e.message : 'unknown error', variant: 'destructive' });
       }
     },
-    [journalQ.refresh, toast],
+    [refreshJournal, toast],
   );
 
   const symbols = useMemo(() => board?.rows.map((r) => r.symbol) ?? [], [board]);
@@ -247,6 +253,7 @@ export default function Home() {
         />
 
         <main className="min-h-0 flex-1 overflow-y-auto">
+          {view === 'dashboard' && <FirstRunGuide onNavigate={navigate} />}
           {view === 'dashboard' ? (
             <CommandCenter
               board={board}
@@ -332,27 +339,8 @@ export default function Home() {
           )}
         </main>
 
-        {/* Status bar — sticky footer เสมอ */}
-        <footer className="shrink-0 border-t border-white/[0.06] bg-zinc-950 pb-[env(safe-area-inset-bottom)]">
-          <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-2">
-            <p className="text-[11px] leading-snug text-zinc-600">
-              Omniscient Quant Engine v1.0 · ข้อมูลตลาดจำลองเพื่อการสาธิต (22 ตัว × 750 วันทำการ) ·{' '}
-              <span className="text-zinc-500">ไม่ใช่คำแนะนำการลงทุน</span>
-            </p>
-            <p className="font-mono text-[11px] text-zinc-600">
-              {boardQ.loading ? (
-                <span className="inline-flex items-center gap-1.5">
-                  <Loader2 className="h-3 w-3 animate-spin" /> pipeline running...
-                </span>
-              ) : (
-                <span className="inline-flex items-center gap-1.5">
-                  <PulseDot tone="up" />
-                  pipeline ready · walk-forward + 5-gates + LLM audit loop
-                </span>
-              )}
-            </p>
-          </div>
-        </footer>
+        {/* Status bar — sticky footer เสมอ (ป้ายข้อมูลจาก provenance จริง) */}
+        <AppFooter busy={boardQ.loading} />
       </div>
 
       {/* ⌘K global symbol search */}
@@ -360,7 +348,7 @@ export default function Home() {
         <CommandInput placeholder="ค้นหา Symbol ทุกตลาด..." />
         <CommandList>
           <CommandEmpty>ไม่พบ symbol ที่ค้นหา</CommandEmpty>
-          <CommandGroup heading={`หุ้น SET (จำลอง) — ${symbols.length} ตัว`}>
+          <CommandGroup heading={`หุ้น SET${meta ? ` (${dataKindTag(meta)})` : ''} — ${symbols.length} ตัว`}>
             {(board?.rows ?? []).map((r) => (
               <CommandItem
                 key={r.symbol}

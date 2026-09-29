@@ -170,7 +170,8 @@ export interface PanelStockInput {
   sector: string;
   theme: string;
   beta: number;
-  prices: Array<{ date: Date; close: number; volume: number }>;
+  /** volume = ล้านหุ้น (หน่วยเดียวกับ generator) · open/high/low ไม่มี = ใช้ close */
+  prices: Array<{ date: Date; close: number; volume: number; open?: number | null; high?: number | null; low?: number | null }>;
   fundamentals: Array<{ announceDate: Date; pe: number; pb: number; roe: number; de: number; revenueGrowth: number }>;
   flows: Array<{ date: Date; netFlowM: number }>;
 }
@@ -182,7 +183,14 @@ export function generatedToPanelInput(gen: GeneratedMarket): PanelStockInput[] {
     sector: s.def.sector,
     theme: s.def.theme,
     beta: s.def.beta,
-    prices: s.series.close.map((c, t) => ({ date: s.series.dates[t], close: c, volume: s.series.volume[t] })),
+    prices: s.series.close.map((c, t) => ({
+      date: s.series.dates[t],
+      open: s.series.open[t],
+      high: s.series.high[t],
+      low: s.series.low[t],
+      close: c,
+      volume: s.series.volume[t],
+    })),
     fundamentals: s.fundamentals.map((f) => ({ announceDate: f.announceDate, pe: f.pe, pb: f.pb, roe: f.roe, de: f.de, revenueGrowth: f.revenueGrowth })),
     flows: s.flows.map((f) => ({ date: f.date, netFlowM: f.netFlowM })),
   }));
@@ -212,26 +220,36 @@ export function buildPanel(input: PanelStockInput[]): MarketState {
   let filled = 0;
   const perStockCloses: number[][] = [];
   const perStockVols: number[][] = [];
+  const perStockOhl: Array<{ open: number[]; high: number[]; low: number[] }> = [];
+  const pos = (v: number | null | undefined, fallback: number) => (v != null && Number.isFinite(v) && v > 0 ? v : fallback);
   for (const s of input) {
-    const byDate = new Map<string, { close: number; volume: number }>();
-    for (const p of s.prices) if (Number.isFinite(p.close) && p.close > 0) byDate.set(keyOf(p.date), { close: p.close, volume: p.volume });
+    const byDate = new Map<string, PanelStockInput['prices'][number]>();
+    for (const p of s.prices) if (Number.isFinite(p.close) && p.close > 0) byDate.set(keyOf(p.date), p);
     const closes = new Array<number>(N);
     const vols = new Array<number>(N);
+    const open = new Array<number>(N);
+    const high = new Array<number>(N);
+    const low = new Array<number>(N);
     let last = NaN;
     for (let t = 0; t < N; t++) {
       const hit = byDate.get(keyOf(dates[t]));
       if (hit) {
         last = hit.close;
         closes[t] = hit.close;
-        vols[t] = Number.isFinite(hit.volume) ? hit.volume : 0;
+        vols[t] = Number.isFinite(hit.volume) && hit.volume > 0 ? hit.volume : 0;
+        open[t] = pos(hit.open, hit.close);
+        high[t] = Math.max(pos(hit.high, hit.close), open[t], hit.close);
+        low[t] = Math.min(pos(hit.low, hit.close), open[t], hit.close);
       } else {
         filled++;
         closes[t] = last;
         vols[t] = 0;
+        open[t] = high[t] = low[t] = last;
       }
     }
     perStockCloses.push(closes);
     perStockVols.push(vols);
+    perStockOhl.push({ open, high, low });
   }
 
   // market proxy returns (equal weight)
@@ -322,7 +340,16 @@ export function buildPanel(input: PanelStockInput[]): MarketState {
         z: {} as Record<FeatureKey, number>,
       });
     }
-    return { symbol: s.symbol, name: s.name, sector: s.sector, theme: s.theme, beta: s.beta, rows };
+    return {
+      symbol: s.symbol,
+      name: s.name,
+      sector: s.sector,
+      theme: s.theme,
+      beta: s.beta,
+      rows,
+      coverage: { fundamentals: s.fundamentals.length > 0, flows: s.flows.length > 0 },
+      ohlcv: { ...perStockOhl[si], volume: vols },
+    };
   });
 
   // ── cross-sectional z-scores per date (over stocks) ──
@@ -452,22 +479,54 @@ export async function ensureSeeded(force = false): Promise<DataVersion> {
       })),
     });
   }
-  cache().version = '';
-  cache().state = undefined;
-  cache().promise = undefined;
+  invalidateMarketCache();
   const count = await db.stock.count();
+  const first = await db.price.findFirst({ orderBy: { date: 'asc' } });
   const last = await db.price.findFirst({ orderBy: { date: 'desc' } });
+  // ที่มาของข้อมูล — UI/health/รายงานอ่านจากตารางนี้ว่าเป็นข้อมูลจำลองหรือข้อมูลจริง
+  await db.dataSource
+    .create({
+      data: {
+        kind: 'synthetic',
+        source: `generator seed ${RULES.seed}`,
+        note: 'ข้อมูลจำลองเพื่อการสาธิต — ไม่ใช่ราคาตลาดจริง',
+        stocks: count,
+        prices: await db.price.count(),
+        firstDate: first?.date,
+        lastDate: last?.date,
+        seed: RULES.seed,
+      },
+    })
+    .catch(() => undefined); // DB เก่าที่ยังไม่มีตาราง DataSource — seed ยังสำเร็จ
   return { count, lastDate: last?.date?.toISOString() ?? '' };
+}
+
+/**
+ * กุญแจเวอร์ชันข้อมูลของ cache ทุกชั้น — จำนวนแถว + วันล่าสุด + DataSource ล่าสุด
+ * (seed/นำเข้าทุกครั้งเขียน DataSource แถวใหม่ → cache ของทุก process หมดอายุ แม้จำนวนแถวกับวันล่าสุดเท่าเดิม)
+ */
+export async function dataVersionKey(): Promise<{ key: string; stocks: number }> {
+  const [stocks, prices, last, source] = await Promise.all([
+    db.stock.count(),
+    db.price.count(),
+    db.price.findFirst({ orderBy: { date: 'desc' }, select: { date: true } }),
+    db.dataSource.findFirst({ orderBy: { createdAt: 'desc' }, select: { id: true } }).catch(() => null),
+  ]);
+  return { key: `${stocks}:${prices}:${last?.date?.toISOString() ?? ''}:${source?.id ?? '-'}`, stocks };
+}
+
+/** ล้าง cache ของ panel ใน process นี้ (หลังแทนที่ข้อมูล) */
+export function invalidateMarketCache(): void {
+  const c = cache();
+  c.version = '';
+  c.state = undefined;
+  c.promise = undefined;
 }
 
 export async function loadMarketState(): Promise<MarketState> {
   const c = cache();
-  const counts = {
-    stocks: await db.stock.count(),
-    prices: await db.price.count(),
-  };
-  const last = await db.price.findFirst({ orderBy: { date: 'desc' } });
-  const version = `${counts.stocks}:${counts.prices}:${last?.date?.toISOString() ?? ''}`;
+  const { key: version, stocks } = await dataVersionKey();
+  const counts = { stocks };
   if (c.version === version && c.state) return c.state;
   if (c.version === version && c.promise) return c.promise;
 

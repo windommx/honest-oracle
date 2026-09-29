@@ -62,7 +62,6 @@ export function evaluateGates(
   t: number,
   opts: { riskBudgetPct?: number; probUp?: number; light?: boolean } = {},
 ): GateEval {
-  const N = state.dates.length;
   const stock = state.stocks.find((s) => s.symbol === symbol);
   if (!stock) throw new Error(`unknown symbol ${symbol}`);
   const row = stock.rows[t];

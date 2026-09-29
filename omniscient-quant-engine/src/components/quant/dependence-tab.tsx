@@ -3,8 +3,6 @@
 import { useMemo } from 'react';
 import {
   ResponsiveContainer,
-  LineChart,
-  Line,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -181,7 +179,7 @@ export function DependenceTab({
 
       {/* Decouple list */}
       <Panel title="Drift & Decouple Monitor รายหุ้น" subtitle="PSI ของ Θ series (240d ฐาน vs 60d ล่าสุด) — โครงสร้าง dependence เปลี่ยนหรือยัง">
-        <div className="max-h-72 overflow-y-auto rounded-lg border border-zinc-800/80">
+        <div tabIndex={0} role="region" aria-label="ตาราง dependence รายหุ้น" className="max-h-72 overflow-y-auto rounded-lg border border-zinc-800/80">
           <table className="w-full min-w-[560px] text-left text-xs">
             <thead className="sticky top-0 bg-zinc-900 text-[10px] uppercase tracking-wider text-zinc-500">
               <tr>

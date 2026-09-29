@@ -12,7 +12,6 @@
  */
 
 import type { MarketState } from './types';
-import { getGenerated } from './panel';
 import { mean, std, psi, clamp } from '../stats';
 
 // ───────────────────────── types ─────────────────────────
@@ -85,11 +84,9 @@ export function microstructureMetrics(state: MarketState, symbol: string): Micro
   const N = state.dates.length;
   const row = s.rows[N - 1];
 
-  // raw OHLCV จาก generator cache (seed เดียวกับ DB)
-  const gen = getGenerated();
-  const gs = gen.stocks.find((x) => x.def.symbol === symbol);
-  if (!gs) return null;
-  const { open, high, low, close, volume } = gs.series;
+  // raw OHLCV จาก panel (DB) — ปริมาณเป็นล้านหุ้น → ปริมาณ × ราคา = ล้านบาท
+  const { high, low, volume } = s.ohlcv;
+  const close = s.rows.map((r) => r.close);
 
   const clv20 = clvSeries(high, low, close, 20);
   const clv5 = clvSeries(high, low, close, 5);

@@ -19,6 +19,7 @@ import type { AnalystBriefT } from '@/lib/quant/api-types';
 import { GateChips, SignalBadge } from '@/components/quant/quant-widgets';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { LLM_MISSING_HINT, READ_ONLY_HINT, useCanWrite, useLlmReady } from '@/components/providers/app-meta';
 
 // ───────────────────────────── helpers ─────────────────────────────
 
@@ -351,6 +352,9 @@ export interface AiPanelProps {
 
 export function AiPanel({ data, loading, error = null, asking = false, onAsk }: AiPanelProps) {
   const [question, setQuestion] = useState('');
+  const canWrite = useCanWrite();
+  const llmReady = useLlmReady();
+  const chatBlocked = !canWrite ? READ_ONLY_HINT : !llmReady ? LLM_MISSING_HINT : null;
   // เก็บแชทคู่กับ symbol — เมื่อเปลี่ยนหุ้น msgs จะว่างทันทีโดยไม่ต้องใช้ effect
   const [chat, setChat] = useState<{ sym: string; msgs: ChatMsg[] }>({ sym: '', msgs: [] });
   const busyRef = useRef(false);
@@ -360,7 +364,7 @@ export function AiPanel({ data, loading, error = null, asking = false, onAsk }: 
 
   async function handleAsk() {
     const q = question.trim();
-    if (!q || asking || busyRef.current) return;
+    if (!q || asking || busyRef.current || chatBlocked) return;
     busyRef.current = true;
     setQuestion('');
     const base: ChatMsg[] = chat.sym === symbol ? chat.msgs : [];
@@ -398,14 +402,14 @@ export function AiPanel({ data, loading, error = null, asking = false, onAsk }: 
       </header>
 
       {/* SCROLL AREA */}
-      <div className="min-h-0 flex-1 overflow-y-auto" aria-busy={loading}>
+      <div className="min-h-0 flex-1 overflow-y-auto" aria-busy={loading} tabIndex={0} role="region" aria-label={`บทวิเคราะห์ ${symbol || ""}`.trim()}>
         {loading ? <LoadingBody /> : error ? <ErrorBox error={error} /> : data ? <BriefContent data={data} /> : <EmptyState />}
       </div>
 
       {/* FOOTER — CHAT */}
       <footer className="mt-auto border-t border-zinc-800 p-3">
         {(msgs.length > 0 || asking) && (
-          <div className="mb-2 max-h-40 space-y-2 overflow-y-auto" aria-live="polite">
+          <div className="mb-2 max-h-40 space-y-2 overflow-y-auto" aria-live="polite" tabIndex={0} role="log" aria-label="บทสนทนากับ AI">
             {msgs.map((m, i) => (
               <div
                 key={`${i}-${m.role}`}
@@ -443,22 +447,30 @@ export function AiPanel({ data, loading, error = null, asking = false, onAsk }: 
                 void handleAsk();
               }
             }}
-            placeholder="ถาม AI นักวิเคราะห์..."
+            placeholder={chatBlocked ? (canWrite ? 'แชทต้องตั้งค่า LLM ก่อน' : 'ผู้ชม: อ่านอย่างเดียว') : 'ถาม AI นักวิเคราะห์...'}
             aria-label="ถาม AI นักวิเคราะห์"
-            className="h-9 flex-1 border-zinc-800 bg-zinc-900/60 text-xs text-zinc-200 placeholder:text-zinc-600"
+            aria-describedby={chatBlocked ? 'ai-chat-blocked' : undefined}
+            disabled={Boolean(chatBlocked)}
+            maxLength={600}
+            className="h-9 flex-1 border-zinc-800 bg-zinc-900/60 text-xs text-zinc-200 placeholder:text-zinc-400"
           />
           <Button
             type="button"
             size="icon"
             variant="outline"
             aria-label="ส่งคำถาม"
-            disabled={!question.trim() || asking}
+            disabled={!question.trim() || asking || Boolean(chatBlocked)}
             onClick={() => void handleAsk()}
             className="shrink-0 border-zinc-700 bg-zinc-900/60 text-zinc-300 hover:bg-zinc-800 hover:text-emerald-300"
           >
-            <Send className="size-3.5" />
+            <Send className="size-3.5" aria-hidden />
           </Button>
         </div>
+        {chatBlocked && (
+          <p id="ai-chat-blocked" className="mt-1.5 text-[10.5px] leading-snug text-zinc-400">
+            {chatBlocked}
+          </p>
+        )}
       </footer>
     </div>
   );

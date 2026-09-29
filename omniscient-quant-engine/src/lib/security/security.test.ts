@@ -148,6 +148,8 @@ describe("security/policy — decideAccess", () => {
     const none = decideAccess({ method: "GET", pathname: "/", headers: H(REMOTE), config: authCfg })
     expect(none).toMatchObject({ kind: "deny", status: 401, challenge: true, api: false })
     expect(decideAccess({ method: "GET", pathname: "/api/health", headers: H(REMOTE), config: authCfg }).kind).toBe("allow")
+    expect(decideAccess({ method: "GET", pathname: "/terms", headers: H(REMOTE), config: authCfg }).kind).toBe("allow")
+    expect(decideAccess({ method: "GET", pathname: "/terms/x", headers: H(REMOTE), config: authCfg }).kind).toBe("deny")
     const good = decideAccess({ method: "GET", pathname: "/", headers: H({ ...REMOTE, authorization: `Basic ${b64("u:correct-horse-battery")}` }), config: authCfg })
     expect(good).toMatchObject({ kind: "allow", principal: { via: "basic" } })
     const bad = decideAccess({ method: "GET", pathname: "/api/board", headers: H({ ...REMOTE, authorization: `Basic ${b64("u:wrong")}` }), config: authCfg })

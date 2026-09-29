@@ -280,7 +280,7 @@ export interface PcaResult {
 function jacobiEigen(A: number[][]): { values: number[]; vectors: number[][] } {
   const n = A.length;
   const a = A.map((r) => [...r]);
-  let v: number[][] = Array.from({ length: n }, (_, i) =>
+  const v: number[][] = Array.from({ length: n }, (_, i) =>
     Array.from({ length: n }, (_, j) => (i === j ? 1 : 0)),
   );
   for (let sweep = 0; sweep < 60; sweep++) {

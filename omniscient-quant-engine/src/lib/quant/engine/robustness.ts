@@ -40,6 +40,8 @@ export interface GateRobustness {
 
 export interface RobustnessReport {
   rulesHash: string;
+  /** seed ของข้อมูล demo (RULES.seed) — แถวนี้ต้องตรงกับแท็บ Backtest */
+  demoSeed: number;
   seeds: number[];
   runs: SeedRun[];
   summary: {
@@ -119,6 +121,7 @@ export async function runSeedRobustness(seeds: number[] = DEFAULT_ROBUSTNESS_SEE
         : `ผลไม่ทนทานข้าม seed (hit rate ${hit.min}–${hit.max}%, ไม่มี gate ที่ทนทาน) — ผลที่เห็นจาก seed ${RULES.seed} เป็นเรื่องของโลกจำลองใบนั้นมากกว่ากติกา`;
   return {
     rulesHash: RULES_HASH,
+    demoSeed: RULES.seed,
     seeds,
     runs,
     summary: { hitRate: hit, sharpe, maxDD: { mean: dd.mean, min: dd.min, max: dd.max }, beatsBuyHold, gates, verdict, note },

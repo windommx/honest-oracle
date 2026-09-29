@@ -342,7 +342,8 @@ function TickerRow({
   hidden?: boolean;
 }) {
   return (
-    <div className="flex shrink-0 items-center" aria-hidden={hidden || undefined}>
+    // ชุดที่สองมีไว้ให้แถบวิ่งต่อเนื่องเท่านั้น — inert = ไม่รับโฟกัส/คลิก และไม่ถูกอ่านซ้ำ
+    <div className="flex shrink-0 items-center" aria-hidden={hidden || undefined} inert={hidden || undefined}>
       {items.map((it, i) => {
         const up = it.chg1d >= 0;
         return (
@@ -350,6 +351,7 @@ function TickerRow({
             <button
               type="button"
               onClick={() => onSelectSymbol?.(it.symbol)}
+              tabIndex={hidden ? -1 : undefined}
               aria-label={`${it.symbol} ราคา ${it.price.toFixed(2)} ${fmtSignedPct(it.chg1d)}`}
               className="flex h-full items-center gap-2 px-4 py-2.5 font-mono text-xs tabular-nums transition-colors hover:bg-white/[0.04]"
             >
@@ -488,7 +490,7 @@ function buildEquityGeom(data: Array<{ date: string; equity: number; buyHold: nu
   const X = (j: number) => (j / (m - 1)) * EQ_W;
   const Y = (v: number) => EQ_H - ((v - min) / (max - min)) * EQ_H;
 
-  const pts: EqPoint[] = idx.map((i, j) => ({
+  const pts: EqPoint[] = idx.map((i) => ({
     date: data[i].date,
     equity: data[i].equity,
     buyHold: data[i].buyHold,

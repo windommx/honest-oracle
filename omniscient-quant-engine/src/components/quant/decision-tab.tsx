@@ -19,7 +19,9 @@ import { Panel, GateChips, SignalBadge } from './quant-widgets';
 import GateRibbon from '@/components/charts/gate-ribbon';
 import { fmtNum, fmtPct, fmtBaht, fmtDate } from '@/lib/format';
 import { cn } from '@/lib/utils';
-import type { BoardResponse, DecisionResponse } from '@/lib/quant/api-types';
+import { useApi } from '@/hooks/use-api';
+import { useAppMeta } from '@/components/providers/app-meta';
+import type { ApexResponse, BoardResponse, DecisionResponse } from '@/lib/quant/api-types';
 
 const GATE_DETAILS: Array<{ key: 'g1' | 'g2' | 'g3' | 'g4' | 'g5'; label: string; question: string }> = [
   { key: 'g1', label: 'G1 · Regime', question: 'ตลาดอยู่ภาวะที่เอื้อไหม?' },
@@ -52,6 +54,8 @@ export function DecisionTab({
     () => (decision ? decision.priceSeries.map((r) => ({ ...r, dateLabel: r.date.slice(5) })) : []),
     [decision],
   );
+  const { meta } = useAppMeta();
+  const canWrite = meta?.access.canWrite ?? true;
 
   if (loading || !decision) {
     return (
@@ -100,11 +104,12 @@ export function DecisionTab({
           <Button
             size="sm"
             onClick={onSaveToJournal}
-            disabled={saving}
-            className="h-8 bg-emerald-600 text-xs text-white hover:bg-emerald-500"
+            disabled={saving || !canWrite}
+            title={canWrite ? undefined : 'ผู้ชม: อ่านอย่างเดียว — บันทึก Journal ต้องใช้รหัสผู้ดูแล'}
+            className="h-8 bg-emerald-700 text-xs text-white hover:bg-emerald-600"
           >
-            <Save className="mr-1 h-3.5 w-3.5" />
-            {saving ? 'กำลังบันทึก...' : 'บันทึกแผน → Journal'}
+            <Save className="mr-1 h-3.5 w-3.5" aria-hidden />
+            {saving ? 'กำลังบันทึก...' : canWrite ? 'บันทึกแผน → Journal' : 'อ่านอย่างเดียว'}
           </Button>
         </div>
       </div>
@@ -151,11 +156,12 @@ export function DecisionTab({
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
               <PlanCell label="โซน Limit (Pullback)" value={`${fmtNum(ev.plan.entryLow)} – ${fmtNum(ev.plan.entryHigh)}`} tone="neutral" />
               <PlanCell label="Trigger (Momentum)" value={fmtNum(ev.plan.trigger)} tone="neutral" sub="ทะลุ + OBV new high" />
-              <PlanCell label="ขนาดสูงสุดของพอร์ต" value={`${fmtNum(ev.plan.sizePct, 1)}%`} tone="up" sub="งบเสี่ยง 1%/วัน ÷ CVaR" />
+              <PlanCell label="เพดานขนาดตาม CVaR (G4)" value={`${fmtNum(ev.plan.sizePct, 1)}%`} tone="up" sub="งบเสี่ยง 1%/วัน ÷ CVaR" />
               <PlanCell label="Structural Stop" value={fmtBaht(ev.plan.stopStruct)} tone="down" sub="แนวรับโครงสร้าง 15 วัน" />
               <PlanCell label="Hard Stop (1d 99%)" value={fmtBaht(ev.plan.stopHard)} tone="down" sub={`VaR99 = ${(ev.plan.var99 * 100).toFixed(1)}%`} />
               <PlanCell label="CVaR 1 วัน (97.5%)" value={`${(ev.plan.cvar * 100).toFixed(2)}%`} tone="down" sub={`MC ${risk.paths.toLocaleString()} paths · t(4)`} />
             </div>
+            <ApexSizeNote symbol={decision.symbol} ceilingPct={ev.plan.sizePct} />
             <div className="mt-3 rounded-lg border border-zinc-800 bg-zinc-900/60 px-3 py-2 font-mono text-[11px] text-zinc-400">
               P(up) โมเดล walk-forward = <span className={ev.probUp >= 0.55 ? 'text-emerald-400' : 'text-zinc-200'}>{fmtPct(ev.probUp * 100, 0)}</span>
               {' '}· Phase ปัจจุบัน: <span className="text-zinc-200">{ev.phase}</span>
@@ -227,6 +233,46 @@ export function DecisionTab({
           </p>
         )}
       </Panel>
+    </div>
+  );
+}
+
+/** ขนาดสุดท้ายหลัง Kelly-Vol × คำสั่ง Risk MDX (Apex) — ขนาดที่ควรใช้จริง ส่วน G4 เป็นแค่เพดาน */
+function ApexSizeNote({ symbol, ceilingPct }: { symbol: string; ceilingPct: number }) {
+  const q = useApi<ApexResponse>(`/api/apex/${symbol}`);
+  const k = q.data?.dossier.kelly;
+  if (q.error) return <p className="mt-3 text-[11px] text-zinc-400">คำนวณขนาดสุดท้าย (Apex) ไม่สำเร็จ: {q.error}</p>;
+  if (!k) {
+    return (
+      <p className="mt-3 text-[11px] text-zinc-400" role="status">
+        กำลังคำนวณขนาดสุดท้าย (Kelly-Vol × Risk MDX)…
+      </p>
+    );
+  }
+  const mdxCls =
+    k.mdxOverride === 'ZERO'
+      ? 'border-rose-500/50 bg-rose-500/10 text-rose-200'
+      : k.mdxOverride === 'HALF'
+        ? 'border-amber-500/50 bg-amber-500/10 text-amber-200'
+        : 'border-emerald-500/50 bg-emerald-500/10 text-emerald-200';
+  return (
+    <div className="mt-3 flex flex-wrap items-center gap-2 rounded-lg border border-zinc-700 bg-zinc-900/60 px-3 py-2 text-xs text-zinc-300">
+      <span>
+        ขนาดสุดท้าย (Apex):{' '}
+        <strong className={cn('font-mono', k.finalSizePct > 0 ? 'text-emerald-300' : 'text-rose-300')}>{fmtNum(k.finalSizePct, 1)}%</strong>
+      </span>
+      {k.mdxOverride !== 'NONE' && (
+        <span className={cn('rounded-md border px-1.5 py-0.5 font-mono text-[10px]', mdxCls)}>
+          MDX {k.mdxComposite ?? '—'} · {k.mdxOverride}
+        </span>
+      )}
+      <span className="text-[11px] text-zinc-400">
+        {k.edgeGuard
+          ? 'Kelly ≤ 0 → ไม่มี edge พอจะเดิมพัน'
+          : k.finalSizePct < ceilingPct
+            ? `ต่ำกว่าเพดาน G4 (${fmtNum(ceilingPct, 1)}%) เพราะ Kelly/vol/DD/MDX`
+            : 'เท่ากับเพดานความเสี่ยง'}
+      </span>
     </div>
   );
 }

@@ -97,8 +97,6 @@ function predictLogit(m: LogitModel, x: number[]): number {
   return logistic(z);
 }
 
-const BT_FEATURES = ['thetaZ', 'ltd', 'z_ret21', 'volRatio', 'rsi14', 'z_flow5', 'z_vol21'] as const;
-
 function featuresAt(state: MarketState, si: number, t: number): number[] {
   const s = state.stocks[si];
   const r = s.rows[t];
@@ -141,7 +139,6 @@ export function runBacktest(
     const y: number[] = [];
     for (let t = trainEnd - train; t < trainEnd; t++) {
       for (let si = 0; si < S; si++) {
-        const r = state.stocks[si].rows[t];
         const fwd = state.stocks[si].rows[t + 1]?.ret1;
         if (fwd === undefined || !Number.isFinite(fwd)) continue;
         X.push(featuresAt(state, si, t));
@@ -154,7 +151,6 @@ export function runBacktest(
     for (let t = testStart; t < testEnd; t++) {
       for (let si = 0; si < S; si++) {
         const s = state.stocks[si];
-        const r = s.rows[t];
         const fwdRow = s.rows[t + 1];
         if (!fwdRow || !Number.isFinite(fwdRow.ret1)) continue;
         const ev = evaluateGates(state, s.symbol, t, { light: true });

@@ -11,8 +11,15 @@ function Slider({
   value,
   min = 0,
   max = 100,
+  thumbLabel,
+  thumbValueText,
   ...props
-}: React.ComponentProps<typeof SliderPrimitive.Root>) {
+}: React.ComponentProps<typeof SliderPrimitive.Root> & {
+  /** ชื่อที่ screen reader อ่านของปุ่มเลื่อน (role=slider อยู่ที่ thumb ไม่ใช่ root — <label htmlFor> ชี้ไม่ถึง) */
+  thumbLabel?: string
+  /** ค่าที่อ่านออกเสียง เช่น "1.00% ของพอร์ต" */
+  thumbValueText?: string
+}) {
   const _values = React.useMemo(
     () =>
       Array.isArray(value)
@@ -53,6 +60,8 @@ function Slider({
         <SliderPrimitive.Thumb
           data-slot="slider-thumb"
           key={index}
+          aria-label={thumbLabel}
+          aria-valuetext={thumbValueText}
           className="border-primary bg-background ring-ring/50 block size-4 shrink-0 rounded-full border shadow-sm transition-[color,box-shadow] hover:ring-4 focus-visible:ring-4 focus-visible:outline-hidden disabled:pointer-events-none disabled:opacity-50"
         />
       ))}

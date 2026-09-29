@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Panel, KpiCard } from './quant-widgets';
 import VolcanoChart from '@/components/charts/volcano-chart';
 import EnrichmentDotPlot from '@/components/charts/enrichment-dot';
@@ -43,8 +43,6 @@ export function MultiviewTab({
     );
   }
 
-  const activeFactor = data.factors.find((f) => f.id === factorId) ?? data.factors[0];
-  const netFactor = data.factors.find((f) => f.id === factorIdNet) ?? data.factors[0];
   const enrichRows = data.enrichment[factorId] ?? [];
 
   return (
@@ -118,15 +116,7 @@ export function MultiviewTab({
           title="Theme Enrichment Dot Plot"
           subtitle="Hypergeometric over-representation + BH-FDR + Jaccard dedup (สไตล์ GO/REVIGO)"
           right={
-            <Tabs value={factorId} onValueChange={setFactorId}>
-              <TabsList className="h-7 bg-zinc-900">
-                {data.factors.map((f) => (
-                  <TabsTrigger key={f.id} value={f.id} className="h-6 px-2 font-mono text-[10px]">
-                    {f.id}
-                  </TabsTrigger>
-                ))}
-              </TabsList>
-            </Tabs>
+            <FactorPicker label="เลือก factor ของ enrichment" factors={data.factors} value={factorId} onChange={setFactorId} />
           }
         >
           <EnrichmentDotPlot rows={enrichRows} />
@@ -136,15 +126,7 @@ export function MultiviewTab({
           title="Factor ↔ Stock Bipartite Network"
           subtitle="เชื่อมเฉพาะ |loading| &gt; 0.6 · Hub = หุ้นที่พังแล้วลากทั้งระบบ"
           right={
-            <Tabs value={factorIdNet} onValueChange={setFactorIdNet}>
-              <TabsList className="h-7 bg-zinc-900">
-                {data.factors.map((f) => (
-                  <TabsTrigger key={f.id} value={f.id} className="h-6 px-2 font-mono text-[10px]">
-                    {f.id}
-                  </TabsTrigger>
-                ))}
-              </TabsList>
-            </Tabs>
+            <FactorPicker label="เลือก factor ของเครือข่าย" factors={data.factors} value={factorIdNet} onChange={setFactorIdNet} />
           }
         >
           <BipartiteNetwork
@@ -208,5 +190,28 @@ export function MultiviewTab({
         mono={false}
       />
     </div>
+  );
+}
+
+/** ตัวเลือก factor แบบ segmented control — ToggleGroup (radiogroup + ลูกศรเลื่อนได้) แทน Tabs ที่ไม่มี panel ให้ชี้ */
+function FactorPicker({ label, factors, value, onChange }: { label: string; factors: Array<{ id: string }>; value: string; onChange: (v: string) => void }) {
+  return (
+    <ToggleGroup
+      type="single"
+      value={value}
+      onValueChange={(v) => v && onChange(v)}
+      aria-label={label}
+      className="h-7 gap-0.5 rounded-md bg-zinc-900 p-0.5"
+    >
+      {factors.map((f) => (
+        <ToggleGroupItem
+          key={f.id}
+          value={f.id}
+          className="h-6 min-w-8 px-2 font-mono text-[11px] text-zinc-300 data-[state=on]:bg-zinc-700 data-[state=on]:text-zinc-50"
+        >
+          {f.id}
+        </ToggleGroupItem>
+      ))}
+    </ToggleGroup>
   );
 }

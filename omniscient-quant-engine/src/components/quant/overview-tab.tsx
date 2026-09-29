@@ -12,6 +12,7 @@ import { KpiCard, Panel, GateChips, SignalBadge } from './quant-widgets';
 import { DriftChip } from './quant-header';
 import { fmtPct, fmtNum, chgColor } from '@/lib/format';
 import type { BoardResponse } from '@/lib/quant/api-types';
+import { dataKindTag, useAppMeta } from '@/components/providers/app-meta';
 
 const LAYERS = [
   { id: 'L0', name: 'Data & Provenance', desc: 'ราคา/งบ PIT · matching · QC', color: 'border-zinc-700' },
@@ -32,6 +33,7 @@ export function OverviewTab({
   loading: boolean;
   onSelectSymbol: (s: string) => void;
 }) {
+  const { meta } = useAppMeta();
   if (loading || !board) {
     return (
       <div className="space-y-4">
@@ -161,9 +163,12 @@ export function OverviewTab({
       </Panel>
 
       {/* Decision board table */}
-      <Panel title="Decision Board — 22 หุ้น SET (จำลอง)" subtitle="เรียงตามสัญญาณ → P(up) · ทุกแถวประเมินด้วย 5-Gate Engine ณ วันล่าสุด">
+      <Panel
+        title={`Decision Board — ${board.rows.length} หุ้น SET${meta ? ` (${dataKindTag(meta)})` : ''}`}
+        subtitle="เรียงตามสัญญาณ → P(up) · ทุกแถวประเมินด้วย 5-Gate Engine ณ วันล่าสุด"
+      >
         <TooltipProvider delayDuration={150}>
-          <div className="max-h-[560px] overflow-y-auto rounded-lg border border-zinc-800/80">
+          <div tabIndex={0} role="region" aria-label="ตาราง Decision Board" className="max-h-[560px] overflow-y-auto rounded-lg border border-zinc-800/80">
             <table className="w-full min-w-[860px] text-left text-xs">
               <thead className="sticky top-0 z-10 bg-zinc-900 text-[10px] uppercase tracking-wider text-zinc-500">
                 <tr>

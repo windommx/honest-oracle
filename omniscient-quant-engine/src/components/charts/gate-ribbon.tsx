@@ -135,7 +135,7 @@ export default function GateRibbon({ rows, height = 150 }: { rows: GateRibbonRow
   return (
     <div className="w-full">
       {dense ? (
-        <div className="overflow-x-auto">
+        <div tabIndex={0} role="region" aria-label="แถบประวัติ 5 gates" className="overflow-x-auto">
           <svg
             width={svgW}
             height={height}

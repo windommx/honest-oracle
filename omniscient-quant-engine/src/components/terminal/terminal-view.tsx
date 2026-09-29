@@ -13,12 +13,13 @@ import PriceChart from '@/components/terminal/price-chart';
 import AiPanel from '@/components/terminal/ai-panel';
 import { useApi, apiCall } from '@/hooks/use-api';
 import type { QuotesResponse, SeriesResponse, AnalystBriefT, QuoteRowT } from '@/lib/quant/api-types';
+import { dataKindTag, useAppMeta } from '@/components/providers/app-meta';
 
 const SIGNAL_RANK: Record<string, number> = { ENTRY_PULLBACK: 0, ENTRY_MOMENTUM: 1, NO_TRADE: 2 };
 
-function buildCategories(quotes: QuoteRowT[]) {
+function buildCategories(quotes: QuoteRowT[], dataTag: string) {
   const cats: Array<{ key: string; label: string; sub: string; count: number }> = [
-    { key: 'all', label: 'หุ้นไทย', sub: 'SET · EOD จำลอง', count: quotes.length },
+    { key: 'all', label: 'หุ้นไทย', sub: `SET · EOD${dataTag ? ` ${dataTag}` : ''}`, count: quotes.length },
     {
       key: 'signal',
       label: 'สัญญาณ',
@@ -75,7 +76,7 @@ export function TerminalView({
   const seriesQ = useApi<SeriesResponse>(`/api/market/series/${symbol}?tf=${tf}&bars=180&tick=${tick}`);
   const analystQ = useApi<AnalystBriefT>(`/api/analyst/${symbol}?tick=${tick}`);
 
-  const quotes = quotesQ.data?.quotes ?? [];
+  const quotes = useMemo(() => quotesQ.data?.quotes ?? [], [quotesQ.data]);
 
   const toggleFav = useCallback((s: string) => {
     setFavorites((prev) => {
@@ -108,11 +109,14 @@ export function TerminalView({
     [symbol],
   );
 
+  const { refresh: refreshQuotes } = quotesQ;
+  const { refresh: refreshSeries } = seriesQ;
+  const { refresh: refreshAnalyst } = analystQ;
   const refreshAll = useCallback(() => {
-    quotesQ.refresh();
-    seriesQ.refresh();
-    analystQ.refresh();
-  }, [quotesQ.refresh, seriesQ.refresh, analystQ.refresh]);
+    refreshQuotes();
+    refreshSeries();
+    refreshAnalyst();
+  }, [refreshQuotes, refreshSeries, refreshAnalyst]);
 
   const plan = useMemo(() => {
     const a = analystQ.data;
@@ -120,7 +124,9 @@ export function TerminalView({
     return { entryLow: a.plan.entryLow, entryHigh: a.plan.entryHigh, stopHard: a.plan.stopHard };
   }, [analystQ.data]);
 
-  const cats = useMemo(() => buildCategories(quotes), [quotes]);
+  const { meta } = useAppMeta();
+  const dataTag = dataKindTag(meta);
+  const cats = useMemo(() => buildCategories(quotes, dataTag), [quotes, dataTag]);
   const [activeCat, setActiveCat] = useState('all');
 
   const filteredQuotes = useMemo(() => {

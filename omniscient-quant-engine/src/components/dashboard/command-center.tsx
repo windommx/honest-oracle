@@ -29,6 +29,7 @@ import {
   type Tone,
 } from '@/components/dashboard/primitives';
 import { useApi } from '@/hooks/use-api';
+import { dataKindTag, useAppMeta } from '@/components/providers/app-meta';
 import { chgColor, fmtDate, fmtNum, fmtPct } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import type {
@@ -131,6 +132,7 @@ export function CommandCenter({
 }) {
   const [symbol, setSymbol] = useState('TSE');
   const [tf, setTf] = useState<'1D' | '1W'>('1D');
+  const { meta } = useAppMeta();
 
   const btQ = useApi<BacktestResponse>(`/api/backtest?tick=${tick}`);
   const seriesQ = useApi<SeriesResponse>(`/api/market/series/${symbol}?tf=${tf}&bars=180&tick=${tick}`);
@@ -224,7 +226,7 @@ export function CommandCenter({
           <Panel
             className="oqe-fade-up oqe-delay-1 lg:col-span-8"
             title="สภาพตลาดวันนี้"
-            subtitle={`${fmtDate(regime.date)} · ตลาดหุ้นไทย (จำลอง)`}
+            subtitle={`${fmtDate(regime.date)} · ตลาดหุ้นไทย${meta ? ` (${dataKindTag(meta)})` : ''}`}
             actions={<DriftChip drift={summary.drift} psi={summary.psiStress} />}
           >
             <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
@@ -488,7 +490,7 @@ export function CommandCenter({
           <Panel
             className="oqe-fade-up oqe-delay-5 lg:col-span-7"
             title="เส้นทางความมั่งคั่ง"
-            subtitle="กลยุทธ์ 5-Gate vs Buy&Hold · walk-forward จำลอง"
+            subtitle="กลยุทธ์ 5-Gate vs Buy&Hold · walk-forward ย้อนหลัง (ไม่มี look-ahead)"
             actions={
               m ? (
                 <div className="flex items-center gap-1.5">

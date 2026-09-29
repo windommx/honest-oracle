@@ -33,3 +33,6 @@ data/backups/
 # z.ai container leftovers (ไม่ใช้ใน repo นี้)
 .z-ai-config
 .zscripts/
+
+# ผล E2E/axe + ภาพหน้าจอ (bun run e2e)
+/.e2e/

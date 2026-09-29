@@ -87,6 +87,10 @@ export interface StockPanel {
   theme: string;
   beta: number;
   rows: DayRow[]; // aligned to dates from index START_T
+  /** ชุดข้อมูลมีงบ (PIT) / เงินไหลสถาบันของหุ้นนี้หรือไม่ — ไม่มี = สายที่อาศัยข้อมูลนั้นงดออกเสียง (ค่า 0 ใน row ไม่ใช่ตัวเลขจริง) */
+  coverage?: { fundamentals: boolean; flows: boolean };
+  /** OHLC + ปริมาณ (ล้านหุ้น) เรียงตาม MarketState.dates — วันที่เติมช่องว่าง: o=h=l=c=ราคาล่าสุด, ปริมาณ 0 (close อยู่ใน rows) */
+  ohlcv: { open: number[]; high: number[]; low: number[]; volume: number[] };
 }
 
 export interface MarketState {

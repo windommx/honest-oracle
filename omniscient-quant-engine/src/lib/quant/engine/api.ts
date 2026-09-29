@@ -5,7 +5,7 @@
  */
 
 import { db } from '@/lib/db';
-import { loadMarketState, ensureSeeded } from './panel';
+import { loadMarketState, ensureSeeded, dataVersionKey } from './panel';
 import type { MarketState } from './types';
 import { buildFactorModel, type FactorModelResult } from './factors';
 import { buildVolcano, type VolcanoResult } from './volcano';
@@ -14,6 +14,7 @@ import { runBacktest, currentProbs, type BacktestResult } from './backtest';
 import { riskAssessment, type RiskResult } from './risk';
 import { kde1d, kendallTau, claytonThetaFromTau, mean, psi } from '../stats';
 import { RULES } from './rules';
+import { backupDatabase } from '@/lib/ops/backup';
 
 interface AnalyticsBox {
   key: string;
@@ -24,6 +25,7 @@ interface AnalyticsBox {
   probs?: Record<string, number>;
   thetaMatrix?: { symbols: string[]; matrix: number[][] };
   regime?: ReturnType<typeof currentRegimeSummary>;
+  board?: Board;
 }
 
 const g = globalThis as unknown as { __oqeAnalytics?: AnalyticsBox };
@@ -31,9 +33,7 @@ const g = globalThis as unknown as { __oqeAnalytics?: AnalyticsBox };
 async function box(): Promise<AnalyticsBox> {
   if (!g.__oqeAnalytics) g.__oqeAnalytics = { key: '' };
   const b = g.__oqeAnalytics;
-  const counts = { stocks: await db.stock.count(), prices: await db.price.count() };
-  const last = await db.price.findFirst({ orderBy: { date: 'desc' } });
-  const key = `${counts.stocks}:${counts.prices}:${last?.date?.toISOString() ?? ''}`;
+  const { key } = await dataVersionKey();
   if (b.key !== key) {
     b.key = key;
     b.state = undefined;
@@ -43,6 +43,7 @@ async function box(): Promise<AnalyticsBox> {
     b.probs = undefined;
     b.thetaMatrix = undefined;
     b.regime = undefined;
+    b.board = undefined;
   }
   if (!b.state) {
     b.state = await loadMarketState();
@@ -50,7 +51,20 @@ async function box(): Promise<AnalyticsBox> {
   return b;
 }
 
+/** ล้าง cache ผลวิเคราะห์ทั้งหมดของ process นี้ (หลังแทนที่ข้อมูลตลาด) */
+export function invalidateAnalytics(): void {
+  g.__oqeAnalytics = undefined;
+}
+
 export async function seedIfNeeded(force = false) {
+  if (force) {
+    // force = ลบข้อมูลตลาดทั้งชุดแล้ว seed ข้อมูลจำลองใหม่ — ถ้าข้อมูลปัจจุบันเป็นข้อมูลจริงที่นำเข้ามา ต้อง backup สำเร็จก่อน
+    const current = await db.dataSource.findFirst({ orderBy: { createdAt: 'desc' }, select: { kind: true } }).catch(() => null);
+    const backup = await backupDatabase({ reason: 'before-reseed' });
+    if (!backup && current?.kind === 'real') {
+      throw new Error('backup ก่อนแทนที่ข้อมูลจริงไม่สำเร็จ — ยกเลิกการ seed ใหม่ (ดู log [backup])');
+    }
+  }
   const res = await ensureSeeded(force);
   g.__oqeAnalytics = undefined;
   return res;
@@ -131,12 +145,20 @@ export interface BoardRow {
   pb: number;
 }
 
-export async function getBoard() {
+export type Board = ReturnType<typeof computeBoard>;
+
+/** Decision Board ณ วันล่าสุด — cache ต่อเวอร์ชันข้อมูล (ประเมิน 5 gates เต็มรูปแบบของทุกหุ้นครั้งเดียว) */
+export async function getBoard(): Promise<Board> {
   const b = await box();
+  const probs = await getProbs();
+  if (!b.board) b.board = computeBoard(b, probs);
+  return b.board;
+}
+
+function computeBoard(b: AnalyticsBox, probs: Record<string, number>) {
   const state = b.state!;
   const N = state.dates.length;
   const regime = getRegime(b);
-  const probs = await getProbs();
   const rows: BoardRow[] = state.stocks.map((s) => {
     const ev = evaluateGates(state, s.symbol, N - 1, { riskBudgetPct: RULES.risk.budgetPct, probUp: probs[s.symbol] });
     const r = s.rows[N - 1];
@@ -189,7 +211,7 @@ export async function getBoard() {
       nNoTrade: rows.length - nPullback - nMomentum,
       decoupleAlerts: decoupleAlerts.map((r) => r.symbol),
       psiStress: +psiStress.toFixed(3),
-      drift: psiStress > 0.2 ? 'HEAVY' : psiStress > 0.1 ? 'MODERATE' : 'STABLE',
+      drift: (psiStress > 0.2 ? 'HEAVY' : psiStress > 0.1 ? 'MODERATE' : 'STABLE') as 'HEAVY' | 'MODERATE' | 'STABLE',
     },
   };
 }

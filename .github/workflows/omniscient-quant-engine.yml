@@ -30,8 +30,8 @@ defaults:
 jobs:
   web:
     runs-on: ubuntu-latest
-    name: verify (typecheck · lint · test · build · API smoke · audit)
-    timeout-minutes: 30
+    name: verify (typecheck · lint · test · build · API smoke · E2E/a11y · audit)
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
@@ -59,7 +59,8 @@ jobs:
       # preload src/test/setup.ts สร้าง SQLite ชั่วคราวจาก prisma/schema.prisma — ไม่แตะ db/custom.db
       - name: Unit + engine invariant tests
         run: bun run test
-      - name: Ops tests (smoke checker)
+      # smoke checker + สคริปต์ ops ผ่าน CLI จริงบน SQLite ชั่วคราว: ingest-csv → engine-check → backup-db → restore-db
+      - name: Ops tests (smoke checker + ingest/backup/restore CLI)
         run: bun run test:ops
       - name: Build (standalone)
         run: bun run build
@@ -73,5 +74,24 @@ jobs:
       # ทางที่สอง: DB เปล่า → API แรก seed ข้อมูลจำลองเอง
       - name: API smoke test (standalone server, empty DB → auto-seed)
         run: bun deploy/smoke.ts --db empty --port 3211
+      # E2E + accessibility gate: ทุกมุมมอง (desktop + มือถือ) ผ่าน axe (WCAG 2.1 AA + 2.2 target-size) ตามงบใน deploy/e2e.ts
+      # + interaction หลัก (คำแนะนำครั้งแรก, ⌘K, ล็อกกติกา, robustness, journal, ปุ่ม AI เมื่อไม่มี LLM, /terms, 404)
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('omniscient-quant-engine/bun.lock') }}
+      - name: Install Chromium for Playwright
+        run: bunx playwright install --with-deps chromium
+      - name: E2E + accessibility (Playwright + axe)
+        run: bun run e2e
+      - name: Upload E2E report + screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: oqe-e2e-report
+          path: omniscient-quant-engine/.e2e/
+          retention-days: 7
+          if-no-files-found: ignore
       - name: Dependency audit (fail on critical)
         run: bun audit --audit-level=critical

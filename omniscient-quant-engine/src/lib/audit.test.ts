@@ -15,9 +15,27 @@ describe("audit — ActionLog", () => {
     expect(row!.detail).toEqual({ symbol: "TSE", id: "abc" })
   })
 
-  test("เขียน DB ไม่ได้ → ไม่ throw (คำขอหลักต้องไม่พังเพราะ log)", async () => {
+  test("detail ที่ serialize ไม่ได้ (object วนซ้ำ) → ไม่ throw ไม่บันทึก (คำขอหลักต้องไม่พังเพราะ log)", async () => {
     const req = new Request("http://localhost:3000/api/system", { method: "POST" })
-    const huge = { big: BigInt(1) } // Prisma serialize bigint ใน Json ไม่ได้ → create ล้ม
-    await expect(logAction(req, "data.seed", 200, huge)).resolves.toBeUndefined()
+    const circ: Record<string, unknown> = { note: "loop" }
+    circ.self = circ
+    const before = await db.actionLog.count({ where: { action: "data.seed" } })
+    await expect(logAction(req, "data.seed", 200, circ)).resolves.toBeUndefined()
+    expect(await db.actionLog.count({ where: { action: "data.seed" } })).toBe(before)
+  })
+
+  test("log line: detail อยู่ใน key detail — status ของ HTTP ไม่ถูกค่าใน detail ทับ", async () => {
+    const lines: string[] = []
+    const orig = console.log
+    console.log = (line: string) => lines.push(line)
+    try {
+      await logAction(new Request("http://localhost:3000/api/journal", { method: "POST" }), "journal.create", 201, { status: "PLANNED" })
+    } finally {
+      console.log = orig
+    }
+    const line = lines.find((l) => l.includes("journal.create"))
+    expect(line).toBeDefined()
+    expect(line).toContain("status=201")
+    expect(line).toContain('detail={"status":"PLANNED"}')
   })
 })

@@ -26,6 +26,7 @@ import type {
   SynthesisGetResponse, SynthesisPostResponse, SynthesisNarrativeT,
   EvidenceStrandT, SynthesisHistoryT, SynthesisVerdictT,
 } from '@/lib/quant/api-types';
+import { LLM_MISSING_HINT, READ_ONLY_HINT, useCanWrite, useLlmReady } from '@/components/providers/app-meta';
 
 const VERDICT_STYLE: Record<SynthesisVerdictT['code'], string> = {
   STRONG_LONG: 'border-emerald-500/50 bg-emerald-500/15 text-emerald-300',
@@ -120,6 +121,8 @@ export function SynthesisTab({ symbols, initialSymbol, onSelectSymbol }: { symbo
   const [refreshKey, setRefreshKey] = useState(0);
 
   const q = useApi<SynthesisGetResponse>(`/api/synthesis/${symbol}?r=${refreshKey}`);
+  const canWrite = useCanWrite();
+  const llmReady = useLlmReady();
   const dossier = q.data?.dossier ?? null;
   const history = useMemo(() => q.data?.history ?? [], [q.data]);
 
@@ -177,7 +180,8 @@ export function SynthesisTab({ symbols, initialSymbol, onSelectSymbol }: { symbo
         </Select>
         <Button
           onClick={handleGenerate}
-          disabled={generating || q.loading}
+          disabled={generating || q.loading || !canWrite || !llmReady}
+          title={!canWrite ? READ_ONLY_HINT : !llmReady ? LLM_MISSING_HINT : undefined}
           className="gap-1.5 bg-amber-500 font-semibold text-zinc-950 hover:bg-amber-400"
         >
           {generating ? <Loader2 className="h-4 w-4 animate-spin" /> : <FlaskConical className="h-4 w-4" />}
@@ -190,7 +194,10 @@ export function SynthesisTab({ symbols, initialSymbol, onSelectSymbol }: { symbo
         <Button onClick={q.refresh} variant="ghost" size="icon" className="border border-zinc-800" aria-label="รีเฟรช" title="รีเฟรช">
           <RefreshCw className={cn('h-4 w-4', q.loading && 'animate-spin')} />
         </Button>
-        <p className="ml-auto hidden text-[11px] leading-snug text-zinc-500 lg:block">
+        {(!canWrite || !llmReady) && (
+          <p className="w-full text-[11px] leading-snug text-amber-200 sm:w-auto">{!canWrite ? READ_ONLY_HINT : LLM_MISSING_HINT}</p>
+        )}
+        <p className="ml-auto hidden text-[11px] leading-snug text-zinc-400 lg:block">
           หลอมหลักฐาน 13 สายจาก 8 เลเยอร์ (รวม L7 Apex) → คะแนนบรรจบ + บทเรียบเรียงโดย AI · รายงานจัดเก็บแบบ append-only
         </p>
       </div>
@@ -279,7 +286,7 @@ export function SynthesisTab({ symbols, initialSymbol, onSelectSymbol }: { symbo
               </div>
             }
           >
-            <div className="max-h-[26rem] overflow-y-auto rounded-lg border border-zinc-800/60 bg-zinc-950/40">
+            <div tabIndex={0} role="region" aria-label="หลักฐาน 13 สาย" className="max-h-[26rem] overflow-y-auto rounded-lg border border-zinc-800/60 bg-zinc-950/40">
               {dossier.strands.map((s) => <StrandRow key={s.key} s={s} />)}
             </div>
           </Panel>
@@ -350,7 +357,7 @@ export function SynthesisTab({ symbols, initialSymbol, onSelectSymbol }: { symbo
             {history.length === 0 ? (
               <p className="text-xs text-zinc-500">ยังไม่มีรายงาน — กด &quot;หลอมรวมด้วย AI&quot; เพื่อสร้างรายการแรก</p>
             ) : (
-              <div className="max-h-72 overflow-y-auto">
+              <div tabIndex={0} role="region" aria-label="ประวัติรายงานหลอมรวม" className="max-h-72 overflow-y-auto">
                 <table className="w-full text-left text-xs">
                   <thead className="sticky top-0 bg-zinc-900 text-[10px] uppercase tracking-wider text-zinc-500">
                     <tr>

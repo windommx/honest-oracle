@@ -54,7 +54,7 @@ export function isLoopbackHostname(hostname: string | null | undefined): boolean
 
 /** ค่าหนึ่งตัวใน XFF → IP (ตัด port / วงเล็บ IPv6 / เครื่องหมายคำพูด) */
 function normalizeIpToken(token: string): string | null {
-  let s = token.trim().replace(/^"|"$/g, "")
+  const s = token.trim().replace(/^"|"$/g, "")
   if (!s || s.toLowerCase() === "unknown") return null
   if (s.startsWith("[")) {
     const end = s.indexOf("]")

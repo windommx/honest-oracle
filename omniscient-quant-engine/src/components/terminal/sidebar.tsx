@@ -26,6 +26,7 @@ import { Badge } from '@/components/ui/badge';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { PulseDot } from '@/components/dashboard/primitives';
 import type { RegimeInfo } from '@/lib/quant/api-types';
+import { dataKindTag, useAppMeta } from '@/components/providers/app-meta';
 
 // ─── โครงสร้างเมนูนำทาง (คงที่ระดับโมดูล) ───
 
@@ -192,6 +193,7 @@ export function TerminalSidebar({
   /** rail = desktop fixed rail (hidden < lg); plain = แสดงเสมอ (ใช้ใน mobile Sheet) */
   className?: string;
 }) {
+  const { meta } = useAppMeta();
   return (
     <aside
       className={cn(
@@ -250,7 +252,10 @@ export function TerminalSidebar({
       {/* Bottom: regime chip + version */}
       <div className="mt-auto shrink-0 border-t border-white/[0.06] p-3">
         {regime && <RegimeFooterChip regime={regime} drift={drift} />}
-        <p className="mt-2 text-center text-[10px] text-zinc-600">OQE v1.0 · จำลองเพื่อสาธิต</p>
+        <p className="mt-2 text-center text-[10px] text-zinc-400">
+          OQE v{meta?.app.version ?? '—'}
+          {meta ? ` · ${meta.data.kind === 'synthetic' ? 'ข้อมูลจำลองเพื่อสาธิต' : dataKindTag(meta)}` : ''}
+        </p>
       </div>
     </aside>
   );

@@ -13,6 +13,9 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Panel, KpiCard } from './quant-widgets';
+import { RobustnessPanel, RulesPanel, RulesStatusBadge } from './research-integrity';
+import { useState } from 'react';
+import { READ_ONLY_HINT, useCanWrite } from '@/components/providers/app-meta';
 import { fmtPct, fmtNum, fmtDate } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import type { BacktestResponse, JournalEntryT } from '@/lib/quant/api-types';
@@ -31,9 +34,10 @@ export function BacktestJournalTab({
   entries: JournalEntryT[];
   journalLoading: boolean;
   onSeedDemo: () => void;
-  onUpdateEntry: (id: string, patch: { status?: string; pnlPct?: number; notes?: string }) => void;
+  onUpdateEntry: (id: string, patch: { status?: string; pnlPct?: number | null; notes?: string }) => void;
   seeding: boolean;
 }) {
+  const canWrite = useCanWrite();
   if (btLoading || !bt) {
     return (
       <div className="space-y-4">
@@ -57,8 +61,8 @@ export function BacktestJournalTab({
         <KpiCard
           label="Hit Rate (สัญญาณ)"
           value={`${fmtNum(bt.metrics.hitRate, 1)}%`}
-          sub={`${bt.metrics.nSignals} สัญญาณ จาก ${bt.metrics.nDays} วันทดสอบ`}
-          tone={bt.metrics.hitRate >= 50 ? 'up' : 'down'}
+          sub={`${bt.metrics.hitRateCI ? `95% CI ${fmtNum(bt.metrics.hitRateCI[0], 1)}–${fmtNum(bt.metrics.hitRateCI[1], 1)}% · ` : ''}${bt.metrics.nSignals} สัญญาณ จาก ${bt.metrics.nDays} วันทดสอบ`}
+          tone={bt.metrics.hitRateCI ? (bt.metrics.hitRateCI[0] > 50 ? 'up' : bt.metrics.hitRateCI[1] < 50 ? 'down' : 'warn') : bt.metrics.hitRate >= 50 ? 'up' : 'down'}
         />
         <KpiCard
           label="Cumulative (Strat vs Buy&Hold)"
@@ -81,7 +85,18 @@ export function BacktestJournalTab({
       </div>
 
       {/* Equity curve */}
-      <Panel title="Walk-Forward Equity Curve" subtitle="Purged split: train 252 วัน → embargo 5 วัน → test 21 วัน · refit ทุก 21 วัน (ไม่มี future leak)">
+      <Panel
+        title="Walk-Forward Equity Curve"
+        subtitle="Purged split: train 252 วัน → embargo 5 วัน → test 21 วัน · refit ทุก 21 วัน (ไม่มี future leak)"
+        right={
+          bt.rules ? (
+            <span className="flex items-center gap-2 text-[11px] text-zinc-400">
+              กติกา <span className="font-mono text-zinc-200">{bt.rules.hashShort}</span>
+              <RulesStatusBadge rules={bt.rules} />
+            </span>
+          ) : null
+        }
+      >
         <div className="h-72 w-full">
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={equityData} margin={{ top: 8, right: 12, left: -8, bottom: 0 }}>
@@ -116,7 +131,7 @@ export function BacktestJournalTab({
         title="Gate Attribution — Gate ไหน 'พูดจริง'"
         subtitle="Mann-Whitney U ของ forward return เมื่อ gate ผ่าน vs ตก · edge > 0 + p ต่ำ = คงไว้/เพิ่มน้ำหนัก · edge ≈ 0 = ตัดหรือปรับ threshold รายเดือน"
       >
-        <div className="overflow-x-auto rounded-lg border border-zinc-800/80">
+        <div tabIndex={0} role="region" aria-label="ตาราง gate attribution" className="overflow-x-auto rounded-lg border border-zinc-800/80">
           <table className="w-full min-w-[680px] text-left text-xs">
             <thead className="bg-zinc-900 text-[10px] uppercase tracking-wider text-zinc-500">
               <tr>
@@ -164,6 +179,12 @@ export function BacktestJournalTab({
         </div>
       </Panel>
 
+      {/* ความซื่อตรงของผล: กติกาที่ล็อก + ความทนทานข้าม seed */}
+      <div className="grid gap-4 xl:grid-cols-2">
+        <RulesPanel />
+        <RobustnessPanel />
+      </div>
+
       {/* Calibration + recent signals */}
       <div className="grid gap-4 xl:grid-cols-2">
         <Panel title="Model Calibration" subtitle="P(up) ที่ทำนาย vs ผลจริง แยกตาม bucket — ต้องไล่เฉลียวใกล้เส้นทแยง">
@@ -185,7 +206,7 @@ export function BacktestJournalTab({
         </Panel>
 
         <Panel title="Recent Signals" subtitle="สัญญาณล่าสุดจาก backtest engine (จริง ณ วันนั้น ไม่มี look-ahead)">
-          <div className="max-h-64 overflow-y-auto rounded-lg border border-zinc-800/80">
+          <div tabIndex={0} role="region" aria-label="สัญญาณล่าสุด" className="max-h-64 overflow-y-auto rounded-lg border border-zinc-800/80">
             <table className="w-full min-w-[420px] text-left text-xs">
               <thead className="sticky top-0 bg-zinc-900 text-[10px] uppercase tracking-wider text-zinc-500">
                 <tr>
@@ -221,7 +242,8 @@ export function BacktestJournalTab({
             variant="outline"
             size="sm"
             onClick={onSeedDemo}
-            disabled={seeding}
+            disabled={seeding || !canWrite}
+            title={canWrite ? undefined : READ_ONLY_HINT}
             className="h-8 border-zinc-700 bg-zinc-900 text-xs text-zinc-300 hover:bg-zinc-800"
           >
             {seeding ? 'กำลังเติม...' : 'เติมตัวอย่างจาก Decision Board'}
@@ -238,7 +260,7 @@ export function BacktestJournalTab({
             </p>
           </div>
         ) : (
-          <div className="max-h-96 overflow-y-auto rounded-lg border border-zinc-800/80">
+          <div tabIndex={0} role="region" aria-label="ตาราง journal" className="max-h-96 overflow-y-auto rounded-lg border border-zinc-800/80">
             <table className="w-full min-w-[880px] text-left text-xs">
               <thead className="sticky top-0 bg-zinc-900 text-[10px] uppercase tracking-wider text-zinc-500">
                 <tr>
@@ -268,18 +290,18 @@ export function BacktestJournalTab({
                     <td className="px-2 py-1.5">
                       <JournalStatusSelect
                         value={e.status}
+                        symbol={e.symbol}
+                        disabled={!canWrite}
                         onChange={(s) => onUpdateEntry(e.id, { status: s })}
                       />
                     </td>
                     <td className="px-2 py-1.5 text-right">
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={e.pnlPct ?? ''}
-                        placeholder="—"
-                        onChange={(ev2) => onUpdateEntry(e.id, { pnlPct: ev2.target.value === '' ? undefined : Number(ev2.target.value) })}
-                        className="w-16 rounded border border-zinc-700 bg-zinc-900 px-1.5 py-1 text-right font-mono text-[11px] text-zinc-200 focus:border-emerald-500/50 focus:outline-none"
-                        aria-label={`P&L % ของ ${e.symbol}`}
+                      <PnlInput
+                        key={`${e.id}:${e.pnlPct ?? ''}`}
+                        initial={e.pnlPct}
+                        symbol={e.symbol}
+                        disabled={!canWrite}
+                        onCommit={(v) => onUpdateEntry(e.id, { pnlPct: v })}
                       />
                     </td>
                   </tr>
@@ -298,13 +320,47 @@ export function BacktestJournalTab({
   );
 }
 
-function JournalStatusSelect({ value, onChange }: { value: string; onChange: (s: string) => void }) {
+/** P&L % — แก้ในช่องได้อิสระ บันทึกเมื่อออกจากช่องหรือกด Enter (ไม่ยิง PATCH ทุกตัวอักษร) · ว่าง = ล้างค่า */
+export function PnlInput({ initial, symbol, disabled, onCommit }: { initial: number | null; symbol: string; disabled: boolean; onCommit: (v: number | null) => void }) {
+  const [text, setText] = useState(initial == null ? '' : String(initial));
+  const commit = () => {
+    const t = text.trim();
+    const next = t === '' ? null : Number(t);
+    if (next !== null && !Number.isFinite(next)) {
+      setText(initial == null ? '' : String(initial)); // ค่าที่อ่านไม่ออก — คืนค่าเดิม
+      return;
+    }
+    if (next !== initial) onCommit(next);
+  };
+  return (
+    <input
+      type="number"
+      step="0.01"
+      inputMode="decimal"
+      value={text}
+      placeholder="—"
+      disabled={disabled}
+      title={disabled ? READ_ONLY_HINT : undefined}
+      onChange={(ev) => setText(ev.target.value)}
+      onBlur={commit}
+      onKeyDown={(ev) => {
+        if (ev.key === 'Enter') (ev.target as HTMLInputElement).blur();
+      }}
+      className="h-7 w-20 rounded border border-zinc-700 bg-zinc-900 px-1.5 text-right font-mono text-[11px] text-zinc-200 focus:border-emerald-500/50 focus:outline-none disabled:opacity-60"
+      aria-label={`P&L % ของ ${symbol}`}
+    />
+  );
+}
+
+function JournalStatusSelect({ value, symbol, disabled, onChange }: { value: string; symbol: string; disabled: boolean; onChange: (s: string) => void }) {
   return (
     <select
       value={value}
+      disabled={disabled}
+      title={disabled ? READ_ONLY_HINT : undefined}
       onChange={(e) => onChange(e.target.value)}
-      className="rounded border border-zinc-700 bg-zinc-900 px-1.5 py-1 text-[10px] text-zinc-200 focus:border-emerald-500/50 focus:outline-none"
-      aria-label="เปลี่ยนสถานะ"
+      className="h-7 rounded border border-zinc-700 bg-zinc-900 px-1.5 text-[11px] text-zinc-200 focus:border-emerald-500/50 focus:outline-none disabled:opacity-60"
+      aria-label={`สถานะไม้ของ ${symbol}`}
     >
       <option value="PLANNED">PLANNED</option>
       <option value="EXECUTED">EXECUTED</option>

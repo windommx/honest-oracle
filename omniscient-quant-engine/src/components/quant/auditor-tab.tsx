@@ -8,6 +8,7 @@ import { Panel } from './quant-widgets';
 import { fmtDate, fmtNum } from '@/lib/format';
 import { apiCall } from '@/hooks/use-api';
 import type { AuditReportT } from '@/lib/quant/api-types';
+import { LLM_MISSING_HINT, READ_ONLY_HINT, useCanWrite, useLlmReady } from '@/components/providers/app-meta';
 
 export function AuditorTab({
   reports,
@@ -20,6 +21,8 @@ export function AuditorTab({
 }) {
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const canWrite = useCanWrite();
+  const llmReady = useLlmReady();
   const [latest, setLatest] = useState<AuditReportT | null>(null);
 
   const runAudit = async () => {
@@ -46,14 +49,18 @@ export function AuditorTab({
         right={
           <Button
             onClick={runAudit}
-            disabled={running}
+            disabled={running || !canWrite || !llmReady}
+            title={!canWrite ? READ_ONLY_HINT : !llmReady ? LLM_MISSING_HINT : undefined}
             className="h-9 bg-amber-500 text-xs font-semibold text-zinc-950 hover:bg-amber-400"
           >
-            <Sparkles className="mr-1.5 h-4 w-4" />
+            <Sparkles className="mr-1.5 h-4 w-4" aria-hidden />
             {running ? 'กำลังตรวจสอบ...' : 'รัน Audit ตอนนี้'}
           </Button>
         }
       >
+        {(!canWrite || !llmReady) && (
+          <p className="mb-3 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">{!canWrite ? READ_ONLY_HINT : LLM_MISSING_HINT}</p>
+        )}
         {error && (
           <p className="rounded-lg border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-xs text-rose-300">
             Audit ล้มเหลว: {error}
@@ -69,7 +76,12 @@ export function AuditorTab({
             <Skeleton className="h-16 rounded-lg" />
           </div>
         )}
-        {!running && !shown && !error && (
+        {!running && !shown && !error && loading && (
+          <p className="py-8 text-center text-sm text-zinc-400" role="status">
+            กำลังโหลดประวัติรายงาน…
+          </p>
+        )}
+        {!running && !shown && !error && !loading && (
           <div className="py-8 text-center">
             <p className="text-sm text-zinc-500">ยังไม่มีรายงาน audit</p>
             <p className="mt-1 text-[11px] text-zinc-600">

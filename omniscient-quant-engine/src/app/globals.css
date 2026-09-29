@@ -168,7 +168,8 @@ input[type='number'] {
 .oqe-animate-marquee {
   animation: oqe-marquee var(--marquee-duration, 60s) linear infinite;
 }
-.oqe-marquee-paused:hover .oqe-animate-marquee {
+.oqe-marquee-paused:hover .oqe-animate-marquee,
+.oqe-marquee-paused:focus-within .oqe-animate-marquee {
   animation-play-state: paused;
 }
 
@@ -289,4 +290,24 @@ input[type='number'] {
     opacity: 1;
     transform: none;
   }
+}
+
+/* ── Accessibility (WCAG 2.1 AA) ──
+   ข้อความรอง text-zinc-500/600 เดิม (#71717a / #52525b) ต่ำกว่า 4.5:1 บนพื้นเข้มของแอป (zinc-950 → zinc-800)
+   ปรับเฉพาะ "สีตัวอักษร" (เส้นขอบ/พื้นหลังโทนเดียวกันไม่เปลี่ยน): 500 → #9a9aa3 (≥5.3:1 บน zinc-800) · 600 → #94949d (≥4.9:1) */
+@layer utilities {
+  .text-zinc-500 {
+    color: #9a9aa3;
+  }
+  .text-zinc-600 {
+    color: #94949d;
+  }
+}
+
+/* พื้นที่เลื่อนได้ที่รับโฟกัสจากคีย์บอร์ด (tabIndex=0) ต้องเห็นว่าโฟกัสอยู่ */
+[role="region"][tabindex="0"]:focus-visible,
+[role="log"][tabindex="0"]:focus-visible,
+pre[tabindex="0"]:focus-visible {
+  outline: 2px solid #34d399;
+  outline-offset: 2px;
 }

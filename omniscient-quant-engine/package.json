@@ -1,6 +1,6 @@
 {
   "name": "omniscient-quant-engine",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "private": true,
   "scripts": {
     "dev": "next dev -p 3000 -H 127.0.0.1",
@@ -8,11 +8,12 @@
     "start": "NODE_ENV=production HOSTNAME=127.0.0.1 node .next/standalone/server.js",
     "start:lan": "NODE_ENV=production HOSTNAME=0.0.0.0 node .next/standalone/server.js",
     "typecheck": "tsc --noEmit --incremental false",
-    "lint": "eslint .",
+    "lint": "eslint . --max-warnings=0",
     "test": "bun test src",
-    "test:ops": "bun test ./deploy",
+    "test:ops": "bun test ./deploy ./scripts",
     "smoke": "bun deploy/smoke.ts",
-    "verify": "bun run typecheck && bun run lint && bun run test && bun run test:ops && bun run build && bun run smoke",
+    "e2e": "bun deploy/e2e.ts",
+    "verify": "bun run typecheck && bun run lint && bun run test && bun run test:ops && bun run build && bun run smoke && bun run e2e",
     "db:push": "prisma db push --accept-data-loss",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",

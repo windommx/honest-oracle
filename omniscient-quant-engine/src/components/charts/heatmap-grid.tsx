@@ -138,7 +138,7 @@ export default function HeatmapGrid({
     const svgH = topPad + rows * cell + bottomPad;
     return (
       <div className="w-full">
-        <div className="overflow-x-auto">
+        <div tabIndex={0} role="region" aria-label="แผนภาพความร้อน" className="overflow-x-auto">
           <svg
             width={svgW}
             height={svgH}

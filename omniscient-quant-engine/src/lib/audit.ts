@@ -19,9 +19,22 @@ export function logAction(req: Request, action: ActionName, status: number, deta
   try {
     path = new URL(req.url).pathname
   } catch {}
-  const actor = requestActor(req)
-  return db.actionLog
-    .create({ data: { actor, action, method: req.method, path, status, detail: (detail ?? undefined) as Prisma.InputJsonValue | undefined } })
-    .then(() => log.info("action", { actor, action, method: req.method, path, status, ...(detail ?? {}) }))
-    .catch((e) => log.warn("action log write failed", { action, error: (e as Error)?.message }))
+  let actor = "unknown"
+  try {
+    actor = requestActor(req)
+  } catch {}
+  const fail = (e: unknown) => log.warn("action log write failed", { action, error: (e as Error)?.message ?? String(e) })
+  try {
+    // ผ่าน JSON ก่อน: ค่าที่เก็บ = ค่าที่ JSON แทนได้จริง · object วนซ้ำ/BigInt ล้มทันที (ไม่ปล่อยให้ Prisma วนจน stack ล้น)
+    const safe = detail === undefined ? undefined : (JSON.parse(JSON.stringify(detail)) as Prisma.InputJsonValue)
+    return db.actionLog
+      .create({ data: { actor, action, method: req.method, path, status, detail: safe } })
+      // detail ซ้อนใน key ของตัวเอง — ค่าใน detail (เช่น status ของ journal) ทับ status ของ HTTP ไม่ได้
+      .then(() => log.info("action", { actor, action, method: req.method, path, status, detail }))
+      .catch(fail)
+  } catch (e) {
+    // serialize detail ไม่ได้ตั้งแต่ตอนเรียก (เช่น object วนซ้ำ) — ไม่ให้ log ทำคำขอหลักพัง
+    fail(e)
+    return Promise.resolve()
+  }
 }

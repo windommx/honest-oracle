@@ -74,7 +74,7 @@ function SignalDot({ signal }: { signal: string }) {
   );
 }
 
-/** ปุ่มดาว (span role=button เพราะซ้อนอยู่ในแถวที่เป็น button อยู่แล้ว) */
+/** ปุ่มดาว — ปุ่มจริงที่อยู่ "ข้าง" ปุ่มเลือกแถว (ไม่ซ้อนกัน: ปุ่มซ้อนปุ่มใช้คีย์บอร์ด/screen reader ไม่ได้) */
 function StarToggle({
   symbol,
   fav,
@@ -84,55 +84,47 @@ function StarToggle({
   fav: boolean;
   onToggleFav: (s: string) => void;
 }) {
-  const toggle = () => onToggleFav(symbol);
   return (
-    <span
-      role="button"
-      tabIndex={0}
+    <button
+      type="button"
       aria-pressed={fav}
       aria-label={fav ? `เอา ${symbol} ออกจากรายการโปรด` : `เก็บ ${symbol} ไว้ในรายการโปรด`}
-      onClick={(e) => {
-        e.stopPropagation();
-        toggle();
-      }}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          e.stopPropagation();
-          toggle();
-        }
-      }}
+      onClick={() => onToggleFav(symbol)}
       className="flex h-9 w-9 items-center justify-center rounded-md hover:bg-zinc-800/80"
     >
-      <Star className={cn('h-3.5 w-3.5', fav ? 'fill-amber-400 text-amber-400' : 'text-zinc-600')} aria-hidden />
-    </span>
+      <Star className={cn('h-3.5 w-3.5', fav ? 'fill-amber-400 text-amber-400' : 'text-zinc-400')} aria-hidden />
+    </button>
   );
 }
 
 function RowShell({
   selected,
-  cols,
+  star,
   children,
   onSelect,
 }: {
   selected: boolean;
-  cols: string;
+  star: React.ReactNode;
   children: React.ReactNode;
   onSelect: () => void;
 }) {
   return (
-    <button
-      type="button"
-      aria-pressed={selected}
-      onClick={onSelect}
+    <div
       className={cn(
-        'grid w-full grid-cols-[36px_minmax(0,1fr)_auto_auto] items-center gap-2 px-3 py-2 text-left transition-colors',
-        cols,
+        'grid w-full grid-cols-[36px_minmax(0,1fr)] items-center gap-2 px-3 py-2 transition-colors',
         selected ? 'bg-zinc-800/50' : 'hover:bg-zinc-800/40',
       )}
     >
-      {children}
-    </button>
+      {star}
+      <button
+        type="button"
+        aria-pressed={selected}
+        onClick={onSelect}
+        className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2 rounded-md text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-400"
+      >
+        {children}
+      </button>
+    </div>
   );
 }
 
@@ -173,8 +165,7 @@ function MarketRow({
   onToggleFav: (s: string) => void;
 }) {
   return (
-    <RowShell selected={selected} cols="" onSelect={() => onSelect(q.symbol)}>
-      <StarToggle symbol={q.symbol} fav={fav} onToggleFav={onToggleFav} />
+    <RowShell selected={selected} onSelect={() => onSelect(q.symbol)} star={<StarToggle symbol={q.symbol} fav={fav} onToggleFav={onToggleFav} />}>
       <IdentityCell q={q} selected={selected} />
       <Sparkline data={q.spark} up={q.chg5d >= 0} />
       <PriceCell q={q} />
@@ -196,8 +187,7 @@ function LevelsRow({
   onToggleFav: (s: string) => void;
 }) {
   return (
-    <RowShell selected={selected} cols="" onSelect={() => onSelect(q.symbol)}>
-      <StarToggle symbol={q.symbol} fav={fav} onToggleFav={onToggleFav} />
+    <RowShell selected={selected} onSelect={() => onSelect(q.symbol)} star={<StarToggle symbol={q.symbol} fav={fav} onToggleFav={onToggleFav} />}>
       <IdentityCell q={q} selected={selected} />
       <div className="text-right font-mono text-[10px] leading-tight">
         <p className="text-emerald-300">

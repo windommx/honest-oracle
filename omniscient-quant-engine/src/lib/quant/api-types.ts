@@ -247,6 +247,44 @@ export interface RulesStampT {
   tunedOn: string;
 }
 
+export interface RulesResponseT extends RulesStampT {
+  provenance: { tunedOn: string; note: string; source: string };
+  rules: Record<string, unknown>;
+  history: Array<{ id: string; createdAt: string; rulesHash: string; hashShort: string; rulesVersion: string; note: string | null; actor: string }>;
+}
+
+export interface RobustnessRunT {
+  seed: number;
+  nSignals: number;
+  hitRate: number;
+  hitRateCI: [number, number];
+  sharpe: number;
+  maxDD: number;
+  cumStrat: number;
+  cumBase: number;
+  regime: string;
+  attribution: Array<{ gate: string; edge: number; p: number; verdict: string }>;
+  tookMs: number;
+}
+
+export interface RobustnessReportT {
+  rulesHash: string;
+  demoSeed: number;
+  seeds: number[];
+  runs: RobustnessRunT[];
+  summary: {
+    hitRate: { mean: number; min: number; max: number; std: number };
+    sharpe: { mean: number; min: number; max: number; std: number };
+    maxDD: { mean: number; min: number; max: number };
+    beatsBuyHold: number;
+    gates: Array<{ gate: string; speaksTruth: number; positiveEdge: number; meanEdge: number; minEdge: number; maxEdge: number; label: 'ROBUST' | 'FRAGILE' | 'NOISE' }>;
+    verdict: 'STABLE' | 'MIXED' | 'UNSTABLE';
+    note: string;
+  };
+  computedAt: string;
+  tookMs: number;
+}
+
 export interface SystemStatus {
   seeded: boolean;
   stocks: number;

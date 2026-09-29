@@ -29,10 +29,7 @@ export function useApi<T>(url: string | null, opts: { auto?: boolean } = {}): Us
     let cancelled = false;
     fetch(url)
       .then(async (res) => {
-        if (!res.ok) {
-          const body = await res.json().catch(() => ({}));
-          throw new Error(body.detail || body.error || `HTTP ${res.status}`);
-        }
+        if (!res.ok) throw new Error(await errorText(res));
         return res.json();
       })
       .then((json: T) => {
@@ -56,9 +53,27 @@ export function useApi<T>(url: string | null, opts: { auto?: boolean } = {}): Us
 
 export async function apiCall<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, init);
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new Error(body.detail || body.error || `HTTP ${res.status}`);
-  }
+  if (!res.ok) throw new Error(await errorText(res));
   return res.json() as Promise<T>;
+}
+
+/**
+ * ข้อความ error ที่อ่านรู้เรื่องจากคำตอบของ API ทุกรูปแบบ:
+ * 400 {message, issues[]} · proxy {error: ข้อความ, code} · LLM {error: code, detail} · 500 {error, errorId, detail?}
+ */
+export async function errorText(res: Response): Promise<string> {
+  const body = (await res.json().catch(() => ({}))) as {
+    message?: unknown;
+    detail?: unknown;
+    error?: unknown;
+    errorId?: unknown;
+    issues?: Array<{ path?: unknown; message?: unknown }>;
+  };
+  const pick = (v: unknown) => (typeof v === 'string' && v.trim() ? v : null);
+  let text = pick(body.message) ?? pick(body.detail) ?? pick(body.error) ?? `HTTP ${res.status}`;
+  if (Array.isArray(body.issues) && body.issues.length) {
+    text += ` — ${body.issues.slice(0, 3).map((i) => `${String(i.path ?? '')}: ${String(i.message ?? '')}`).join(' · ')}`;
+  }
+  if (pick(body.errorId)) text += ` (errorId ${String(body.errorId)})`;
+  return text;
 }

@@ -124,10 +124,19 @@ function KellyWaterfall({ kelly }: { kelly: KellySizingT }) {
   return (
     <div className="space-y-3">
       <div className="rounded-lg border border-zinc-800/60 bg-zinc-950/40 px-4 py-1">
-        <WfRow label="P(win) walk-forward" sub={kelly.source} value={`${(kelly.p * 100).toFixed(0)}%`} />
-        <WfRow label="Reward:Risk" value={`1:${kelly.r.toFixed(2)}`} />
+        <WfRow
+          label="P(win) walk-forward"
+          sub={kelly.pCI ? `${kelly.source} · 95% CI ${(kelly.pCI[0] * 100).toFixed(0)}–${(kelly.pCI[1] * 100).toFixed(0)}%` : kelly.source}
+          value={`${(kelly.p * 100).toFixed(0)}%`}
+        />
+        <WfRow
+          label="Reward:Risk"
+          sub={kelly.rCI ? `bootstrap 95% CI 1:${kelly.rCI[0].toFixed(2)} – 1:${kelly.rCI[1].toFixed(2)}` : undefined}
+          value={`1:${kelly.r.toFixed(2)}`}
+        />
         <WfRow
           label="Full Kelly f*"
+          sub={kelly.fullKellyLow !== undefined ? `ที่ขอบล่างของ CI (p ต่ำ, R ต่ำ): ${kelly.fullKellyLow.toFixed(3)}` : undefined}
           value={kelly.fullKelly.toFixed(3)}
           valueCls={kelly.edgeGuard ? 'text-rose-400' : undefined}
         />
@@ -165,6 +174,17 @@ function KellyWaterfall({ kelly }: { kelly: KellySizingT }) {
           <p className={cn('mt-1 font-mono text-lg font-semibold', kelly.mdxOverride === 'ZERO' && kelly.sizeBeforeMdxPct > 0 ? 'text-rose-300' : 'text-emerald-300')}>{kelly.finalSizePct.toFixed(1)}%</p>
         </div>
       </div>
+
+      {!kelly.edgeGuard && kelly.fullKellyLow !== undefined && kelly.fullKellyLow <= 0 && (
+        <div className="flex items-start gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2.5 text-xs leading-relaxed text-amber-100">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-300" aria-hidden />
+          <span>
+            edge ยังไม่แน่นอนทางสถิติ — ที่ขอบล่างของช่วงความเชื่อมั่น (P(win) {((kelly.pCI?.[0] ?? kelly.p) * 100).toFixed(0)}%, R 1:
+            {(kelly.rCI?.[0] ?? kelly.r).toFixed(2)}) Kelly ให้ f* = {kelly.fullKellyLow.toFixed(3)} ≤ 0 · ขนาดที่แสดงคือค่ากลางจาก {kelly.nTrades ?? '—'} ไม้
+            ถ้าต้องการปลอดภัยกว่านี้ให้ลดขนาดลงอีก
+          </span>
+        </div>
+      )}
 
       {kelly.edgeGuard ? (
         <div className="flex items-start gap-2 rounded-lg border border-rose-500/40 bg-rose-500/10 px-3 py-2.5 text-xs leading-relaxed text-rose-200">
@@ -223,7 +243,7 @@ function MicroBlock({ micro }: { micro: MicroMetricsT }) {
 /** ตาราง 6 สถานการณ์วิกฤต */
 function CrisisTable({ scenarios }: { scenarios: CrisisScenarioT[] }) {
   return (
-    <div className="overflow-x-auto">
+    <div tabIndex={0} role="region" aria-label="ตารางสถานการณ์วิกฤต" className="overflow-x-auto">
       <table className="w-full min-w-[640px] text-left text-xs">
         <thead className="bg-zinc-900 text-[10px] uppercase tracking-wider text-zinc-500">
           <tr>
@@ -257,9 +277,9 @@ function CrisisTable({ scenarios }: { scenarios: CrisisScenarioT[] }) {
               </td>
               <td className="px-3 py-2">
                 {sc.survived ? (
-                  <span className="inline-flex" title="รอด" aria-label="รอด"><ShieldCheck className="h-4 w-4 text-emerald-400" /></span>
+                  <span className="inline-flex" title="รอด" role="img" aria-label="รอด"><ShieldCheck className="h-4 w-4 text-emerald-400" aria-hidden /></span>
                 ) : (
-                  <span className="inline-flex" title="ไม่รอด" aria-label="ไม่รอด"><ShieldX className="h-4 w-4 text-rose-400" /></span>
+                  <span className="inline-flex" title="ไม่รอด" role="img" aria-label="ไม่รอด"><ShieldX className="h-4 w-4 text-rose-400" aria-hidden /></span>
                 )}
               </td>
             </tr>
@@ -294,7 +314,7 @@ function CrisisBlock({ crisis }: { crisis: CrisisResultT }) {
 /** Panel 5 — Model Registry table (sticky header, scroll เมื่อยาว) */
 function RegistryTable({ registry }: { registry: RegistryResultT }) {
   return (
-    <div className="max-h-96 overflow-auto rounded-lg border border-zinc-800/60">
+    <div tabIndex={0} role="region" aria-label="ทะเบียนโมเดล" className="max-h-96 overflow-auto rounded-lg border border-zinc-800/60">
       <table className="w-full min-w-[680px] text-left text-xs">
         <thead className="sticky top-0 z-10 bg-zinc-900 text-[10px] uppercase tracking-wider text-zinc-500">
           <tr>

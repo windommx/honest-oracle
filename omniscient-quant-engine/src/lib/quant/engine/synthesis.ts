@@ -269,8 +269,18 @@ export function buildSynthesisDossier(
     });
   }
 
+  // สายที่อาศัยข้อมูลที่ชุดข้อมูลนี้ไม่มี (เช่น นำเข้าแต่ราคา) — งดออกเสียง น้ำหนัก 0 ไม่เจือจางคะแนน
+  const hasFlows = s.coverage?.flows ?? true;
+  const hasFund = s.coverage?.fundamentals ?? true;
+  const abstain = (key: string, label: string, layer: string, what: string): EvidenceStrand => ({
+    key, label, layer, vote: 'NEUTRAL', weight: RULES.synthesis.weights[key as keyof typeof RULES.synthesis.weights], effWeight: 0, trusted: false,
+    value: 'ไม่มีข้อมูล',
+    detail: `ชุดข้อมูลปัจจุบันไม่มี${what}ของ ${s.symbol} — สายนี้งดออกเสียง (ไม่นับในคะแนน)`,
+  });
+
   // 7. Flow
-  {
+  if (!hasFlows) strands.push(abstain('FLOW', 'เงินไหลสถาบัน 5d', 'L1', 'เงินไหลสุทธิของสถาบัน'));
+  else {
     let vote: Vote = 'NEUTRAL';
     let detail = 'เงินไหลสุทธิเป็นกลาง — สถาบันยังไม่เลือกฝั่ง';
     if (row.flow5 > 2) {
@@ -289,7 +299,8 @@ export function buildSynthesisDossier(
   }
 
   // 8. Valuation vs sector
-  {
+  if (!hasFund) strands.push(abstain('VALUATION', 'มูลค่าเทียบหมวด', 'L1', 'งบการเงิน (P/E, P/B)'));
+  else {
     let vote: Vote = 'NEUTRAL';
     let detail = `มูลค่า (P/E ${row.pe.toFixed(1)}) ใกล้ค่ากลางหมวด ${s.sector} — ไม่เป็นทั้งใบเบิกทางและข้อหา`;
     const peRatio = sectorPe > 0 ? row.pe / sectorPe : 1;
@@ -348,7 +359,8 @@ export function buildSynthesisDossier(
   }
 
   // 10. Fundamental PIT (revG เก็บเป็น % ตาม panel)
-  {
+  if (!hasFund) strands.push(abstain('FUNDAMENTAL', 'พื้นฐาน (PIT)', 'L0', 'งบการเงิน (รายได้, ROE, D/E)'));
+  else {
     let vote: Vote = 'NEUTRAL';
     let detail = `งบล่าสุด: revG ${fmt(row.revG, 1)}% · D/E ${row.de.toFixed(2)} — ยังไม่ชี้ทิศชัด`;
     if (row.revG > 8 && row.de < 1.2) {

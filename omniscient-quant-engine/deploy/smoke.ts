@@ -12,18 +12,24 @@
 //           server ไม่พิมพ์ error ที่ไม่ได้จัดการ (บรรทัดขึ้นต้น ⨯) ระหว่างทดสอบ
 // ============================================================
 
-import { copyFileSync, existsSync, mkdtempSync, rmSync } from "node:fs"
-import { tmpdir } from "node:os"
 import path from "node:path"
-
-const APP_ROOT = path.resolve(import.meta.dir, "..")
+import { APP_ROOT, startStandaloneServer, type ServerHandle } from "./server"
 
 export interface RouteSpec {
   route: string
-  method?: "GET" | "POST"
+  method?: "GET" | "POST" | "PATCH" | "PUT" | "DELETE"
   /** status ที่คาด (ค่าเริ่มต้น 200) */
   status?: number
   body?: unknown
+  /** header ที่ต้องมีในคำตอบ (ชื่อตัวพิมพ์เล็ก) */
+  headers?: string[]
+  /** ตรวจเพิ่มบน JSON ที่ parse แล้ว — คืนข้อความเมื่อไม่ผ่าน */
+  expect?: (json: Record<string, unknown>) => string | undefined
+}
+
+const TINY_DATASET = {
+  source: "smoke",
+  stocks: [{ symbol: "AAA", prices: [{ date: "2026-09-25", close: 10, volume: 1000 }] }],
 }
 
 /** GET ทั้งหมดของแอป (ไม่มี side effect ต่อข้อมูลจริง — รันบนสำเนา DB) + หน้าเว็บ + POST ที่ต้องตอบ 503 เมื่อไม่มี LLM */
@@ -48,11 +54,29 @@ export const DEFAULT_ROUTES: RouteSpec[] = [
   { route: "/api/market/series/TSE?tf=1W&bars=750" },
   { route: "/api/analyst/TSE" },
   { route: "/api/decision/NOPE", status: 404 },
+  // ความซื่อตรงของงานวิจัย + ที่มาของข้อมูล + ประวัติการกระทำ
+  { route: "/api/rules", expect: (j) => (typeof j.hash === "string" && (j.hash as string).length === 64 ? undefined : "ไม่มี rules hash") },
+  { route: "/api/data/provenance", expect: (j) => (["synthetic", "real", "unknown"].includes(String(j.kind)) && typeof j.label === "string" ? undefined : "provenance ไม่ครบ") },
+  { route: "/api/research/robustness?seeds=11", expect: (j) => (Array.isArray(j.runs) && (j.runs as unknown[]).length === 1 ? undefined : "robustness ไม่มี run") },
+  { route: "/api/research/robustness?seeds=abc", status: 400 },
+  { route: "/api/audit-log?limit=5" },
+  { route: "/api/audit-log?limit=0", status: 400 },
+  // เส้นทางแก้ข้อมูล: validation → 400/404/422 (ไม่ใช่ 500) · ทำงานบนสำเนา DB เท่านั้น
+  { route: "/api/journal", method: "POST", status: 400, body: { symbol: "", price: -1 } },
+  { route: "/api/journal", method: "POST", status: 201, body: { symbol: "TSE", signal: "NO_TRADE", price: 1.2, status: "SKIPPED", notes: "smoke" } },
+  { route: "/api/journal", method: "PATCH", status: 404, body: { id: "nope", status: "CLOSED" } },
+  { route: "/api/journal?id=nope", method: "DELETE", status: 404 },
+  { route: "/api/rules", method: "POST", status: 201, body: { note: "smoke" }, expect: (j) => (j.matchesRegistered === true ? undefined : "ล็อกแล้วแต่ไม่ตรง") },
+  { route: "/api/system", method: "POST", status: 400, body: { force: "yes" } },
+  { route: "/api/data/ingest", method: "POST", status: 400, body: TINY_DATASET },
+  { route: "/api/data/ingest", method: "POST", status: 422, body: { ...TINY_DATASET, dryRun: true } },
   // LLM ไม่ได้ตั้งค่าใน smoke → ต้อง 503 พร้อมข้อความ ไม่ใช่ 500
   { route: "/api/analyst/TSE", method: "POST", body: { question: "ทดสอบ" }, status: 503 },
   { route: "/api/synthesis/TSE", method: "POST", status: 503 },
   { route: "/api/audit", method: "POST", status: 503 },
-  { route: "/" },
+  { route: "/", headers: ["content-security-policy", "x-content-type-options", "referrer-policy", "x-frame-options"] },
+  { route: "/terms" },
+  { route: "/api/meta", expect: (j) => ((j.access as { canWrite?: unknown } | undefined)?.canWrite === true && typeof (j.data as { label?: unknown } | undefined)?.label === "string" ? undefined : "meta ไม่ครบ") },
 ]
 
 /** หาค่าที่ไม่ควรหลุดออกมาใน JSON: ตัวเลขไม่จำกัด (1e999 → Infinity) และสตริงที่มีคำว่า NaN/Infinity (format เลขพัง) */
@@ -80,9 +104,11 @@ export interface RouteResult {
 }
 
 /** ตรวจคำตอบ 1 route (pure ต่อ status/body) */
-export function checkResponse(spec: RouteSpec, status: number, contentType: string, body: string): string | undefined {
+export function checkResponse(spec: RouteSpec, status: number, contentType: string, body: string, headers?: Headers): string | undefined {
   const expected = spec.status ?? 200
   if (status !== expected) return `HTTP ${status} (คาด ${expected}): ${body.slice(0, 160).replace(/\s+/g, " ")}`
+  const missing = (spec.headers ?? []).filter((h) => !headers?.get(h))
+  if (missing.length) return `ไม่มี header: ${missing.join(", ")}`
   if (!spec.route.startsWith("/api")) return body.length > 0 ? undefined : "body ว่าง"
   if (!contentType.includes("application/json")) return `content-type ไม่ใช่ JSON (${contentType})`
   let parsed: unknown
@@ -97,6 +123,7 @@ export function checkResponse(spec: RouteSpec, status: number, contentType: stri
     const p = parsed as { error?: string; detail?: string }
     if (p.error !== "llm_unavailable" || !p.detail) return `503 ต้องเป็น llm_unavailable พร้อม detail — ได้ ${body.slice(0, 120)}`
   }
+  if (spec.expect && parsed && typeof parsed === "object") return spec.expect(parsed as Record<string, unknown>)
   return undefined
 }
 
@@ -130,27 +157,14 @@ function parseArgs(argv: string[]): Opts {
 async function call(base: string, spec: RouteSpec, timeoutSec: number, headers: Record<string, string>) {
   const t0 = performance.now()
   const init: RequestInit = { headers: { ...headers }, signal: AbortSignal.timeout(timeoutSec * 1000), redirect: "manual", method: spec.method ?? "GET" }
-  if (spec.method === "POST") {
-    init.headers = { ...headers, "Content-Type": "application/json", Origin: base }
-    init.body = JSON.stringify(spec.body ?? {})
+  if (spec.method && spec.method !== "GET") {
+    // คำขอแก้ข้อมูลแบบเดียวกับ browser: same-origin + JSON (CSRF guard) · DELETE ไม่มี body
+    init.headers = { ...headers, Origin: base, ...(spec.method !== "DELETE" ? { "Content-Type": "application/json" } : {}) }
+    if (spec.method !== "DELETE") init.body = JSON.stringify(spec.body ?? {})
   }
   const res = await fetch(`${base}${spec.route}`, init)
   const body = await res.text()
   return { res, body, ms: Math.round(performance.now() - t0) }
-}
-
-/** รอจน server รับ connection (ตอบ HTTP ใด ๆ ที่ /api/health — สถานะจริงตรวจใน route check ถัดไป) */
-async function waitReady(base: string, headers: Record<string, string>, deadline: number, alive: () => boolean): Promise<boolean> {
-  while (Date.now() < deadline) {
-    if (!alive()) return false
-    try {
-      const r = await fetch(`${base}/api/health`, { headers, signal: AbortSignal.timeout(5000) })
-      await r.arrayBuffer()
-      return true
-    } catch {}
-    await Bun.sleep(500)
-  }
-  return false
 }
 
 async function main(): Promise<number> {
@@ -158,69 +172,22 @@ async function main(): Promise<number> {
   const token = process.env.OQE_API_TOKEN?.trim()
   const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {}
 
-  const base = o.baseUrl ?? `http://127.0.0.1:${o.port}`
-  let server: ReturnType<typeof Bun.spawn> | null = null
-  let tmp: string | null = null
-  const serverLog: string[] = []
-
-  const cleanup = () => {
-    if (server && server.exitCode === null) server.kill("SIGTERM")
-    if (tmp) rmSync(tmp, { recursive: true, force: true })
-  }
+  let base = o.baseUrl ?? `http://127.0.0.1:${o.port}`
+  let server: ServerHandle | null = null
   ;(process as unknown as NodeJS.EventEmitter).on("SIGINT", () => {
-    cleanup()
+    server?.stop()
     process.exit(130)
   })
 
   try {
     if (!o.baseUrl) {
-      const entry = path.join(APP_ROOT, ".next", "standalone", "server.js")
-      if (!existsSync(entry)) {
-        console.error(`ไม่พบ ${path.relative(APP_ROOT, entry)} — รัน bun run build ก่อน`)
+      try {
+        server = await startStandaloneServer({ db: o.db, port: o.port, runtime: o.runtime })
+      } catch (e) {
+        console.error((e as Error).message)
         return 1
       }
-      tmp = mkdtempSync(path.join(tmpdir(), "oqe-smoke-"))
-      const dbCopy = path.join(tmp, "smoke.db")
-      if (o.db === "empty") {
-        // DB เปล่าตาม schema จริง — API แรกที่ถูกเรียกจะ seed ข้อมูลจำลองเอง (ทดสอบทาง auto-seed)
-        const { createSchemaDb } = await import("../src/test/schema-db")
-        createSchemaDb(dbCopy)
-      } else {
-        if (!existsSync(o.db)) {
-          console.error(`ไม่พบ DB ต้นแบบ ${o.db}`)
-          return 1
-        }
-        copyFileSync(o.db, dbCopy) // ไม่แตะไฟล์ต้นแบบ (db/custom.db) เด็ดขาด
-      }
-      const env: Record<string, string | undefined> = {
-        ...process.env,
-        NODE_ENV: "production",
-        PORT: String(o.port),
-        HOSTNAME: "127.0.0.1",
-        DATABASE_URL: `file:${dbCopy}`,
-        NEXT_TELEMETRY_DISABLED: "1",
-        // smoke ต้องเห็นพฤติกรรม "ไม่มี LLM" เสมอ ไม่ว่าเครื่องที่รันจะมีคีย์หรือไม่
-        OQE_LLM_PROVIDER: "none",
-      }
-      const exe = o.runtime === "bun" ? process.execPath : "node"
-      server = Bun.spawn([exe, entry], { cwd: APP_ROOT, env, stdout: "pipe", stderr: "pipe" })
-      for (const stream of [server.stdout, server.stderr]) {
-        ;(async () => {
-          const reader = (stream as ReadableStream<Uint8Array>).getReader()
-          const dec = new TextDecoder()
-          for (;;) {
-            const { done, value } = await reader.read()
-            if (done) break
-            for (const line of dec.decode(value).split("\n")) if (line.trim()) serverLog.push(line)
-          }
-        })().catch(() => {})
-      }
-      const proc = server
-      const ready = await waitReady(base, headers, Date.now() + 90_000, () => proc.exitCode === null)
-      if (!ready) {
-        console.error(`server ไม่พร้อมภายใน 90 วินาที (${o.runtime}) — log ท้าย:\n${serverLog.slice(-40).join("\n")}`)
-        return 1
-      }
+      base = server.base
       console.log(`server พร้อม: ${base} (${o.runtime}, DB ${o.db === "empty" ? "เปล่า → auto-seed" : `สำเนาของ ${path.relative(APP_ROOT, o.db) || o.db}`})`)
     }
 
@@ -229,7 +196,7 @@ async function main(): Promise<number> {
       const label = `${spec.method ?? "GET"} ${spec.route}`
       try {
         const { res, body, ms } = await call(base, spec, o.timeoutSec, headers)
-        const problem = checkResponse(spec, res.status, res.headers.get("content-type") ?? "", body)
+        const problem = checkResponse(spec, res.status, res.headers.get("content-type") ?? "", body, res.headers)
         results.push({ route: label, status: res.status, ms, bytes: body.length, ok: !problem, problem })
       } catch (e) {
         results.push({ route: label, status: 0, ms: 0, bytes: 0, ok: false, problem: (e as Error).message })
@@ -241,7 +208,7 @@ async function main(): Promise<number> {
       console.log(`${mark}  ${String(r.status).padStart(3)}  ${String(r.ms).padStart(6)} ms  ${r.route}${r.problem ? `  ← ${r.problem}` : ""}`)
     }
 
-    const serverErrors = serverLog.filter((l) => /^\s*⨯/.test(l))
+    const serverErrors = (server?.log ?? []).filter((l) => /^\s*⨯/.test(l))
     if (serverErrors.length > 0) {
       console.error(`server พิมพ์ error ที่ไม่ได้จัดการ ${serverErrors.length} บรรทัด:\n${serverErrors.slice(0, 10).join("\n")}`)
     }
@@ -250,7 +217,7 @@ async function main(): Promise<number> {
     console.log(`\n${results.length - failed.length}/${results.length} ผ่าน · รวม ${(total / 1000).toFixed(1)} วินาที`)
     return failed.length === 0 && serverErrors.length === 0 ? 0 : 1
   } finally {
-    cleanup()
+    server?.stop()
   }
 }
 

@@ -12,7 +12,7 @@
 import type { MarketState, ViewKey, FeatureKey } from './types';
 import { FEATURE_VIEWS, FEATURE_KEYS } from './types';
 import {
-  pca, mean, std, variance, bhFdr, hypergeomSf, quantile, pearson, clamp,
+  pca, mean, std, variance, bhFdr, hypergeomSf, pearson,
 } from '../stats';
 
 export const TRAIN_WINDOW = 250; // days used to fit factor model

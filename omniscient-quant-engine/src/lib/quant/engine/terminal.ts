@@ -9,7 +9,6 @@
  * ข้อมูลราคา: ใช้ generator cache (seed เดียวกับ DB → ตัวเลขตรงกับทุกแท็บอื่น)
  */
 
-import { getGenerated } from './panel';
 import { loadMarketState } from './panel';
 import { getBoard, getProbs } from './api';
 import { evaluateGates } from './gates';
@@ -17,7 +16,6 @@ import { RULES } from './rules';
 import { db } from '@/lib/db';
 import { chatCompletion } from '@/lib/llm';
 import { mean, std } from '../stats';
-import { tradingDates } from '../rng';
 import type { MarketState } from './types';
 
 // ─────────────────────── indicator helpers ───────────────────────
@@ -152,14 +150,13 @@ export interface QuoteRow {
 
 export async function getQuotes() {
   const [board, state] = await Promise.all([getBoard(), loadMarketState()]);
-  const gen = getGenerated();
   const N = state.dates.length;
-  const bySym = new Map(gen.stocks.map((s) => [s.def.symbol, s.series]));
+  const bySym = new Map(state.stocks.map((s) => [s.symbol, s]));
 
   const quotes: QuoteRow[] = board.rows.map((r) => {
-    const series = bySym.get(r.symbol);
-    const closes = series?.close ?? [];
-    const vols = series?.volume ?? [];
+    const st = bySym.get(r.symbol);
+    const closes = st ? st.rows.map((x) => x.close) : [];
+    const vols = st?.ohlcv.volume ?? [];
     const lastV = vols[N - 1] ?? 0;
     const adv20 = vols.length ? mean(vols.slice(-20)) : 0;
     return {
@@ -183,11 +180,11 @@ export async function getQuotes() {
       stopStruct: r.stopStruct,
       stopHard: r.stopHard,
       maxSizePct: r.maxSizePct,
-      volume: Math.round(lastV),
-      adv20: Math.round(adv20),
+      volume: +lastV.toFixed(3),
+      adv20: +adv20.toFixed(3),
       volRatio: adv20 > 0 ? +(lastV / adv20).toFixed(2) : 1,
       spark: closes.slice(-30).map((c) => +c.toFixed(2)),
-      valueM: +(lastV * r.price / 1e6).toFixed(1),
+      valueM: +(lastV * r.price).toFixed(1), // ปริมาณเป็นล้านหุ้น × ราคา = ล้านบาท
     };
   });
 
@@ -211,17 +208,13 @@ export interface OhlcBar {
 }
 
 export async function getSeries(symbol: string, tf: '1D' | '1W' = '1D', bars = 180) {
-  const gen = getGenerated();
-  const idx = gen.stocks.findIndex((s) => s.def.symbol === symbol);
-  if (idx < 0) return null;
-  const st = gen.stocks[idx];
-  const { open, high, low, close, volume } = st.series;
-
-  // ⚠️ tradingDates() anchor กับ "วันนี้" — ต้องผูก label วันที่กับวันล่าสุดของ DB
-  // เพื่อให้กราฟตรงกับ Board/Decision/Synthesis (ค่า series seed เดียวกัน → ตัวเลขเหมือนกัน)
+  // OHLCV จาก panel ที่สร้างจาก DB (แหล่งเดียวกับ Board/Decision/Synthesis — ข้อมูลจำลองหรือข้อมูลจริงที่นำเข้า)
   const state = await loadMarketState();
-  const dbLast = state.dates[state.dates.length - 1];
-  const dates = tradingDates(st.series.dates.length, dbLast);
+  const st = state.stocks.find((s) => s.symbol === symbol);
+  if (!st) return null;
+  const { open, high, low, volume } = st.ohlcv;
+  const close = st.rows.map((r) => r.close);
+  const dates = state.dates;
 
   // daily bars เต็มชุด
   const daily: OhlcBar[] = dates.map((d, i) => ({
@@ -230,7 +223,7 @@ export async function getSeries(symbol: string, tf: '1D' | '1W' = '1D', bars = 1
     h: +high[i].toFixed(2),
     l: +low[i].toFixed(2),
     c: +close[i].toFixed(2),
-    v: Math.round(volume[i]),
+    v: +volume[i].toFixed(3), // ล้านหุ้น
   }));
 
   // pivots/S-R + swing คิดจาก daily เสมอ (แม่กว่า)
@@ -306,9 +299,9 @@ export async function getSeries(symbol: string, tf: '1D' | '1W' = '1D', bars = 1
 
   return {
     symbol,
-    name: st.def.name,
-    sector: st.def.sector,
-    theme: st.def.theme,
+    name: st.name,
+    sector: st.sector,
+    theme: st.theme,
     tf,
     firstDate: slice[0]?.date ?? '',
     lastDate: slice[slice.length - 1]?.date ?? '',
@@ -326,12 +319,12 @@ export async function getSeries(symbol: string, tf: '1D' | '1W' = '1D', bars = 1
     },
     swings,
     sr,
-    adv20: Math.round(adv20All),
+    adv20: +adv20All.toFixed(3),
     lastQuote: {
       price: +price.toFixed(2),
       chg1d: +((close[close.length - 1] / close[close.length - 2] - 1) * 100).toFixed(2),
-      volume: Math.round(volume[volume.length - 1]),
-      volRatio: +(volume[volume.length - 1] / adv20All).toFixed(2),
+      volume: +volume[volume.length - 1].toFixed(3),
+      volRatio: adv20All > 0 ? +(volume[volume.length - 1] / adv20All).toFixed(2) : 1,
     },
   };
 }
@@ -398,17 +391,14 @@ export async function getAnalyst(symbol: string): Promise<AnalystBrief | null> {
   const probs = await getProbs();
   const ev = evaluateGates(state, symbol, N - 1, { riskBudgetPct: RULES.risk.budgetPct, probUp: probs[symbol] });
 
-  // indicators จาก series
-  const gen = getGenerated();
-  const gi = gen.stocks.findIndex((x) => x.def.symbol === symbol);
-  const series = gen.stocks[gi].series;
-  const closes = series.close;
+  // indicators จาก OHLCV ของ panel (DB)
+  const closes = s.rows.map((r) => r.close);
   const { hist } = macdHist(closes);
   const e20 = ema(closes, 20);
   const e50 = ema(closes, 50);
-  const vols = series.volume;
+  const vols = s.ohlcv.volume;
   const adv20 = mean(vols.slice(-20));
-  const pivots = swingPivots(series.high, series.low, 2);
+  const pivots = swingPivots(s.ohlcv.high, s.ohlcv.low, 2);
   const sr = nearestLevels(pivots, closes[N - 1], 90);
 
   const close = closes[N - 1];

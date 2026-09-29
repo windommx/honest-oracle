@@ -80,6 +80,8 @@ export function RiskTab({
               </div>
               <Slider
                 id="budget-slider"
+                thumbLabel="งบเสี่ยงต่อไม้ (ต่อวัน)"
+                thumbValueText={`${fmtNum(riskBudget, 2)}% ของพอร์ต`}
                 value={[riskBudget]}
                 min={0.25}
                 max={3}
@@ -99,6 +101,8 @@ export function RiskTab({
               </div>
               <Slider
                 id="capital-slider"
+                thumbLabel="ขนาดพอร์ต"
+                thumbValueText={`${capital.toLocaleString()} บาท`}
                 value={[capital]}
                 min={100_000}
                 max={10_000_000}
@@ -176,7 +180,7 @@ export function RiskTab({
 
       {/* L-VaR table */}
       <Panel title="L-VaR Board — ความเสี่ยงรายหุ้น" subtitle="VaR 1 วัน 99% (จาก volatility ล่าสุด) เทียบกับ hard stop ที่ระบบคำนวณ">
-        <div className="max-h-96 overflow-y-auto rounded-lg border border-zinc-800/80">
+        <div tabIndex={0} role="region" aria-label="ตารางความเสี่ยงรายหุ้น" className="max-h-96 overflow-y-auto rounded-lg border border-zinc-800/80">
           <table className="w-full min-w-[640px] text-left text-xs">
             <thead className="sticky top-0 bg-zinc-900 text-[10px] uppercase tracking-wider text-zinc-500">
               <tr>

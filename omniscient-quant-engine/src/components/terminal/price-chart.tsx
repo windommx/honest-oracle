@@ -772,7 +772,7 @@ export default function PriceChart({
 
       {/* footer OHLCV strip */}
       {lastBar && data ? (
-        <div className="flex items-center gap-3 overflow-x-auto whitespace-nowrap border-t border-zinc-800/60 px-4 py-2 font-mono text-[11px]">
+        <div tabIndex={0} role="region" aria-label="ค่าตัวชี้วัดล่าสุด" className="flex items-center gap-3 overflow-x-auto whitespace-nowrap border-t border-zinc-800/60 px-4 py-2 font-mono text-[11px]">
           <span className={lastBar.c >= lastBar.o ? 'text-emerald-400' : 'text-rose-400'}>O {lastBar.o.toFixed(2)}</span>
           <span className={lastBar.c >= lastBar.o ? 'text-emerald-400' : 'text-rose-400'}>H {lastBar.h.toFixed(2)}</span>
           <span className={lastBar.c >= lastBar.o ? 'text-emerald-400' : 'text-rose-400'}>L {lastBar.l.toFixed(2)}</span>

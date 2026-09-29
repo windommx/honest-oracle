@@ -100,6 +100,13 @@ export const RATE_RULES: readonly RateRule[] = [
     label: "seed / รีเซ็ตข้อมูล",
   },
   {
+    name: "ingest",
+    methods: ["POST"],
+    test: (p) => p === "/api/data/ingest",
+    spec: perMin(4, 4),
+    label: "นำเข้าข้อมูลตลาด",
+  },
+  {
     name: "heavy-report",
     methods: ["GET", "HEAD"],
     test: (p) =>
