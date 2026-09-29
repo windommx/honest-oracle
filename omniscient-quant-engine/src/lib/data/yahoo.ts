@@ -1,5 +1,5 @@
 // ============================================================
-// Yahoo Finance adapter — ราคารายวัน OHLCV ของหุ้นไทย (suffix ".BK") ผ่าน chart API v8
+// Yahoo Finance adapter — ราคารายวัน OHLCV ของหุ้นไทยเท่านั้น (suffix ".BK" ตายตัว + ตรวจว่าเป็นสกุลบาท) ผ่าน chart API v8
 // ใช้จากสคริปต์ (bun scripts/fetch-yahoo.ts) — เซิร์ฟเวอร์ไม่เรียกออกอินเทอร์เน็ตเอง
 //
 // ความจริงของข้อมูล (บันทึกลง DataSource เสมอ):
@@ -78,13 +78,19 @@ export function mapChartToRows(json: YahooChartJson, opts: { adjusted: boolean }
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
-/** ดึงหุ้น 1 ตัว (query1 → query2) · ลองซ้ำเฉพาะความล้มเหลวชั่วคราว (429/5xx/timeout) · 401/403/404 ไม่ลองซ้ำ */
+/** Yahoo ตอบสกุลเงินที่ไม่ใช่บาท = ไม่ใช่หุ้นไทยในตลาดหลักทรัพย์ฯ (แพลตฟอร์มรองรับเฉพาะหุ้นไทย) */
+export class NotThaiStockError extends Error {}
+
+/**
+ * ดึงหุ้นไทย 1 ตัว (query1 → query2) · ลองซ้ำเฉพาะความล้มเหลวชั่วคราว (429/5xx/timeout) · 401/403/404 ไม่ลองซ้ำ
+ * ต่อท้าย ".BK" เสมอ (ตัด .BK ที่ผู้ใช้พิมพ์มาเอง) และปฏิเสธผลที่ไม่ใช่สกุลบาท
+ */
 export async function fetchYahooDaily(
   symbol: string,
   range: YahooRange,
-  opts: { adjusted: boolean; suffix?: string; retryDelayMs?: number; fetchImpl?: typeof fetch } = { adjusted: true },
+  opts: { adjusted: boolean; retryDelayMs?: number; fetchImpl?: typeof fetch } = { adjusted: true },
 ): Promise<CsvPriceRow[]> {
-  const ticker = `${symbol}${opts.suffix ?? ".BK"}`
+  const ticker = `${symbol.toUpperCase().replace(/\.BK$/, "")}.BK`
   const doFetch = opts.fetchImpl ?? fetch
   let lastErr = "unknown"
   for (let attempt = 0; attempt < 3; attempt++) {
@@ -103,8 +109,13 @@ export async function fetchYahooDaily(
           lastErr = `HTTP ${r.status}`
           continue
         }
-        return mapChartToRows((await r.json()) as YahooChartJson, { adjusted: opts.adjusted }).rows
+        const mapped = mapChartToRows((await r.json()) as YahooChartJson, { adjusted: opts.adjusted })
+        if (mapped.currency && mapped.currency !== "THB") {
+          throw new NotThaiStockError(`${ticker} ซื้อขายเป็น ${mapped.currency} ไม่ใช่หุ้นไทย (แพลตฟอร์มรองรับเฉพาะหุ้นไทยสกุลบาท)`)
+        }
+        return mapped.rows
       } catch (e) {
+        if (e instanceof NotThaiStockError) throw e
         const msg = e instanceof Error ? e.message : String(e)
         if (msg.startsWith("ไม่พบสัญลักษณ์")) throw e
         lastErr = /abort|timeout/i.test(msg) ? "หมดเวลา (15s)" : msg

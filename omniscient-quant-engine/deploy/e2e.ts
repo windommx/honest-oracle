@@ -32,9 +32,11 @@ export const VIEWS: Array<{ key: string; label: string }> = [
   { key: "apex", label: "Apex (L7)" },
   { key: "backtest", label: "Backtest & Journal" },
   { key: "auditor", label: "AI Auditor" },
-  { key: "cot", label: "COT Report" },
+  { key: "flows", label: "เงินไหลนักลงทุน" },
   { key: "dashboard", label: "Command Center" },
 ]
+
+const MOBILE_SHOT: Record<string, string> = { "เงินไหลนักลงทุน": "flows" }
 
 /**
  * งบ violation ต่อ rule ของ axe (จำนวน node สูงสุดที่ยอมรับต่อมุมมอง) — ค่าเริ่มต้น 0 ทุก rule
@@ -269,18 +271,23 @@ async function main(): Promise<number> {
           }),
         )
       }
-      if (v.key === "cot") {
+      if (v.key === "flows") {
         checks.push(
-          await check("COT: Gold เริ่มต้น → เลือก Silver + ช่วง 3y → หัวข้อ/ตาราง/มาตรวัดอัปเดต", async () => {
-            await page.getByRole("heading", { name: /Commitments of Traders Report \(COT\) – Gold/ }).waitFor({ timeout: 20_000 })
-            if ((await page.getByRole("region", { name: "ตาราง COT Legacy" }).count()) === 0) return "ไม่มีตาราง Legacy"
-            await page.getByRole("button", { name: "Silver", exact: true }).click()
+          await check("เงินไหล: SET 4 ประเภทนักลงทุนเริ่มต้น → เลือก KBANK + ช่วง 3y → หัวข้อ/ตาราง/มาตรวัด/short sale อัปเดต", async () => {
+            await page.getByRole("heading", { name: /เงินไหลนักลงทุน – SET \(ทั้งตลาด\)/ }).waitFor({ timeout: 20_000 })
+            const table = page.getByRole("region", { name: "ตารางการซื้อขายตามประเภทนักลงทุน" })
+            for (const g of ["นักลงทุนต่างประเทศ", "สถาบันในประเทศ", "บัญชีบริษัทหลักทรัพย์", "นักลงทุนทั่วไปในประเทศ"]) {
+              if ((await table.getByRole("rowheader", { name: g }).count()) === 0) return `ตารางไม่มีแถว ${g}`
+            }
+            await page.locator("nav summary", { hasText: "ธนาคาร" }).click()
+            await page.getByRole("button", { name: /^KBANK/ }).click()
             await page.getByRole("button", { name: "3y", exact: true }).click()
-            await page.getByRole("heading", { name: /Commitments of Traders Report \(COT\) – Silver/ }).waitFor({ timeout: 20_000 })
+            await page.getByRole("heading", { name: /เงินไหลนักลงทุน – KBANK/ }).waitFor({ timeout: 20_000 })
             await settle(page)
             if ((await page.getByRole("button", { name: "3y", exact: true }).getAttribute("aria-pressed")) !== "true") return "ปุ่มช่วงไม่เปลี่ยนสถานะ"
-            if ((await page.getByRole("img", { name: /^COT Index 6 Month/ }).count()) === 0) return "ไม่มีมาตรวัด COT Index"
-            views.push(await measure(page, "COT Report (Silver, 3y)", 1440, Date.now(), o.out, "desktop-cot-silver.png"))
+            if ((await page.getByRole("img", { name: /^Flow Index 6 เดือน/ }).count()) === 0) return "ไม่มีมาตรวัด Flow Index"
+            if ((await page.getByRole("meter", { name: "Short sale % ของมูลค่าซื้อขาย" }).count()) === 0) return "ไม่มีมาตรวัด short sale"
+            views.push(await measure(page, "เงินไหลนักลงทุน (KBANK, 3y)", 1440, Date.now(), o.out, "desktop-flows-kbank.png"))
           }),
         )
       }
@@ -335,12 +342,12 @@ async function main(): Promise<number> {
     await m.goto(`${base}/`, { waitUntil: "domcontentloaded" })
     await settle(m)
     views.push(await measure(m, "Command Center (มือถือ)", 390, tm, o.out, "mobile-dashboard.png"))
-    for (const label of ["Decision (L6)", "Apex (L7)", "Backtest & Journal"]) {
+    for (const label of ["Decision (L6)", "Apex (L7)", "Backtest & Journal", "เงินไหลนักลงทุน"]) {
       const t0 = Date.now()
       try {
         await m.getByRole("button", { name: "เปิดเมนูนำทาง" }).first().click({ timeout: 10_000 })
         await nav(m, label)
-        views.push(await measure(m, `${label} (มือถือ)`, 390, t0, o.out, `mobile-${label.split(" ")[0].toLowerCase()}.png`))
+        views.push(await measure(m, `${label} (มือถือ)`, 390, t0, o.out, `mobile-${MOBILE_SHOT[label] ?? label.split(" ")[0].toLowerCase()}.png`))
       } catch (e) {
         views.push({ view: `${label} (มือถือ)`, viewport: 390, ms: Date.now() - t0, overflowPx: 0, violations: [], overBudget: [], error: (e as Error).message.split("\n")[0] })
       }

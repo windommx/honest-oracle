@@ -379,3 +379,18 @@ Stage Summary:
 - คะแนนเฉลี่ย 5.3 → 6.3 (docs/scorecard.md รอบ 2) · verify: test 148, ops 12, smoke 44/44, E2E 22/22 + 14/14
 - ผล robustness = MIXED → ยังไม่มีหลักฐานว่ามี edge; ต้องนำเข้าข้อมูลจริง ล็อกกติกา แล้ววัดผลนอกตัวอย่าง
 
+---
+Task ID: 18
+Agent: Claude Code (session 01EpMHhtfxT5nq7BqhZXKr4G)
+Task: เน้นปรับใช้งานเฉพาะหุ้นไทยเท่านั้น
+
+Work Log:
+- แทนแดชบอร์ด COT (ฟิวเจอร์สสหรัฐฯ 27 ตลาด) ด้วย "เงินไหลนักลงทุน" ในโครงเดิม: SET ทั้งตลาด = ยอดซื้อ/ขาย/สุทธิของนักลงทุน 4 ประเภท · หุ้นรายตัว 22 ตัว = NVDR เทียบผู้ลงทุนอื่น + short sale (SET ไม่เผยแพร่ประเภทนักลงทุนรายหุ้น)
+- `src/lib/flows/`: generator deterministic ผูกกับราคา/ปริมาณของ panel เดียวกับ Terminal (เอกลักษณ์ Σซื้อ = Σขาย = มูลค่า, Σสุทธิ = 0 ตรงระดับ 0.01 ล้านบาท) · รวมรายสัปดาห์ที่ทนวันหยุด · ตารางใช้สัปดาห์ที่ครบ · ช่วงเวลา 1D–1Y/YTD · Flow Index 6/36 เดือน · สรุปจากตัวเลขด้วยกฎตายตัว · test 8 ข้อ
+- `GET /api/flows` · `GET /api/flows/{SET|symbol}` · UI `src/components/flows/` (สีกลุ่มผ่าน validator CVD/contrast บนพื้นมืด, แท่งเทียนขึ้นโปร่ง/ลงทึบ, legend + ค่าล่าสุด, แกนเริ่ม 0 สำหรับขนาด, meter แทนวงกลม 2 ชิ้น)
+- หุ้นไทยเท่านั้นทั้งระบบ: ช่องค้นหา "ค้นหาหุ้นไทย" · ingest รับเฉพาะ `currency: "THB"` · Yahoo ต่อ `.BK` เสมอและปฏิเสธผลที่ไม่ใช่ THB · prompt ของ AI Analyst จำกัดขอบเขต · /terms, metadata, README, PROJECT-SUMMARY
+- set.or.th / settrade.com / tfex.co.th ถูก egress proxy ปฏิเสธ (403) → ยอดเงินไหลเป็นข้อมูลจำลอง มีป้ายบอกทุกหน้า (ไม่ได้อ้อม)
+
+Stage Summary:
+- v1.3.0 · test 151 · ops 12 · smoke 45/45 (demo DB และ DB เปล่า) · E2E 23/23 มุมมอง (รวมเงินไหล desktop + มือถือ) ผ่าน axe งบ 0 · 14/14 interaction
+- งานต่อ: importer ข้อมูลจริงของหน้าเงินไหล (ไฟล์ประเภทนักลงทุน / NVDR / short sale ของ SET)

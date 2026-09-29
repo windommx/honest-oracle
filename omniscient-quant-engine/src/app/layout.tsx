@@ -16,8 +16,8 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Omniscient Quant Engine — Full-Cycle Multi-View Quant Platform",
   description:
-    "แพลตฟอร์มเทรดเชิงระบบครบวงจร: 7 Layers (L0 Data/PIT → L3 Multi-View Factor Integration → L5 Copula-CVaR Risk → L6 5-Gates Execution) พร้อม Walk-Forward Backtest, Gate Attribution และ LLM Audit Loop",
-  keywords: ["quant", "5-gates", "MOFA", "copula", "CVaR", "SET", "walk-forward"],
+    "แพลตฟอร์มเทรดเชิงระบบครบวงจรสำหรับหุ้นไทย (SET/mai) เท่านั้น: 7 Layers (L0 Data/PIT → L3 Multi-View Factor Integration → L5 Copula-CVaR Risk → L6 5-Gates Execution) พร้อม Walk-Forward Backtest, Gate Attribution และ LLM Audit Loop",
+  keywords: ["quant", "หุ้นไทย", "SET", "mai", "5-gates", "MOFA", "copula", "CVaR", "walk-forward", "NVDR"],
 };
 
 export default function RootLayout({

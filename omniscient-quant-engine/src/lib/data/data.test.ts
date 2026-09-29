@@ -12,7 +12,7 @@ import { expectedLatestSession, holidayCoverage, isTradingDay, prevTradingDay, t
 import { normalizeDate, parseMetaCsv, parsePriceCsv, splitCsvLine } from "./csv"
 import { computeFreshness } from "./freshness"
 import { DatasetSchema, estimateBetas, prepareDataset, type DatasetInput } from "./ingest"
-import { mapChartToRows, tsToMarketDate, type YahooChartJson } from "./yahoo"
+import { fetchYahooDaily, mapChartToRows, NotThaiStockError, tsToMarketDate, type YahooChartJson } from "./yahoo"
 
 /** ชุดข้อมูลแบบข้อมูลจริง (ราคา + ปริมาณเป็น "จำนวนหุ้น" ไม่มีงบ/เงินไหล) จาก generator — n หุ้นแรก ช่วง bars วันท้าย */
 function realLikeDataset(n = 6, bars = 400): DatasetInput {
@@ -149,6 +149,23 @@ describe("data/yahoo — mapChartToRows (ไม่ใช้เครือข่
     expect(tsToMarketDate(ts[0], "Asia/Bangkok")).toBe("2026-09-24")
     expect(() => mapChartToRows({ chart: { error: { code: "Not Found", description: "No data found" } } }, { adjusted: true })).toThrow("No data found")
   })
+
+  test("หุ้นไทยเท่านั้น: ต่อท้าย .BK เสมอ (ตัด .BK ที่พิมพ์มาเอง) · Yahoo ตอบสกุลอื่นที่ไม่ใช่ THB = ปฏิเสธทันที ไม่ลองซ้ำ", async () => {
+    const urls: string[] = []
+    const reply = (currency: string) =>
+      (async (url: string | URL | Request) => {
+        urls.push(String(url))
+        return new Response(JSON.stringify({ chart: { result: [{ ...json.chart!.result![0], meta: { ...json.chart!.result![0].meta, currency } }] } }), { status: 200 })
+      }) as unknown as typeof fetch
+    const rows = await fetchYahooDaily("ptt.bk", "1y", { adjusted: false, fetchImpl: reply("THB") })
+    expect(rows.length).toBe(2)
+    expect(urls[0]).toContain("/chart/PTT.BK?")
+    urls.length = 0
+    const err = await fetchYahooDaily("AAPL", "1y", { adjusted: false, fetchImpl: reply("USD"), retryDelayMs: 1 }).catch((e: unknown) => e)
+    expect(err).toBeInstanceOf(NotThaiStockError)
+    expect(String((err as Error).message)).toContain("ไม่ใช่หุ้นไทย")
+    expect(urls.length).toBe(1)
+  })
 })
 
 describe("data/ingest — ตรวจ + ทำความสะอาด (pure)", () => {
@@ -205,6 +222,11 @@ describe("data/ingest — ตรวจ + ทำความสะอาด (pure
     expect(DatasetSchema.safeParse({ ...base, stocks: [{ ...base.stocks[0], prices: [{ date: "2026-13-01", close: 1 }] }] }).success).toBe(false)
     expect(DatasetSchema.safeParse({ ...base, stocks: [{ ...base.stocks[0], prices: [{ date: "2026-09-25", close: -1 }] }] }).success).toBe(false)
     expect(DatasetSchema.safeParse({ ...base, source: "" }).success).toBe(false)
+    // หุ้นไทยเท่านั้น: ไม่ระบุ = THB · สกุลอื่นถูกปฏิเสธพร้อมเหตุผล
+    expect(DatasetSchema.parse(base).currency).toBe("THB")
+    const usd = DatasetSchema.safeParse({ ...base, currency: "USD" })
+    expect(usd.success).toBe(false)
+    expect(usd.error?.issues[0]?.message).toContain("หุ้นไทย")
   })
 
   test("estimateBetas: หุ้นที่เคลื่อนสองเท่าของตลาดได้ beta สูงกว่าหุ้นที่เคลื่อนครึ่งเดียว", () => {

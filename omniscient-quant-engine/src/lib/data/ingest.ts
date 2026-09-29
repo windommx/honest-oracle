@@ -67,6 +67,8 @@ export const DatasetSchema = z.object({
   note: z.string().trim().max(500).optional(),
   /** หน่วยของ volume ที่ส่งมา: shares (ค่าเริ่มต้น — แปลง ÷1e6) | millionShares */
   volumeUnit: z.enum(["shares", "millionShares"]).default("shares"),
+  /** สกุลเงินของราคา/มูลค่า — แพลตฟอร์มรองรับเฉพาะหุ้นไทย (SET/mai) จึงรับเฉพาะบาท */
+  currency: z.literal("THB", "แพลตฟอร์มรองรับเฉพาะหุ้นไทย — currency ต้องเป็น THB").default("THB"),
   stocks: z.array(StockInputSchema).min(1).max(INGEST_LIMITS.maxSymbols),
 })
 

@@ -1,10 +1,10 @@
 'use client';
 
 import {
+  ArrowLeftRight,
   BrainCircuit,
   ChevronDown,
   Crown,
-  CandlestickChart,
   FlaskConical,
   Gauge,
   Globe,
@@ -71,6 +71,7 @@ const NAV_GROUPS: NavGroupDef[] = [
     items: [
       { key: 'multiview', label: 'Multi-View (L3)', icon: Layers },
       { key: 'dependence', label: 'Dependence (L2)', icon: Waypoints },
+      { key: 'flows', label: 'เงินไหลนักลงทุน', icon: ArrowLeftRight },
     ],
   },
   {
@@ -82,12 +83,6 @@ const NAV_GROUPS: NavGroupDef[] = [
       { key: 'metarisk', label: 'Meta-Risk (L∞)', icon: ShieldAlert },
       { key: 'apex', label: 'Apex (L7)', icon: Crown },
     ],
-  },
-  {
-    key: 'futures',
-    label: 'ตลาดล่วงหน้า',
-    icon: CandlestickChart,
-    items: [{ key: 'cot', label: 'COT Report', icon: CandlestickChart }],
   },
   {
     key: 'lab',

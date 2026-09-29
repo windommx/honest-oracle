@@ -76,10 +76,15 @@ export const DEFAULT_ROUTES: RouteSpec[] = [
   { route: "/api/audit", method: "POST", status: 503 },
   { route: "/", headers: ["content-security-policy", "x-content-type-options", "referrer-policy", "x-frame-options"] },
   { route: "/terms" },
-  { route: "/api/cot", expect: (j) => (Array.isArray(j.groups) && (j.groups as unknown[]).length >= 9 ? undefined : "ไม่มีรายชื่อตลาด") },
-  { route: "/api/cot/gold?range=3y&index=managed", expect: (j) => (Array.isArray(j.series) && (j.series as unknown[]).length === 156 ? undefined : "อนุกรม 3y ต้องมี 156 สัปดาห์") },
-  { route: "/api/cot/nope", status: 404 },
-  { route: "/api/cot/gold?range=10y", status: 400 },
+  { route: "/api/flows", expect: (j) => (Array.isArray(j.sectors) && (j.sectors as unknown[]).length >= 1 && Array.isArray(j.market) ? undefined : "ไม่มีรายชื่อหุ้น") },
+  {
+    route: "/api/flows/SET?range=1y&index=retail",
+    expect: (j) =>
+      Array.isArray(j.series) && (j.series as unknown[]).length === 52 && (j.table as { rows?: unknown[] } | undefined)?.rows?.length === 4 && j.indexGroup === "retail" ? undefined : "SET ต้องมี 52 สัปดาห์ + 4 ประเภทนักลงทุน",
+  },
+  { route: "/api/flows/TSE?range=6m&index=foreign", expect: (j) => (j.indexGroup === "nvdr" && j.short !== null ? undefined : "หุ้นรายตัวต้องใช้ NVDR + มี short sale") },
+  { route: "/api/flows/NOPE", status: 404 },
+  { route: "/api/flows/SET?range=10y", status: 400 },
   { route: "/api/meta", expect: (j) => ((j.access as { canWrite?: unknown } | undefined)?.canWrite === true && typeof (j.data as { label?: unknown } | undefined)?.label === "string" ? undefined : "meta ไม่ครบ") },
 ]
 

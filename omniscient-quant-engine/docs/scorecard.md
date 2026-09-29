@@ -2,6 +2,7 @@
 
 > คะแนนเป็นการประเมินของผู้พัฒนาเอง ไม่ใช่การรับรองจากบุคคลที่สาม — ทุกคะแนนอ้างหลักฐานที่รันซ้ำได้ · 10 = ผ่านเกณฑ์ใน §4 ทุกข้อ
 > **รอบ 2 (29 ก.ย. 2569, Task 17 + COT dashboard, v1.2.0)** อยู่ด้านบน · รอบ 1 (28 ก.ย., หลัง Task 15) เก็บไว้ด้านล่างเป็นประวัติ
+> **Task 18 (29 ก.ย. 2569, v1.3.0):** จำกัดขอบเขตเป็น **หุ้นไทยเท่านั้น** — แดชบอร์ด COT (ฟิวเจอร์สสหรัฐฯ) ถูกแทนด้วยแดชบอร์ด "เงินไหลนักลงทุน" ในโครงเดิม (SET 4 ประเภทนักลงทุน · NVDR · short sale รายหุ้น) · ตัวนำเข้ารับเฉพาะสกุลบาท · คะแนนรอบ 2 คงเดิม (ตัวเลขหลักฐานด้านล่างเป็นของรอบ 2)
 
 ## รอบ 2 — หลังปิดช่องว่าง (Task 17)
 
@@ -21,7 +22,7 @@
 
 **หลักฐานรอบ 2 (รันซ้ำได้):** `bun run verify` exit 0 — typecheck · lint 0 · test 148 · ops 12 (ingest-csv → engine-check → backup → restore) · build · smoke 44/44 (demo DB) และ 44/44 (DB เปล่า, CI) · E2E 22/22 มุมมอง ผ่าน axe WCAG 2.1 AA + 2.2 target-size งบ 0 · 14/14 interaction · console error 0 · หน้าแรกแสดงผล ~2.8 s · Yahoo/CFTC: 403 ที่ egress proxy ของ sandbox (บันทึกไว้ ไม่ได้อ้อม)
 
-**งานโค้ดที่เหลือ (เรียงตามผล):** ย้าย robustness/backtest ไป worker thread · importer รายงาน CFTC จริง (CSV Disaggregated/Legacy) · corporate actions + หุ้นเพิกถอน · บัญชีรายคน · build Docker image บนเครื่องจริง · metrics/alert
+**งานโค้ดที่เหลือ (เรียงตามผล):** ย้าย robustness/backtest ไป worker thread · importer ข้อมูลจริงของหน้าเงินไหล (ประเภทนักลงทุน / NVDR / short sale จากไฟล์ของ SET) · corporate actions + หุ้นเพิกถอน · บัญชีรายคน · build Docker image บนเครื่องจริง · metrics/alert
 
 ---
 

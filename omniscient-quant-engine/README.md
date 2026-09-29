@@ -1,6 +1,8 @@
 # Omniscient Quant Engine — Full-Cycle Multi-View Quant Platform
 
-แพลตฟอร์มเทรดเชิงระบบ "7 ชั้น" สำหรับหุ้นไทย (SET) หน้าเดียว (`/`) ภาษาไทยทั้งระบบ: L0 ข้อมูล point-in-time → L1 มุมมองเดี่ยว → L2 Dependence (Clayton copula Θ / lower-tail) → L3 Multi-View factor integration (PCA + enrichment + bipartite) → L4 walk-forward + gate attribution → L5 Monte Carlo CVaR sizing → L6 5-Gate execution + journal → L∞ Meta-Risk (ruin math, defense-in-depth, Risk MDX 7 มิติ, antifragility) → L7 Apex (Kelly-Vol sizing, microstructure, crisis MC, model registry) พร้อม "หลอมรวม" (convergent-evidence synthesis 13 สาย), Market Intelligence Terminal และ Command Center
+แพลตฟอร์มเทรดเชิงระบบ "7 ชั้น" **สำหรับหุ้นไทย (SET/mai) เท่านั้น** หน้าเดียว (`/`) ภาษาไทยทั้งระบบ: L0 ข้อมูล point-in-time → L1 มุมมองเดี่ยว → L2 Dependence (Clayton copula Θ / lower-tail) → L3 Multi-View factor integration (PCA + enrichment + bipartite) → L4 walk-forward + gate attribution → L5 Monte Carlo CVaR sizing → L6 5-Gate execution + journal → L∞ Meta-Risk (ruin math, defense-in-depth, Risk MDX 7 มิติ, antifragility) → L7 Apex (Kelly-Vol sizing, microstructure, crisis MC, model registry) พร้อม "หลอมรวม" (convergent-evidence synthesis 13 สาย), เงินไหลนักลงทุน (ประเภทนักลงทุน SET · NVDR · short sale), Market Intelligence Terminal และ Command Center
+
+> **ขอบเขต: หุ้นไทยเท่านั้น** — ไม่มีตลาดต่างประเทศ ฟิวเจอร์ส หรือคริปโต · ข้อมูลที่นำเข้าต้องเป็นหุ้นไทยสกุลเงินบาท (ชุดข้อมูลที่ระบุสกุลอื่นถูกปฏิเสธ · Yahoo ดึงเฉพาะสัญลักษณ์ `.BK` และตรวจว่าเป็น THB)
 
 > **ค่าเริ่มต้นเป็นข้อมูลจำลองเพื่อการสาธิต** (22 หุ้น × 750 วันทำการ จาก generator seed ตายตัว) — ไม่ใช่ราคาตลาดจริง แม้ชื่อหุ้นจะตรงกับหุ้นจริง · นำเข้าข้อมูลจริงแทนได้ (หัวข้อ "ข้อมูล") · ป้ายที่มาของข้อมูลบนทุกหน้ามาจากตาราง `DataSource` ไม่ได้เขียนตายตัว · ไม่ใช่คำแนะนำการลงทุน ([ข้อกำหนดและข้อจำกัด](src/app/terms/page.tsx) ที่ `/terms`)
 
@@ -22,15 +24,15 @@ bun run dev                   # http://localhost:3000 (ฟังเฉพาะ 
 
 - `db/custom.db` ที่แนบมาคือ **snapshot ข้อมูลจำลอง** 22 หุ้น × 750 วัน + ตัวอย่าง journal/รายงาน — เปิดแล้วเห็นระบบทำงานทันที (บันทึกที่มาไว้ในตาราง `DataSource` แล้ว)
 - เริ่มจากฐานเปล่า: ลบ `db/custom.db` → `bun run db:push` → เซิร์ฟเวอร์ seed ข้อมูลจำลองเองตอนเริ่ม (warm-up) หรือเมื่อ API แรกถูกเรียก
-- ครั้งแรกหน้าหลักแสดง **คำแนะนำเริ่มต้นใช้งาน** (ปิดแล้วจำไว้ในเครื่อง) · sidebar ไป Terminal และแท็บวิเคราะห์ 10 แท็บ · ⌘K/Ctrl+K ค้นหาหุ้น · แถบล่างบอกเสมอว่าข้อมูลคืออะไร สดแค่ไหน ใช้กติกาชุดไหน และ LLM ตั้งค่าหรือยัง
+- ครั้งแรกหน้าหลักแสดง **คำแนะนำเริ่มต้นใช้งาน** (ปิดแล้วจำไว้ในเครื่อง) · sidebar ไป Terminal และแท็บวิเคราะห์ 11 แท็บ · ⌘K/Ctrl+K ค้นหาหุ้นไทย · แถบล่างบอกเสมอว่าข้อมูลคืออะไร สดแค่ไหน ใช้กติกาชุดไหน และ LLM ตั้งค่าหรือยัง
 
 ## ข้อมูล — จำลอง หรือ ข้อมูลจริงของคุณ
 
 | ทาง | คำสั่ง | หมายเหตุ |
 |---|---|---|
 | CSV แบบยาว `symbol,date,open,high,low,close,volume` | `bun scripts/ingest-csv.ts prices.csv --source "csv:..." [--license ...] [--meta meta.csv] [--yes]` | หัวคอลัมน์แบบ AmiBroker/MetaStock ได้ · วันที่ ISO / `YYYYMMDD` / `DD/MM/YYYY` / ปี พ.ศ. · ไม่มี `--yes` = ตรวจอย่างเดียว |
-| Yahoo Finance (`.BK`, ราคาปรับปันผล/สปลิต) | `bun scripts/fetch-yahoo.ts --universe demo \| --symbols PTT,AOT,... [--range 5y] [--yes]` | ไม่มีงบ/เงินไหล/หมวดธุรกิจ · ใช้ตามเงื่อนไขของ Yahoo · เข้าถึงไม่ได้ = หยุดพร้อมบอกเหตุผล |
-| API | `POST /api/data/ingest` (JSON ชุดข้อมูล + `"confirm":"REPLACE"` หรือ `"dryRun":true`) | ผู้ดูแลเท่านั้น · จำกัดความถี่ · บันทึกใน ActionLog |
+| Yahoo Finance (`.BK` เท่านั้น, ราคาปรับปันผล/สปลิต) | `bun scripts/fetch-yahoo.ts --universe demo \| --symbols PTT,AOT,... [--range 5y] [--yes]` | ไม่มีงบ/เงินไหล/หมวดธุรกิจ · สัญลักษณ์ที่ Yahoo ตอบเป็นสกุลเงินอื่นที่ไม่ใช่ THB ถูกปฏิเสธ · ใช้ตามเงื่อนไขของ Yahoo · เข้าถึงไม่ได้ = หยุดพร้อมบอกเหตุผล |
+| API | `POST /api/data/ingest` (JSON ชุดข้อมูล + `"confirm":"REPLACE"` หรือ `"dryRun":true`) | ผู้ดูแลเท่านั้น · จำกัดความถี่ · บันทึกใน ActionLog · `currency` ต้องเป็น `"THB"` (ค่าเริ่มต้น) |
 | กลับไปข้อมูลจำลอง | `POST /api/system` `{"force":true}` | ถ้าข้อมูลปัจจุบันเป็นข้อมูลจริง ต้อง backup สำเร็จก่อนจึงจะยอม |
 
 - **ทุกการนำเข้า:** ตรวจรูปแบบ (zod) → ทำความสะอาด (วันซ้ำ, high<low, high/low ไม่ครอบ open/close, วันเสาร์–อาทิตย์เยอะ = เตือน timezone) → ต้องมี ≥ 5 หุ้นและ ≥ 300 วันซื้อขายร่วม → **backup ฐานข้อมูลก่อน** (ล้ม = ยกเลิก) → แทนที่ใน transaction เดียว → บันทึก `DataSource` (ที่มา สิทธิ์ ช่วงวันที่ คำเตือน) → cache ทุกชั้นหมดอายุเอง (รวม server ที่รันอยู่) · journal / รายงาน / การล็อกกติกา ไม่ถูกแตะ
@@ -45,12 +47,15 @@ bun run dev                   # http://localhost:3000 (ฟังเฉพาะ 
 - **ช่วงความเชื่อมั่น 95%:** hit rate (Wilson) · P(win) และ R ของ Kelly (Wilson + bootstrap seed ตายตัว) · f* ที่ขอบล่าง (≤ 0 = edge ยังไม่แน่นอนทางสถิติ — Apex เตือน)
 - **ความทนทานข้าม seed:** `GET /api/research/robustness?seeds=...` / แผงในแท็บ Backtest — รัน generator → panel → walk-forward → gate attribution ต่อ seed แล้วสรุป ROBUST/FRAGILE/NOISE ต่อ gate และ STABLE/MIXED/UNSTABLE · seed ของ demo ให้ผลเท่ากับแท็บ Backtest ทุกตัวเลข (ท่อคำนวณเดียวกัน `buildPanel`) · ผลปัจจุบัน 5 seed = **MIXED** (hit rate 31.6–68.8%, ชนะซื้อถือ 2/5, G1/G3 ทนทาน, G2/G5 เป็น noise) — นี่คือหลักฐานว่าผลของ seed เดียวไม่ควรเชื่อ
 
-## COT Report (Commitments of Traders)
+## เงินไหลนักลงทุน (หุ้นไทย)
 
-แท็บ **ตลาดล่วงหน้า → COT Report** — แดชบอร์ดรายงาน COT ของ 27 ตลาดล่วงหน้า (สกุลเงิน, คริปโต, ดัชนี, พันธบัตร, พลังงาน, โลหะ, ธัญพืช, softs, ปศุสัตว์):
-กราฟแท่งเทียนรายสัปดาห์ · Legacy net (Commercials / Large Speculators / Small Traders) · Disaggregated net (Producer/Merchant / Swap Dealers / Managed Money / Other) · Open Interest · COT Index 6 และ 36 เดือน (โซนสุดขั้ว 0–20 / 80–100, เลือกกลุ่มได้) · ตาราง Legacy และ Disaggregated พร้อมการเปลี่ยนแปลงรายสัปดาห์, % ของ OI, จำนวนผู้ค้า, net · วงกลม long/short และสัดส่วน OI · แท่ง net ต่อกลุ่ม · มาตรวัด COT Index · ช่วง 6m/1y/2y/3y (กราฟทุกตัว sync tooltip)
+แท็บ **วิเคราะห์ → เงินไหลนักลงทุน** — แดชบอร์ดแบบเดียวกับรายงาน COT แต่สำหรับตลาดหุ้นไทยเท่านั้น:
 
-> **ข้อมูล COT ในตอนนี้เป็นข้อมูลจำลอง** (ป้ายบอกบนหน้าเสมอ) — sandbox ที่พัฒนาเข้าถึง cftc.gov ไม่ได้ (403 ที่ proxy) · generator รักษาเอกลักษณ์ของรายงานจริงทุกสัปดาห์ (OI = Σlong + Σspread = Σshort + Σspread, Legacy = ผลรวมของ Disaggregated, Σnet = 0) และวันที่รายงานตามรอบจริง (ข้อมูลวันอังคาร เผยแพร่วันศุกร์) · API: `GET /api/cot` · `GET /api/cot/{market}?range=1y&index=commercials` · โค้ด: `src/lib/cot/` (types พร้อมรับ importer ข้อมูล CFTC จริง) · `src/components/cot/`
+- **SET ทั้งตลาด:** ยอดซื้อ/ขาย/สุทธิของนักลงทุน 4 ประเภทตามที่ตลาดหลักทรัพย์ฯ เผยแพร่ (ต่างประเทศ · สถาบันในประเทศ · บัญชีบริษัทหลักทรัพย์ · นักลงทุนทั่วไปในประเทศ) — กราฟแท่งเทียน SET proxy · เงินไหลสุทธิสะสมในช่วงที่แสดง · สุทธิรายสัปดาห์ · มูลค่าซื้อขาย · Flow Index 6/36 เดือน (ตำแหน่งของเงินไหลสะสมในกรอบ 0–100, โซน 0–20 / 80–100) · ตารางสัปดาห์ที่ครบล่าสุดพร้อมการเปลี่ยนแปลงและ % ของมูลค่า · สัดส่วนมูลค่าฝั่งซื้อ/ขาย · เงินไหลสุทธิตามช่วงเวลา (วันล่าสุด, 5 วัน, 1/3/6 เดือน, ตั้งแต่ต้นปี, 1 ปี) · แท่งสุทธิสัปดาห์ล่าสุดและตั้งแต่ต้นปี
+- **หุ้นรายตัว (22 ตัว แยกหมวด):** SET ไม่เผยแพร่ประเภทนักลงทุนรายหุ้น จึงใช้ **NVDR** (ตัวแทนแรงซื้อขายของต่างชาติ) เทียบผู้ลงทุนอื่น + **Short sale** (% ของมูลค่า, เฉลี่ย 13 สัปดาห์)
+- สัปดาห์ปัจจุบันที่ยังไม่จบแสดงเป็นแท่งสุดท้ายในกราฟ แต่ตารางเทียบเฉพาะสัปดาห์ที่ครบ · ช่วง 6m/1y/2y/3y · กราฟทุกตัว sync tooltip · สีกลุ่มผ่าน validator (CVD/contrast) บนพื้นมืด
+
+> **ยอดเงินไหลตอนนี้เป็นข้อมูลจำลอง** (ป้ายบอกบนหน้าเสมอ) — sandbox ที่พัฒนาเข้าถึง set.or.th / settrade.com ไม่ได้ (403 ที่ proxy) · ราคาและมูลค่าซื้อขายมาจาก panel เดียวกับ Terminal/Decision (ข้อมูลจำลองหรือข้อมูลจริงที่นำเข้า) · generator รักษาเอกลักษณ์ทุกวัน (Σซื้อ = Σขาย = มูลค่ารวม, Σสุทธิ = 0 ตรงระดับ 0.01 ล้านบาท · NVDR + ผู้ลงทุนอื่น = มูลค่าของหุ้น · short ≤ มูลค่าขาย) และพฤติกรรมเชิงสถิติของตลาดไทย (ต่างชาติตามผลตอบแทน, รายย่อยสวนทาง, สถาบันซื้อช่วงกองทุนลดหย่อนภาษีปลายปี) · API: `GET /api/flows` · `GET /api/flows/{SET|สัญลักษณ์}?range=1y&index=foreign` · โค้ด: `src/lib/flows/` (types พร้อมรับ importer ข้อมูล SET จริง) · `src/components/flows/`
 
 ## โปรดักชัน
 
@@ -101,7 +106,7 @@ bun run verify     # typecheck · lint (max-warnings 0) · test · test:ops · b
 bun run test       # bun test src — unit + engine invariants + route handlers + component tests (happy-dom) บน SQLite ชั่วคราว
 bun run test:ops   # smoke checker + e2e budget + สคริปต์ ops ผ่าน CLI จริง (ingest-csv → engine-check → backup-db → restore-db)
 bun run smoke      # หลัง build: standalone server บนสำเนา DB → ทุก route (status, JSON เคร่งครัด, validation 400/404/422, header ความปลอดภัย)
-bun run e2e        # Playwright + axe: 13 มุมมอง desktop (+ COT หลังเปลี่ยนตลาด) + มือถือ 390px ต้องไม่มี violation ของ WCAG 2.1 AA/2.2 target-size (งบ 0)
+bun run e2e        # Playwright + axe: 13 มุมมอง desktop (+ เงินไหล KBANK 3y) + มือถือ 390px (รวมเงินไหล) ต้องไม่มี violation ของ WCAG 2.1 AA/2.2 target-size (งบ 0)
                    #   + interaction หลัก 14 ข้อ · รายงาน/ภาพหน้าจอที่ .e2e/
 bun deploy/smoke.ts --db empty   # ทางที่สอง: DB เปล่า → auto-seed
 ```
@@ -118,7 +123,7 @@ CI: `.github/workflows/omniscient-quant-engine.yml` รันคำสั่ง�
 | `GET/POST /api/rules` · `GET /api/research/robustness` | กติกาทั้งชุด + hash + ประวัติการล็อก · ล็อก (pre-registration) · ความทนทานข้าม seed |
 | `GET /api/data/provenance` · `POST /api/data/ingest` | ที่มา/ความสด/ความครอบคลุมของข้อมูล · นำเข้าข้อมูลจริง |
 | `GET /api/audit-log` | ประวัติการกระทำ (ล่าสุดก่อน, กรองด้วย `action`) |
-| `GET /api/cot` · `GET /api/cot/{market}` | รายชื่อตลาด COT · แดชบอร์ด COT (อนุกรม, ตาราง Legacy/Disaggregated, COT Index) |
+| `GET /api/flows` · `GET /api/flows/{SET\|symbol}` | รายชื่อ SET + หุ้นไทยแยกหมวด · แดชบอร์ดเงินไหล (อนุกรมรายสัปดาห์, ตารางซื้อ/ขาย/สุทธิ, ช่วงเวลา, Flow Index, NVDR/short sale) |
 | `GET /api/board` · `GET /api/decision/{symbol}` | Decision Board ทุกตัว · 5-Gate + trade plan + risk MC + history |
 | `GET /api/analytics/factors` · `GET /api/analytics/dependence` | Multi-View factor model + volcano · Θ matrix + decouple |
 | `GET /api/backtest` | walk-forward + gate attribution + calibration + hit-rate CI + rules stamp |

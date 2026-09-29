@@ -67,11 +67,11 @@ export function TerminalTopbar({
       <button
         type="button"
         onClick={onOpenSearch}
-        aria-label="ค้นหา Symbol ทุกตลาด"
+        aria-label="ค้นหาหุ้นไทย (SET)"
         className="flex h-10 min-w-0 flex-1 items-center gap-2 rounded-xl border border-white/[0.07] bg-white/[0.03] px-3 text-sm text-zinc-500 transition-colors duration-200 hover:border-white/[0.14] hover:bg-white/[0.06] hover:text-zinc-400"
       >
         <Search className="h-4 w-4 shrink-0" aria-hidden />
-        <span className="truncate">ค้นหา Symbol ทุกตลาด...</span>
+        <span className="truncate">ค้นหาหุ้นไทย (SET)...</span>
         <kbd className="ml-auto hidden shrink-0 rounded border border-white/[0.1] bg-zinc-950 px-1 font-mono text-[10px] text-zinc-500 sm:inline-block">
           ⌘K
         </kbd>

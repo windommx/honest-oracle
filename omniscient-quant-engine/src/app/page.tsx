@@ -15,7 +15,7 @@ import { TerminalTopbar } from '@/components/terminal/topbar';
 import TerminalView from '@/components/terminal/terminal-view';
 import { CommandCenter } from '@/components/dashboard/command-center';
 import { AppFooter } from '@/components/app-footer';
-import { CotDashboardView } from '@/components/cot/cot-dashboard';
+import { FlowDashboardView } from '@/components/flows/flow-dashboard';
 import { FirstRunGuide } from '@/components/first-run-guide';
 import { AppMetaProvider, dataKindTag, useAppMeta } from '@/components/providers/app-meta';
 import { OverviewTab } from '@/components/quant/overview-tab';
@@ -68,7 +68,7 @@ type ViewKey =
   | 'apex'
   | 'backtest'
   | 'auditor'
-  | 'cot';
+  | 'flows';
 
 export default function Home() {
   return (
@@ -268,10 +268,10 @@ function HomeShell() {
             />
           ) : view === 'terminal' ? (
             <TerminalView symbol={symbol} onSymbolChange={setSymbol} tick={tick} />
-          ) : view === 'cot' ? (
-            // COT ใช้ความกว้างเต็มจอ — กราฟ + ตาราง Legacy/Disaggregated วางคู่กันต้องการ > 1280px
+          ) : view === 'flows' ? (
+            // เงินไหลนักลงทุนใช้ความกว้างเต็มจอ — กราฟ + ตารางวางคู่กันต้องการ > 1280px
             <div className="w-full px-3 py-4 sm:px-5">
-              <CotDashboardView />
+              <FlowDashboardView />
             </div>
           ) : (
             <div className="mx-auto w-full max-w-7xl px-4 py-5 sm:px-6">
@@ -352,7 +352,7 @@ function HomeShell() {
 
       {/* ⌘K global symbol search */}
       <CommandDialog open={searchOpen} onOpenChange={setSearchOpen}>
-        <CommandInput placeholder="ค้นหา Symbol ทุกตลาด..." />
+        <CommandInput placeholder="ค้นหาหุ้นไทย (สัญลักษณ์ ชื่อ หรือหมวด)..." />
         <CommandList>
           <CommandEmpty>ไม่พบ symbol ที่ค้นหา</CommandEmpty>
           <CommandGroup heading={`หุ้น SET${meta ? ` (${dataKindTag(meta)})` : ''} — ${symbols.length} ตัว`}>
