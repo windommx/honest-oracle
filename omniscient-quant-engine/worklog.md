@@ -361,3 +361,21 @@ Work Log:
 Stage Summary:
 - คะแนนหลังบูรณะ: เครื่องมือ 8.5 · วิจัย 6 · หลักฐานจริง 2 · ข้อมูล 3 · วิศวกรรม 7.5 · ความปลอดภัย 7 · UX/UI 7.5 · ปฏิบัติการ 5 · กฎหมาย 4 · ธุรกิจ 2 → เฉลี่ย 5.3 (ก่อน 4.0)
 - สิ่งที่ดึงคะแนนมากที่สุดแก้ด้วยโค้ดไม่ได้ (ข้อมูลจริง เวลา ผู้ใช้) · สิ่งที่แก้ด้วยโค้ดได้ก่อนเลย: ล็อกกติกา + ป้าย "จูนบนข้อมูลจำลอง", robustness ข้าม seed, adapter ข้อมูลจริง, worker thread, component/E2E test + เปิดกฎ lint, /terms, backup/log, Docker verify, axe fixes
+
+---
+Task ID: 17
+Agent: Claude Code (session 01EpMHhtfxT5nq7BqhZXKr4G)
+Task: ปิดช่องว่างตาม scorecard รอบ 1 ให้คะแนนสูงขึ้นครบทุกองค์ประกอบ + แดชบอร์ด COT ตามภาพตัวอย่าง
+
+Work Log:
+- กติกาเป็นข้อมูล (`rules.ts`, sha256, `POST /api/rules`, stamp บนทุกรายงาน) · robustness ข้าม 5 seed · CI ของ hit rate/Kelly · `buildPanel` ท่อเดียว
+- นำเข้าข้อมูลจริง (CSV/Yahoo/API) + DataSource provenance + ปฏิทิน SET/ความสด · Terminal/micro อ่าน OHLCV จาก DB · สายที่ขาดข้อมูลงดออกเสียง
+- บทบาทผู้ชม · ActionLog · security events · zod · errorId · structured log · backup/restore/engine-check · warm-up cache · health ขยาย
+- /terms · error/404 · คำแนะนำครั้งแรก · footer จาก provenance · a11y: axe 0 violation · ESLint เต็ม + noImplicitAny · component tests 30 · E2E Playwright+axe ใน CI
+- แก้ race ของการ seed ตอน warm-up (single-flight + transaction) ที่ smoke DB เปล่าจับได้
+- แดชบอร์ด COT (27 ตลาด, Legacy/Disaggregated, COT Index, ตาราง, pies, gauges) — ข้อมูลจำลองที่รักษาเอกลักษณ์รายงาน CFTC เพราะ cftc.gov ถูก proxy ปฏิเสธ
+
+Stage Summary:
+- คะแนนเฉลี่ย 5.3 → 6.3 (docs/scorecard.md รอบ 2) · verify: test 148, ops 12, smoke 44/44, E2E 22/22 + 14/14
+- ผล robustness = MIXED → ยังไม่มีหลักฐานว่ามี edge; ต้องนำเข้าข้อมูลจริง ล็อกกติกา แล้ววัดผลนอกตัวอย่าง
+
