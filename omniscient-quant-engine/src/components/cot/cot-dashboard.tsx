@@ -60,9 +60,9 @@ function NetPct({ v }: { v: number | null }) {
   );
 }
 
-function Cell2({ value, change }: { value: number; change?: number | null }) {
+function Cell2({ value, change, pad = 'px-2' }: { value: number; change?: number | null; pad?: string }) {
   return (
-    <td className="px-2 py-1.5 text-right align-top font-mono text-zinc-100">
+    <td className={cn(pad, 'py-1.5 text-right align-top font-mono text-zinc-100')}>
       <div>{fmt(value)}</div>
       {change !== undefined && <Change v={change} />}
     </td>
@@ -127,7 +127,7 @@ function LegacyTable({ d }: { d: CotDashboard }) {
   const th = 'px-2 py-1.5 text-right font-medium';
   return (
     <div tabIndex={0} role="region" aria-label="ตาราง COT Legacy" className="overflow-x-auto rounded-lg border border-zinc-800">
-      <table className="w-full min-w-[640px] text-xs">
+      <table className="w-full min-w-[620px] text-xs">
         <caption className="sr-only">COT Legacy {d.market.name} ณ {d.reportDate} เทียบ {d.prevReportDate}</caption>
         <thead className="bg-zinc-900 text-[11px] text-zinc-300">
           <tr>
@@ -208,21 +208,21 @@ function LegacyTable({ d }: { d: CotDashboard }) {
 }
 
 function DisaggTable({ d }: { d: CotDashboard }) {
-  const th = 'px-2 py-1.5 text-right font-medium';
+  const th = 'px-1.5 py-1.5 text-right font-medium';
   return (
     <div tabIndex={0} role="region" aria-label="ตาราง COT Disaggregated" className="overflow-x-auto rounded-lg border border-zinc-800">
-      <table className="w-full min-w-[720px] text-xs">
+      <table className="w-full min-w-[680px] text-xs">
         <caption className="sr-only">COT Disaggregated {d.market.name} ณ {d.reportDate}</caption>
         <thead className="bg-zinc-900 text-[11px] text-zinc-300">
           <tr>
-            <th scope="col" className="px-2 py-1.5 text-left font-semibold">Disaggregated</th>
-            <th scope="colgroup" colSpan={3} className="px-2 py-1.5 text-center font-semibold">LONG</th>
-            <th scope="colgroup" colSpan={3} className="px-2 py-1.5 text-center font-semibold">SHORT</th>
-            <th scope="colgroup" colSpan={3} className="px-2 py-1.5 text-center font-semibold">SPREAD</th>
-            <th scope="col" className="px-2 py-1.5 text-right font-semibold">NET</th>
+            <th scope="col" className="px-1.5 py-1.5 text-left font-semibold">Disaggregated</th>
+            <th scope="colgroup" colSpan={3} className="px-1.5 py-1.5 text-center font-semibold">LONG</th>
+            <th scope="colgroup" colSpan={3} className="px-1.5 py-1.5 text-center font-semibold">SHORT</th>
+            <th scope="colgroup" colSpan={3} className="px-1.5 py-1.5 text-center font-semibold">SPREAD</th>
+            <th scope="col" className="px-1.5 py-1.5 text-right font-semibold">NET</th>
           </tr>
           <tr>
-            <th scope="col" className="px-2 py-1.5 text-left font-mono font-medium text-amber-300">{d.reportDate}</th>
+            <th scope="col" className="px-1.5 py-1.5 text-left font-mono font-medium text-amber-300">{d.reportDate}</th>
             {['Positions', 'OI', 'Traders', 'Positions', 'OI', 'Traders', 'Positions', 'OI', 'Traders', 'Positions'].map((h, i) => (
               <th key={i} scope="col" className={th}>
                 {h}
@@ -233,26 +233,26 @@ function DisaggTable({ d }: { d: CotDashboard }) {
         <tbody className="divide-y divide-zinc-800/70">
           {d.disagg.rows.map((r) => (
             <tr key={r.key}>
-              <th scope="row" className="px-2 py-1.5 text-left align-top font-medium text-zinc-200">
+              <th scope="row" className="whitespace-nowrap px-1.5 py-1.5 text-left align-top font-medium text-zinc-200">
                 <span className="mr-1.5 inline-block h-2 w-2 rounded-full" style={{ background: COT_COLORS[r.key as keyof typeof COT_COLORS] }} aria-hidden />
                 {r.label}
               </th>
-              <Cell2 value={r.long} change={r.changeLong} />
-              <td className="px-2 py-1.5 text-right align-top font-mono text-zinc-200">{r.pctOiLong.toFixed(1)}%</td>
-              <td className="px-2 py-1.5 text-right align-top font-mono text-zinc-200">{r.tradersLong || '—'}</td>
-              <Cell2 value={r.short} change={r.changeShort} />
-              <td className="px-2 py-1.5 text-right align-top font-mono text-zinc-200">{r.pctOiShort.toFixed(1)}%</td>
-              <td className="px-2 py-1.5 text-right align-top font-mono text-zinc-200">{r.tradersShort || '—'}</td>
+              <Cell2 pad="px-1.5" value={r.long} change={r.changeLong} />
+              <td className="px-1.5 py-1.5 text-right align-top font-mono text-zinc-200">{r.pctOiLong.toFixed(1)}%</td>
+              <td className="px-1.5 py-1.5 text-right align-top font-mono text-zinc-200">{r.tradersLong || '—'}</td>
+              <Cell2 pad="px-1.5" value={r.short} change={r.changeShort} />
+              <td className="px-1.5 py-1.5 text-right align-top font-mono text-zinc-200">{r.pctOiShort.toFixed(1)}%</td>
+              <td className="px-1.5 py-1.5 text-right align-top font-mono text-zinc-200">{r.tradersShort || '—'}</td>
               {r.spread === null ? (
-                <td colSpan={3} className="px-2 py-1.5 text-center align-top text-zinc-400">—</td>
+                <td colSpan={3} className="px-1.5 py-1.5 text-center align-top text-zinc-400">—</td>
               ) : (
                 <>
-                  <Cell2 value={r.spread} change={r.changeSpread} />
-                  <td className="px-2 py-1.5 text-right align-top font-mono text-zinc-200">{(r.pctOiSpread ?? 0).toFixed(1)}%</td>
-                  <td className="px-2 py-1.5 text-right align-top font-mono text-zinc-200">{r.tradersSpread ?? '—'}</td>
+                  <Cell2 pad="px-1.5" value={r.spread} change={r.changeSpread} />
+                  <td className="px-1.5 py-1.5 text-right align-top font-mono text-zinc-200">{(r.pctOiSpread ?? 0).toFixed(1)}%</td>
+                  <td className="px-1.5 py-1.5 text-right align-top font-mono text-zinc-200">{r.tradersSpread ?? '—'}</td>
                 </>
               )}
-              <td className="px-2 py-1.5 text-right align-top font-mono font-semibold text-zinc-50">{fmt(r.net)}</td>
+              <td className="px-1.5 py-1.5 text-right align-top font-mono font-semibold text-zinc-50">{fmt(r.net)}</td>
             </tr>
           ))}
         </tbody>
@@ -266,7 +266,7 @@ function Insights({ title, rows, colors }: { title: string; rows: CotTableRow[];
   return (
     <section aria-label={title} className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-3">
       <h3 className="mb-2 text-center text-xs font-semibold text-zinc-200">{title}</h3>
-      <div className="grid gap-3 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+      <div className={cn('grid gap-3', withShare.length > 3 ? 'sm:grid-cols-[minmax(0,5fr)_minmax(0,2fr)]' : 'sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]')}>
         <div>
           <p className="mb-1 text-[11px] text-zinc-400">Long vs Short</p>
           <div className="flex flex-wrap justify-around gap-2">
@@ -307,7 +307,7 @@ export function CotDashboardView() {
     <div className="grid gap-4 lg:grid-cols-[190px_minmax(0,1fr)]">
       <MarketNav data={markets.data} current={market} onPick={setMarket} />
 
-      <div className="min-w-0 space-y-4">
+      <div className="@container min-w-0 space-y-4">
         <header className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <h2 className="text-lg font-bold text-zinc-50">Commitments of Traders Report (COT) – {d?.market.name ?? '…'}</h2>
@@ -365,7 +365,7 @@ export function CotDashboardView() {
           </p>
         ) : (
           <>
-            <div className="grid gap-4 xl:grid-cols-2">
+            <div className="grid gap-4 @min-[1380px]:grid-cols-2">
               <div className="min-w-0 space-y-3">
                 <h3 className="text-sm font-semibold text-zinc-200">Commitments of Traders {d.market.name} – Historical</h3>
                 <PriceChart data={d.series} decimals={decimals} />
@@ -402,7 +402,7 @@ export function CotDashboardView() {
               </div>
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="grid gap-4 @min-[560px]:grid-cols-2 @min-[1000px]:grid-cols-4">
               <NetBars
                 title="Net Positions – Legacy"
                 bars={d.legacy.rows.map((r) => ({ label: r.label, value: r.net, color: COT_COLORS[r.key as keyof typeof COT_COLORS] }))}

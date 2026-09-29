@@ -268,6 +268,11 @@ function HomeShell() {
             />
           ) : view === 'terminal' ? (
             <TerminalView symbol={symbol} onSymbolChange={setSymbol} tick={tick} />
+          ) : view === 'cot' ? (
+            // COT ใช้ความกว้างเต็มจอ — กราฟ + ตาราง Legacy/Disaggregated วางคู่กันต้องการ > 1280px
+            <div className="w-full px-3 py-4 sm:px-5">
+              <CotDashboardView />
+            </div>
           ) : (
             <div className="mx-auto w-full max-w-7xl px-4 py-5 sm:px-6">
               {view === 'overview' && (
@@ -333,8 +338,6 @@ function HomeShell() {
                     seeding={seeding}
                   />
                 ))}
-
-              {view === 'cot' && <CotDashboardView />}
 
               {view === 'auditor' && (
                 <AuditorTab reports={auditQ.data?.reports ?? null} loading={auditQ.loading} onDone={auditQ.refresh} />
