@@ -33,10 +33,11 @@ export const VIEWS: Array<{ key: string; label: string }> = [
   { key: "backtest", label: "Backtest & Journal" },
   { key: "auditor", label: "AI Auditor" },
   { key: "flows", label: "เงินไหลนักลงทุน" },
+  { key: "research", label: "Deep Research" },
   { key: "dashboard", label: "Command Center" },
 ]
 
-const MOBILE_SHOT: Record<string, string> = { "เงินไหลนักลงทุน": "flows" }
+const MOBILE_SHOT: Record<string, string> = { "เงินไหลนักลงทุน": "flows", "Deep Research": "research" }
 
 /**
  * งบ violation ต่อ rule ของ axe (จำนวน node สูงสุดที่ยอมรับต่อมุมมอง) — ค่าเริ่มต้น 0 ทุก rule
@@ -291,6 +292,31 @@ async function main(): Promise<number> {
           }),
         )
       }
+      if (v.key === "research") {
+        checks.push(
+          await check("Deep Research: 11 หัวข้อ + 13 สาย · เปลี่ยนหุ้น · ดาวน์โหลด Markdown · ไม่มี LLM → ปุ่ม AI ปิด · ตอนพิมพ์ซ่อนเมนู", async () => {
+            await page.getByRole("heading", { level: 2, name: /^TSE · / }).waitFor({ timeout: 30_000 })
+            const sections = await page.locator("article.research-print section[id^='research-'] h3").count()
+            if (sections !== 11) return `มี ${sections} หัวข้อ (คาด 11)`
+            if ((await page.getByRole("region", { name: "ตารางหลักฐาน 13 สาย" }).locator("tbody tr").count()) !== 13) return "ตาราง 13 สายไม่ครบ"
+            if (!(await page.getByRole("button", { name: "เรียบเรียงด้วย AI" }).isDisabled())) return "ปุ่ม AI ยังกดได้ทั้งที่ไม่มี LLM"
+            await page.getByRole("combobox", { name: "เลือกหุ้นสำหรับ Deep Research" }).click()
+            await page.getByRole("option", { name: "KBANK", exact: true }).click()
+            await page.getByRole("heading", { level: 2, name: /^KBANK · / }).waitFor({ timeout: 30_000 })
+            const href = await page.getByRole("link", { name: "ดาวน์โหลด Markdown" }).getAttribute("href")
+            if (!href?.includes("/api/research/deep/KBANK?format=md")) return `ลิงก์ดาวน์โหลดผิด: ${href}`
+            const md = await page.request.get(`${base}${href}`)
+            if (!md.ok() || !(md.headers()["content-type"] ?? "").includes("text/markdown")) return `ดาวน์โหลด Markdown ไม่ได้ (HTTP ${md.status()})`
+            if (!(await md.text()).startsWith("# Deep Research — KBANK")) return "เนื้อหา Markdown ไม่ตรงหุ้น"
+            await page.emulateMedia({ media: "print" })
+            const printOk = (await page.locator("aside").first().isHidden()) && (await page.locator("article.research-print").isVisible())
+            await page.emulateMedia({ media: "screen" })
+            if (!printOk) return "ตอนพิมพ์ยังแสดงเมนูข้าง หรือไม่แสดงรายงาน"
+            await settle(page)
+            views.push(await measure(page, "Deep Research (KBANK)", 1440, Date.now(), o.out, "desktop-research-kbank.png"))
+          }),
+        )
+      }
       if (v.key === "terminal") {
         checks.push(
           await check("Terminal: ช่องแชท AI ถูกปิดพร้อมคำอธิบายเมื่อไม่มี LLM", async () => {
@@ -342,7 +368,7 @@ async function main(): Promise<number> {
     await m.goto(`${base}/`, { waitUntil: "domcontentloaded" })
     await settle(m)
     views.push(await measure(m, "Command Center (มือถือ)", 390, tm, o.out, "mobile-dashboard.png"))
-    for (const label of ["Decision (L6)", "Apex (L7)", "Backtest & Journal", "เงินไหลนักลงทุน"]) {
+    for (const label of ["Decision (L6)", "Apex (L7)", "Backtest & Journal", "เงินไหลนักลงทุน", "Deep Research"]) {
       const t0 = Date.now()
       try {
         await m.getByRole("button", { name: "เปิดเมนูนำทาง" }).first().click({ timeout: 10_000 })

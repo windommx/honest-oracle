@@ -9,6 +9,7 @@ import { ensureSeeded } from "@/lib/quant/engine/panel"
 import * as analyst from "./analyst/[symbol]/route"
 import * as auditLog from "./audit-log/route"
 import * as journal from "./journal/route"
+import * as deep from "./research/deep/[symbol]/route"
 import * as robustness from "./research/robustness/route"
 import * as rules from "./rules/route"
 import * as system from "./system/route"
@@ -137,6 +138,72 @@ describe("LLM routes / งานหนัก — ตรวจ input ก่อน
     expect(res.status).toBe(503)
     expect(((await res.json()) as { error: string }).error).toBe("llm_unavailable")
     expect((await actionAfter("analyst.chat", since)).status).toBe(503)
+  })
+
+  test("Deep Research: GET json/md · หุ้นไม่มี/สัญลักษณ์ผิด → 404 · format ผิด → 400 · POST ไม่มี LLM → 503 + ActionLog", async () => {
+    const p = (symbol: string) => ({ params: Promise.resolve({ symbol }) })
+    const ok = await deep.GET(req("GET", "/api/research/deep/tse"), p("tse"))
+    expect(ok.status).toBe(200)
+    const report = (await ok.json()) as { symbol: string; sections: unknown[]; caveats: string[] }
+    expect(report.symbol).toBe("TSE")
+    expect(report.sections.length).toBe(11)
+    expect(report.caveats.at(-1)).toContain("ไม่ใช่คำแนะนำการลงทุน")
+    const md = await deep.GET(req("GET", "/api/research/deep/TSE?format=md"), p("TSE"))
+    expect(md.status).toBe(200)
+    expect(md.headers.get("content-type")).toContain("text/markdown")
+    expect(md.headers.get("content-disposition")).toMatch(/^attachment; filename="deep-research-TSE-\d{4}-\d{2}-\d{2}\.md"$/)
+    expect(await md.text()).toStartWith("# Deep Research — TSE")
+    expect((await deep.GET(req("GET", "/api/research/deep/NOPE"), p("NOPE"))).status).toBe(404)
+    expect((await deep.GET(req("GET", "/api/research/deep/..%2F"), p("../"))).status).toBe(404)
+    expect((await deep.GET(req("GET", "/api/research/deep/TSE?format=pdf"), p("TSE"))).status).toBe(400)
+    const since = new Date()
+    const res = await deep.POST(req("POST", "/api/research/deep/TSE", {}), p("TSE"))
+    expect(res.status).toBe(503)
+    expect(((await res.json()) as { error: string }).error).toBe("llm_unavailable")
+    expect((await actionAfter("research.deep", since)).status).toBe(503)
+  })
+
+  test("Deep Research POST กับผู้ให้บริการ LLM (เซิร์ฟเวอร์ปลอมแบบ OpenAI) → บทเรียบเรียงครบ + Markdown มีส่วน AI + หลักฐานที่ส่งไม่มีความลับ", async () => {
+    let sent = ""
+    const server = Bun.serve({
+      port: 0,
+      async fetch(r) {
+        sent = await r.text()
+        const content = JSON.stringify({
+          headline: "TSE: หลักฐานยังไม่บรรจบ",
+          summary: "สรุปจากตัวเลขของระบบ (ข้อมูลจำลอง)",
+          bullCase: ["เทคนิคหนุน"],
+          bearCase: ["หางล่างหนา"],
+          watchList: ["G2"],
+          conclusion: "รอ",
+        })
+        return Response.json({ choices: [{ message: { role: "assistant", content } }] })
+      },
+    })
+    const keep = { k: process.env.OQE_LLM_API_KEY, m: process.env.OQE_LLM_MODEL, u: process.env.OQE_LLM_BASE_URL, p: process.env.OQE_LLM_PROVIDER }
+    process.env.OQE_LLM_API_KEY = "sk-test-deep"
+    process.env.OQE_LLM_MODEL = "fake-model"
+    process.env.OQE_LLM_BASE_URL = `http://127.0.0.1:${server.port}/v1`
+    delete process.env.OQE_LLM_PROVIDER
+    try {
+      const since = new Date()
+      const res = await deep.POST(req("POST", "/api/research/deep/TSE", {}), { params: Promise.resolve({ symbol: "TSE" }) })
+      expect(res.status).toBe(200)
+      const body = (await res.json()) as { narrative: { headline: string; bullCase: string[] }; markdown: string; filename: string }
+      expect(body.narrative.headline).toBe("TSE: หลักฐานยังไม่บรรจบ")
+      expect(body.narrative.bullCase).toEqual(["เทคนิคหนุน"])
+      expect(body.markdown).toContain("## บทเรียบเรียงจาก AI")
+      expect(body.filename).toStartWith("deep-research-TSE-")
+      expect(sent).toContain("TSE")
+      expect(sent).not.toContain("sk-test-deep") // key อยู่ใน header เท่านั้น ไม่อยู่ใน body
+      expect((await actionAfter("research.deep", since)).status).toBe(200)
+    } finally {
+      server.stop(true)
+      for (const [k, v] of [["OQE_LLM_API_KEY", keep.k], ["OQE_LLM_MODEL", keep.m], ["OQE_LLM_BASE_URL", keep.u], ["OQE_LLM_PROVIDER", keep.p]] as const) {
+        if (v === undefined) delete process.env[k]
+        else process.env[k] = v
+      }
+    }
   })
 
   test("GET /api/research/robustness: seeds ผิดรูป/เกิน 8/ค่าลบ → 400 ก่อนเริ่มคำนวณ", async () => {

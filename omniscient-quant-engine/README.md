@@ -1,6 +1,6 @@
 # Omniscient Quant Engine — Full-Cycle Multi-View Quant Platform
 
-แพลตฟอร์มเทรดเชิงระบบ "7 ชั้น" **สำหรับหุ้นไทย (SET/mai) เท่านั้น** หน้าเดียว (`/`) ภาษาไทยทั้งระบบ: L0 ข้อมูล point-in-time → L1 มุมมองเดี่ยว → L2 Dependence (Clayton copula Θ / lower-tail) → L3 Multi-View factor integration (PCA + enrichment + bipartite) → L4 walk-forward + gate attribution → L5 Monte Carlo CVaR sizing → L6 5-Gate execution + journal → L∞ Meta-Risk (ruin math, defense-in-depth, Risk MDX 7 มิติ, antifragility) → L7 Apex (Kelly-Vol sizing, microstructure, crisis MC, model registry) พร้อม "หลอมรวม" (convergent-evidence synthesis 13 สาย), เงินไหลนักลงทุน (ประเภทนักลงทุน SET · NVDR · short sale), Market Intelligence Terminal และ Command Center
+แพลตฟอร์มเทรดเชิงระบบ "7 ชั้น" **สำหรับหุ้นไทย (SET/mai) เท่านั้น** หน้าเดียว (`/`) ภาษาไทยทั้งระบบ: L0 ข้อมูล point-in-time → L1 มุมมองเดี่ยว → L2 Dependence (Clayton copula Θ / lower-tail) → L3 Multi-View factor integration (PCA + enrichment + bipartite) → L4 walk-forward + gate attribution → L5 Monte Carlo CVaR sizing → L6 5-Gate execution + journal → L∞ Meta-Risk (ruin math, defense-in-depth, Risk MDX 7 มิติ, antifragility) → L7 Apex (Kelly-Vol sizing, microstructure, crisis MC, model registry) พร้อม "หลอมรวม" (convergent-evidence synthesis 13 สาย), เงินไหลนักลงทุน (ประเภทนักลงทุน SET · NVDR · short sale), **Deep Research** (รายงานเชิงลึกรายหุ้นที่รวมผลทุกชั้นเป็นฉบับเดียว), Market Intelligence Terminal และ Command Center
 
 > **ขอบเขต: หุ้นไทยเท่านั้น** — ไม่มีตลาดต่างประเทศ ฟิวเจอร์ส หรือคริปโต · ข้อมูลที่นำเข้าต้องเป็นหุ้นไทยสกุลเงินบาท (ชุดข้อมูลที่ระบุสกุลอื่นถูกปฏิเสธ · Yahoo ดึงเฉพาะสัญลักษณ์ `.BK` และตรวจว่าเป็น THB)
 
@@ -24,7 +24,7 @@ bun run dev                   # http://localhost:3000 (ฟังเฉพาะ 
 
 - `db/custom.db` ที่แนบมาคือ **snapshot ข้อมูลจำลอง** 22 หุ้น × 750 วัน + ตัวอย่าง journal/รายงาน — เปิดแล้วเห็นระบบทำงานทันที (บันทึกที่มาไว้ในตาราง `DataSource` แล้ว)
 - เริ่มจากฐานเปล่า: ลบ `db/custom.db` → `bun run db:push` → เซิร์ฟเวอร์ seed ข้อมูลจำลองเองตอนเริ่ม (warm-up) หรือเมื่อ API แรกถูกเรียก
-- ครั้งแรกหน้าหลักแสดง **คำแนะนำเริ่มต้นใช้งาน** (ปิดแล้วจำไว้ในเครื่อง) · sidebar ไป Terminal และแท็บวิเคราะห์ 11 แท็บ · ⌘K/Ctrl+K ค้นหาหุ้นไทย · แถบล่างบอกเสมอว่าข้อมูลคืออะไร สดแค่ไหน ใช้กติกาชุดไหน และ LLM ตั้งค่าหรือยัง
+- ครั้งแรกหน้าหลักแสดง **คำแนะนำเริ่มต้นใช้งาน** (ปิดแล้วจำไว้ในเครื่อง) · sidebar ไป Terminal และแท็บวิเคราะห์ 12 แท็บ · ⌘K/Ctrl+K ค้นหาหุ้นไทย · แถบล่างบอกเสมอว่าข้อมูลคืออะไร สดแค่ไหน ใช้กติกาชุดไหน และ LLM ตั้งค่าหรือยัง
 
 ## ข้อมูล — จำลอง หรือ ข้อมูลจริงของคุณ
 
@@ -56,6 +56,15 @@ bun run dev                   # http://localhost:3000 (ฟังเฉพาะ 
 - สัปดาห์ปัจจุบันที่ยังไม่จบแสดงเป็นแท่งสุดท้ายในกราฟ แต่ตารางเทียบเฉพาะสัปดาห์ที่ครบ · ช่วง 6m/1y/2y/3y · กราฟทุกตัว sync tooltip · สีกลุ่มผ่าน validator (CVD/contrast) บนพื้นมืด
 
 > **ยอดเงินไหลตอนนี้เป็นข้อมูลจำลอง** (ป้ายบอกบนหน้าเสมอ) — sandbox ที่พัฒนาเข้าถึง set.or.th / settrade.com ไม่ได้ (403 ที่ proxy) · ราคาและมูลค่าซื้อขายมาจาก panel เดียวกับ Terminal/Decision (ข้อมูลจำลองหรือข้อมูลจริงที่นำเข้า) · generator รักษาเอกลักษณ์ทุกวัน (Σซื้อ = Σขาย = มูลค่ารวม, Σสุทธิ = 0 ตรงระดับ 0.01 ล้านบาท · NVDR + ผู้ลงทุนอื่น = มูลค่าของหุ้น · short ≤ มูลค่าขาย) และพฤติกรรมเชิงสถิติของตลาดไทย (ต่างชาติตามผลตอบแทน, รายย่อยสวนทาง, สถาบันซื้อช่วงกองทุนลดหย่อนภาษีปลายปี) · API: `GET /api/flows` · `GET /api/flows/{SET|สัญลักษณ์}?range=1y&index=foreign` · โค้ด: `src/lib/flows/` (types พร้อมรับ importer ข้อมูล SET จริง) · `src/components/flows/`
+
+## Deep Research (รายงานเชิงลึกรายหุ้น)
+
+แท็บ **จักรวาลหลัก → Deep Research** — เลือกหุ้น 1 ตัวแล้วได้รายงานฉบับเดียวที่รวมผลของทุกชั้น เรียงเป็น 11 หัวข้อ: ภาวะตลาด · เทคนิคและจังหวะเข้า · พื้นฐานและมูลค่า (PIT) · ความสัมพันธ์กับตลาด (copula) · ปัจจัยหลายมุมมอง · เงินไหล (สถาบัน · NVDR · short sale) · หลอมรวม 13 สาย · 5 Gates และแผนเทรด · ความเสี่ยง (CVaR · Risk MDX · Risk of Ruin) · ขนาดไม้ (Kelly-Vol · CVaR · MDX) · หลักฐานย้อนหลัง (walk-forward + ความทนทานข้าม seed)
+
+- ทุกหัวข้อบอก **มุมมอง** (หนุน / ถ่วง / กลาง / งดออกเสียง / ข้อมูล) ที่มาจากโหวตของสายหลักฐานเดิม — ไม่สร้างสัญญาณใหม่ · ตัวเลขมาจากการคำนวณชุดเดียวกับแท็บ Decision / Meta-Risk / Apex (`src/lib/quant/engine/dossiers.ts`) จึงตรงกันทุกหน้า
+- สรุปภาพรวม, สิ่งที่อาจทำให้ข้อสรุปผิด (kill switch, ความเสี่ยงสูงสุด, เงื่อนไขโมเดลตาย), แผนการเดินเกม, เช็กลิสต์ Part IV/V และ **ข้อจำกัดของรายงาน** (ข้อมูลจำลอง, สถานะการล็อกกติกา, ไม่ใช่คำแนะนำการลงทุน) สร้างด้วยกฎตายตัว — ไม่ต้องมี LLM
+- **ดาวน์โหลด Markdown** (`?format=md`) · **พิมพ์ / บันทึก PDF** (ตอนพิมพ์ซ่อนเมนูและใช้ตัวอักษรเข้มบนกระดาษขาว) · **เรียบเรียงด้วย AI** (ผู้ดูแล + ตั้งค่า LLM แล้ว): LLM เขียนบทสรุป มุมบวก/มุมลบ และสิ่งที่ต้องติดตาม จากหลักฐานของรายงานเท่านั้น แล้วรวมเข้าไฟล์ Markdown ได้
+- API: `GET /api/research/deep/{symbol}` · `GET …?format=md` · `POST /api/research/deep/{symbol}` (จำกัดความถี่แบบรายงาน LLM · บันทึก ActionLog `research.deep`) · โค้ด: `src/lib/research/` · `src/components/research/`
 
 ## โปรดักชัน
 
@@ -91,13 +100,13 @@ bun scripts/restore-db.ts --latest --yes                    # กู้จริ
 
 ## LLM (ทางเลือก)
 
-ระบบใช้ LLM เพียง 3 จุด — **หลอมรวมด้วย AI**, **AI Auditor** และ **แชท AI Analyst** — ทุก prompt ล็อกให้อ้างตัวเลขจาก evidence JSON ที่เอนจินคำนวณแล้วเท่านั้น (AI Auditor บันทึก hash ของกติกาที่ถูก audit ด้วย) เอนจินวิเคราะห์ทั้งหมดทำงานโดยไม่ต้องใช้ LLM
+ระบบใช้ LLM เพียง 4 จุด — **หลอมรวมด้วย AI**, **AI Auditor**, **แชท AI Analyst** และ **Deep Research ด้วย AI** — ทุก prompt ล็อกให้อ้างตัวเลขจาก evidence JSON ที่เอนจินคำนวณแล้วเท่านั้น (AI Auditor บันทึก hash ของกติกาที่ถูก audit ด้วย) เอนจินวิเคราะห์ทั้งหมดทำงานโดยไม่ต้องใช้ LLM
 
 | ทาง | ตั้งค่า |
 |---|---|
 | endpoint แบบ OpenAI-compatible (`/v1/chat/completions`) | `OQE_LLM_API_KEY` + `OQE_LLM_MODEL` (+ `OQE_LLM_BASE_URL`) |
 | `z-ai-web-dev-sdk` (พฤติกรรมเดิมของต้นฉบับ) | วางไฟล์ `.z-ai-config` ในโฟลเดอร์แอป / home / `/etc` |
-| ไม่ตั้งค่า | ปุ่ม AI ทั้ง 3 ถูกปิดพร้อมคำอธิบายวิธีตั้งค่า · API ตอบ **503** `llm_unavailable` · `/api/health` รายงาน `llm.configured=false` |
+| ไม่ตั้งค่า | ปุ่ม AI ทั้ง 4 ถูกปิดพร้อมคำอธิบายวิธีตั้งค่า · API ตอบ **503** `llm_unavailable` · `/api/health` รายงาน `llm.configured=false` |
 
 ## การทดสอบ — เกตเดียว
 
@@ -106,8 +115,8 @@ bun run verify     # typecheck · lint (max-warnings 0) · test · test:ops · b
 bun run test       # bun test src — unit + engine invariants + route handlers + component tests (happy-dom) บน SQLite ชั่วคราว
 bun run test:ops   # smoke checker + e2e budget + สคริปต์ ops ผ่าน CLI จริง (ingest-csv → engine-check → backup-db → restore-db)
 bun run smoke      # หลัง build: standalone server บนสำเนา DB → ทุก route (status, JSON เคร่งครัด, validation 400/404/422, header ความปลอดภัย)
-bun run e2e        # Playwright + axe: 13 มุมมอง desktop (+ เงินไหล KBANK 3y) + มือถือ 390px (รวมเงินไหล) ต้องไม่มี violation ของ WCAG 2.1 AA/2.2 target-size (งบ 0)
-                   #   + interaction หลัก 14 ข้อ · รายงาน/ภาพหน้าจอที่ .e2e/
+bun run e2e        # Playwright + axe: 14 มุมมอง desktop (+ เงินไหล KBANK 3y, Deep Research KBANK) + มือถือ 390px (รวมเงินไหล, Deep Research) ต้องไม่มี violation ของ WCAG 2.1 AA/2.2 target-size (งบ 0)
+                   #   + interaction หลัก 15 ข้อ · รายงาน/ภาพหน้าจอที่ .e2e/
 bun deploy/smoke.ts --db empty   # ทางที่สอง: DB เปล่า → auto-seed
 ```
 
@@ -123,6 +132,7 @@ CI: `.github/workflows/omniscient-quant-engine.yml` รันคำสั่ง�
 | `GET/POST /api/rules` · `GET /api/research/robustness` | กติกาทั้งชุด + hash + ประวัติการล็อก · ล็อก (pre-registration) · ความทนทานข้าม seed |
 | `GET /api/data/provenance` · `POST /api/data/ingest` | ที่มา/ความสด/ความครอบคลุมของข้อมูล · นำเข้าข้อมูลจริง |
 | `GET /api/audit-log` | ประวัติการกระทำ (ล่าสุดก่อน, กรองด้วย `action`) |
+| `GET/POST /api/research/deep/{symbol}` | Deep Research รายหุ้น รวมผลทุกชั้น (`?format=md` = ไฟล์ Markdown · POST = เรียบเรียงด้วย LLM) |
 | `GET /api/flows` · `GET /api/flows/{SET\|symbol}` | รายชื่อ SET + หุ้นไทยแยกหมวด · แดชบอร์ดเงินไหล (อนุกรมรายสัปดาห์, ตารางซื้อ/ขาย/สุทธิ, ช่วงเวลา, Flow Index, NVDR/short sale) |
 | `GET /api/board` · `GET /api/decision/{symbol}` | Decision Board ทุกตัว · 5-Gate + trade plan + risk MC + history |
 | `GET /api/analytics/factors` · `GET /api/analytics/dependence` | Multi-View factor model + volcano · Θ matrix + decouple |
@@ -140,6 +150,8 @@ CI: `.github/workflows/omniscient-quant-engine.yml` รันคำสั่ง�
 | `src/app/page.tsx` · `terms/` · `error.tsx` · `global-error.tsx` · `not-found.tsx` | app shell (sidebar, topbar, ⌘K, คำแนะนำครั้งแรก, แถบล่างจาก provenance) · ข้อกำหนด · หน้าข้อผิดพลาด |
 | `src/components/dashboard/` · `terminal/` · `quant/` · `charts/` · `providers/` | Command Center · Terminal · แท็บวิเคราะห์ (รวม `research-integrity.tsx`) · chart SVG · `AppMetaProvider` (ป้ายข้อมูล/สิทธิ์/LLM) |
 | `src/lib/quant/engine/` | panel (`buildPanel` ท่อเดียว) · rules + registry · robustness · factors/volcano · gates · backtest · risk · synthesis · meta-risk · mdx · micro · apex · terminal · api (orchestrator + cache) · warmup |
+| `src/lib/research/` · `src/components/research/` | Deep Research: ประกอบรายงานจากทุกชั้น (pure) · Markdown · บริการโหลด + prompt LLM · หน้าจอรายงาน |
+| `src/lib/flows/` · `src/components/flows/` | เงินไหลนักลงทุน: generator + รายสัปดาห์ + Flow Index · แดชบอร์ด |
 | `src/lib/data/` | calendar (SET) · freshness · csv · yahoo · ingest (ตรวจ/ทำความสะอาด/แทนที่) · provenance · service |
 | `src/lib/ops/backup.ts` · `src/lib/log.ts` · `src/lib/audit.ts` · `src/lib/http/responses.ts` | backup ออนไลน์ · structured logger · ActionLog · คำตอบมาตรฐาน (400/404/500 + errorId) + zod |
 | `src/lib/llm.ts` · `src/proxy.ts` · `src/lib/security/` | ชั้น LLM · ด่านสิทธิ์ทุกคำขอ (local/auth, ผู้ดูแล/ผู้ชม/Bearer, CSRF, rate limit, security events) |

@@ -9,14 +9,16 @@ import { db } from "@/lib/db"
 import { getBoard, getDecision, getFactorModel, getProbs, getSystemStatus, getThetaMatrix, getVolcano, seedDemoJournal, seedIfNeeded } from "./api"
 import { buildApexDossier, MDX_OVERRIDE_FACTOR } from "./apex"
 import { runBacktest, type BacktestResult } from "./backtest"
-import { currentRegimeSummary, evaluateGates } from "./gates"
+import { currentRegimeSummary, evaluateGates, regimeFamily } from "./gates"
 import { buildRiskMdx } from "./mdx"
 import { buildMetaRiskDossier, recoveryNeeded, ruinTable } from "./meta-risk"
 import { microstructureMetrics } from "./micro"
 import { ensureSeeded, loadMarketState } from "./panel"
-import { buildSynthesisDossier, renderReport } from "./synthesis"
+import { buildSynthesisDossier, regimeToVote, renderReport } from "./synthesis"
 import { getAnalyst, getQuotes, getSeries } from "./terminal"
 import type { MarketState } from "./types"
+import { RULES } from "./rules"
+import { linregSlope } from "../stats"
 
 let state: MarketState
 let bt: BacktestResult
@@ -254,6 +256,31 @@ describe("หลอมรวม (synthesis) — 13 evidence strands", () => {
       expect(text).toContain("คะแนนบรรจบ")
     }
     expect(buildSynthesisDossier(state, "NOPE", factors, bt)).toBeNull()
+  })
+
+  test("สาย Regime อ่านป้ายเต็มของ currentRegimeSummary ได้ (regression: เคยเทียบทั้งสตริงจึงโหวตกลางเสมอ)", () => {
+    expect(regimeFamily("RECOVERY / Accumulation")).toBe("RECOVERY")
+    expect(regimeToVote("RECOVERY / Accumulation", 0.01).vote).toBe("LONG")
+    expect(regimeToVote("RECOVERY / Accumulation", 0.01).detail).toContain("ไหลขึ้น")
+    expect(regimeToVote("RECOVERY / Accumulation", -0.002).detail).not.toContain("ไหลขึ้น") // ข้อความตามทิศของความชัน
+    expect(regimeToVote("BULL / Risk-On", 0).vote).toBe("LONG")
+    expect(regimeToVote("CRISIS / Risk-Off", -0.01).vote).toBe("SHORT")
+    expect(regimeToVote("SIDEWAYS / Neutral", 0).detail).toContain("sideways")
+    const dist = regimeToVote("DISTRIBUTION / Weak", -0.01)
+    expect(dist.vote).toBe("NEUTRAL")
+    expect(dist.detail).not.toContain("sideways")
+    // สายของหุ้นจริงในชุดข้อมูลต้องสอดคล้องกับ regime ปัจจุบัน
+    const reg = currentRegimeSummary(state)
+    const d = buildSynthesisDossier(state, "TSE", undefined, bt)!
+    const g1 = d.strands.find((x) => x.key === "G1_REGIME")!
+    expect(g1.vote).toBe(regimeToVote(reg.regime, 0).vote)
+    if (["RECOVERY", "BULL"].includes(regimeFamily(reg.regime))) expect(g1.vote).toBe("LONG")
+    // สาย G1 ใช้ความชันหน้าต่างเดียวกับ G1 gate → ทิศในข้อความตรงกับเหตุผลของ gate
+    const t = state.dates.length - 1
+    const win = state.fMomentum.slice(Math.max(0, t - RULES.gates.g1.momWindow), t + 1)
+    const gateSlope = linregSlope(win.map((_, i) => i), win)
+    expect(evaluateGates(state, "TSE", t).gates.g1).toBe(reg.stress < RULES.gates.g1.stressMax && gateSlope > RULES.gates.g1.momSlopeMin)
+    if (regimeFamily(reg.regime) === "RECOVERY") expect(g1.detail.includes("ไหลขึ้น")).toBe(gateSlope >= 0)
   })
 })
 

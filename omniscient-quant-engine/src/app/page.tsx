@@ -16,6 +16,7 @@ import TerminalView from '@/components/terminal/terminal-view';
 import { CommandCenter } from '@/components/dashboard/command-center';
 import { AppFooter } from '@/components/app-footer';
 import { FlowDashboardView } from '@/components/flows/flow-dashboard';
+import { DeepResearchView } from '@/components/research/deep-research-view';
 import { FirstRunGuide } from '@/components/first-run-guide';
 import { AppMetaProvider, dataKindTag, useAppMeta } from '@/components/providers/app-meta';
 import { OverviewTab } from '@/components/quant/overview-tab';
@@ -68,7 +69,8 @@ type ViewKey =
   | 'apex'
   | 'backtest'
   | 'auditor'
-  | 'flows';
+  | 'flows'
+  | 'research';
 
 export default function Home() {
   return (
@@ -214,14 +216,14 @@ function HomeShell() {
   }, []);
 
   return (
-    <div className="flex h-screen overflow-hidden bg-zinc-950 text-zinc-200">
+    <div className="flex h-screen overflow-hidden bg-zinc-950 text-zinc-200 print:block print:h-auto print:overflow-visible print:bg-white">
       {/* Sidebar rail (desktop) */}
       <TerminalSidebar
         view={view}
         onNavigate={navigate}
         regime={board?.regime ?? null}
         drift={board?.summary.drift}
-        className="hidden lg:flex"
+        className="hidden lg:flex print:hidden"
       />
 
       {/* Mobile nav sheet */}
@@ -242,7 +244,7 @@ function HomeShell() {
       </Sheet>
 
       {/* คอลัมน์หลัก */}
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div className="flex min-w-0 flex-1 flex-col print:block">
         <TerminalTopbar
           symbol={symbol}
           name={currentRow?.name ?? ''}
@@ -254,7 +256,7 @@ function HomeShell() {
           onRefresh={refreshAll}
         />
 
-        <main className="min-h-0 flex-1 overflow-y-auto">
+        <main className="min-h-0 flex-1 overflow-y-auto print:overflow-visible">
           {view === 'dashboard' && <FirstRunGuide onNavigate={navigate} />}
           {view === 'dashboard' ? (
             <CommandCenter
@@ -317,6 +319,10 @@ function HomeShell() {
                     saving={saving}
                   />
                 ))}
+
+              {view === 'research' && (
+                <DeepResearchView symbols={symbols.length ? symbols : ['TSE']} symbol={symbol} onSymbolChange={setSymbol} />
+              )}
 
               {view === 'risk' && <RiskTab board={board} decision={decisionQ.data} />}
 

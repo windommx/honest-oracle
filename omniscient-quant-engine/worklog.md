@@ -394,3 +394,20 @@ Work Log:
 Stage Summary:
 - v1.3.0 · test 151 · ops 12 · smoke 45/45 (demo DB และ DB เปล่า) · E2E 23/23 มุมมอง (รวมเงินไหล desktop + มือถือ) ผ่าน axe งบ 0 · 14/14 interaction
 - งานต่อ: importer ข้อมูลจริงของหน้าเงินไหล (ไฟล์ประเภทนักลงทุน / NVDR / short sale ของ SET)
+
+---
+Task ID: 19
+Agent: Claude Code (session 01EpMHhtfxT5nq7BqhZXKr4G)
+Task: ต้องการ deep research → เพิ่มฟีเจอร์ Deep Research ในแพลตฟอร์ม
+
+Work Log:
+- `src/lib/research/`: ประกอบรายงานรายหุ้น 11 หัวข้อจากผลของทุกชั้น (หลอมรวม 13 สาย, 5 Gates + แผนเทรด, Risk, Meta-Risk, Apex, เงินไหล, walk-forward + robustness) — มุมมองของแต่ละหัวข้อมาจากโหวตของสายเดิม ไม่สร้างสัญญาณใหม่ · สรุป/ความเสี่ยง/ข้อจำกัดด้วยกฎตายตัว · Markdown renderer · prompt LLM ที่อ้างตัวเลขจากรายงานเท่านั้น
+- `src/lib/quant/engine/dossiers.ts`: บริบทร่วม (backtest, P(up), board, journal) ของ Meta-Risk / Apex / Deep Research → ตัวเลขตรงกันทุกหน้า (route เดิมย้ายมาใช้) · `peekSeedRobustness` อ่านผลที่คำนวณแล้วโดยไม่สั่งคำนวณใหม่
+- `GET /api/research/deep/{symbol}` (+ `?format=md`) · `POST` = เรียบเรียงด้วย LLM (ผู้ดูแลเท่านั้น, จำกัดความถี่แบบรายงาน LLM, ActionLog `research.deep`, 503 เมื่อไม่มี LLM) · test เส้นทางสำเร็จด้วยเซิร์ฟเวอร์ LLM ปลอมแบบ OpenAI
+- UI: แท็บ Deep Research (จักรวาลหลัก) · เลือกหุ้น · ดาวน์โหลด Markdown · พิมพ์/บันทึก PDF (ซ่อนเมนู + ตัวอักษรเข้มบนพื้นขาว) · สารบัญ · ตาราง 13 สาย · เช็กลิสต์ Part IV/V
+- แก้บั๊กที่รายงานนี้เผยให้เห็น: สาย Regime ของหลอมรวมเทียบป้าย regime ทั้งสตริง ("RECOVERY" กับ "RECOVERY / Accumulation") จึงโหวต "กลาง/sideways" เสมอ และเช็กลิสต์ Meta-Risk ข้อ V.4 ไม่เคยตรวจเจอ CRISIS → ตัดสินจากตระกูลของ regime (`regimeFamily`) · สาย G1 ใช้หน้าต่างความชันเดียวกับ G1 gate (เดิมต่างกัน 1 วันจนทิศกลับด้าน) · ข้อความ RECOVERY ตามทิศของความชัน
+- `/api` index ครบทุกเส้นทาง · README/terms/PROJECT-SUMMARY
+
+Stage Summary:
+- v1.4.0 · test 161 · ops 12 · smoke 50/50 · E2E 26/26 มุมมอง (Deep Research desktop + มือถือ) ผ่าน axe งบ 0 · 15/15 interaction
+- ข้อจำกัด: ข้อมูลตั้งต้นและเงินไหลเป็นข้อมูลจำลอง · บทเรียบเรียง LLM ไม่ถูกจัดเก็บ (สร้างใหม่ได้ทุกครั้ง) · ยังไม่ดึงข่าว/งบจากแหล่งภายนอก

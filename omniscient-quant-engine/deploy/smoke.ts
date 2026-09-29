@@ -25,6 +25,8 @@ export interface RouteSpec {
   headers?: string[]
   /** ตรวจเพิ่มบน JSON ที่ parse แล้ว — คืนข้อความเมื่อไม่ผ่าน */
   expect?: (json: Record<string, unknown>) => string | undefined
+  /** เส้นทาง /api ที่ตอบเป็นไฟล์ (ไม่ใช่ JSON) เช่น "text/markdown" — ตรวจ content-type + body ไม่ว่าง แทน JSON */
+  contentType?: string
 }
 
 const TINY_DATASET = {
@@ -84,6 +86,17 @@ export const DEFAULT_ROUTES: RouteSpec[] = [
   },
   { route: "/api/flows/TSE?range=6m&index=foreign", expect: (j) => (j.indexGroup === "nvdr" && j.short !== null ? undefined : "หุ้นรายตัวต้องใช้ NVDR + มี short sale") },
   { route: "/api/flows/NOPE", status: 404 },
+  {
+    route: "/api/research/deep/TSE",
+    expect: (j) =>
+      Array.isArray(j.sections) && (j.sections as unknown[]).length === 11 && Array.isArray(j.caveats) && Array.isArray(j.strands) && (j.strands as unknown[]).length === 13
+        ? undefined
+        : "Deep Research ต้องมี 11 หัวข้อ + 13 สาย + ข้อจำกัด",
+  },
+  { route: "/api/research/deep/SCB?format=md", contentType: "text/markdown" },
+  { route: "/api/research/deep/NOPE", status: 404 },
+  { route: "/api/research/deep/TSE?format=pdf", status: 400 },
+  { route: "/api/research/deep/TSE", method: "POST", body: {}, status: 503 },
   { route: "/api/flows/SET?range=10y", status: 400 },
   { route: "/api/meta", expect: (j) => ((j.access as { canWrite?: unknown } | undefined)?.canWrite === true && typeof (j.data as { label?: unknown } | undefined)?.label === "string" ? undefined : "meta ไม่ครบ") },
 ]
@@ -119,6 +132,10 @@ export function checkResponse(spec: RouteSpec, status: number, contentType: stri
   const missing = (spec.headers ?? []).filter((h) => !headers?.get(h))
   if (missing.length) return `ไม่มี header: ${missing.join(", ")}`
   if (!spec.route.startsWith("/api")) return body.length > 0 ? undefined : "body ว่าง"
+  if (spec.contentType) {
+    if (!contentType.includes(spec.contentType)) return `content-type ไม่ใช่ ${spec.contentType} (${contentType})`
+    return body.trim().length > 0 ? undefined : "body ว่าง"
+  }
   if (!contentType.includes("application/json")) return `content-type ไม่ใช่ JSON (${contentType})`
   let parsed: unknown
   try {

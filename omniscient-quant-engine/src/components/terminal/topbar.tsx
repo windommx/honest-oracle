@@ -54,7 +54,7 @@ export function TerminalTopbar({
   onRefresh: () => void;
 }) {
   return (
-    <header className="flex h-14 shrink-0 items-center gap-3 border-b border-white/[0.06] bg-zinc-950/70 px-3 backdrop-blur-md">
+    <header className="flex h-14 shrink-0 items-center gap-3 border-b border-white/[0.06] bg-zinc-950/70 px-3 backdrop-blur-md print:hidden">
       {/* Left: current symbol */}
       <div className="flex min-w-0 shrink-0 items-center gap-2">
         <MicroLabel className="hidden sm:block">กำลังดู</MicroLabel>

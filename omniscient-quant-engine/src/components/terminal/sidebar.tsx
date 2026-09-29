@@ -4,6 +4,7 @@ import {
   ArrowLeftRight,
   BrainCircuit,
   ChevronDown,
+  FileSearch,
   Crown,
   FlaskConical,
   Gauge,
@@ -62,6 +63,7 @@ const NAV_GROUPS: NavGroupDef[] = [
       { key: 'overview', label: 'ภาพรวม', icon: LayoutDashboard },
       { key: 'synthesis', label: 'หลอมรวม', icon: FlaskConical },
       { key: 'decision', label: 'Decision (L6)', icon: Target },
+      { key: 'research', label: 'Deep Research', icon: FileSearch },
     ],
   },
   {

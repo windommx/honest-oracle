@@ -18,7 +18,7 @@ const FRESH_TONE: Record<string, string> = {
 export function AppFooter({ busy }: { busy: boolean }) {
   const { meta } = useAppMeta();
   return (
-    <footer className="shrink-0 border-t border-white/[0.06] bg-zinc-950 pb-[env(safe-area-inset-bottom)]">
+    <footer className="shrink-0 border-t border-white/[0.06] bg-zinc-950 pb-[env(safe-area-inset-bottom)] print:hidden">
       <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 py-2 text-[11px] leading-snug text-zinc-400">
         <p className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
           <span>OQE v{meta?.app.version ?? '—'}</span>

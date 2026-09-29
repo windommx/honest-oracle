@@ -311,3 +311,22 @@ pre[tabindex="0"]:focus-visible {
   outline: 2px solid #34d399;
   outline-offset: 2px;
 }
+
+/* พิมพ์ / บันทึก PDF ของ Deep Research — ตัวอักษรเข้มบนกระดาษขาว (ธีมมืดพิมพ์ออกมาแล้วอ่านไม่ออก) */
+@media print {
+  html,
+  body {
+    background: #fff !important;
+  }
+  .research-print,
+  .research-print * {
+    color: #111 !important;
+    background: transparent !important;
+    border-color: #bbb !important;
+    box-shadow: none !important;
+  }
+  .research-print section,
+  .research-print header {
+    break-inside: avoid;
+  }
+}

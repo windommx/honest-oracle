@@ -16,7 +16,7 @@
  */
 
 import type { MarketState } from './types';
-import { evaluateGates, currentRegimeSummary } from './gates';
+import { evaluateGates, currentRegimeSummary, regimeFamily } from './gates';
 import type { BacktestResult } from './backtest';
 import { mean, psi } from '../stats';
 import { mulberry32 } from '../rng';
@@ -361,7 +361,7 @@ export function buildMetaRiskDossier(
     { part: 'V', question: '1. เทรด "แผนที่" หรือ "ดินแดน"?', answer: `คลาดเคลื่อน calibration ${calSkew.toFixed(1)} จุด ${calSkew > 10 ? '— โมเดลหลงตัวเอง เชื่อราคา+งบจริงมากกว่า P(up)' : '— โมเดลยังตรงโลกจริงในระดับใช้ได้'}`, pass: calSkew <= 10 },
     { part: 'V', question: '2. reflexivity loop อยู่ phase ไหน?', answer: `${reflex.label}: ${reflex.detail}`, pass: reflex.phase === 'IGNITION' || reflex.phase === 'RUNNING' || reflex.phase === 'PRE_IGNITION' },
     { part: 'V', question: '3. ใครอยู่ฝั่งตรงข้ามและเขารู้มากกว่าไหม?', answer: `vol ratio ${row.volRatio.toFixed(2)} ${row.volRatio > 2.6 ? '— volume spike ผิดปกติ ตรวจ Big Lot ก่อนเชื่อ breakout (อาจเป็นการโยนกันลากราคา)' : row.volRatio < 0.75 ? '— เงียบผิดวิสัย รอ volume ยืนยัน' : '— อยู่ในแถบที่ volume ยังเชื่อได้'}`, pass: row.volRatio >= 0.75 && row.volRatio <= 2.6 },
-    { part: 'V', question: '4. ระบบที่ใช้เหมาะกับ regime ปัจจุบันไหม?', answer: `regime ${reg.regime} · signal ${plan.signal} ${reg.regime === 'CRISIS' ? '— regime นี้ breakout/pullback ทุกแบบพัง ระบบควรปิดสวิตช์ (cash = king)' : '— ระบบ trend/pullback ยังเหมาะกับสภาวะนี้'}`, pass: reg.regime !== 'CRISIS' },
+    { part: 'V', question: '4. ระบบที่ใช้เหมาะกับ regime ปัจจุบันไหม?', answer: `regime ${reg.regime} · signal ${plan.signal} ${regimeFamily(reg.regime) === 'CRISIS' ? '— regime นี้ breakout/pullback ทุกแบบพัง ระบบควรปิดสวิตช์ (cash = king)' : '— ระบบ trend/pullback ยังเหมาะกับสภาวะนี้'}`, pass: regimeFamily(reg.regime) !== 'CRISIS' },
     { part: 'V', question: '5. ถ้าโมเดลผิดพร้อมกันวันนี้ ยังอยู่ในเกมไหม?', answer: `Risk of Ruin(−50%) แบบ drawdown-scaled = ${ruinScaled.pRuin50}% (fixed = ${ruinFixed.pRuin50}%) · cash โดยนัย ${Math.max(0, 100 - totalPlannedPct).toFixed(0)}% → ${ruinScaled.pRuin50 <= 2 ? 'โครงสร้างรับช็อกได้' : 'ลดขนาดไม้ทั้งพอร์ตจนกว่า P(ruin) ≤ 2%'}`, pass: ruinScaled.pRuin50 <= 2 },
   ];
 

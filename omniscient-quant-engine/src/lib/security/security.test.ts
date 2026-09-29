@@ -123,6 +123,8 @@ describe("security/rate-limit", () => {
     expect(matchRateRule("GET", "/api/board")).toBeNull()
     expect(matchRateRule("GET", "/api/synthesis/TSE")?.name).toBe("heavy-report")
     expect(matchRateRule("GET", "/api/research/robustness")?.name).toBe("heavy-report")
+    expect(matchRateRule("POST", "/api/research/deep/TSE")?.name).toBe("llm-report")
+    expect(matchRateRule("GET", "/api/research/deep/TSE")?.name).toBe("heavy-report")
   })
 })
 

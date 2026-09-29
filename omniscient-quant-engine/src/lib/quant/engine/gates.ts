@@ -181,6 +181,9 @@ function parametricRisk(rows: DayRow[], close: number, riskBudgetPct: number) {
   };
 }
 
+/** ตระกูลของ regime จากป้าย "RECOVERY / Accumulation" → "RECOVERY" (ป้ายเต็มใช้แสดงผล ตระกูลใช้ตัดสินใจ) */
+export const regimeFamily = (label: string): string => label.split('/')[0].trim().toUpperCase();
+
 export const currentRegimeSummary = (state: MarketState) => {
   const N = state.dates.length;
   const stress = state.fStress[N - 1];

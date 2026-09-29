@@ -131,18 +131,35 @@ export async function runSeedRobustness(seeds: number[] = DEFAULT_ROBUSTNESS_SEE
 }
 
 // cache ต่อ process (ผลขึ้นกับ seeds + กติกาเท่านั้น — ไม่ขึ้นกับ DB)
-const holder = globalThis as unknown as { __oqeRobustness?: Map<string, Promise<RobustnessReport>> };
+const holder = globalThis as unknown as {
+  __oqeRobustness?: Map<string, Promise<RobustnessReport>>;
+  /** ผลที่คำนวณเสร็จแล้ว — ให้รายงานอื่นอ่านได้โดยไม่สั่งคำนวณ (งานหนักหลายวินาที) */
+  __oqeRobustnessDone?: Map<string, RobustnessReport>;
+};
+
+const robustKey = (seeds: number[]) => `${RULES_HASH}|${[...seeds].join(',')}`;
 
 export function getSeedRobustness(seeds: number[] = DEFAULT_ROBUSTNESS_SEEDS): Promise<RobustnessReport> {
   const map = (holder.__oqeRobustness ??= new Map());
-  const key = `${RULES_HASH}|${[...seeds].join(',')}`;
+  const key = robustKey(seeds);
   let p = map.get(key);
   if (!p) {
-    p = runSeedRobustness(seeds).catch((e) => {
-      map.delete(key);
-      throw e;
-    });
+    p = runSeedRobustness(seeds).then(
+      (r) => {
+        (holder.__oqeRobustnessDone ??= new Map()).set(key, r);
+        return r;
+      },
+      (e) => {
+        map.delete(key);
+        throw e;
+      },
+    );
     map.set(key, p);
   }
   return p;
+}
+
+/** ผลความทนทานที่เคยคำนวณแล้วใน process นี้ (ไม่มี = null) — ไม่สั่งคำนวณใหม่ */
+export function peekSeedRobustness(seeds: number[] = DEFAULT_ROBUSTNESS_SEEDS): RobustnessReport | null {
+  return holder.__oqeRobustnessDone?.get(robustKey(seeds)) ?? null;
 }

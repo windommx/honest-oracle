@@ -11,7 +11,7 @@ import { requestActor } from "@/lib/security/request-actor"
 
 export type ActionName =
   | "journal.create" | "journal.update" | "journal.delete" | "journal.seed"
-  | "data.seed" | "data.ingest" | "rules.register" | "audit.run" | "synthesis.run" | "analyst.chat"
+  | "data.seed" | "data.ingest" | "rules.register" | "audit.run" | "synthesis.run" | "analyst.chat" | "research.deep"
 
 /** คืน Promise ที่ไม่มีวัน reject — route เรียกแบบ `void logAction(...)` (ไม่รอ) · test รอได้ */
 export function logAction(req: Request, action: ActionName, status: number, detail?: Record<string, unknown>): Promise<void> {

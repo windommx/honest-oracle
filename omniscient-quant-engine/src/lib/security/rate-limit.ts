@@ -81,9 +81,9 @@ export const RATE_RULES: readonly RateRule[] = [
   {
     name: "llm-report",
     methods: ["POST"],
-    test: (p) => p === "/api/audit" || p.startsWith("/api/synthesis/"),
+    test: (p) => p === "/api/audit" || p.startsWith("/api/synthesis/") || p.startsWith("/api/research/deep/"),
     spec: perMin(4, 4),
-    label: "หลอมรวมด้วย AI / AI Auditor (เรียก LLM)",
+    label: "หลอมรวมด้วย AI / AI Auditor / Deep Research ด้วย AI (เรียก LLM)",
   },
   {
     name: "llm-chat",
@@ -115,6 +115,7 @@ export const RATE_RULES: readonly RateRule[] = [
       p.startsWith("/api/apex/") ||
       p.startsWith("/api/meta-risk/") ||
       p.startsWith("/api/synthesis/") ||
+      p.startsWith("/api/research/deep/") ||
       p === "/api/research/robustness",
     spec: perMin(60, 30),
     label: "รายงานที่คำนวณหนัก",

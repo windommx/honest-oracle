@@ -10,6 +10,10 @@ describe("deploy/smoke — ตัวตรวจคำตอบ (pure)", () => {
     expect(checkResponse({ route: "/api/board" }, 200, "application/json", '{"x":1}')).toBeUndefined()
     expect(checkResponse({ route: "/api/board" }, 500, "application/json", "{}")).toContain("HTTP 500")
     expect(checkResponse({ route: "/api/board" }, 200, "text/html", "<html>")).toContain("content-type")
+    // เส้นทางที่ตอบเป็นไฟล์: ตรวจ content-type ที่ประกาศ + body ไม่ว่าง แทน JSON
+    expect(checkResponse({ route: "/api/x", contentType: "text/markdown" }, 200, "text/markdown; charset=utf-8", "# ok")).toBeUndefined()
+    expect(checkResponse({ route: "/api/x", contentType: "text/markdown" }, 200, "application/json", "{}")).toContain("text/markdown")
+    expect(checkResponse({ route: "/api/x", contentType: "text/markdown" }, 200, "text/markdown", "  ")).toBe("body ว่าง")
     expect(checkResponse({ route: "/api/board" }, 200, "application/json", '{"x":NaN}')).toContain("JSON ไม่ถูกต้อง")
     expect(checkResponse({ route: "/api/board" }, 200, "application/json", '{"x":1e999}')).toContain("ค่าที่ไม่จำกัด")
     expect(checkResponse({ route: "/api/audit", method: "POST", status: 503 }, 503, "application/json", '{"error":"llm_unavailable","detail":"ตั้งค่า"}')).toBeUndefined()
@@ -19,9 +23,10 @@ describe("deploy/smoke — ตัวตรวจคำตอบ (pure)", () => {
   })
   test("รายการ route เริ่มต้นครอบคลุมทุก GET route ของแอป + หน้าเว็บ + POST ที่ต้อง 503", () => {
     const gets = DEFAULT_ROUTES.filter((r) => !r.method || r.method === "GET").map((r) => r.route.split("?")[0])
-    for (const p of ["/api/health", "/api/system", "/api/board", "/api/decision/TSE", "/api/analytics/factors", "/api/analytics/dependence", "/api/backtest", "/api/journal", "/api/audit", "/api/synthesis/TSE", "/api/meta-risk/TSE", "/api/apex/TSE", "/api/market/quotes", "/api/market/series/TSE", "/api/analyst/TSE", "/"]) {
+    for (const p of ["/api/health", "/api/system", "/api/board", "/api/decision/TSE", "/api/analytics/factors", "/api/analytics/dependence", "/api/backtest", "/api/journal", "/api/audit", "/api/synthesis/TSE", "/api/meta-risk/TSE", "/api/apex/TSE", "/api/market/quotes", "/api/market/series/TSE", "/api/analyst/TSE", "/api/flows", "/api/research/deep/TSE", "/"]) {
       expect(gets).toContain(p)
     }
-    expect(DEFAULT_ROUTES.filter((r) => r.method === "POST" && r.status === 503)).toHaveLength(3)
+    // ทุกเส้นทางที่เรียก LLM: analyst · synthesis · audit · deep research
+    expect(DEFAULT_ROUTES.filter((r) => r.method === "POST" && r.status === 503).map((r) => r.route.split("/")[2])).toEqual(["analyst", "synthesis", "audit", "research"])
   })
 })

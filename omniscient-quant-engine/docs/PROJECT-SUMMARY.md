@@ -25,12 +25,12 @@
 
 ## 2. โครงสร้างระบบ
 
-### 2.1 มุมมอง 13 มุมมอง (จาก `src/app/page.tsx`) — ขอบเขตหุ้นไทย (SET/mai) เท่านั้น
+### 2.1 มุมมอง 14 มุมมอง (จาก `src/app/page.tsx`) — ขอบเขตหุ้นไทย (SET/mai) เท่านั้น
 
 | กลุ่ม | มุมมอง |
 |---|---|
 | ศูนย์ควบคุม | **Command Center** (หน้าแรก) · **Terminal** (Market Intelligence: watchlist + กราฟเทียน + AI panel) |
-| จักรวาลหลัก | ภาพรวม (KPI + Signal of the Day + 7-Layer map + Decision Board 22 ตัว) · **หลอมรวม** (synthesis 13 สาย) |
+| จักรวาลหลัก | ภาพรวม (KPI + Signal of the Day + 7-Layer map + Decision Board 22 ตัว) · **หลอมรวม** (synthesis 13 สาย) · **Deep Research** (Task 19: รายงานเชิงลึกรายหุ้น 11 หัวข้อจากทุกชั้น + Markdown/PDF + เรียบเรียงด้วย LLM) |
 | วิเคราะห์ | Multi-View (factors F1–F4, variance decomposition, enrichment, bipartite, volcano, PCA, trajectories) · Dependence (Θ chart, KDE, 22×22 Θ heatmap, decouple) · Decision (5-Gate checklist + trade plan + gate ribbon) · **เงินไหลนักลงทุน** (Task 18: SET 4 ประเภทนักลงทุน · NVDR + short sale รายหุ้น · Flow Index 6/36 เดือน) |
 | ความเสี่ยง | Risk & Sizing (CVaR calculator, MC histogram, L-VaR, circuit breakers) · **Meta-Risk (L∞)** · **Apex (L7)** |
 | MY LAB | Backtest & Journal (metrics + equity + attribution + calibration + CRUD) · AI Auditor |

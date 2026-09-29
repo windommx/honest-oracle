@@ -24,6 +24,12 @@ export async function GET() {
       { method: 'GET', path: '/api/market/quotes', what: 'quotes ทุกตัวสำหรับ terminal' },
       { method: 'GET', path: '/api/market/series/{symbol}?tf=1D|1W&bars=180', what: 'OHLCV + indicators + S/R' },
       { method: 'GET|POST', path: '/api/analyst/{symbol}', what: 'แผง AI analysis (POST = แชท ต้องตั้งค่า LLM)' },
+      { method: 'GET|POST', path: '/api/research/deep/{symbol}?format=json|md', what: 'Deep Research รายหุ้น รวมผลทุกชั้น (md = ไฟล์ดาวน์โหลด · POST = เรียบเรียงด้วย LLM)' },
+      { method: 'GET', path: '/api/flows · /api/flows/{SET|symbol}', what: 'เงินไหลนักลงทุน: SET 4 ประเภท · NVDR/short sale รายหุ้น (ข้อมูลจำลอง)' },
+      { method: 'GET|POST', path: '/api/rules', what: 'กติกา + hash + ล็อก (pre-registration)' },
+      { method: 'GET', path: '/api/research/robustness?seeds=...', what: 'ความทนทานข้าม seed' },
+      { method: 'GET|POST', path: '/api/data/provenance · /api/data/ingest', what: 'ที่มา/ความสดของข้อมูล · นำเข้าข้อมูลจริง (หุ้นไทย สกุลบาท)' },
+      { method: 'GET', path: '/api/audit-log · /api/meta', what: 'ประวัติการกระทำ · ข้อมูลกำกับของ UI' },
     ],
   });
 }

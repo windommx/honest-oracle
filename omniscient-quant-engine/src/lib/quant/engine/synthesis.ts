@@ -25,7 +25,7 @@
  */
 
 import type { MarketState } from './types';
-import { evaluateGates, currentRegimeSummary, type GateEval } from './gates';
+import { evaluateGates, currentRegimeSummary, regimeFamily, type GateEval } from './gates';
 import { riskAssessment } from './risk';
 import { linregSlope, median, psi } from '../stats';
 import type { FactorModelResult } from './factors';
@@ -88,15 +88,26 @@ function fmt(x: number, d = 2): string {
   return x > 0 ? `+${s}` : s;
 }
 
-function regimeToVote(regime: string, momSlope: number): { vote: Vote; detail: string } {
-  if (regime === 'CRISIS') {
+/** ป้าย regime มาจาก currentRegimeSummary ("RECOVERY / Accumulation") — ตัดสินจากตระกูล ไม่ใช่เทียบทั้งสตริง */
+export function regimeToVote(regime: string, momSlope: number): { vote: Vote; detail: string } {
+  const family = regimeFamily(regime);
+  if (family === 'CRISIS') {
     return { vote: 'SHORT', detail: `ตลาดโดยรวมอยู่โหมดกลัว (F_stress สูง) — ยังไม่มุ่งหวัง beta จากตลาด${momSlope < 0 ? ' และโมเมนตัมยังไหลลง' : ''}` };
   }
-  if (regime === 'RECOVERY') {
-    return { vote: 'LONG', detail: `ตลาดกำลังฟื้นตัว โมเมนตัมไหลขึ้น (${fmt(momSlope, 3)}/วัน) — หุ้นที่ผ่านเกณฑ์เทคนิคมักได้เปรียบ` };
+  if (family === 'RECOVERY') {
+    return {
+      vote: 'LONG',
+      detail:
+        momSlope >= 0
+          ? `ตลาดกำลังฟื้นตัว โมเมนตัมไหลขึ้น (${fmt(momSlope, 3)}/วัน) — หุ้นที่ผ่านเกณฑ์เทคนิคมักได้เปรียบ`
+          : `ตลาดอยู่ในช่วงฟื้นตัว (เงินไหลและโมเมนตัมยังเป็นบวก) แต่แรงส่งเริ่มแผ่ว (${fmt(momSlope, 3)}/วัน) — ยังหนุน แต่ต้องเลือกตัว`,
+    };
   }
-  if (regime === 'BULL') {
+  if (family === 'BULL') {
     return { vote: 'LONG', detail: 'ตลาดขาขึ้นเต็มตัว — tailwind ด้านเดียว แต่ต้องระวังหุ้น RSI ร้อนแรงเกิน' };
+  }
+  if (family === 'DISTRIBUTION') {
+    return { vote: 'NEUTRAL', detail: `ตลาดอ่อนแรง (โมเมนตัมเป็นลบ) — ยังไม่ใช่วิกฤต แต่ beta ของตลาดไม่ช่วย${momSlope < 0 ? ' และโมเมนตัมยังไหลลง' : ''} อัลฟาต้องมาจากตัวหุ้นเอง` };
   }
   return { vote: 'NEUTRAL', detail: 'ตลาด sideways — อัลฟาต้องมาจากตัวหุ้นเอง (idiosyncratic) ไม่ใช่ beta ของตลาด' };
 }
@@ -137,9 +148,11 @@ export function buildSynthesisDossier(
 
   // 1. G1 Regime
   {
+    // หน้าต่างเดียวกับ G1 gate (RULES.gates.g1.momWindow) — สายนี้คือหลักฐานของ G1 จึงต้องเห็นความชันเดียวกัน
+    const momWin = state.fMomentum.slice(Math.max(0, t - RULES.gates.g1.momWindow), t + 1);
     const momSlope = linregSlope(
-      state.fMomentum.slice(Math.max(0, t - 41), t + 1).map((_, i) => i),
-      state.fMomentum.slice(Math.max(0, t - 41), t + 1),
+      momWin.map((_, i) => i),
+      momWin,
     );
     const { vote, detail } = regimeToVote(reg.regime, momSlope);
     const w = RULES.synthesis.weights.G1_REGIME, m = mult('G1');
