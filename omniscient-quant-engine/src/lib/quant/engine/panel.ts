@@ -422,85 +422,6 @@ function cache(): CacheBox {
   return g.__oqeCache;
 }
 
-export async function ensureSeeded(force = false): Promise<DataVersion> {
-  const existing = await db.stock.count();
-  const gen = getGenerated();
-  if (existing > 0 && !force) {
-    const last = await db.price.findFirst({ orderBy: { date: 'desc' } });
-    return { count: existing, lastDate: last?.date?.toISOString() ?? '' };
-  }
-  if (force) {
-    await db.price.deleteMany();
-    await db.fundFlow.deleteMany();
-    await db.fundamental.deleteMany();
-    await db.stock.deleteMany();
-  }
-
-  for (const s of gen.stocks) {
-    const stock = await db.stock.create({
-      data: {
-        symbol: s.def.symbol,
-        name: s.def.name,
-        sector: s.def.sector,
-        theme: s.def.theme,
-        beta: s.def.beta,
-      },
-    });
-    const priceRows = s.series.close.map((c, t) => ({
-      stockId: stock.id,
-      date: s.series.dates[t],
-      open: s.series.open[t],
-      high: s.series.high[t],
-      low: s.series.low[t],
-      close: c,
-      volume: s.series.volume[t],
-    }));
-    // chunked createMany
-    for (let i = 0; i < priceRows.length; i += 500) {
-      await db.price.createMany({ data: priceRows.slice(i, i + 500) });
-    }
-    if (s.fundamentals.length) {
-      await db.fundamental.createMany({
-        data: s.fundamentals.map((f) => ({
-          stockId: stock.id,
-          announceDate: f.announceDate,
-          period: f.period,
-          pe: f.pe, pb: f.pb, roe: f.roe, de: f.de,
-          revenueGrowth: f.revenueGrowth,
-          netProfitM: f.netProfitM,
-        })),
-      });
-    }
-    await db.fundFlow.createMany({
-      data: s.flows.map((f) => ({
-        stockId: stock.id,
-        date: f.date,
-        netFlowM: f.netFlowM,
-      })),
-    });
-  }
-  invalidateMarketCache();
-  const count = await db.stock.count();
-  const first = await db.price.findFirst({ orderBy: { date: 'asc' } });
-  const last = await db.price.findFirst({ orderBy: { date: 'desc' } });
-  // ที่มาของข้อมูล — UI/health/รายงานอ่านจากตารางนี้ว่าเป็นข้อมูลจำลองหรือข้อมูลจริง
-  await db.dataSource
-    .create({
-      data: {
-        kind: 'synthetic',
-        source: `generator seed ${RULES.seed}`,
-        note: 'ข้อมูลจำลองเพื่อการสาธิต — ไม่ใช่ราคาตลาดจริง',
-        stocks: count,
-        prices: await db.price.count(),
-        firstDate: first?.date,
-        lastDate: last?.date,
-        seed: RULES.seed,
-      },
-    })
-    .catch(() => undefined); // DB เก่าที่ยังไม่มีตาราง DataSource — seed ยังสำเร็จ
-  return { count, lastDate: last?.date?.toISOString() ?? '' };
-}
-
 /**
  * กุญแจเวอร์ชันข้อมูลของ cache ทุกชั้น — จำนวนแถว + วันล่าสุด + DataSource ล่าสุด
  * (seed/นำเข้าทุกครั้งเขียน DataSource แถวใหม่ → cache ของทุก process หมดอายุ แม้จำนวนแถวกับวันล่าสุดเท่าเดิม)
@@ -523,25 +444,124 @@ export function invalidateMarketCache(): void {
   c.promise = undefined;
 }
 
+const seedHolder = globalThis as unknown as { __oqeSeedChain?: Promise<unknown> };
+
+/**
+ * seed ข้อมูลจำลองถ้า DB ว่าง (force = ลบข้อมูลตลาดแล้ว seed ใหม่)
+ * - single-flight: ทุกการเรียกใน process ต่อคิวกัน (warm-up ตอนเริ่ม server + คำขอแรกพร้อมกัน ไม่ seed ซ้อน)
+ * - atomic: เขียนทั้งชุด + DataSource ใน transaction เดียว — ผู้อ่านไม่เคยเห็นข้อมูลครึ่งชุด
+ */
+export function ensureSeeded(force = false): Promise<DataVersion> {
+  const run = () => seedOnce(force);
+  const p = (seedHolder.__oqeSeedChain ?? Promise.resolve()).then(run, run);
+  seedHolder.__oqeSeedChain = p.catch(() => undefined);
+  return p;
+}
+
+async function currentVersion(): Promise<DataVersion> {
+  const count = await db.stock.count();
+  const last = await db.price.findFirst({ orderBy: { date: 'desc' }, select: { date: true } });
+  return { count, lastDate: last?.date?.toISOString() ?? '' };
+}
+
+async function seedOnce(force: boolean): Promise<DataVersion> {
+  const existing = await db.stock.count();
+  if (existing > 0 && !force) return currentVersion();
+  const gen = getGenerated();
+  await db.$transaction(
+    async (tx) => {
+      if (force) {
+        await tx.price.deleteMany();
+        await tx.fundFlow.deleteMany();
+        await tx.fundamental.deleteMany();
+        await tx.stock.deleteMany();
+      } else if ((await tx.stock.count()) > 0) {
+        return; // process อื่น seed ไปแล้วระหว่างรอ
+      }
+      let prices = 0;
+      let first = Infinity;
+      let last = -Infinity;
+      for (const s of gen.stocks) {
+        const stock = await tx.stock.create({
+          data: { symbol: s.def.symbol, name: s.def.name, sector: s.def.sector, theme: s.def.theme, beta: s.def.beta },
+        });
+        const priceRows = s.series.close.map((c, t) => ({
+          stockId: stock.id,
+          date: s.series.dates[t],
+          open: s.series.open[t],
+          high: s.series.high[t],
+          low: s.series.low[t],
+          close: c,
+          volume: s.series.volume[t],
+        }));
+        for (const r of priceRows) {
+          const ms = r.date.getTime();
+          if (ms < first) first = ms;
+          if (ms > last) last = ms;
+        }
+        for (let i = 0; i < priceRows.length; i += 500) {
+          prices += (await tx.price.createMany({ data: priceRows.slice(i, i + 500) })).count;
+        }
+        if (s.fundamentals.length) {
+          await tx.fundamental.createMany({
+            data: s.fundamentals.map((f) => ({
+              stockId: stock.id,
+              announceDate: f.announceDate,
+              period: f.period,
+              pe: f.pe, pb: f.pb, roe: f.roe, de: f.de,
+              revenueGrowth: f.revenueGrowth,
+              netProfitM: f.netProfitM,
+            })),
+          });
+        }
+        for (let i = 0; i < s.flows.length; i += 500) {
+          await tx.fundFlow.createMany({
+            data: s.flows.slice(i, i + 500).map((f) => ({ stockId: stock.id, date: f.date, netFlowM: f.netFlowM })),
+          });
+        }
+      }
+      // ที่มาของข้อมูล — UI/health/รายงานอ่านจากตารางนี้ว่าเป็นข้อมูลจำลองหรือข้อมูลจริง
+      await tx.dataSource.create({
+        data: {
+          kind: 'synthetic',
+          source: `generator seed ${RULES.seed}`,
+          note: 'ข้อมูลจำลองเพื่อการสาธิต — ไม่ใช่ราคาตลาดจริง',
+          stocks: gen.stocks.length,
+          prices,
+          firstDate: new Date(first),
+          lastDate: new Date(last),
+          seed: RULES.seed,
+        },
+      });
+    },
+    { maxWait: 30_000, timeout: 300_000 },
+  );
+  invalidateMarketCache();
+  return currentVersion();
+}
+
 export async function loadMarketState(): Promise<MarketState> {
   const c = cache();
-  const { key: version, stocks } = await dataVersionKey();
-  const counts = { stocks };
+  let { key: version, stocks } = await dataVersionKey();
+  if (stocks === 0) {
+    await ensureSeeded();
+    ({ key: version, stocks } = await dataVersionKey());
+  }
   if (c.version === version && c.state) return c.state;
   if (c.version === version && c.promise) return c.promise;
 
   c.version = version;
-  c.promise = (async () => {
-    if (counts.stocks === 0) {
-      await ensureSeeded();
-    }
-    const state = await buildFromDb();
-    c.state = state;
+  c.state = undefined;
+  const p = buildFromDb().then((state) => {
+    if (c.version === version) c.state = state;
     return state;
-  })();
-  const st = await c.promise;
-  c.promise = undefined;
-  return st;
+  });
+  c.promise = p;
+  try {
+    return await p;
+  } finally {
+    if (c.promise === p) c.promise = undefined;
+  }
 }
 
 /**

@@ -33,7 +33,11 @@ const g = globalThis as unknown as { __oqeAnalytics?: AnalyticsBox };
 async function box(): Promise<AnalyticsBox> {
   if (!g.__oqeAnalytics) g.__oqeAnalytics = { key: '' };
   const b = g.__oqeAnalytics;
-  const { key } = await dataVersionKey();
+  let { key, stocks } = await dataVersionKey();
+  if (stocks === 0) {
+    await ensureSeeded(false); // DB ว่าง: รอ seed (single-flight) ก่อนผูก cache กับเวอร์ชันข้อมูล
+    ({ key, stocks } = await dataVersionKey());
+  }
   if (b.key !== key) {
     b.key = key;
     b.state = undefined;
