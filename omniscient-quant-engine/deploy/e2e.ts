@@ -32,6 +32,7 @@ export const VIEWS: Array<{ key: string; label: string }> = [
   { key: "apex", label: "Apex (L7)" },
   { key: "backtest", label: "Backtest & Journal" },
   { key: "auditor", label: "AI Auditor" },
+  { key: "cot", label: "COT Report" },
   { key: "dashboard", label: "Command Center" },
 ]
 
@@ -265,6 +266,21 @@ async function main(): Promise<number> {
           await check("หลอมรวม: ไม่มี LLM → ปุ่ม AI ถูกปิดพร้อมคำอธิบาย", async () => {
             if (!(await page.getByRole("button", { name: "หลอมรวมด้วย AI" }).isDisabled())) return "ปุ่มยังกดได้"
             if ((await page.getByText("ยังไม่ได้ตั้งค่า LLM", { exact: false }).count()) === 0) return "ไม่มีคำอธิบาย"
+          }),
+        )
+      }
+      if (v.key === "cot") {
+        checks.push(
+          await check("COT: Gold เริ่มต้น → เลือก Silver + ช่วง 3y → หัวข้อ/ตาราง/มาตรวัดอัปเดต", async () => {
+            await page.getByRole("heading", { name: /Commitments of Traders Report \(COT\) – Gold/ }).waitFor({ timeout: 20_000 })
+            if ((await page.getByRole("region", { name: "ตาราง COT Legacy" }).count()) === 0) return "ไม่มีตาราง Legacy"
+            await page.getByRole("button", { name: "Silver", exact: true }).click()
+            await page.getByRole("button", { name: "3y", exact: true }).click()
+            await page.getByRole("heading", { name: /Commitments of Traders Report \(COT\) – Silver/ }).waitFor({ timeout: 20_000 })
+            await settle(page)
+            if ((await page.getByRole("button", { name: "3y", exact: true }).getAttribute("aria-pressed")) !== "true") return "ปุ่มช่วงไม่เปลี่ยนสถานะ"
+            if ((await page.getByRole("img", { name: /^COT Index 6 Month/ }).count()) === 0) return "ไม่มีมาตรวัด COT Index"
+            views.push(await measure(page, "COT Report (Silver, 3y)", 1440, Date.now(), o.out, "desktop-cot-silver.png"))
           }),
         )
       }

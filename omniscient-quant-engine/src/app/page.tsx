@@ -15,6 +15,7 @@ import { TerminalTopbar } from '@/components/terminal/topbar';
 import TerminalView from '@/components/terminal/terminal-view';
 import { CommandCenter } from '@/components/dashboard/command-center';
 import { AppFooter } from '@/components/app-footer';
+import { CotDashboardView } from '@/components/cot/cot-dashboard';
 import { FirstRunGuide } from '@/components/first-run-guide';
 import { AppMetaProvider, dataKindTag, useAppMeta } from '@/components/providers/app-meta';
 import { OverviewTab } from '@/components/quant/overview-tab';
@@ -66,7 +67,8 @@ type ViewKey =
   | 'metarisk'
   | 'apex'
   | 'backtest'
-  | 'auditor';
+  | 'auditor'
+  | 'cot';
 
 export default function Home() {
   return (
@@ -331,6 +333,8 @@ function HomeShell() {
                     seeding={seeding}
                   />
                 ))}
+
+              {view === 'cot' && <CotDashboardView />}
 
               {view === 'auditor' && (
                 <AuditorTab reports={auditQ.data?.reports ?? null} loading={auditQ.loading} onDone={auditQ.refresh} />

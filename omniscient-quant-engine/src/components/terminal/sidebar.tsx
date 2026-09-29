@@ -4,6 +4,7 @@ import {
   BrainCircuit,
   ChevronDown,
   Crown,
+  CandlestickChart,
   FlaskConical,
   Gauge,
   Globe,
@@ -81,6 +82,12 @@ const NAV_GROUPS: NavGroupDef[] = [
       { key: 'metarisk', label: 'Meta-Risk (L∞)', icon: ShieldAlert },
       { key: 'apex', label: 'Apex (L7)', icon: Crown },
     ],
+  },
+  {
+    key: 'futures',
+    label: 'ตลาดล่วงหน้า',
+    icon: CandlestickChart,
+    items: [{ key: 'cot', label: 'COT Report', icon: CandlestickChart }],
   },
   {
     key: 'lab',

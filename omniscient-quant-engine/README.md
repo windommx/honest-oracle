@@ -45,6 +45,13 @@ bun run dev                   # http://localhost:3000 (ฟังเฉพาะ 
 - **ช่วงความเชื่อมั่น 95%:** hit rate (Wilson) · P(win) และ R ของ Kelly (Wilson + bootstrap seed ตายตัว) · f* ที่ขอบล่าง (≤ 0 = edge ยังไม่แน่นอนทางสถิติ — Apex เตือน)
 - **ความทนทานข้าม seed:** `GET /api/research/robustness?seeds=...` / แผงในแท็บ Backtest — รัน generator → panel → walk-forward → gate attribution ต่อ seed แล้วสรุป ROBUST/FRAGILE/NOISE ต่อ gate และ STABLE/MIXED/UNSTABLE · seed ของ demo ให้ผลเท่ากับแท็บ Backtest ทุกตัวเลข (ท่อคำนวณเดียวกัน `buildPanel`) · ผลปัจจุบัน 5 seed = **MIXED** (hit rate 31.6–68.8%, ชนะซื้อถือ 2/5, G1/G3 ทนทาน, G2/G5 เป็น noise) — นี่คือหลักฐานว่าผลของ seed เดียวไม่ควรเชื่อ
 
+## COT Report (Commitments of Traders)
+
+แท็บ **ตลาดล่วงหน้า → COT Report** — แดชบอร์ดรายงาน COT ของ 27 ตลาดล่วงหน้า (สกุลเงิน, คริปโต, ดัชนี, พันธบัตร, พลังงาน, โลหะ, ธัญพืช, softs, ปศุสัตว์):
+กราฟแท่งเทียนรายสัปดาห์ · Legacy net (Commercials / Large Speculators / Small Traders) · Disaggregated net (Producer/Merchant / Swap Dealers / Managed Money / Other) · Open Interest · COT Index 6 และ 36 เดือน (โซนสุดขั้ว 0–20 / 80–100, เลือกกลุ่มได้) · ตาราง Legacy และ Disaggregated พร้อมการเปลี่ยนแปลงรายสัปดาห์, % ของ OI, จำนวนผู้ค้า, net · วงกลม long/short และสัดส่วน OI · แท่ง net ต่อกลุ่ม · มาตรวัด COT Index · ช่วง 6m/1y/2y/3y (กราฟทุกตัว sync tooltip)
+
+> **ข้อมูล COT ในตอนนี้เป็นข้อมูลจำลอง** (ป้ายบอกบนหน้าเสมอ) — sandbox ที่พัฒนาเข้าถึง cftc.gov ไม่ได้ (403 ที่ proxy) · generator รักษาเอกลักษณ์ของรายงานจริงทุกสัปดาห์ (OI = Σlong + Σspread = Σshort + Σspread, Legacy = ผลรวมของ Disaggregated, Σnet = 0) และวันที่รายงานตามรอบจริง (ข้อมูลวันอังคาร เผยแพร่วันศุกร์) · API: `GET /api/cot` · `GET /api/cot/{market}?range=1y&index=commercials` · โค้ด: `src/lib/cot/` (types พร้อมรับ importer ข้อมูล CFTC จริง) · `src/components/cot/`
+
 ## โปรดักชัน
 
 ```bash
@@ -94,8 +101,8 @@ bun run verify     # typecheck · lint (max-warnings 0) · test · test:ops · b
 bun run test       # bun test src — unit + engine invariants + route handlers + component tests (happy-dom) บน SQLite ชั่วคราว
 bun run test:ops   # smoke checker + e2e budget + สคริปต์ ops ผ่าน CLI จริง (ingest-csv → engine-check → backup-db → restore-db)
 bun run smoke      # หลัง build: standalone server บนสำเนา DB → ทุก route (status, JSON เคร่งครัด, validation 400/404/422, header ความปลอดภัย)
-bun run e2e        # Playwright + axe: 12 มุมมอง desktop + มือถือ 390px ต้องไม่มี violation ของ WCAG 2.1 AA/2.2 target-size (งบ 0)
-                   #   + interaction หลัก 13 ข้อ · รายงาน/ภาพหน้าจอที่ .e2e/
+bun run e2e        # Playwright + axe: 13 มุมมอง desktop (+ COT หลังเปลี่ยนตลาด) + มือถือ 390px ต้องไม่มี violation ของ WCAG 2.1 AA/2.2 target-size (งบ 0)
+                   #   + interaction หลัก 14 ข้อ · รายงาน/ภาพหน้าจอที่ .e2e/
 bun deploy/smoke.ts --db empty   # ทางที่สอง: DB เปล่า → auto-seed
 ```
 
@@ -111,6 +118,7 @@ CI: `.github/workflows/omniscient-quant-engine.yml` รันคำสั่ง�
 | `GET/POST /api/rules` · `GET /api/research/robustness` | กติกาทั้งชุด + hash + ประวัติการล็อก · ล็อก (pre-registration) · ความทนทานข้าม seed |
 | `GET /api/data/provenance` · `POST /api/data/ingest` | ที่มา/ความสด/ความครอบคลุมของข้อมูล · นำเข้าข้อมูลจริง |
 | `GET /api/audit-log` | ประวัติการกระทำ (ล่าสุดก่อน, กรองด้วย `action`) |
+| `GET /api/cot` · `GET /api/cot/{market}` | รายชื่อตลาด COT · แดชบอร์ด COT (อนุกรม, ตาราง Legacy/Disaggregated, COT Index) |
 | `GET /api/board` · `GET /api/decision/{symbol}` | Decision Board ทุกตัว · 5-Gate + trade plan + risk MC + history |
 | `GET /api/analytics/factors` · `GET /api/analytics/dependence` | Multi-View factor model + volcano · Θ matrix + decouple |
 | `GET /api/backtest` | walk-forward + gate attribution + calibration + hit-rate CI + rules stamp |
