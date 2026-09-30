@@ -386,3 +386,51 @@ describe("backup — a bundle is the writer's own complete copy; import never ov
     expect(card.chapterId).toBeNull();
   });
 });
+
+// ═══ Referential integrity on delete — found by tracing what deleteBook/deleteChapter
+// actually touch, once the store had snapshots/plot board/writing days (added after
+// deleteBook and deleteChapter were first written and never revisited) ═══
+describe("deleting data must not leave counts that quietly overstate reality", () => {
+  it("deleteChapter unlinks any plot card that pointed at it, instead of leaving a dangling chapterId sceneCoverage would keep counting", async () => {
+    const b = await createBook({ title: "dangle", lang: "th" });
+    const [ch1] = await listChapters(b.id);
+    const line = await addPlotLine(b.id, "หลัก");
+    const card = await addPlotCard(line.id, 0, "เปิดเรื่อง");
+    await linkPlotCardToChapter(card.id, ch1.id);
+    await deleteChapter(ch1.id);
+    const [afterCard] = await listPlotCards(b.id);
+    expect(afterCard.chapterId).toBeNull(); // never left pointing at a chapter that no longer exists
+    expect(sceneCoverage(await listPlotCards(b.id)).cardsWritten).toBe(0);
+  });
+
+  it("deleteChapter also removes that chapter's own snapshots — they cannot outlive it", async () => {
+    const b = await createBook({ title: "snapdangle", lang: "th" });
+    const [ch1] = await listChapters(b.id);
+    await updateChapter(ch1.id, { content: "เนื้อหา" });
+    await takeSnapshot(ch1.id, "v1");
+    await deleteChapter(ch1.id);
+    expect(await listSnapshots(ch1.id)).toEqual([]);
+  });
+
+  it("deleteBook removes EVERYTHING that belonged to it: snapshots, plot lines, plot cards, writing days — none of it may outlive the book", async () => {
+    const b = await createBook({ title: "fullwipe", lang: "th" });
+    const [ch1] = await listChapters(b.id);
+    await updateChapter(ch1.id, { content: "เนื้อหา" });
+    await takeSnapshot(ch1.id, "v1");
+    const line = await addPlotLine(b.id, "หลัก");
+    await addPlotCard(line.id, 0, "การ์ด");
+    await recordWritingDelta(b.id, 0, 500, new Date(2026, 8, 1));
+
+    // Before deletion: this book's writing counts toward the heatmap/KPI total, as it should.
+    const before = await listWritingDays();
+    expect(before.some((w) => w.bookId === b.id && w.words === 500)).toBe(true);
+
+    await deleteBook(b.id);
+
+    expect(await listSnapshots(ch1.id)).toEqual([]);
+    expect(await listPlotLines(b.id)).toEqual([]);
+    expect(await listPlotCards(b.id)).toEqual([]);
+    const after = await listWritingDays();
+    expect(after.some((w) => w.bookId === b.id)).toBe(false); // deleted book's word count must not survive
+  });
+});

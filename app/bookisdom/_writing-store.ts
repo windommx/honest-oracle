@@ -117,11 +117,30 @@ export async function updateBook(id: string, patch: Partial<Omit<WritingBook, "i
   await db()?.books.update(id, { ...patch, updatedAt: Date.now() });
 }
 /** Deletes the book AND its chapters and notes — an orphaned chapter is unreachable data. */
+/** Everything that belongs to a book, EXCEPT the book row itself: chapters, notes, their
+ *  snapshots, the plot board, and writing-day totals. Shared by deleteBook (which also
+ *  removes the book row) and installBundleKeepingIds (which wipes before replacing with a
+ *  pulled copy), so the two cascades cannot drift apart again — they already had, once:
+ *  this exact cleanup existed only inline in installBundleKeepingIds, and deleteBook (written
+ *  before snapshots/the plot board/writing days existed) was never updated to match. A
+ *  deleted book's snapshots and plot cards leaked forever, and its writingDays rows kept
+ *  counting toward the heatmap and the "words written today" KPI — a real, disclosed count
+ *  silently overstating activity for a book that no longer existed. */
+async function wipeBookGraph(d: WritingDB, bookId: string): Promise<void> {
+  const chapterIds = (await d.chapters.where("bookId").equals(bookId).primaryKeys()) as string[];
+  const lineIds = (await d.plotLines.where("bookId").equals(bookId).primaryKeys()) as string[];
+  if (chapterIds.length) await d.snapshots.where("chapterId").anyOf(chapterIds).delete();
+  if (lineIds.length) await d.plotCards.where("plotLineId").anyOf(lineIds).delete();
+  await d.chapters.where("bookId").equals(bookId).delete();
+  await d.notes.where("bookId").equals(bookId).delete();
+  await d.plotLines.where("bookId").equals(bookId).delete();
+  await d.writingDays.where("bookId").equals(bookId).delete();
+}
+
 export async function deleteBook(id: string): Promise<void> {
   const d = db(); if (!d) return;
-  await d.transaction("rw", d.books, d.chapters, d.notes, async () => {
-    await d.chapters.where("bookId").equals(id).delete();
-    await d.notes.where("bookId").equals(id).delete();
+  await d.transaction("rw", [d.books, d.chapters, d.notes, d.snapshots, d.plotLines, d.plotCards, d.writingDays], async () => {
+    await wipeBookGraph(d, id);
     await d.books.delete(id);
   });
 }
@@ -149,7 +168,17 @@ export async function updateChapter(id: string, patch: { title?: string; content
   await d.books.update(ch.bookId, { updatedAt: now });
 }
 export async function deleteChapter(id: string): Promise<void> {
-  await db()?.chapters.delete(id);
+  const d = db(); if (!d) return;
+  await d.transaction("rw", [d.chapters, d.snapshots, d.plotCards], async () => {
+    await d.snapshots.where("chapterId").equals(id).delete();
+    // A plan is not made false by deleting the chapter it was written into — only the
+    // "this beat is already written" claim is. Unlink, never delete the card, and never
+    // leave chapterId pointing at a chapter that no longer exists (sceneCoverage/the
+    // outline would otherwise keep counting it as written forever).
+    const linked = await d.plotCards.filter((c) => c.chapterId === id).toArray();
+    for (const c of linked) await d.plotCards.update(c.id, { chapterId: null });
+    await d.chapters.delete(id);
+  });
 }
 /** Swap order with the neighbour. Returns false (and changes nothing) at either end. */
 export async function moveChapter(id: string, direction: "up" | "down"): Promise<boolean> {
@@ -615,14 +644,7 @@ export async function installBundleKeepingIds(bundle: BookBundle): Promise<{ rep
     await d.safety.put({ bookId: book.id, title: prev.books[0]?.title ?? book.title, json: JSON.stringify(prev), createdAt: Date.now() });
   }
   await d.transaction("rw", [d.books, d.chapters, d.notes, d.snapshots, d.plotLines, d.plotCards, d.writingDays], async () => {
-    const oldChapters = await d.chapters.where("bookId").equals(book.id).primaryKeys();
-    const oldLines = await d.plotLines.where("bookId").equals(book.id).primaryKeys();
-    if (oldChapters.length) await d.snapshots.where("chapterId").anyOf(oldChapters as string[]).delete();
-    if (oldLines.length) await d.plotCards.where("plotLineId").anyOf(oldLines as string[]).delete();
-    await d.chapters.where("bookId").equals(book.id).delete();
-    await d.notes.where("bookId").equals(book.id).delete();
-    await d.plotLines.where("bookId").equals(book.id).delete();
-    await d.writingDays.where("bookId").equals(book.id).delete();
+    await wipeBookGraph(d, book.id);
     await d.books.put(book);
     await d.chapters.bulkPut(bundle.chapters.filter((c) => c.bookId === book.id));
     await d.notes.bulkPut(bundle.notes.filter((n) => n.bookId === book.id));
