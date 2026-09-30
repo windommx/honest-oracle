@@ -36,7 +36,9 @@ export function composeStudioContext(input: {
   const codex = included ? parseCodex(codexText) : null;
   const codexBlock = codex ? (th ? codexDigestTh(codex) : codexDigestEn(codex)) : "";
   if (codexBlock) sys.push(codexBlock);
-  const outline = plotToOutline(input.plotLines, input.plotCards);
+  // Include what's already been written (real chapter headings), not just the plan — so
+  // the model sees what to continue from, never repeats or re-plans a drafted beat.
+  const outline = plotToOutline(input.plotLines, input.plotCards, { chapters: input.chapters, lang: input.book.lang });
   if (outline) sys.push((th ? "═══ โครงเรื่องจากผัง (ฉาก → การ์ด) ═══\n" : "═══ Outline from the plot board (scene → cards) ═══\n") + outline);
 
   const pr: string[] = [];

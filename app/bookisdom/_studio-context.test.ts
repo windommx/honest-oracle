@@ -23,6 +23,19 @@ describe("composeStudioContext — what the room knows becomes the run's context
     expect(ctx.prompt).toContain("บทที่ 2: สอง"); expect(ctx.prompt).toContain("เริ่มบทสอง");
   });
 
+  it("Studio's own outline block shows which beats are already written, by real chapter heading — not just the plan", () => {
+    const chapters = [ch({ id: "c1", title: "เปิดฉาก", content: "x", order: 1 })];
+    const lines: PlotLine[] = [{ id: "l", bookId: "b", title: "หลัก", order: 1 }];
+    const cards: PlotCard[] = [
+      { id: "written", plotLineId: "l", colIndex: 0, title: "เปิดเรื่อง", description: "ฝนตก", createdAt: 0, chapterId: "c1" },
+      { id: "planned", plotLineId: "l", colIndex: 1, title: "ยังไม่เขียน", description: "", createdAt: 0, chapterId: null },
+    ];
+    const ctx = composeStudioContext({ book, chapters, notes: [], plotLines: lines, plotCards: cards, targetChapterId: "c1" });
+    expect(ctx.system).toContain("เปิดเรื่อง — ฝนตก (เขียนแล้ว: บทที่ 1: เปิดฉาก)");
+    expect(ctx.system).toContain("ยังไม่เขียน");
+    expect(ctx.system).not.toMatch(/ยังไม่เขียน[^\n]*เขียนแล้ว/); // the unwritten card gets no such note
+  });
+
   it("first chapter, no notes, no board: says so plainly and adds no empty blocks", () => {
     const ctx = composeStudioContext({ book, chapters: [ch({ id: "c1", title: "", order: 1 })], notes: [], plotLines: [], plotCards: [], targetChapterId: "c1" });
     expect(ctx.parts).toEqual({ codex: false, outline: false, previous: false });
