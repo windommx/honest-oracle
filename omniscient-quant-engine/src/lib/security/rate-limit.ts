@@ -116,7 +116,8 @@ export const RATE_RULES: readonly RateRule[] = [
       p.startsWith("/api/meta-risk/") ||
       p.startsWith("/api/synthesis/") ||
       p.startsWith("/api/research/deep/") ||
-      p === "/api/research/robustness",
+      p === "/api/research/robustness" ||
+      p === "/api/rhythm",
     spec: perMin(60, 30),
     label: "รายงานที่คำนวณหนัก",
   },

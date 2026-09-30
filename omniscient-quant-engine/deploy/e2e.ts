@@ -7,7 +7,7 @@
 //   ตัวเลือก: --db <ไฟล์ .db | empty> --port 3220 --out .e2e --headed
 //
 // ผ่านเมื่อ:
-//  - ทุกมุมมอง (12 แท็บ desktop + มือถือ 390px) ไม่มี axe violation ของ WCAG 2.0/2.1 A–AA + 2.2 target-size เกินงบ (AXE_BUDGET)
+//  - ทุกมุมมอง (15 แท็บ desktop + มือถือ 390px) ไม่มี axe violation ของ WCAG 2.0/2.1 A–AA + 2.2 target-size เกินงบ (AXE_BUDGET)
 //  - มือถือไม่มี scroll แนวนอนทั้งหน้า · ไม่มี console error / page error
 //  - interaction หลักทำงาน: คำแนะนำครั้งแรก, ⌘K, ล็อกกติกา, robustness, Apex size ใน Decision, journal P&L (commit ตอน blur),
 //    ปุ่ม AI ถูกปิดพร้อมคำอธิบายเมื่อไม่มี LLM, /terms, 404
@@ -33,11 +33,12 @@ export const VIEWS: Array<{ key: string; label: string }> = [
   { key: "backtest", label: "Backtest & Journal" },
   { key: "auditor", label: "AI Auditor" },
   { key: "flows", label: "เงินไหลนักลงทุน" },
+  { key: "rhythm", label: "จังหวะตลาด" },
   { key: "research", label: "Deep Research" },
   { key: "dashboard", label: "Command Center" },
 ]
 
-const MOBILE_SHOT: Record<string, string> = { "เงินไหลนักลงทุน": "flows", "Deep Research": "research" }
+const MOBILE_SHOT: Record<string, string> = { "เงินไหลนักลงทุน": "flows", "จังหวะตลาด": "rhythm", "Deep Research": "research" }
 
 /**
  * งบ violation ต่อ rule ของ axe (จำนวน node สูงสุดที่ยอมรับต่อมุมมอง) — ค่าเริ่มต้น 0 ทุก rule
@@ -292,6 +293,25 @@ async function main(): Promise<number> {
           }),
         )
       }
+      if (v.key === "rhythm") {
+        checks.push(
+          await check("จังหวะตลาด: 5 แผง + สรุปข้อค้นพบ · เลือก KBANK → ฤดูกาล/ด่านสัญญาณเป็นของ KBANK · เลือกกลุ่มวันบนแผนที่", async () => {
+            await page.locator("#rhythm-gates-h").waitFor({ timeout: 60_000 })
+            const panels = await page.locator("section[id^='rhythm-'] h3").count()
+            if (panels !== 5) return `มี ${panels} แผง (คาด 5)`
+            if ((await page.getByRole("navigation", { name: "สรุปข้อค้นพบ" }).getByRole("link").count()) !== 5) return "สรุปข้อค้นพบไม่ครบ 5 ข้อ"
+            if (!(await page.locator("#rhythm-gates-h").innerText()).includes("ของหุ้น-วันติดด่าน")) return "ด่านสัญญาณเริ่มต้นไม่ใช่ทุกหุ้น"
+            await page.getByLabel("ฤดูกาล + ด่านสัญญาณของ").selectOption("KBANK")
+            await page.locator("#rhythm-gates-h", { hasText: /^KBANK: / }).waitFor({ timeout: 30_000 })
+            if (!(await page.locator("#rhythm-season-h").innerText()).startsWith("KBANK:")) return "หัวข้อฤดูกาลไม่เปลี่ยนเป็น KBANK"
+            const pick = page.getByRole("region", { name: "ตารางกลุ่มของวันซื้อขาย" }).getByRole("button").last()
+            await pick.click()
+            if ((await pick.getAttribute("aria-pressed")) !== "true") return "เลือกกลุ่มวันไม่ได้"
+            await settle(page)
+            views.push(await measure(page, "จังหวะตลาด (KBANK)", 1440, Date.now(), o.out, "desktop-rhythm-kbank.png"))
+          }),
+        )
+      }
       if (v.key === "research") {
         checks.push(
           await check("Deep Research: 11 หัวข้อ + 13 สาย · เปลี่ยนหุ้น · ดาวน์โหลด Markdown · ไม่มี LLM → ปุ่ม AI ปิด · ตอนพิมพ์ซ่อนเมนู", async () => {
@@ -368,7 +388,7 @@ async function main(): Promise<number> {
     await m.goto(`${base}/`, { waitUntil: "domcontentloaded" })
     await settle(m)
     views.push(await measure(m, "Command Center (มือถือ)", 390, tm, o.out, "mobile-dashboard.png"))
-    for (const label of ["Decision (L6)", "Apex (L7)", "Backtest & Journal", "เงินไหลนักลงทุน", "Deep Research"]) {
+    for (const label of ["Decision (L6)", "Apex (L7)", "Backtest & Journal", "เงินไหลนักลงทุน", "จังหวะตลาด", "Deep Research"]) {
       const t0 = Date.now()
       try {
         await m.getByRole("button", { name: "เปิดเมนูนำทาง" }).first().click({ timeout: 10_000 })

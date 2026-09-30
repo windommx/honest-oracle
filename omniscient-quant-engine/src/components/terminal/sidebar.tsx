@@ -1,6 +1,7 @@
 'use client';
 
 import {
+  Activity,
   ArrowLeftRight,
   BrainCircuit,
   ChevronDown,
@@ -74,6 +75,7 @@ const NAV_GROUPS: NavGroupDef[] = [
       { key: 'multiview', label: 'Multi-View (L3)', icon: Layers },
       { key: 'dependence', label: 'Dependence (L2)', icon: Waypoints },
       { key: 'flows', label: 'เงินไหลนักลงทุน', icon: ArrowLeftRight },
+      { key: 'rhythm', label: 'จังหวะตลาด', icon: Activity },
     ],
   },
   {

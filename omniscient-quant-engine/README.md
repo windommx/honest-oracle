@@ -1,6 +1,6 @@
 # Omniscient Quant Engine — Full-Cycle Multi-View Quant Platform
 
-แพลตฟอร์มเทรดเชิงระบบ "7 ชั้น" **สำหรับหุ้นไทย (SET/mai) เท่านั้น** หน้าเดียว (`/`) ภาษาไทยทั้งระบบ: L0 ข้อมูล point-in-time → L1 มุมมองเดี่ยว → L2 Dependence (Clayton copula Θ / lower-tail) → L3 Multi-View factor integration (PCA + enrichment + bipartite) → L4 walk-forward + gate attribution → L5 Monte Carlo CVaR sizing → L6 5-Gate execution + journal → L∞ Meta-Risk (ruin math, defense-in-depth, Risk MDX 7 มิติ, antifragility) → L7 Apex (Kelly-Vol sizing, microstructure, crisis MC, model registry) พร้อม "หลอมรวม" (convergent-evidence synthesis 13 สาย), เงินไหลนักลงทุน (ประเภทนักลงทุน SET · NVDR · short sale), **Deep Research** (รายงานเชิงลึกรายหุ้นที่รวมผลทุกชั้นเป็นฉบับเดียว), Market Intelligence Terminal และ Command Center
+แพลตฟอร์มเทรดเชิงระบบ "7 ชั้น" **สำหรับหุ้นไทย (SET/mai) เท่านั้น** หน้าเดียว (`/`) ภาษาไทยทั้งระบบ: L0 ข้อมูล point-in-time → L1 มุมมองเดี่ยว → L2 Dependence (Clayton copula Θ / lower-tail) → L3 Multi-View factor integration (PCA + enrichment + bipartite) → L4 walk-forward + gate attribution → L5 Monte Carlo CVaR sizing → L6 5-Gate execution + journal → L∞ Meta-Risk (ruin math, defense-in-depth, Risk MDX 7 มิติ, antifragility) → L7 Apex (Kelly-Vol sizing, microstructure, crisis MC, model registry) พร้อม "หลอมรวม" (convergent-evidence synthesis 13 สาย), เงินไหลนักลงทุน (ประเภทนักลงทุน SET · NVDR · short sale), **จังหวะตลาด** (ความกว้าง/หุ้นเคลื่อนพร้อมกัน · ฤดูกาล · สัดส่วนรายหมวด · แผนที่วันซื้อขาย · ด่านที่บล็อกสัญญาณ), **Deep Research** (รายงานเชิงลึกรายหุ้นที่รวมผลทุกชั้นเป็นฉบับเดียว), Market Intelligence Terminal และ Command Center
 
 > **ขอบเขต: หุ้นไทยเท่านั้น** — ไม่มีตลาดต่างประเทศ ฟิวเจอร์ส หรือคริปโต · ข้อมูลที่นำเข้าต้องเป็นหุ้นไทยสกุลเงินบาท (ชุดข้อมูลที่ระบุสกุลอื่นถูกปฏิเสธ · Yahoo ดึงเฉพาะสัญลักษณ์ `.BK` และตรวจว่าเป็น THB)
 
@@ -56,6 +56,19 @@ bun run dev                   # http://localhost:3000 (ฟังเฉพาะ 
 - สัปดาห์ปัจจุบันที่ยังไม่จบแสดงเป็นแท่งสุดท้ายในกราฟ แต่ตารางเทียบเฉพาะสัปดาห์ที่ครบ · ช่วง 6m/1y/2y/3y · กราฟทุกตัว sync tooltip · สีกลุ่มผ่าน validator (CVD/contrast) บนพื้นมืด
 
 > **ยอดเงินไหลตอนนี้เป็นข้อมูลจำลอง** (ป้ายบอกบนหน้าเสมอ) — sandbox ที่พัฒนาเข้าถึง set.or.th / settrade.com ไม่ได้ (403 ที่ proxy) · ราคาและมูลค่าซื้อขายมาจาก panel เดียวกับ Terminal/Decision (ข้อมูลจำลองหรือข้อมูลจริงที่นำเข้า) · generator รักษาเอกลักษณ์ทุกวัน (Σซื้อ = Σขาย = มูลค่ารวม, Σสุทธิ = 0 ตรงระดับ 0.01 ล้านบาท · NVDR + ผู้ลงทุนอื่น = มูลค่าของหุ้น · short ≤ มูลค่าขาย) และพฤติกรรมเชิงสถิติของตลาดไทย (ต่างชาติตามผลตอบแทน, รายย่อยสวนทาง, สถาบันซื้อช่วงกองทุนลดหย่อนภาษีปลายปี) · API: `GET /api/flows` · `GET /api/flows/{SET|สัญลักษณ์}?range=1y&index=foreign` · โค้ด: `src/lib/flows/` (types พร้อมรับ importer ข้อมูล SET จริง) · `src/components/flows/`
+
+## จังหวะตลาด (Market Rhythm)
+
+แท็บ **วิเคราะห์ → จังหวะตลาด** — ดัดแปลงกราฟวิเคราะห์ "จังหวะการทำงาน" 5 แบบมาใช้กับหุ้นไทยในแพลตฟอร์ม (หน้าต่างล่าสุดไม่เกิน ~3 ปีหลังช่วง warm-up) หัวข้อของทุกแผงเป็น **ข้อค้นพบจากตัวเลข** ด้วยกฎตายตัว:
+
+1. **หุ้นเคลื่อนพร้อมกัน & ความกว้างของตลาด** (← ความพร้อมกัน): จำนวนหุ้นที่ |ผลตอบแทน| > 2σ ของตัวเองใน 60 วันก่อนหน้า + เฉลี่ย 20 วัน + p90 รายเดือน + 3 วันพุ่ง (ห่างกัน ≥ 10 วัน) · % หุ้นเหนือ MA20 พร้อมแถบ risk-off และจุดเปลี่ยน regime · ปฏิทิน breadth 52 สัปดาห์
+2. **ฤดูกาลของผลตอบแทน** (← heatmap ชั่วโมง × วัน): วันในสัปดาห์ × เดือน ของ SET proxy หรือหุ้นที่เลือก + ขอบรายวัน/รายเดือน · t-stat และ q ของ Benjamini–Hochberg (ทดสอบ 17 ช่องพร้อมกัน — |t| ≥ 2 ที่ไม่ผ่าน FDR ถูกบอกว่า "อาจเป็นความบังเอิญ")
+3. **สัดส่วนมูลค่าซื้อขายรายหมวด** (← สัดส่วน model): สะสม 20 วัน (100% stacked) · รายเดือน มูลค่า vs ขนาดเงินไหลสุทธิสถาบัน · N_eff = 1/Σs² · เกิน 6 หมวดรวมเป็น "หมวดอื่น ๆ" (สีไม่เกินชุดที่ตรวจแล้ว)
+4. **แผนที่วันซื้อขาย** (← แผนที่ความหมาย): 7 ตัวแปรระดับตลาด → z-score → PCA 2 มิติ · k-means++ 5 กลุ่ม (seed คงที่) บน 7 มิติ · ป้ายกลุ่มจากตัวแปรเด่น · วันล่าสุดอยู่กลุ่มไหน + ผลตอบแทน SET 5 วันถัดไปของกลุ่มเทียบทั้งช่วง (สถิติย้อนหลังในตัวอย่าง ไม่ใช่สัญญาณ)
+5. **อะไรบล็อกสัญญาณ** (← ใครเริ่ม turn): ต่อหุ้น-วัน นับ "ด่านแรกที่ไม่ผ่าน" G1→G5 หรือสัญญาณ (pullback/momentum) ด้วย `evaluateGates` ตัวเดียวกับ backtest (light mode) · 100% stacked รายเดือน + จำนวนสัญญาณ · ทุกหุ้นหรือหุ้นที่เลือก
+
+- สี: categorical 6 ช่องผ่าน validator (adjacent CVD ΔE ≥ 8.4) · แผนที่วัน (scatter) ใช้ 2 สี (กลุ่มที่เลือก/วันล่าสุด) + เทา · heatmap = diverging น้ำเงิน↔แดง จุดกลางเทา ความสว่างเท่ากันทั้งสองฝั่ง · heatmap มีตารางข้อมูล + ค่าเมื่อชี้
+- API: `GET /api/rhythm?symbol=SET|สัญลักษณ์` (จำกัดความถี่แบบรายงานหนัก · คำนวณครั้งเดียวต่อเวอร์ชันข้อมูล ~0.4 วินาทีกับข้อมูลสาธิต) · โค้ด: `src/lib/rhythm/` (pure + test) · `src/components/rhythm/`
 
 ## Deep Research (รายงานเชิงลึกรายหุ้น)
 
@@ -115,8 +128,8 @@ bun run verify     # typecheck · lint (max-warnings 0) · test · test:ops · b
 bun run test       # bun test src — unit + engine invariants + route handlers + component tests (happy-dom) บน SQLite ชั่วคราว
 bun run test:ops   # smoke checker + e2e budget + สคริปต์ ops ผ่าน CLI จริง (ingest-csv → engine-check → backup-db → restore-db)
 bun run smoke      # หลัง build: standalone server บนสำเนา DB → ทุก route (status, JSON เคร่งครัด, validation 400/404/422, header ความปลอดภัย)
-bun run e2e        # Playwright + axe: 14 มุมมอง desktop (+ เงินไหล KBANK 3y, Deep Research KBANK) + มือถือ 390px (รวมเงินไหล, Deep Research) ต้องไม่มี violation ของ WCAG 2.1 AA/2.2 target-size (งบ 0)
-                   #   + interaction หลัก 15 ข้อ · รายงาน/ภาพหน้าจอที่ .e2e/
+bun run e2e        # Playwright + axe: 15 มุมมอง desktop (+ เงินไหล KBANK 3y, จังหวะตลาด KBANK, Deep Research KBANK) + มือถือ 390px (รวมเงินไหล, จังหวะตลาด, Deep Research)
+                   #   ต้องไม่มี violation ของ WCAG 2.1 AA/2.2 target-size (งบ 0) + interaction หลัก 16 ข้อ · รายงาน/ภาพหน้าจอที่ .e2e/
 bun deploy/smoke.ts --db empty   # ทางที่สอง: DB เปล่า → auto-seed
 ```
 
@@ -134,6 +147,7 @@ CI: `.github/workflows/omniscient-quant-engine.yml` รันคำสั่ง�
 | `GET /api/audit-log` | ประวัติการกระทำ (ล่าสุดก่อน, กรองด้วย `action`) |
 | `GET/POST /api/research/deep/{symbol}` | Deep Research รายหุ้น รวมผลทุกชั้น (`?format=md` = ไฟล์ Markdown · POST = เรียบเรียงด้วย LLM) |
 | `GET /api/flows` · `GET /api/flows/{SET\|symbol}` | รายชื่อ SET + หุ้นไทยแยกหมวด · แดชบอร์ดเงินไหล (อนุกรมรายสัปดาห์, ตารางซื้อ/ขาย/สุทธิ, ช่วงเวลา, Flow Index, NVDR/short sale) |
+| `GET /api/rhythm?symbol=SET\|symbol` | จังหวะตลาด 5 แผง (symbol ใช้กับฤดูกาล + ด่านที่บล็อก · 404 หุ้นไม่มี · 409 ข้อมูลไม่พอ) |
 | `GET /api/board` · `GET /api/decision/{symbol}` | Decision Board ทุกตัว · 5-Gate + trade plan + risk MC + history |
 | `GET /api/analytics/factors` · `GET /api/analytics/dependence` | Multi-View factor model + volcano · Θ matrix + decouple |
 | `GET /api/backtest` | walk-forward + gate attribution + calibration + hit-rate CI + rules stamp |
@@ -152,6 +166,7 @@ CI: `.github/workflows/omniscient-quant-engine.yml` รันคำสั่ง�
 | `src/lib/quant/engine/` | panel (`buildPanel` ท่อเดียว) · rules + registry · robustness · factors/volcano · gates · backtest · risk · synthesis · meta-risk · mdx · micro · apex · terminal · api (orchestrator + cache) · warmup |
 | `src/lib/research/` · `src/components/research/` | Deep Research: ประกอบรายงานจากทุกชั้น (pure) · Markdown · บริการโหลด + prompt LLM · หน้าจอรายงาน |
 | `src/lib/flows/` · `src/components/flows/` | เงินไหลนักลงทุน: generator + รายสัปดาห์ + Flow Index · แดชบอร์ด |
+| `src/lib/rhythm/` · `src/components/rhythm/` · `src/components/charts/chart-kit.tsx` | จังหวะตลาด: คำนวณ 5 แผงจาก MarketState (pure) + cache ต่อเวอร์ชันข้อมูล · หน้าจอ · ชิ้นส่วนกราฟที่ใช้ร่วมกับหน้าเงินไหล |
 | `src/lib/data/` | calendar (SET) · freshness · csv · yahoo · ingest (ตรวจ/ทำความสะอาด/แทนที่) · provenance · service |
 | `src/lib/ops/backup.ts` · `src/lib/log.ts` · `src/lib/audit.ts` · `src/lib/http/responses.ts` | backup ออนไลน์ · structured logger · ActionLog · คำตอบมาตรฐาน (400/404/500 + errorId) + zod |
 | `src/lib/llm.ts` · `src/proxy.ts` · `src/lib/security/` | ชั้น LLM · ด่านสิทธิ์ทุกคำขอ (local/auth, ผู้ดูแล/ผู้ชม/Bearer, CSRF, rate limit, security events) |

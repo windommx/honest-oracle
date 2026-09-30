@@ -98,6 +98,19 @@ export const DEFAULT_ROUTES: RouteSpec[] = [
   { route: "/api/research/deep/TSE?format=pdf", status: 400 },
   { route: "/api/research/deep/TSE", method: "POST", body: {}, status: 503 },
   { route: "/api/flows/SET?range=10y", status: 400 },
+  {
+    route: "/api/rhythm",
+    expect: (j) => {
+      const days = (j.breadth as { days?: unknown[] } | undefined)?.days
+      const clusters = (j.dayMap as { clusters?: unknown[] } | undefined)?.clusters
+      return j.symbol === "SET" && Array.isArray(days) && days.length > 0 && Array.isArray(clusters) && clusters.length === 5 && (j.gates as { scope?: unknown }).scope === "ALL"
+        ? undefined
+        : "จังหวะตลาดไม่ครบ 5 แผง"
+    },
+  },
+  { route: "/api/rhythm?symbol=kbank", expect: (j) => ((j.gates as { scope?: unknown }).scope === "KBANK" && (j.seasonality as { symbol?: unknown }).symbol === "KBANK" ? undefined : "จังหวะตลาดรายหุ้นไม่ตรงหุ้น") },
+  { route: "/api/rhythm?symbol=NOPE", status: 404 },
+  { route: "/api/rhythm?symbol=%3Cx%3E", status: 400 },
   { route: "/api/meta", expect: (j) => ((j.access as { canWrite?: unknown } | undefined)?.canWrite === true && typeof (j.data as { label?: unknown } | undefined)?.label === "string" ? undefined : "meta ไม่ครบ") },
 ]
 

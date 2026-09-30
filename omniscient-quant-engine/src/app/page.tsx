@@ -17,6 +17,7 @@ import { CommandCenter } from '@/components/dashboard/command-center';
 import { AppFooter } from '@/components/app-footer';
 import { FlowDashboardView } from '@/components/flows/flow-dashboard';
 import { DeepResearchView } from '@/components/research/deep-research-view';
+import { RhythmView } from '@/components/rhythm/rhythm-view';
 import { FirstRunGuide } from '@/components/first-run-guide';
 import { AppMetaProvider, dataKindTag, useAppMeta } from '@/components/providers/app-meta';
 import { OverviewTab } from '@/components/quant/overview-tab';
@@ -70,6 +71,7 @@ type ViewKey =
   | 'backtest'
   | 'auditor'
   | 'flows'
+  | 'rhythm'
   | 'research';
 
 export default function Home() {
@@ -274,6 +276,11 @@ function HomeShell() {
             // เงินไหลนักลงทุนใช้ความกว้างเต็มจอ — กราฟ + ตารางวางคู่กันต้องการ > 1280px
             <div className="w-full px-3 py-4 sm:px-5">
               <FlowDashboardView />
+            </div>
+          ) : view === 'rhythm' ? (
+            // จังหวะตลาดใช้ความกว้างเต็มจอ — กราฟเวลายาว + แผนที่วันคู่กับตาราง
+            <div className="w-full px-3 py-4 sm:px-5">
+              <RhythmView />
             </div>
           ) : (
             <div className="mx-auto w-full max-w-7xl px-4 py-5 sm:px-6">

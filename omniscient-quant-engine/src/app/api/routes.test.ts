@@ -11,6 +11,7 @@ import * as auditLog from "./audit-log/route"
 import * as journal from "./journal/route"
 import * as deep from "./research/deep/[symbol]/route"
 import * as robustness from "./research/robustness/route"
+import * as rhythm from "./rhythm/route"
 import * as rules from "./rules/route"
 import * as system from "./system/route"
 
@@ -212,4 +213,24 @@ describe("LLM routes / งานหนัก — ตรวจ input ก่อน
       expect(res.status).toBe(400)
     }
   })
+})
+
+describe("/api/rhythm — จังหวะตลาด", () => {
+  test("ค่าเริ่มต้น = SET (ทุกหุ้น) · หุ้นรายตัวไม่สนตัวพิมพ์ · หุ้นไม่มี → 404 · สัญลักษณ์ผิดรูป → 400", async () => {
+    const res = await rhythm.GET(req("GET", "/api/rhythm"))
+    expect(res.status).toBe(200)
+    const body = (await res.json()) as { symbol: string; gates: { scope: string }; breadth: { days: unknown[] }; dayMap: { clusters: unknown[] }; data: { kind: string } }
+    expect(body.symbol).toBe("SET")
+    expect(body.gates.scope).toBe("ALL")
+    expect(body.breadth.days.length).toBeGreaterThan(60)
+    expect(body.dayMap.clusters.length).toBe(5)
+    expect(body.data.kind).toBe("synthetic")
+    const tse = await rhythm.GET(req("GET", "/api/rhythm?symbol=tse"))
+    expect(tse.status).toBe(200)
+    expect(((await tse.json()) as { gates: { scope: string } }).gates.scope).toBe("TSE")
+    expect((await rhythm.GET(req("GET", "/api/rhythm?symbol=NOPE"))).status).toBe(404)
+    for (const bad of ["a b", "<x>", "TOOLONGSYMBOL12345"]) {
+      expect((await rhythm.GET(req("GET", `/api/rhythm?symbol=${encodeURIComponent(bad)}`))).status).toBe(400)
+    }
+  }, 120_000)
 })

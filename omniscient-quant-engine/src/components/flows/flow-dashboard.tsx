@@ -11,7 +11,7 @@ import { useState } from 'react';
 import { ChevronRight, Loader2 } from 'lucide-react';
 import { useApi } from '@/hooks/use-api';
 import { cn } from '@/lib/utils';
-import { thDate, thSpan } from '@/lib/flows/format';
+import { sectorLabel, thDate, thSpan } from '@/lib/flows/format';
 import {
   FLOW_LABEL,
   FLOW_SHORT,
@@ -25,17 +25,6 @@ import { FLOW_COLORS, FlowIndexChart, IndexGauge, LinesChart, Meter, NetBars, Pr
 const RANGES: FlowRange[] = ['6m', '1y', '2y', '3y'];
 const MARKET_ID = 'SET';
 const DEFAULT_INDEX: Record<'market' | 'stock', FlowGroup> = { market: 'foreign', stock: 'nvdr' };
-
-const SECTOR_TH: Record<string, string> = {
-  Renewable: 'พลังงานหมุนเวียน',
-  Energy: 'พลังงาน',
-  Banking: 'ธนาคาร',
-  Consumer: 'พาณิชย์ & อุปโภค',
-  Tourism: 'ท่องเที่ยว',
-  Digital: 'สื่อสาร & ดิจิทัล',
-};
-const sectorLabel = (s: string) => SECTOR_TH[s] ?? s;
-
 
 function Change({ v }: { v: number }) {
   const zero = Math.round(v) === 0;

@@ -26,6 +26,7 @@ export async function GET() {
       { method: 'GET|POST', path: '/api/analyst/{symbol}', what: 'แผง AI analysis (POST = แชท ต้องตั้งค่า LLM)' },
       { method: 'GET|POST', path: '/api/research/deep/{symbol}?format=json|md', what: 'Deep Research รายหุ้น รวมผลทุกชั้น (md = ไฟล์ดาวน์โหลด · POST = เรียบเรียงด้วย LLM)' },
       { method: 'GET', path: '/api/flows · /api/flows/{SET|symbol}', what: 'เงินไหลนักลงทุน: SET 4 ประเภท · NVDR/short sale รายหุ้น (ข้อมูลจำลอง)' },
+      { method: 'GET', path: '/api/rhythm?symbol=SET|symbol', what: 'จังหวะตลาด: ความกว้าง/หุ้นเคลื่อนแรงพร้อมกัน · ฤดูกาลวัน×เดือน · สัดส่วนมูลค่ารายหมวด + N_eff · แผนที่วันซื้อขาย · ด่านที่บล็อกสัญญาณ' },
       { method: 'GET|POST', path: '/api/rules', what: 'กติกา + hash + ล็อก (pre-registration)' },
       { method: 'GET', path: '/api/research/robustness?seeds=...', what: 'ความทนทานข้าม seed' },
       { method: 'GET|POST', path: '/api/data/provenance · /api/data/ingest', what: 'ที่มา/ความสดของข้อมูล · นำเข้าข้อมูลจริง (หุ้นไทย สกุลบาท)' },
