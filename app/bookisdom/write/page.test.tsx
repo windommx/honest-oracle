@@ -2,7 +2,7 @@
 import "fake-indexeddb/auto";
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, screen, fireEvent, cleanup, waitFor } from "@testing-library/react";
-import { listBooks, listChapters, DRAFT_KEY } from "../_writing-store";
+import { listBooks, listChapters, listSeries, DRAFT_KEY } from "../_writing-store";
 import { listManuscripts } from "../_manuscript-store";
 
 const push = vi.fn();
@@ -146,5 +146,63 @@ describe("backup — export/import through the real UI", () => {
     fireEvent.change(screen.getByLabelText("นำเข้าไฟล์สำรอง"), { target: { files: [file] } });
     await waitFor(() => expect(screen.getByText(/นำเข้าไม่ได้: รูปแบบไม่ตรง/)).toBeTruthy());
     expect((await listBooks()).length).toBe(before);
+  });
+});
+
+describe("Series — grouping books into a saga, through the real UI", () => {
+  it("adding two books to a series computes the saga report from each book's OWN notes → codex", async () => {
+    render(<WritePage />);
+    await createBookViaUi("ซีรีส์เล่ม1");
+    const book1 = (await listBooks()).find((b) => b.title === "ซีรีส์เล่ม1")!;
+    fireEvent.change(screen.getByLabelText("ชื่อโน้ต"), { target: { value: "อนันต์" } });
+    fireEvent.change(screen.getByLabelText("รายละเอียดโน้ต"), { target: { value: "นักสืบ" } });
+    fireEvent.click(screen.getByText("เพิ่มโน้ต"));
+    await waitFor(() => expect(screen.getByText("อนันต์")).toBeTruthy());
+
+    await createBookViaUi("ซีรีส์เล่ม2");
+    const book2 = (await listBooks()).find((b) => b.title === "ซีรีส์เล่ม2")!;
+    fireEvent.change(screen.getByLabelText("ชื่อโน้ต"), { target: { value: "อนันต์" } });
+    fireEvent.change(screen.getByLabelText("รายละเอียดโน้ต"), { target: { value: "นักสืบ (สืบเนื่อง)" } });
+    fireEvent.click(screen.getByText("เพิ่มโน้ต"));
+    fireEvent.change(screen.getByLabelText("ชื่อโน้ต"), { target: { value: "มาลี" } });
+    fireEvent.change(screen.getByLabelText("รายละเอียดโน้ต"), { target: { value: "ตัวละครใหม่" } });
+    fireEvent.click(screen.getByText("เพิ่มโน้ต"));
+    await waitFor(() => expect(screen.getByText("มาลี")).toBeTruthy());
+
+    fireEvent.click(screen.getAllByRole("tab", { name: "ซีรีส์" })[0]);
+    fireEvent.change(screen.getByLabelText("ชื่อซีรีส์ใหม่"), { target: { value: "ไตรภาคทดสอบ" } });
+    fireEvent.click(screen.getByText("สร้างซีรีส์"));
+    await waitFor(() => expect((screen.getByLabelText("ชื่อซีรีส์ (แก้ไข)") as HTMLInputElement).value).toBe("ไตรภาคทดสอบ"));
+
+    fireEvent.change(screen.getByLabelText("เลือกเล่มเพื่อเพิ่มเข้าซีรีส์"), { target: { value: book1.id } });
+    fireEvent.click(screen.getByText("เพิ่ม"));
+    await waitFor(() => expect(screen.getByLabelText("ลำดับเล่มในซีรีส์").textContent).toContain("ซีรีส์เล่ม1"));
+
+    fireEvent.change(screen.getByLabelText("เลือกเล่มเพื่อเพิ่มเข้าซีรีส์"), { target: { value: book2.id } });
+    fireEvent.click(screen.getByText("เพิ่ม"));
+    await waitFor(() => expect(screen.getByTestId("saga-report").textContent).toContain("ซีรีส์เล่ม2"));
+
+    const report = screen.getByTestId("saga-report").textContent!;
+    expect(report).toContain("[1] ซีรีส์เล่ม1");
+    expect(report).toContain("[2] ซีรีส์เล่ม2");
+    expect(report).toContain("มาลี");     // introduced in book 2
+    expect(report).toContain("อนันต์");   // recurring — introduced in book 1, carried into book 2
+  });
+
+  it("deleting a series removes only the grouping — the member books stay untouched", async () => {
+    render(<WritePage />);
+    await createBookViaUi("เล่มเดี่ยวไม่ถูกลบ");
+    const book = (await listBooks()).find((b) => b.title === "เล่มเดี่ยวไม่ถูกลบ")!;
+    fireEvent.click(screen.getAllByRole("tab", { name: "ซีรีส์" })[0]);
+    fireEvent.change(screen.getByLabelText("ชื่อซีรีส์ใหม่"), { target: { value: "ซีรีส์จะถูกลบ" } });
+    fireEvent.click(screen.getByText("สร้างซีรีส์"));
+    await waitFor(() => expect((screen.getByLabelText("ชื่อซีรีส์ (แก้ไข)") as HTMLInputElement).value).toBe("ซีรีส์จะถูกลบ"));
+    const seriesId = (await listSeries()).find((s) => s.name === "ซีรีส์จะถูกลบ")!.id;
+
+    fireEvent.click(screen.getByRole("button", { name: "ลบซีรีส์ ซีรีส์จะถูกลบ" }));
+    fireEvent.click(screen.getByRole("button", { name: "ยืนยันลบซีรีส์ ซีรีส์จะถูกลบ" }));
+    await waitFor(async () => expect((await listSeries()).some((s) => s.id === seriesId)).toBe(false));
+
+    expect((await listBooks()).find((b) => b.id === book.id)?.title).toBe("เล่มเดี่ยวไม่ถูกลบ");
   });
 });

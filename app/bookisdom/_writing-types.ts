@@ -46,3 +46,8 @@ export interface PlotCard {
 }
 /** Words WRITTEN on a local calendar day (positive deltas between saves), per book. */
 export interface WritingDay { key: string; date: string; bookId: string; words: number }
+
+/** An ORDERED grouping of existing books into a series — order matters, because saga
+ *  continuity (who's introduced/carried/dropped) is sequence-dependent. A series only
+ *  references book ids; it owns nothing about the books themselves. */
+export interface Series { id: string; name: string; bookIds: string[]; createdAt: number; updatedAt: number }

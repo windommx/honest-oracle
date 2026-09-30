@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   BookOpen, Plus, ChevronUp, ChevronDown, Check, Loader2, Save, Search, BookDown, FileDown, Pin, PinOff,
-  Wand2, LayoutGrid, Play, BookMarked, PenLine, StickyNote, Library, Printer, Type as TypeIcon, Columns3, HardDriveDownload, HardDriveUpload, Database, CloudUpload, CloudDownload, Undo2,
+  Wand2, LayoutGrid, Play, BookMarked, PenLine, StickyNote, Library, Printer, Type as TypeIcon, Columns3, Layers, HardDriveDownload, HardDriveUpload, Database, CloudUpload, CloudDownload, Undo2,
 } from "lucide-react";
 import { toast } from "../_toast";
 import { BookisdomLogo } from "../_logo";
@@ -22,7 +22,7 @@ import {
   exportBundle, parseBundle, importBundle, storageEstimate, getSafetyCopy, restoreSafetyCopy,
   type WritingBook, type WritingChapter, type WritingNote, type BookStatus, type NoteType, type WritingDay,
 } from "../_writing-store";
-import { SnapshotPanel, ChapterAnalysis, SpeakButton, WritingHeatmap, PlotBoard } from "../_writer-pro";
+import { SnapshotPanel, ChapterAnalysis, SpeakButton, WritingHeatmap, PlotBoard, SeriesPanel } from "../_writer-pro";
 import { pushBook, pullBook, listRemote, type RemoteBook } from "../_writing-sync";
 import { composeStudioContext, prefillStudio } from "../_studio-context";
 import { listPlotLines, listPlotCards } from "../_writing-store";
@@ -39,7 +39,7 @@ import { listPlotLines, listPlotCards } from "../_writing-store";
 const AUTOSAVE_MS = 1200;
 const fmt = (n: number) => n.toLocaleString("en-US");
 
-type Pane = "books" | "write" | "plot" | "notes";
+type Pane = "books" | "write" | "plot" | "series" | "notes";
 
 export default function WritePage() {
   const router = useRouter();
@@ -243,7 +243,7 @@ export default function WritePage() {
 
       {/* Mobile pane switcher */}
       <div className="lg:hidden sticky top-[57px] z-40 bg-[#f8f8f8]/95 backdrop-blur border-b border-black/10 px-4 py-2 flex gap-2" role="tablist" aria-label="ส่วนของห้องเขียน">
-        {([["books", "เล่ม", Library], ["write", "เขียน", PenLine], ["plot", "ผัง", Columns3], ["notes", "โน้ต", StickyNote]] as const).map(([k, label, Icon]) => (
+        {([["books", "เล่ม", Library], ["write", "เขียน", PenLine], ["plot", "ผัง", Columns3], ["series", "ซีรีส์", Layers], ["notes", "โน้ต", StickyNote]] as const).map(([k, label, Icon]) => (
           <button key={k} role="tab" aria-selected={pane === k} onClick={() => setPane(k)}
             className={`flex-1 flex items-center justify-center gap-1.5 text-xs px-3 py-2 rounded-xl border ${pane === k ? "btn-brand border-transparent font-semibold" : "border-black/10 text-slate-600 bg-white"}`}>
             <Icon className="w-3.5 h-3.5" /> {label}
@@ -342,19 +342,20 @@ export default function WritePage() {
           )}
         </aside>
 
-        {/* ── centre: editor or plot board ── */}
-        <section className={`${pane === "write" || pane === "plot" ? "" : "hidden"} lg:block min-w-0`}>
-          {book && (
-            <div className="hidden lg:flex items-center gap-1 mb-3" role="tablist" aria-label="มุมมองกลาง">
-              {([["write", "เขียน", PenLine], ["plot", "ผังเรื่อง", Columns3]] as const).map(([k, label, Icon]) => {
-                const on = k === "plot" ? pane === "plot" : pane !== "plot";
-                return (
-                  <button key={k} role="tab" aria-selected={on} onClick={() => setPane(k)} className={`text-xs px-3 py-1.5 rounded-lg border flex items-center gap-1.5 ${on ? "btn-brand border-transparent font-semibold" : "border-black/10 text-slate-600 bg-white"}`}><Icon className="w-3.5 h-3.5" /> {label}</button>
-                );
-              })}
-            </div>
-          )}
-          {book && pane === "plot" ? (
+        {/* ── centre: editor, plot board, or series ── */}
+        <section className={`${pane === "write" || pane === "plot" || pane === "series" ? "" : "hidden"} lg:block min-w-0`}>
+          <div className="hidden lg:flex items-center gap-1 mb-3" role="tablist" aria-label="มุมมองกลาง">
+            {([["write", "เขียน", PenLine], ["plot", "ผังเรื่อง", Columns3], ["series", "ซีรีส์", Layers]] as const).map(([k, label, Icon]) => {
+              if (k !== "series" && !book) return null;
+              const on = k === "series" ? pane === "series" : k === "plot" ? pane === "plot" : pane !== "plot" && pane !== "series";
+              return (
+                <button key={k} role="tab" aria-selected={on} onClick={() => setPane(k)} className={`text-xs px-3 py-1.5 rounded-lg border flex items-center gap-1.5 ${on ? "btn-brand border-transparent font-semibold" : "border-black/10 text-slate-600 bg-white"}`}><Icon className="w-3.5 h-3.5" /> {label}</button>
+              );
+            })}
+          </div>
+          {pane === "series" ? (
+            <SeriesPanel />
+          ) : book && pane === "plot" ? (
             <PlotBoard bookId={book.id} lang={book.lang} />
           ) : book && chapter ? (
             <ChapterEditor

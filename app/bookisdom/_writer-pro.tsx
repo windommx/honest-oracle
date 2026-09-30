@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { Camera, RotateCcw, Volume2, Square, LayoutTemplate, Send, Plus, ChevronLeft, ChevronRight, Activity, BookOpen, X } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Camera, RotateCcw, Volume2, Square, LayoutTemplate, Send, Plus, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Activity, BookOpen, X } from "lucide-react";
 import { toast } from "./_toast";
 import { DeleteButton } from "./_ui";
 import {
@@ -9,7 +9,8 @@ import {
   listPlotLines, addPlotLine, renamePlotLine, deletePlotLine, listPlotCards, addPlotCard, updatePlotCard, deletePlotCard, applyTemplate,
   linkPlotCardToChapter, sceneCoverage, listChapters, chapterHeading,
   plotToOutline, sendOutlineToPromptTool, heatmapWeeks, heatLevel, HEAT_BUCKETS, notesToCodex,
-  type ChapterSnapshot, type PlotLine, type PlotCard, type WritingDay, type WritingNote, type WritingChapter,
+  listBooks, createSeries, listSeries, renameSeries, deleteSeries, addBookToSeries, removeBookFromSeries, moveBookInSeries, computeSagaReport,
+  type ChapterSnapshot, type PlotLine, type PlotCard, type WritingDay, type WritingNote, type WritingChapter, type WritingBook, type Series, type SagaComputation,
 } from "./_writing-store";
 import { STORY_TEMPLATES } from "@/lib/bookisdom-engine/story-templates";
 
@@ -318,6 +319,173 @@ export function PlotBoard({ bookId, lang }: { bookId: string; lang: "th" | "en" 
           </table>
         </div>
       )}
+    </div>
+  );
+}
+
+// ── series (multi-book saga continuity) ────────────────────────────────────
+export function SeriesPanel() {
+  const [series, setSeries] = useState<Series[]>([]);
+  const [books, setBooks] = useState<WritingBook[]>([]);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [newName, setNewName] = useState("");
+  const [addBookId, setAddBookId] = useState("");
+  const [saga, setSaga] = useState<SagaComputation | null>(null);
+
+  const refresh = useCallback(async () => {
+    const [s, b] = await Promise.all([listSeries(), listBooks()]);
+    setSeries(s); setBooks(b);
+    return s;
+  }, []);
+  useEffect(() => {
+    void refresh().then((rows) => setSelectedId((cur) => (cur && rows.some((r) => r.id === cur) ? cur : rows[0]?.id ?? null)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const selected = useMemo(() => series.find((s) => s.id === selectedId) ?? null, [series, selectedId]);
+  const titleOf = useMemo(() => new Map(books.map((b) => [b.id, b.title])), [books]);
+  const nonMembers = useMemo(() => (selected ? books.filter((b) => !selected.bookIds.includes(b.id)) : []), [books, selected]);
+
+  const refreshSaga = useCallback(async (id: string | null) => setSaga(id ? await computeSagaReport(id) : null), []);
+  useEffect(() => { void refreshSaga(selectedId); }, [selectedId, refreshSaga]);
+  const afterMutate = useCallback(async () => { await refresh(); await refreshSaga(selectedId); }, [refresh, refreshSaga, selectedId]);
+
+  async function onCreate() {
+    const s = await createSeries(newName);
+    setNewName("");
+    await refresh();
+    setSelectedId(s.id);
+  }
+  async function onDelete(id: string) {
+    await deleteSeries(id);
+    const rows = await refresh();
+    setSelectedId((cur) => (cur === id ? rows[0]?.id ?? null : cur));
+  }
+  async function onAddBook() {
+    if (!selected || !addBookId) return;
+    await addBookToSeries(selected.id, addBookId);
+    setAddBookId("");
+    await afterMutate();
+  }
+  async function onMove(bookId: string, dir: "up" | "down") {
+    if (!selected) return;
+    const moved = await moveBookInSeries(selected.id, bookId, dir);
+    if (!moved) toast(dir === "up" ? "เล่มนี้อยู่บนสุดแล้ว" : "เล่มนี้อยู่ล่างสุดแล้ว");
+    await afterMutate();
+  }
+
+  return (
+    <div className="card-premium rounded-3xl p-4" data-testid="series-panel">
+      <div className="flex flex-wrap items-center gap-2 mb-1">
+        <span className="eyebrow-brand">ซีรีส์ (ความต่อเนื่องหลายเล่ม)</span>
+        <span className="text-[0.65rem] text-faint">{series.length} ซีรีส์</span>
+      </div>
+      <p className="text-[0.65rem] text-faint mb-3">จัดกลุ่มหนังสือหลายเล่มเป็นซีรีส์ เพื่อดูว่าใครถูกแนะนำใหม่ สืบเนื่อง หรือหายไปจากเล่มก่อน — นับจาก Story Codex ของแต่ละเล่มเอง ไม่ใช่คำตัดสิน ข้อมูลซีรีส์อยู่ในเบราว์เซอร์นี้เท่านั้น ยังไม่รวมในไฟล์สำรองหรือซิงก์บัญชี</p>
+
+      <div className="flex gap-2 mb-3">
+        <input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="ชื่อซีรีส์ใหม่" className="input text-xs" aria-label="ชื่อซีรีส์ใหม่" />
+        <button onClick={() => void onCreate()} className="btn-brand text-xs px-3 py-1.5 rounded-lg font-semibold flex items-center gap-1.5 whitespace-nowrap"><Plus className="w-3.5 h-3.5" /> สร้างซีรีส์</button>
+      </div>
+
+      {series.length === 0 ? (
+        <p className="text-sm text-faint py-6 text-center">ยังไม่มีซีรีส์ — สร้างเพื่อจัดกลุ่มหนังสือหลายเล่ม</p>
+      ) : (
+        <div className="grid lg:grid-cols-[220px_1fr] gap-4">
+          <ul className="space-y-1" aria-label="รายการซีรีส์">
+            {series.map((s) => (
+              <li key={s.id}>
+                <div className={`flex items-center gap-1.5 rounded-xl px-2.5 py-1.5 ${s.id === selectedId ? "bg-[#3c74d4]/15 border border-[#1d4ed8]/25" : "hover:bg-black/[0.03]"}`}>
+                  <button onClick={() => setSelectedId(s.id)} className="flex-1 text-left min-w-0" aria-current={s.id === selectedId ? "true" : undefined}>
+                    <div className="text-sm font-medium truncate">{s.name}</div>
+                    <div className="text-[0.62rem] text-faint">{s.bookIds.length} เล่ม</div>
+                  </button>
+                  <DeleteButton onDelete={() => void onDelete(s.id)} what={`ซีรีส์ ${s.name}`} idleClass="text-faint hover:text-red-700 p-1" armedClass="text-[10px] font-semibold px-1.5 py-0.5 rounded-lg bg-red-50 border border-red-500/60 text-red-700 whitespace-nowrap" />
+                </div>
+              </li>
+            ))}
+          </ul>
+
+          {selected && (
+            <div className="min-w-0">
+              <input
+                value={selected.name}
+                onChange={(e) => { const v = e.target.value; setSeries((ss) => ss.map((x) => (x.id === selected.id ? { ...x, name: v } : x))); void renameSeries(selected.id, v); }}
+                className="w-full text-sm font-semibold bg-transparent outline-none border-b border-transparent focus:border-[#1d4ed8]/40 py-1 mb-2"
+                aria-label="ชื่อซีรีส์ (แก้ไข)"
+              />
+
+              <div className="flex gap-2 mb-2">
+                <select value={addBookId} onChange={(e) => setAddBookId(e.target.value)} className="input text-xs flex-1" aria-label="เลือกเล่มเพื่อเพิ่มเข้าซีรีส์">
+                  <option value="">+ เพิ่มเล่มเข้าซีรีส์…</option>
+                  {nonMembers.map((b) => <option key={b.id} value={b.id}>{b.title}</option>)}
+                </select>
+                <button onClick={() => void onAddBook()} disabled={!addBookId} className="text-xs px-2.5 py-1.5 rounded-lg border border-[#1d4ed8]/30 text-[#1d4ed8] hover:bg-[#3c74d4]/10 disabled:opacity-50 whitespace-nowrap">เพิ่ม</button>
+              </div>
+
+              {selected.bookIds.length === 0 ? <p className="text-xs text-faint py-3 text-center">ยังไม่มีเล่มในซีรีส์นี้</p> : (
+                <ol className="space-y-1 mb-3" aria-label="ลำดับเล่มในซีรีส์">
+                  {selected.bookIds.map((bid, i) => (
+                    <li key={bid} className="flex items-center gap-1 rounded-xl px-2 py-1.5 bg-black/[0.02] border border-black/5">
+                      <span className="text-faint font-mono text-[0.65rem] mr-1">{i + 1}</span>
+                      <span className="flex-1 text-sm truncate">{titleOf.get(bid) ?? "(ไม่พบเล่มนี้แล้ว)"}</span>
+                      <button onClick={() => void onMove(bid, "up")} className="text-faint hover:text-[#111827] p-0.5" aria-label={`เลื่อน ${titleOf.get(bid) ?? bid} ขึ้น`}><ChevronUp className="w-3.5 h-3.5" /></button>
+                      <button onClick={() => void onMove(bid, "down")} className="text-faint hover:text-[#111827] p-0.5" aria-label={`เลื่อน ${titleOf.get(bid) ?? bid} ลง`}><ChevronDown className="w-3.5 h-3.5" /></button>
+                      <DeleteButton onDelete={() => { void removeBookFromSeries(selected.id, bid).then(afterMutate); }} what={`เล่ม ${titleOf.get(bid) ?? bid} ออกจากซีรีส์`} idleClass="text-faint hover:text-red-700 p-0.5" armedClass="text-[10px] font-semibold px-1.5 py-0.5 rounded-lg bg-red-50 border border-red-500/60 text-red-700 whitespace-nowrap" />
+                    </li>
+                  ))}
+                </ol>
+              )}
+
+              {saga && <SagaReportView saga={saga} />}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SagaReportView({ saga }: { saga: SagaComputation }) {
+  const { report, missingBookIds } = saga;
+  if (report.books.length === 0) return <p className="text-xs text-faint py-3 text-center border-t border-black/10 pt-3">ยังไม่มีเล่มให้วิเคราะห์ความต่อเนื่อง</p>;
+  return (
+    <div className="border-t border-black/10 pt-3" data-testid="saga-report">
+      <div className="flex items-baseline justify-between mb-2">
+        <span className="eyebrow-brand">รายงานความต่อเนื่องของซีรีส์</span>
+        <span className="text-[0.65rem] text-faint tabular-nums">{report.books.length} เล่ม · {report.totalEntities} entity</span>
+      </div>
+      {missingBookIds.length > 0 && <p className="text-[0.65rem] text-[#b91c1c] mb-2">อ้างถึง {missingBookIds.length} เล่มที่ถูกลบไปแล้ว — ข้ามจากรายงาน</p>}
+      <div className="space-y-2">
+        {report.books.map((b) => (
+          <div key={`${b.index}-${b.title}`} className="rounded-lg border border-black/10 p-2.5 text-xs">
+            <div className="font-medium mb-1">[{b.index}] {b.title}</div>
+            <div className="grid sm:grid-cols-3 gap-2">
+              <div>
+                <div className="text-faint mb-0.5">แนะนำใหม่ ({b.introduced.length})</div>
+                {b.introduced.length ? <div className="flex flex-wrap gap-1">{b.introduced.map((e) => <span key={e.name} className="px-1.5 py-0.5 rounded bg-[#eff6ff] text-[#1d4ed8] border border-[#1d4ed8]/20">{e.name}</span>)}</div> : <span className="text-faint">—</span>}
+              </div>
+              <div>
+                <div className="text-faint mb-0.5">สืบเนื่อง ({b.carried.length})</div>
+                {b.carried.length ? <div className="flex flex-wrap gap-1">{b.carried.map((n) => <span key={n} className="px-1.5 py-0.5 rounded bg-black/[0.03] border border-black/10">{n}</span>)}</div> : <span className="text-faint">—</span>}
+              </div>
+              <div>
+                <div className="text-faint mb-0.5">หายจากเล่มก่อน ({b.dropped.length})</div>
+                {b.dropped.length ? <div className="flex flex-wrap gap-1">{b.dropped.map((n) => <span key={n} className="px-1.5 py-0.5 rounded bg-black/[0.03] text-[#92400e] border border-[#92400e]/20">{n}</span>)}</div> : <span className="text-faint">—</span>}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="grid sm:grid-cols-2 gap-2 mt-2 text-xs">
+        <div>
+          <div className="text-faint mb-0.5">แกนซีรีส์ (อยู่ ≥2 เล่ม) ({report.recurring.length})</div>
+          <div className="flex flex-wrap gap-1">{report.recurring.length ? report.recurring.map((n) => <span key={n} className="px-1.5 py-0.5 rounded bg-[#eff6ff] text-[#1d4ed8] border border-[#1d4ed8]/20">{n}</span>) : <span className="text-faint">—</span>}</div>
+        </div>
+        <div>
+          <div className="text-faint mb-0.5">ปรากฏเล่มเดียว ({report.standalone.length})</div>
+          <div className="flex flex-wrap gap-1">{report.standalone.length ? report.standalone.map((n) => <span key={n} className="px-1.5 py-0.5 rounded bg-black/[0.03] border border-black/10">{n}</span>) : <span className="text-faint">—</span>}</div>
+        </div>
+      </div>
     </div>
   );
 }

@@ -23,8 +23,8 @@
 import Dexie, { type Table } from "dexie";
 import { countManuscriptWords } from "./_word-count";
 
-import type { WritingBook, WritingChapter, WritingNote, BookStatus, NoteType, ChapterSnapshot, PlotLine, PlotCard, WritingDay } from "./_writing-types";
-export type { WritingBook, WritingChapter, WritingNote, BookStatus, NoteType, ChapterSnapshot, PlotLine, PlotCard, WritingDay } from "./_writing-types";
+import type { WritingBook, WritingChapter, WritingNote, BookStatus, NoteType, ChapterSnapshot, PlotLine, PlotCard, WritingDay, Series } from "./_writing-types";
+export type { WritingBook, WritingChapter, WritingNote, BookStatus, NoteType, ChapterSnapshot, PlotLine, PlotCard, WritingDay, Series } from "./_writing-types";
 export { BUNDLE_FORMAT, parseBundle, type BookBundle, type BundleCheck } from "./_bundle";
 import { BUNDLE_FORMAT, parseBundle, type BookBundle } from "./_bundle";
 
@@ -56,6 +56,7 @@ class WritingDB extends Dexie {
   plotCards!: Table<PlotCard, string>;
   writingDays!: Table<WritingDay, string>;
   safety!: Table<SafetyCopy, string>;
+  series!: Table<Series, string>;
   constructor() {
     super("bookisdom-writing");
     this.version(1).stores({
@@ -83,6 +84,20 @@ class WritingDB extends Dexie {
       plotCards: "id, plotLineId, colIndex",
       writingDays: "key, date, bookId",
       safety: "bookId, createdAt",
+    });
+    // v4: series — an ordered grouping of existing books for saga (series continuity)
+    // analysis. Local only (see computeSagaReport's own doc comment for why this is
+    // deliberately out of the backup/sync bundle for now).
+    this.version(4).stores({
+      books: "id, updatedAt, status",
+      chapters: "id, bookId, order, updatedAt",
+      notes: "id, bookId, type, updatedAt",
+      snapshots: "id, chapterId, createdAt",
+      plotLines: "id, bookId, order",
+      plotCards: "id, plotLineId, colIndex",
+      writingDays: "key, date, bookId",
+      safety: "bookId, createdAt",
+      series: "id, updatedAt",
     });
   }
 }
@@ -143,13 +158,22 @@ async function wipeBookGraph(d: WritingDB, bookId: string): Promise<void> {
 
 export async function deleteBook(id: string): Promise<void> {
   const d = db(); if (!d) return;
-  await d.transaction("rw", [d.books, d.chapters, d.notes, d.snapshots, d.plotLines, d.plotCards, d.writingDays, d.safety], async () => {
+  await d.transaction("rw", [d.books, d.chapters, d.notes, d.snapshots, d.plotLines, d.plotCards, d.writingDays, d.safety, d.series], async () => {
     await wipeBookGraph(d, id);
     // A safety copy from a past pull can never be reached again once the book's id is
     // gone (ids are never reused) — only wasted space, not a correctness risk, but this
     // is the one call site where wiping it is actually safe to do (unlike
     // installBundleKeepingIds, which writes a fresh one moments before wiping).
     await d.safety.delete(id);
+    // A deleted book cannot remain a member of any series — otherwise a saga report would
+    // either silently skip it (computeSagaReport already tolerates that defensively) or a
+    // series screen would list a book that can never be opened again. Scoped here, not in
+    // wipeBookGraph: installBundleKeepingIds keeps the SAME book id and re-creates it right
+    // after wiping, so stripping series membership there would wrongly evict a book that
+    // still exists moments later.
+    for (const line of await d.series.toArray()) {
+      if (line.bookIds.includes(id)) await d.series.update(line.id, { bookIds: line.bookIds.filter((b) => b !== id), updatedAt: Date.now() });
+    }
     await d.books.delete(id);
   });
 }
@@ -676,4 +700,80 @@ export async function restoreSafetyCopy(bookId: string): Promise<boolean> {
   if (!check.ok) return false;
   await installBundleKeepingIds(check.bundle);
   return true;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  Series — an ORDERED grouping of existing books, for saga (series-continuity) analysis.
+//  A series owns nothing about its books; it only references their ids in sequence.
+// ═══════════════════════════════════════════════════════════════════════════
+
+export async function createSeries(name: string, bookIds: string[] = []): Promise<Series> {
+  const now = Date.now();
+  const s: Series = { id: newId(), name: name.trim() || "ซีรีส์ใหม่", bookIds: [...bookIds], createdAt: now, updatedAt: now };
+  await db()?.series.put(s);
+  return s;
+}
+export async function listSeries(): Promise<Series[]> {
+  const rows = (await db()?.series.toArray()) ?? [];
+  return rows.sort((a, b) => b.updatedAt - a.updatedAt);
+}
+export async function renameSeries(id: string, name: string): Promise<void> {
+  await db()?.series.update(id, { name, updatedAt: Date.now() });
+}
+export async function deleteSeries(id: string): Promise<void> {
+  // Deletes only the grouping — the books themselves, and everything in them, are untouched.
+  await db()?.series.delete(id);
+}
+async function setSeriesBooks(id: string, bookIds: string[]): Promise<void> {
+  await db()?.series.update(id, { bookIds: [...bookIds], updatedAt: Date.now() });
+}
+export async function addBookToSeries(id: string, bookId: string): Promise<void> {
+  const s = await db()?.series.get(id); if (!s || s.bookIds.includes(bookId)) return;
+  await setSeriesBooks(id, [...s.bookIds, bookId]);
+}
+export async function removeBookFromSeries(id: string, bookId: string): Promise<void> {
+  const s = await db()?.series.get(id); if (!s) return;
+  await setSeriesBooks(id, s.bookIds.filter((b) => b !== bookId));
+}
+/** Swap a book with its neighbour in the series order. False (no change) at either end,
+ *  or if the book isn't a member. Order is what makes introduced/carried/dropped meaningful. */
+export async function moveBookInSeries(id: string, bookId: string, direction: "up" | "down"): Promise<boolean> {
+  const s = await db()?.series.get(id); if (!s) return false;
+  const idx = s.bookIds.indexOf(bookId); if (idx < 0) return false;
+  const target = direction === "up" ? idx - 1 : idx + 1;
+  if (target < 0 || target >= s.bookIds.length) return false;
+  const next = [...s.bookIds];
+  [next[idx], next[target]] = [next[target], next[idx]];
+  await setSeriesBooks(id, next);
+  return true;
+}
+
+export interface SagaBookResolved { book: WritingBook; codex: import("@/lib/bookisdom-engine/codex").Codex }
+export interface SagaComputation {
+  report: import("@/lib/bookisdom-engine/saga").SagaReport;
+  /** Book ids the series still references that no longer exist (deleted from elsewhere).
+   *  Skipped from the report rather than crashing — deleteBook's own cascade prevents this
+   *  going forward, but a series is honest about what it can no longer resolve regardless. */
+  missingBookIds: string[];
+}
+/** Build the saga (series-continuity) report for a series, in its stored order. Each book's
+ *  codex is derived from its OWN notes via notesToCodex — the same source the prompt tool's
+ *  Story Codex and the chapter-analysis audit already use, so a saga report and a single
+ *  book's own Codex audit can never disagree about what that book's cast actually is. */
+export async function computeSagaReport(seriesId: string): Promise<SagaComputation | null> {
+  const d = db();
+  const s = d ? await d.series.get(seriesId) : undefined;
+  if (!s) return null;
+  const { analyzeSaga } = await import("@/lib/bookisdom-engine/saga");
+  const { parseCodex } = await import("@/lib/bookisdom-engine/codex");
+  const sagaBooks: { title: string; codex: ReturnType<typeof parseCodex> }[] = [];
+  const missingBookIds: string[] = [];
+  for (const bookId of s.bookIds) {
+    const book = await d!.books.get(bookId);
+    if (!book) { missingBookIds.push(bookId); continue; }
+    const notes = await listNotes(bookId);
+    const { text } = notesToCodex(notes);
+    sagaBooks.push({ title: book.title, codex: parseCodex(text) });
+  }
+  return { report: analyzeSaga(sagaBooks), missingBookIds };
 }

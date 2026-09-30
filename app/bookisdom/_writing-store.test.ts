@@ -448,3 +448,83 @@ describe("deleting data must not leave counts that quietly overstate reality", (
     expect(await getSafetyCopy(b.id)).toBeUndefined();
   });
 });
+
+// ═══ Series — ordered book grouping for saga continuity ═══
+import { createSeries, listSeries, renameSeries, deleteSeries, addBookToSeries, removeBookFromSeries, moveBookInSeries, computeSagaReport } from "./_writing-store";
+
+describe("series — order is the whole point; a deleted book cannot linger as a member", () => {
+  it("creates, lists newest-first, renames; add/remove/reorder books, refusing at either end", async () => {
+    const b1 = await createBook({ title: "หนึ่ง", lang: "th" });
+    const b2 = await createBook({ title: "สอง", lang: "th" });
+    const b3 = await createBook({ title: "สาม", lang: "th" });
+    const s = await createSeries("");
+    expect(s.name).toBe("ซีรีส์ใหม่");
+    await renameSeries(s.id, "ไตรภาค");
+    await addBookToSeries(s.id, b1.id);
+    await addBookToSeries(s.id, b2.id);
+    await addBookToSeries(s.id, b1.id); // no duplicate
+    await addBookToSeries(s.id, b3.id);
+    let [row] = await listSeries();
+    expect(row).toMatchObject({ name: "ไตรภาค", bookIds: [b1.id, b2.id, b3.id] });
+
+    expect(await moveBookInSeries(s.id, b1.id, "up")).toBe(false); // already first
+    expect(await moveBookInSeries(s.id, b3.id, "down")).toBe(false); // already last
+    expect(await moveBookInSeries(s.id, b3.id, "up")).toBe(true);
+    [row] = await listSeries();
+    expect(row.bookIds).toEqual([b1.id, b3.id, b2.id]);
+
+    await removeBookFromSeries(s.id, b3.id);
+    [row] = await listSeries();
+    expect(row.bookIds).toEqual([b1.id, b2.id]);
+
+    await deleteSeries(s.id);
+    expect(await listSeries()).toEqual([]);
+    // deleting a series never touches the books themselves
+    const titlesById = new Map((await listBooks()).map((b) => [b.id, b.title]));
+    expect(titlesById.get(b1.id)).toBe("หนึ่ง");
+    expect(titlesById.get(b2.id)).toBe("สอง");
+    expect(titlesById.get(b3.id)).toBe("สาม");
+  });
+
+  it("computeSagaReport reads each book's OWN notes→codex, in the series' stored order — introduced/carried/dropped follow that order", async () => {
+    const b1 = await createBook({ title: "เล่ม 1", lang: "th" });
+    await addNote({ bookId: b1.id, type: "CHARACTER", title: "อนันต์", content: "นักสืบ" });
+    const b2 = await createBook({ title: "เล่ม 2", lang: "th" });
+    await addNote({ bookId: b2.id, type: "CHARACTER", title: "อนันต์", content: "นักสืบ (สืบเนื่อง)" });
+    await addNote({ bookId: b2.id, type: "CHARACTER", title: "มาลี", content: "ตัวละครใหม่" });
+    const series = await createSeries("ซีรีส์ทดสอบ", [b1.id, b2.id]);
+
+    const result = (await computeSagaReport(series.id))!;
+    expect(result.missingBookIds).toEqual([]);
+    expect(result.report.books).toHaveLength(2);
+    expect(result.report.books[0]).toMatchObject({ title: "เล่ม 1", carried: [], dropped: [] });
+    expect(result.report.books[0].introduced.map((e) => e.name)).toEqual(["อนันต์"]);
+    expect(result.report.books[1].introduced.map((e) => e.name)).toEqual(["มาลี"]);
+    expect(result.report.books[1].carried).toEqual(["อนันต์"]);
+    expect(result.report.recurring).toEqual(["อนันต์"]);
+    expect(result.report.standalone).toEqual(["มาลี"]);
+  });
+
+  it("a book deleted elsewhere is dropped from every series it belonged to — never left as a dangling member", async () => {
+    const b1 = await createBook({ title: "จะถูกลบ", lang: "th" });
+    const b2 = await createBook({ title: "เหลืออยู่", lang: "th" });
+    const series = await createSeries("s", [b1.id, b2.id]);
+    await deleteBook(b1.id);
+    const [row] = await listSeries();
+    expect(row.bookIds).toEqual([b2.id]);
+    // computeSagaReport tolerates a reference that somehow still went missing (defense in
+    // depth) — proven directly, independent of the cascade above, with a hand-crafted case.
+    await setSeriesBooksForTest(series.id, [b1.id, b2.id]);
+    const result = (await computeSagaReport(series.id))!;
+    expect(result.missingBookIds).toEqual([b1.id]);
+    expect(result.report.books.map((x) => x.title)).toEqual(["เหลืออยู่"]);
+  });
+});
+
+// Test-only escape hatch: setSeriesBooks itself is intentionally not exported (every real
+// caller goes through add/remove/moveBookInSeries), so this reaches it via the one exported
+// function that accepts an arbitrary list, to set up the defense-in-depth case above without
+// exporting an API surface no real UI needs.
+async function setSeriesBooksForTest(id: string, bookIds: string[]): Promise<void> {
+  for (const b of bookIds) await addBookToSeries(id, b);
+}
