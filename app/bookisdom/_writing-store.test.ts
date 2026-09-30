@@ -6,7 +6,7 @@ import {
   addNote, listNotes, updateNote, deleteNote,
   compileBook, chaptersForEpub, chapterHeading, exportMarkdown, exportText, bookProgress, countBookWords,
   notesToCodex, mergeCodexIntoDraft, sendCodexToPromptTool, DRAFT_KEY, CODEX_MARK_BEGIN,
-  linkPlotCardToChapter, sceneCoverage,
+  linkPlotCardToChapter, sceneCoverage, getSafetyCopy,
   type WritingChapter, type WritingNote,
 } from "./_writing-store";
 import { splitChapters } from "@/lib/bookisdom-engine/chapters";
@@ -432,5 +432,19 @@ describe("deleting data must not leave counts that quietly overstate reality", (
     expect(await listPlotCards(b.id)).toEqual([]);
     const after = await listWritingDays();
     expect(after.some((w) => w.bookId === b.id)).toBe(false); // deleted book's word count must not survive
+  });
+
+  it("deleteBook also clears a stale safety copy from a past pull — it can never be reached again once the book's id is gone", async () => {
+    const b = await createBook({ title: "safetywipe", lang: "th" });
+    const [c] = await listChapters(b.id);
+    await updateChapter(c.id, { content: "x" });
+    // Simulate a prior pull having written a safety copy for this book.
+    const { installBundleKeepingIds } = await import("./_writing-store");
+    const bundle = await exportBundle([b.id]);
+    bundle.chapters[0].content = "y"; // any change, so installBundleKeepingIds sees `existed` and writes a safety copy first
+    await installBundleKeepingIds(bundle);
+    expect(await getSafetyCopy(b.id)).toBeTruthy();
+    await deleteBook(b.id);
+    expect(await getSafetyCopy(b.id)).toBeUndefined();
   });
 });

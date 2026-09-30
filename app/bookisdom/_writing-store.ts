@@ -135,12 +135,21 @@ async function wipeBookGraph(d: WritingDB, bookId: string): Promise<void> {
   await d.notes.where("bookId").equals(bookId).delete();
   await d.plotLines.where("bookId").equals(bookId).delete();
   await d.writingDays.where("bookId").equals(bookId).delete();
+  // Deliberately does NOT touch the `safety` table: installBundleKeepingIds writes a
+  // FRESH safety copy immediately before calling this (so a pull can be undone), and this
+  // function running inside that same flow would delete it the instant it was written.
+  // deleteBook's own stale-safety-copy cleanup lives in deleteBook itself, not here.
 }
 
 export async function deleteBook(id: string): Promise<void> {
   const d = db(); if (!d) return;
-  await d.transaction("rw", [d.books, d.chapters, d.notes, d.snapshots, d.plotLines, d.plotCards, d.writingDays], async () => {
+  await d.transaction("rw", [d.books, d.chapters, d.notes, d.snapshots, d.plotLines, d.plotCards, d.writingDays, d.safety], async () => {
     await wipeBookGraph(d, id);
+    // A safety copy from a past pull can never be reached again once the book's id is
+    // gone (ids are never reused) — only wasted space, not a correctness risk, but this
+    // is the one call site where wiping it is actually safe to do (unlike
+    // installBundleKeepingIds, which writes a fresh one moments before wiping).
+    await d.safety.delete(id);
     await d.books.delete(id);
   });
 }
