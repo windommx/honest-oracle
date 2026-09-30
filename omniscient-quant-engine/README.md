@@ -1,6 +1,6 @@
 # Omniscient Quant Engine — Full-Cycle Multi-View Quant Platform
 
-แพลตฟอร์มเทรดเชิงระบบ "7 ชั้น" **สำหรับหุ้นไทย (SET/mai) เท่านั้น** หน้าเดียว (`/`) ภาษาไทยทั้งระบบ: L0 ข้อมูล point-in-time → L1 มุมมองเดี่ยว → L2 Dependence (Clayton copula Θ / lower-tail) → L3 Multi-View factor integration (PCA + enrichment + bipartite) → L4 walk-forward + gate attribution → L5 Monte Carlo CVaR sizing → L6 5-Gate execution + journal → L∞ Meta-Risk (ruin math, defense-in-depth, Risk MDX 7 มิติ, antifragility) → L7 Apex (Kelly-Vol sizing, microstructure, crisis MC, model registry) พร้อม "หลอมรวม" (convergent-evidence synthesis 13 สาย), เงินไหลนักลงทุน (ประเภทนักลงทุน SET · NVDR · short sale), **จังหวะตลาด** (ความกว้าง/หุ้นเคลื่อนพร้อมกัน · ฤดูกาล · สัดส่วนรายหมวด · แผนที่วันซื้อขาย · ด่านที่บล็อกสัญญาณ), **Deep Research** (รายงานเชิงลึกรายหุ้นที่รวมผลทุกชั้นเป็นฉบับเดียว), Market Intelligence Terminal และ Command Center
+แพลตฟอร์มเทรดเชิงระบบ "7 ชั้น" **สำหรับหุ้นไทย (SET/mai) เท่านั้น** หน้าเดียว (`/`) ภาษาไทยทั้งระบบ: L0 ข้อมูล point-in-time → L1 มุมมองเดี่ยว → L2 Dependence (Clayton copula Θ / lower-tail) → L3 Multi-View factor integration (PCA + enrichment + bipartite) → L4 walk-forward + gate attribution → L5 Monte Carlo CVaR sizing → L6 5-Gate execution + journal → L∞ Meta-Risk (ruin math, defense-in-depth, Risk MDX 7 มิติ, antifragility) → L7 Apex (Kelly-Vol sizing, microstructure, crisis MC, model registry) พร้อม "หลอมรวม" (convergent-evidence synthesis 13 สาย), เงินไหลนักลงทุน (ประเภทนักลงทุน SET · NVDR · short sale), **จังหวะตลาด** (ความกว้าง/หุ้นเคลื่อนพร้อมกัน · ฤดูกาล · สัดส่วนรายหมวด · แผนที่วันซื้อขาย · ด่านที่บล็อกสัญญาณ), **Atlas พฤติกรรมระบบ** (วิจัยเอนจินแบบ 360° 6 มุม + ข้อเสนอจากผลที่ผ่านเกณฑ์สถิติเท่านั้น), **Deep Research** (รายงานเชิงลึกรายหุ้นที่รวมผลทุกชั้นเป็นฉบับเดียว), Market Intelligence Terminal และ Command Center
 
 > **ขอบเขต: หุ้นไทยเท่านั้น** — ไม่มีตลาดต่างประเทศ ฟิวเจอร์ส หรือคริปโต · ข้อมูลที่นำเข้าต้องเป็นหุ้นไทยสกุลเงินบาท (ชุดข้อมูลที่ระบุสกุลอื่นถูกปฏิเสธ · Yahoo ดึงเฉพาะสัญลักษณ์ `.BK` และตรวจว่าเป็น THB)
 
@@ -72,6 +72,21 @@ bun run dev                   # http://localhost:3000 (ฟังเฉพาะ 
 - หลอมรวมกับหน้าเดิม: **Command Center** มีแถบ "จังหวะตลาด" (วันนี้คล้ายวันแบบไหน · % หุ้นเหนือ MA20 · หุ้นเคลื่อนแรงพร้อมกัน · ด่านที่บล็อกมากสุดเดือนนี้ → ลิงก์ไปหน้าเต็ม) · **Deep Research** มีหัวข้อจังหวะของหุ้น · cache อุ่นตอนเริ่มเซิร์ฟเวอร์
 - API: `GET /api/rhythm?symbol=SET|สัญลักษณ์&view=full|summary` (จำกัดความถี่แบบรายงานหนัก · คำนวณครั้งเดียวต่อเวอร์ชันข้อมูล ~0.4 วินาทีกับข้อมูลสาธิต · summary = ตัวเลขย่อของ Command Center) · โค้ด: `src/lib/rhythm/` (pure + test) · `src/components/rhythm/`
 
+## Atlas พฤติกรรมระบบ (System Atlas)
+
+แท็บ **MY LAB → Atlas พฤติกรรมระบบ** — วิจัยเอนจิน 5 ด่านแบบ 360° ตามรูปแบบ "Grid Behavior Atlas" (6 มุม A–F) ทุกมุมมี **หัวข้อ = ข้อค้นพบ · ฐานข้อมูล · สรุปพร้อมช่วงความเชื่อมั่น/ค่า p · ที่มา (โมดูลที่คำนวณ)** และบอกตรง ๆ เมื่อ "ยังสรุปไม่ได้"
+
+- **ข้อมูล 2 ชุดที่แยกกันชัดเจน:** (1) สัญญาณตามกติกา 5 ด่านทั้งหน้าต่าง (ตารางด่านชุดเดียวกับหน้าจังหวะตลาด · ไม่มีตัวกรอง P(up)) → จำลองเป็นไม้: เข้าที่ราคาปิด · stop = `plan.stopHard` · เป้า +2R · ถือไม่เกิน 5 วัน · วันเดียวกันแตะทั้งสองฝั่งนับ stop ก่อน · เปิดกระโดดผ่าน stop ออกที่ราคาเปิด — กติกาถูกจูนบนข้อมูลชุดนี้ จึงเป็น **ผลในตัวอย่าง** (มุม B–E) (2) walk-forward backtest (P(up) นอกตัวอย่าง · train 252 → embargo 5 → test 21) ใช้ทดสอบว่าส่วนที่ "ฉลาด" ช่วยจริงไหม (มุม A, F)
+- **A แผนที่สถานะตลาด:** แผนที่วัน PCA + k-means (ชุดเดียวกับจังหวะตลาด) ระบายสีตาม "ส่วนต่างของโมเดล" (ผลวันถัดไปของหุ้น 20% ที่ P(up) สูงสุด − 20% ต่ำสุด) หรือไฮไลต์กลุ่มวัน · ความสอดคล้องกับเพื่อนบ้าน k-NN (ไม่นับวันที่ห่างกัน ≤ 5 วันทำการ) ρ + p จากการเลื่อนผลเป็นวงกลม · ผลของระบบต่อกลุ่มวัน · Spearman ของตัวแปรตลาด · risk-on เทียบ risk-off พร้อม CI
+- **B จังหวะเวลา:** heatmap จำนวนสัญญาณ วันในสัปดาห์ × เดือน + ขอบบน/ขวาพร้อมเส้น "จำนวนที่ควรเป็นถ้าเกิดสม่ำเสมอ" · สัดส่วนสัญญาณเทียบสัดส่วนวันทำการ + อัตราชนะ/ผลต่อไม้ · สหสัมพันธ์รายเดือนกับ breadth
+- **C ความลึก (สัญญาณพร้อมกัน):** สัญญาณต่อวัน + เฉลี่ย 7 วัน + ป้าย 3 วันสูงสุด (breadth · SET วันนั้น) · การกระจายรายเดือน มัธยฐาน → p90 → p99 → สูงสุด · วันแออัด (≥ 3 สัญญาณ) เทียบวันปกติพร้อม CI ของส่วนต่าง
+- **D ส่วนผสมของกำไร/ขาดทุน:** กำไร vs ขาดทุนรายเดือน + สุทธิ · stop กี่ % ของไม้เทียบกี่ % ของขาดทุน · ไม้ 10% ที่แย่/ดีสุด · N_eff ของเดือน · หมวดที่ขับ |P&L|
+- **E เริ่มอย่างไร จบอย่างไร:** ถึงเป้า / หมดเวลาบวก / หมดเวลาลบ / stop / ยังเปิด (สี diverging ตามลำดับดี → แย่) · สภาวะตอนเข้า (กลุ่มวันของมุม A) รายเดือน · ผลต่อไม้ (R) ตามสภาวะและชนิดสัญญาณ · **กติกาออกทางเลือก 7 แบบ** (stop 1.5× / 0.75× · เป้า 1R / 3R / ไม่มีเป้า · ถือ 3 / 10 วัน) บนสัญญาณชุดเดียวกัน เทียบไม้ต่อไม้ด้วย block bootstrap + BH-FDR พร้อมผลต่อวันที่ถือ (ถือนานขึ้น = ใช้ทุนนานขึ้น)
+- **F ทดสอบความฉลาดแบบ walk-forward:** AUC ของ P(up) / สัญญาณ / ผ่านครบ 5 ด่าน / G1–G5 (CI จาก bootstrap แบบบล็อกของวัน · p จากการเลื่อนผลเป็นวงกลม) · calibration · **ปรับคันโยก 10 แบบ** (ตัดทีละด่าน · ไม่กรอง P(up) · เกณฑ์ 0.50/0.60 · จำกัด 2 ตัว/วัน · เฉพาะวัน risk-on) เทียบผลตอบแทนรายวันของพอร์ตแบบจับคู่ + BH-FDR · คันโยกที่ไม่เปลี่ยนสัญญาณเลยสักวันติดป้าย "ไม่เปลี่ยนสัญญาณ" (ไม่ใช่ "ยังสรุปไม่ได้")
+- **ข้อเสนอเพื่อเพิ่มประสิทธิภาพ** (ทดลอง / คงไว้ / เฝ้าระวัง) สร้างด้วยกฎตายตัวจากผลที่ผ่านเกณฑ์ (q < 0.1 และ CI ไม่คร่อมศูนย์) เท่านั้น — ถ้าไม่มีคันโยกใดผ่าน ข้อเสนอคือ "อย่าจูนเพิ่มบนข้อมูลชุดนี้" · ทุกข้อต้องยืนยันแบบ forward ก่อนใช้จริง
+- ผลบนข้อมูลสาธิต (seed 20250902): สัญญาณตามกติกา 195 ครั้งใน 630 วัน (ปิดแล้ว 178 · ชนะ 56.2% · +0.50%/ไม้ ก่อนค่าธรรมเนียม) · AUC ของ P(up) 0.511 [0.481, 0.538] ครอบ 0.5 · ไม่มีคันโยกใดผ่านเกณฑ์ · "ไม่ใช้ G4" และ "เฉพาะวัน risk-on" ไม่เปลี่ยนสัญญาณเลย · stop 20% ของไม้ = 67% ของขาดทุน · กติกาออก "ถือไม่เกิน 10 วัน" ดีกว่า +0.66 จุด/ไม้ [+0.10, +1.30] (q 0.07 · ผลต่อวันที่ถือ +0.137% เทียบ +0.108%) — ผลในตัวอย่าง ยังไม่ใช่เหตุผลให้เปลี่ยนกติกา
+- API: `GET /api/atlas` (จำกัดความถี่แบบรายงานหนัก · 409 ข้อมูลไม่พอ · คำนวณครั้งเดียวต่อเวอร์ชันข้อมูล ~2 วินาทีกับข้อมูลสาธิต · อุ่นตอนเริ่มเซิร์ฟเวอร์ · seed คงที่ ผลเท่าเดิมทุกครั้ง) · โค้ด: `src/lib/atlas/` (pure + test) · `src/components/atlas/`
+
 ## Deep Research (รายงานเชิงลึกรายหุ้น)
 
 แท็บ **จักรวาลหลัก → Deep Research** — เลือกหุ้น 1 ตัวแล้วได้รายงานฉบับเดียวที่รวมผลของทุกชั้น เรียงเป็น 12 หัวข้อ: ภาวะตลาด · เทคนิคและจังหวะเข้า · พื้นฐานและมูลค่า (PIT) · ความสัมพันธ์กับตลาด (copula) · ปัจจัยหลายมุมมอง · เงินไหล (สถาบัน · NVDR · short sale) · จังหวะตลาด & จังหวะของหุ้น (วันแบบไหน · ด่านที่บล็อกหุ้นนี้ · ฤดูกาล + FDR — ข้อมูลประกอบ ไม่โหวต) · หลอมรวม 13 สาย · 5 Gates และแผนเทรด · ความเสี่ยง (CVaR · Risk MDX · Risk of Ruin) · ขนาดไม้ (Kelly-Vol · CVaR · MDX) · หลักฐานย้อนหลัง (walk-forward + ความทนทานข้าม seed)
@@ -130,8 +145,8 @@ bun run verify     # typecheck · lint (max-warnings 0) · test · test:ops · b
 bun run test       # bun test src — unit + engine invariants + route handlers + component tests (happy-dom) บน SQLite ชั่วคราว
 bun run test:ops   # smoke checker + e2e budget + สคริปต์ ops ผ่าน CLI จริง (ingest-csv → engine-check → backup-db → restore-db)
 bun run smoke      # หลัง build: standalone server บนสำเนา DB → ทุก route (status, JSON เคร่งครัด, validation 400/404/422, header ความปลอดภัย)
-bun run e2e        # Playwright + axe: 15 มุมมอง desktop (+ เงินไหล KBANK 3y, จังหวะตลาด KBANK, Deep Research KBANK) + มือถือ 390px (รวมเงินไหล, จังหวะตลาด, Deep Research)
-                   #   ต้องไม่มี violation ของ WCAG 2.1 AA/2.2 target-size (งบ 0) + interaction หลัก 16 ข้อ · รายงาน/ภาพหน้าจอที่ .e2e/
+bun run e2e        # Playwright + axe: 16 มุมมอง desktop (+ เงินไหล KBANK 3y, จังหวะตลาด KBANK, Atlas ไฮไลต์กลุ่มวัน, Deep Research KBANK) + มือถือ 390px (รวมเงินไหล, จังหวะตลาด, Atlas, Deep Research)
+                   #   ต้องไม่มี violation ของ WCAG 2.1 AA/2.2 target-size (งบ 0) + interaction หลัก 18 ข้อ · รายงาน/ภาพหน้าจอที่ .e2e/
 bun deploy/smoke.ts --db empty   # ทางที่สอง: DB เปล่า → auto-seed
 ```
 
@@ -150,6 +165,7 @@ CI: `.github/workflows/omniscient-quant-engine.yml` รันคำสั่ง�
 | `GET/POST /api/research/deep/{symbol}` | Deep Research รายหุ้น รวมผลทุกชั้น (`?format=md` = ไฟล์ Markdown · POST = เรียบเรียงด้วย LLM) |
 | `GET /api/flows` · `GET /api/flows/{SET\|symbol}` | รายชื่อ SET + หุ้นไทยแยกหมวด · แดชบอร์ดเงินไหล (อนุกรมรายสัปดาห์, ตารางซื้อ/ขาย/สุทธิ, ช่วงเวลา, Flow Index, NVDR/short sale) |
 | `GET /api/rhythm?symbol=SET\|symbol&view=full\|summary` | จังหวะตลาด 5 แผง (symbol ใช้กับฤดูกาล + ด่านที่บล็อก · summary = ตัวเลขย่อ · 404 หุ้นไม่มี · 409 ข้อมูลไม่พอ) |
+| `GET /api/atlas` | Atlas พฤติกรรมระบบ 6 มุม (แผนที่สถานะตลาด · จังหวะเวลา · สัญญาณพร้อมกัน · ส่วนผสมกำไร/ขาดทุน · ไม้เริ่ม/จบ + กติกาออกทางเลือก · AUC + ปรับคันโยกแบบ walk-forward) + ข้อเสนอ · 409 ข้อมูลไม่พอ |
 | `GET /api/board` · `GET /api/decision/{symbol}` | Decision Board ทุกตัว · 5-Gate + trade plan + risk MC + history |
 | `GET /api/analytics/factors` · `GET /api/analytics/dependence` | Multi-View factor model + volcano · Θ matrix + decouple |
 | `GET /api/backtest` | walk-forward + gate attribution + calibration + hit-rate CI + rules stamp |
@@ -168,7 +184,8 @@ CI: `.github/workflows/omniscient-quant-engine.yml` รันคำสั่ง�
 | `src/lib/quant/engine/` | panel (`buildPanel` ท่อเดียว) · rules + registry · robustness · factors/volcano · gates · backtest · risk · synthesis · meta-risk · mdx · micro · apex · terminal · api (orchestrator + cache) · warmup |
 | `src/lib/research/` · `src/components/research/` | Deep Research: ประกอบรายงานจากทุกชั้น (pure) · Markdown · บริการโหลด + prompt LLM · หน้าจอรายงาน |
 | `src/lib/flows/` · `src/components/flows/` | เงินไหลนักลงทุน: generator + รายสัปดาห์ + Flow Index · แดชบอร์ด |
-| `src/lib/rhythm/` · `src/components/rhythm/` · `src/components/charts/chart-kit.tsx` | จังหวะตลาด: คำนวณ 5 แผงจาก MarketState (pure) + cache ต่อเวอร์ชันข้อมูล · หน้าจอ · ชิ้นส่วนกราฟที่ใช้ร่วมกับหน้าเงินไหล |
+| `src/lib/rhythm/` · `src/components/rhythm/` · `src/components/charts/chart-kit.tsx` | จังหวะตลาด: คำนวณ 5 แผงจาก MarketState (pure) + cache ต่อเวอร์ชันข้อมูล · หน้าจอ · ชิ้นส่วนกราฟ/สี/tooltip ที่ใช้ร่วมกับหน้าเงินไหลและ Atlas |
+| `src/lib/atlas/` · `src/components/atlas/` | Atlas พฤติกรรมระบบ: ไม้จำลองจากสัญญาณ + 6 มุม + สถิติ (block bootstrap · AUC ถ่วงน้ำหนัก · เลื่อนวงกลม · BH-FDR) แบบ pure · หน้าจอ + forest plot |
 | `src/lib/data/` | calendar (SET) · freshness · csv · yahoo · ingest (ตรวจ/ทำความสะอาด/แทนที่) · provenance · service |
 | `src/lib/ops/backup.ts` · `src/lib/log.ts` · `src/lib/audit.ts` · `src/lib/http/responses.ts` | backup ออนไลน์ · structured logger · ActionLog · คำตอบมาตรฐาน (400/404/500 + errorId) + zod |
 | `src/lib/llm.ts` · `src/proxy.ts` · `src/lib/security/` | ชั้น LLM · ด่านสิทธิ์ทุกคำขอ (local/auth, ผู้ดูแล/ผู้ชม/Bearer, CSRF, rate limit, security events) |

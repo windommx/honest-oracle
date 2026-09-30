@@ -126,6 +126,7 @@ describe("security/rate-limit", () => {
     expect(matchRateRule("POST", "/api/research/deep/TSE")?.name).toBe("llm-report")
     expect(matchRateRule("GET", "/api/research/deep/TSE")?.name).toBe("heavy-report")
     expect(matchRateRule("GET", "/api/rhythm")?.name).toBe("heavy-report")
+    expect(matchRateRule("GET", "/api/atlas")?.name).toBe("heavy-report")
   })
 })
 

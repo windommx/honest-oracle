@@ -7,6 +7,7 @@ import { beforeAll, describe, expect, test } from "bun:test"
 import { db } from "@/lib/db"
 import { ensureSeeded } from "@/lib/quant/engine/panel"
 import * as analyst from "./analyst/[symbol]/route"
+import * as atlas from "./atlas/route"
 import * as auditLog from "./audit-log/route"
 import * as journal from "./journal/route"
 import * as deep from "./research/deep/[symbol]/route"
@@ -239,4 +240,29 @@ describe("/api/rhythm — จังหวะตลาด", () => {
     expect("dayMap" in sj).toBe(false)
     expect((await rhythm.GET(req("GET", "/api/rhythm?view=everything"))).status).toBe(400)
   }, 120_000)
+})
+
+describe("/api/atlas — Atlas พฤติกรรมระบบ", () => {
+  test("6 มุมครบ (หัวข้อ/ฐาน/สรุป/ที่มา) · คันโยกแรก = กติกาปัจจุบัน · ข้อมูลจำลองติดป้าย · เรียกซ้ำได้ผลเดิม (cache)", async () => {
+    const res = await atlas.GET()
+    expect(res.status).toBe(200)
+    const body = (await res.json()) as Record<string, { title?: string; conclusion?: string; source?: string }> & {
+      header: { nSignals: number; data: { kind: string } }
+      intel: { levers: Array<{ verdict: string }>; auc: unknown[] }
+      actions: Array<{ tone: string; text: string }>
+    }
+    for (const k of ["stateMap", "timing", "depth", "mix", "lifecycle", "intel"]) {
+      expect(body[k].title!.length).toBeGreaterThan(10)
+      expect(body[k].conclusion!.length).toBeGreaterThan(20)
+      expect(body[k].source).toContain("src/lib/atlas/compute.ts")
+    }
+    expect(body.header.data.kind).toBe("synthetic")
+    expect(body.header.nSignals).toBeGreaterThan(0)
+    expect(body.intel.levers[0].verdict).toBe("baseline")
+    expect(body.intel.auc.length).toBe(8)
+    expect(body.actions.length).toBeGreaterThan(0)
+    for (const a of body.actions) expect(["try", "keep", "watch"]).toContain(a.tone)
+    const again = (await (await atlas.GET()).json()) as { header: unknown }
+    expect(again.header).toEqual(body.header)
+  }, 180_000)
 })

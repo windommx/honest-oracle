@@ -15,6 +15,7 @@ import {
   LineChart,
   Layers,
   Monitor,
+  Radar,
   ShieldAlert,
   ShieldCheck,
   ShieldHalf,
@@ -94,6 +95,7 @@ const NAV_GROUPS: NavGroupDef[] = [
     icon: FlaskConical,
     items: [
       { key: 'backtest', label: 'Backtest & Journal', icon: History },
+      { key: 'atlas', label: 'Atlas พฤติกรรมระบบ', icon: Radar },
       { key: 'auditor', label: 'AI Auditor', icon: Sparkles },
     ],
   },

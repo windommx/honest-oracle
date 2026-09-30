@@ -616,7 +616,8 @@ function clusterLabel(profile: number[], maxParts: number): string {
   return parts.length ? parts.join(' · ') : 'วันปกติ (ใกล้ค่าเฉลี่ยทุกด้าน)';
 }
 
-export function computeDayMap(state: MarketState, t0: number, t1: number): DayMapPanel {
+/** ตัวแปรระดับตลาดรายวัน (ตาม DAY_FEATURES) ของวัน t0..t1 — ใช้ร่วมกับ Atlas */
+export function dayFeatureMatrix(state: MarketState, t0: number, t1: number): { ts: number[]; X: number[][] } {
   const S = state.stocks;
   const ts: number[] = [];
   const X: number[][] = [];
@@ -634,6 +635,11 @@ export function computeDayMap(state: MarketState, t0: number, t1: number): DayMa
       state.fFlow[t],
     ]);
   }
+  return { ts, X };
+}
+
+export function computeDayMap(state: MarketState, t0: number, t1: number): DayMapPanel {
+  const { ts, X } = dayFeatureMatrix(state, t0, t1);
   const n = X.length;
   const pc = pca(X, 2);
   // ทิศของแกน PCA ไม่มีความหมายในตัว → หันให้ตัวแปรที่ถ่วงมากที่สุดของแต่ละแกนเป็นบวก (ผลคงที่ทุกครั้ง)
@@ -746,21 +752,26 @@ export interface GateBlockMatrix {
   symbols: string[];
   cat: Int8Array[];
   kind: Int8Array[];
+  /** stopHard ของแผนเทรดในวันที่มีสัญญาณ (0 = ไม่มีสัญญาณ) — ใช้จำลองไม้ใน Atlas */
+  stop: Float64Array[];
 }
 
 export function computeGateBlockMatrix(state: MarketState, t0: number, t1: number): GateBlockMatrix {
   const len = t1 - t0 + 1;
   const cat: Int8Array[] = [];
   const kind: Int8Array[] = [];
+  const stop: Float64Array[] = [];
   for (const s of state.stocks) {
     const c = new Int8Array(len);
     const k = new Int8Array(len);
+    const sp = new Float64Array(len);
     for (let t = t0; t <= t1; t++) {
       const ev = evaluateGates(state, s.symbol, t, { light: true });
       const i = t - t0;
       if (ev.signal !== 'NO_TRADE') {
         c[i] = SIGNAL_CAT;
         k[i] = ev.signal === 'ENTRY_PULLBACK' ? 1 : 2;
+        sp[i] = ev.plan.stopHard;
       } else {
         const g = ev.gates;
         c[i] = !g.g1 ? 0 : !g.g2 ? 1 : !g.g3 ? 2 : !g.g4 ? 3 : 4;
@@ -768,8 +779,9 @@ export function computeGateBlockMatrix(state: MarketState, t0: number, t1: numbe
     }
     cat.push(c);
     kind.push(k);
+    stop.push(sp);
   }
-  return { t0, t1, symbols: state.stocks.map((s) => s.symbol), cat, kind };
+  return { t0, t1, symbols: state.stocks.map((s) => s.symbol), cat, kind, stop };
 }
 
 const emptyCounts = (): Record<GateBlockKey, number> => ({ G1: 0, G2: 0, G3: 0, G4: 0, G5: 0, SIGNAL: 0 });

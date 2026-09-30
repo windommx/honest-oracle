@@ -18,6 +18,7 @@ import { AppFooter } from '@/components/app-footer';
 import { FlowDashboardView } from '@/components/flows/flow-dashboard';
 import { DeepResearchView } from '@/components/research/deep-research-view';
 import { RhythmView } from '@/components/rhythm/rhythm-view';
+import { AtlasView } from '@/components/atlas/atlas-view';
 import { FirstRunGuide } from '@/components/first-run-guide';
 import { AppMetaProvider, dataKindTag, useAppMeta } from '@/components/providers/app-meta';
 import { OverviewTab } from '@/components/quant/overview-tab';
@@ -72,6 +73,7 @@ type ViewKey =
   | 'auditor'
   | 'flows'
   | 'rhythm'
+  | 'atlas'
   | 'research';
 
 export default function Home() {
@@ -282,6 +284,11 @@ function HomeShell() {
             // จังหวะตลาดใช้ความกว้างเต็มจอ — กราฟเวลายาว + แผนที่วันคู่กับตาราง
             <div className="w-full px-3 py-4 sm:px-5">
               <RhythmView />
+            </div>
+          ) : view === 'atlas' ? (
+            // Atlas ใช้ความกว้างเต็มจอ — แผนที่คู่ตาราง + forest plot หลายคอลัมน์
+            <div className="w-full px-3 py-4 sm:px-5">
+              <AtlasView />
             </div>
           ) : (
             <div className="mx-auto w-full max-w-7xl px-4 py-5 sm:px-6">

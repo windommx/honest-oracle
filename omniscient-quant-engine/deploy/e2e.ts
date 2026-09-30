@@ -7,7 +7,7 @@
 //   ตัวเลือก: --db <ไฟล์ .db | empty> --port 3220 --out .e2e --headed
 //
 // ผ่านเมื่อ:
-//  - ทุกมุมมอง (15 แท็บ desktop + มือถือ 390px) ไม่มี axe violation ของ WCAG 2.0/2.1 A–AA + 2.2 target-size เกินงบ (AXE_BUDGET)
+//  - ทุกมุมมอง (16 แท็บ desktop + มือถือ 390px) ไม่มี axe violation ของ WCAG 2.0/2.1 A–AA + 2.2 target-size เกินงบ (AXE_BUDGET)
 //  - มือถือไม่มี scroll แนวนอนทั้งหน้า · ไม่มี console error / page error
 //  - interaction หลักทำงาน: คำแนะนำครั้งแรก, ⌘K, ล็อกกติกา, robustness, Apex size ใน Decision, journal P&L (commit ตอน blur),
 //    ปุ่ม AI ถูกปิดพร้อมคำอธิบายเมื่อไม่มี LLM, /terms, 404
@@ -34,11 +34,12 @@ export const VIEWS: Array<{ key: string; label: string }> = [
   { key: "auditor", label: "AI Auditor" },
   { key: "flows", label: "เงินไหลนักลงทุน" },
   { key: "rhythm", label: "จังหวะตลาด" },
+  { key: "atlas", label: "Atlas พฤติกรรมระบบ" },
   { key: "research", label: "Deep Research" },
   { key: "dashboard", label: "Command Center" },
 ]
 
-const MOBILE_SHOT: Record<string, string> = { "เงินไหลนักลงทุน": "flows", "จังหวะตลาด": "rhythm", "Deep Research": "research" }
+const MOBILE_SHOT: Record<string, string> = { "เงินไหลนักลงทุน": "flows", "จังหวะตลาด": "rhythm", "Atlas พฤติกรรมระบบ": "atlas", "Deep Research": "research" }
 
 /**
  * งบ violation ต่อ rule ของ axe (จำนวน node สูงสุดที่ยอมรับต่อมุมมอง) — ค่าเริ่มต้น 0 ทุก rule
@@ -323,6 +324,26 @@ async function main(): Promise<number> {
           }),
         )
       }
+      if (v.key === "atlas") {
+        checks.push(
+          await check("Atlas: 6 มุม + สรุป 6 ข้อ · ข้อเสนอมีป้ายประเภท · คันโยกมีคำตัดสิน · กดกลุ่มวันแล้วแผนที่เปลี่ยนเป็นโหมดไฮไลต์", async () => {
+            await page.locator("#atlas-f-h").waitFor({ timeout: 90_000 })
+            const sections = await page.locator("section[id^='atlas-'] h3[id$='-h']").count()
+            if (sections !== 6) return `มี ${sections} มุม (คาด 6)`
+            if ((await page.getByRole("navigation", { name: "หกมุมของ Atlas" }).getByRole("link").count()) !== 6) return "สรุปข้อค้นพบไม่ครบ 6 ข้อ"
+            const actions = page.getByRole("region", { name: "ข้อเสนอเพื่อเพิ่มประสิทธิภาพ" }).getByRole("listitem")
+            if ((await actions.count()) === 0) return "ไม่มีข้อเสนอ"
+            if (!/^(ทดลอง|คงไว้|เฝ้าระวัง)/.test((await actions.first().innerText()).trim())) return "ข้อเสนอไม่มีป้ายประเภท"
+            if ((await page.getByText("กติกาปัจจุบัน", { exact: true }).count()) !== 2) return "ไม่มีแถวฐาน (กติกาปัจจุบัน) ครบทั้งกติกาออกและคันโยก"
+            const pick = page.getByRole("region", { name: "ตารางผลของระบบตามกลุ่มวัน" }).getByRole("button").last()
+            await pick.click()
+            if ((await pick.getAttribute("aria-pressed")) !== "true") return "เลือกกลุ่มวันไม่ได้"
+            if ((await page.getByRole("button", { name: "ไฮไลต์กลุ่มวัน" }).getAttribute("aria-pressed")) !== "true") return "แผนที่ไม่เปลี่ยนเป็นโหมดไฮไลต์กลุ่ม"
+            await settle(page)
+            views.push(await measure(page, "Atlas (ไฮไลต์กลุ่มวัน)", 1440, Date.now(), o.out, "desktop-atlas-cluster.png"))
+          }),
+        )
+      }
       if (v.key === "research") {
         checks.push(
           await check("Deep Research: 12 หัวข้อ (รวมจังหวะตลาด) + 13 สาย · เปลี่ยนหุ้น · ดาวน์โหลด Markdown · ไม่มี LLM → ปุ่ม AI ปิด · ตอนพิมพ์ซ่อนเมนู", async () => {
@@ -399,7 +420,7 @@ async function main(): Promise<number> {
     await m.goto(`${base}/`, { waitUntil: "domcontentloaded" })
     await settle(m)
     views.push(await measure(m, "Command Center (มือถือ)", 390, tm, o.out, "mobile-dashboard.png"))
-    for (const label of ["Decision (L6)", "Apex (L7)", "Backtest & Journal", "เงินไหลนักลงทุน", "จังหวะตลาด", "Deep Research"]) {
+    for (const label of ["Decision (L6)", "Apex (L7)", "Backtest & Journal", "เงินไหลนักลงทุน", "จังหวะตลาด", "Atlas พฤติกรรมระบบ", "Deep Research"]) {
       const t0 = Date.now()
       try {
         await m.getByRole("button", { name: "เปิดเมนูนำทาง" }).first().click({ timeout: 10_000 })

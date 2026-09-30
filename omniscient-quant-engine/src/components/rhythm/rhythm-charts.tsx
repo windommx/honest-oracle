@@ -30,127 +30,44 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { AXIS, BASELINE, ChartFrame, GRID, SURFACE, TOOLTIP, type LegendItem } from '@/components/charts/chart-kit';
+import {
+  AXIS,
+  BASELINE,
+  CATEGORICAL,
+  ChartFrame,
+  DIV_NEG,
+  DIV_POS,
+  divergingColor,
+  DivergingLegend,
+  GRID,
+  HaloText,
+  inkOn,
+  niceTicks,
+  robustMax,
+  SURFACE,
+  TipBox,
+  TOOLTIP,
+  type LegendItem,
+  type TipProps,
+  type ViewBox,
+} from '@/components/charts/chart-kit';
 import { TH_MONTH, thDate, thMonthTick } from '@/lib/flows/format';
 import type { BreadthPanel, DayMapPanel, GateBlockPanel, SeasonalityPanel, SectorPanel } from '@/lib/rhythm/types';
+
+// สีและสเกลย้ายไป chart-kit (ใช้ร่วมกับหน้า Atlas) — ส่งออกต่อเพื่อไม่ให้ผู้ใช้เดิมพัง
+export { CATEGORICAL, divergingColor, inkOn, robustMax };
 import { cn } from '@/lib/utils';
 
-/** ช่อง categorical 1–6 (โหมดมืด) — ลำดับคงที่ สีผูกกับตัวตน ไม่ใช่อันดับ */
-export const CATEGORICAL = ['#3987e5', '#d95926', '#199e70', '#c98500', '#d55181', '#008300'];
 const BLUE = CATEGORICAL[0];
 const ORANGE = CATEGORICAL[1];
 const AQUA = CATEGORICAL[2];
 /** เทาสำหรับข้อมูลบริบท (ลดความเด่น) */
 const CONTEXT = '#71717a';
-const DIV_MID = '#383835';
-const DIV_POS = ['#414f5e', '#49678a', '#507fb7', '#5598e7'];
-const DIV_NEG = ['#624541', '#8c524e', '#b85d5a', '#e66767'];
 const INK = '#f4f4f5';
 const INK_MUTED = '#a1a1aa';
-const INK_DARK = '#0f0f11';
 
 const signedFmt = (v: number, digits = 2) => `${v > 0 ? '+' : v < 0 ? '−' : '±'}${Math.abs(v).toFixed(digits)}`;
 const intFmt = (v: number) => Math.round(v).toLocaleString('en-US');
-
-/** tick จำนวนเต็มที่อ่านง่าย (ก้าว 1/2/5 × 10^k) ครอบช่วง [lo, hi] */
-function niceTicks(lo: number, hi: number, target = 5): number[] {
-  const raw = Math.max(1e-9, (hi - lo) / target);
-  const mag = 10 ** Math.floor(Math.log10(raw));
-  const step = [1, 2, 5, 10].map((m) => m * mag).find((st) => st >= raw) ?? 10 * mag;
-  const out: number[] = [];
-  for (let v = Math.ceil(lo / step) * step; v <= hi + 1e-9; v += step) out.push(Math.round(v * 1e6) / 1e6);
-  return out;
-}
-
-function relLum(hex: string): number {
-  const h = hex.replace('#', '');
-  const [r, g, b] = [0, 2, 4].map((i) => {
-    const c = parseInt(h.slice(i, i + 2), 16) / 255;
-    return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
-  });
-  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
-}
-const contrastRatio = (a: string, b: string) => {
-  const [hi, lo] = [relLum(a), relLum(b)].sort((x, y) => y - x);
-  return (hi + 0.05) / (lo + 0.05);
-};
-/** สีตัวอักษรบนพื้นสี: ขาวหรือดำ แล้วแต่ตัวไหน contrast สูงกว่า */
-export const inkOn = (fill: string) => (contrastRatio(fill, '#ffffff') >= contrastRatio(fill, INK_DARK) ? '#ffffff' : INK_DARK);
-
-/** สีแบบแบ่งขั้น 4 ขั้นต่อฝั่ง · |v| ≥ max = ขั้นเข้มสุด · 0 = เทากลาง */
-export function divergingColor(v: number, max: number): string {
-  if (max <= 0 || v === 0) return DIV_MID;
-  const t = Math.min(1, Math.abs(v) / max);
-  const step = Math.max(0, Math.min(3, Math.ceil(t * 4) - 1));
-  return (v > 0 ? DIV_POS : DIV_NEG)[step];
-}
-
-/** เพดานสเกลแบบทนค่าผิดปกติ: เปอร์เซ็นไทล์ 95 ของ |ค่า| */
-export function robustMax(values: number[]): number {
-  const abs = values.map(Math.abs).sort((a, b) => a - b);
-  if (!abs.length) return 0;
-  return abs[Math.min(abs.length - 1, Math.floor(abs.length * 0.95))] || abs[abs.length - 1];
-}
-
-function DivergingLegend({ neg, pos, note }: { neg: string; pos: string; note?: string }) {
-  return (
-    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-zinc-300">
-      <span>{neg}</span>
-      <span className="flex gap-[2px]" aria-hidden>
-        {[...DIV_NEG].reverse().map((c) => (
-          <span key={c} className="h-3 w-4 rounded-[2px]" style={{ background: c }} />
-        ))}
-        <span className="h-3 w-4 rounded-[2px]" style={{ background: DIV_MID }} />
-        {DIV_POS.map((c) => (
-          <span key={c} className="h-3 w-4 rounded-[2px]" style={{ background: c }} />
-        ))}
-      </span>
-      <span>{pos}</span>
-      {note && <span className="text-zinc-400">· {note}</span>}
-    </div>
-  );
-}
-
-interface TipItem<T> {
-  payload?: T;
-  value?: number | string;
-  name?: string;
-  color?: string;
-}
-interface TipProps<T> {
-  active?: boolean;
-  payload?: Array<TipItem<T>>;
-  label?: string | number;
-}
-interface ViewBox {
-  x?: number;
-  y?: number;
-  width?: number;
-  height?: number;
-}
-
-function TipBox({ title, rows }: { title: string; rows: Array<{ label: string; value: string; color?: string }> }) {
-  return (
-    <div className="rounded-lg border border-zinc-700 bg-zinc-900 px-2.5 py-1.5 text-[11px] shadow-lg">
-      <p className="mb-0.5 font-medium text-zinc-200">{title}</p>
-      {rows.map((r) => (
-        <p key={r.label} className="flex items-center gap-1.5 text-zinc-300">
-          {r.color && <span className="inline-block h-2 w-2 rounded-sm" style={{ background: r.color }} aria-hidden />}
-          {r.label} <span className="ml-auto pl-3 font-mono text-zinc-50">{r.value}</span>
-        </p>
-      ))}
-    </div>
-  );
-}
-
-/** ข้อความในกราฟ SVG ที่อ่านออกบนเส้น/แท่งด้านหลัง (ขอบสีพื้นรอบตัวอักษร) */
-function HaloText({ x, y, anchor, fill, size = 10, weight, children }: { x: number; y: number; anchor: 'start' | 'middle' | 'end'; fill: string; size?: number; weight?: number; children: string }) {
-  return (
-    <text x={x} y={y} textAnchor={anchor} fill={fill} fontSize={size} fontWeight={weight} stroke={SURFACE} strokeWidth={3} paintOrder="stroke" strokeLinejoin="round">
-      {children}
-    </text>
-  );
-}
 
 // ─────────────────────────── 1) ความพร้อมกัน / ความกว้างของตลาด ───────────────────────────
 

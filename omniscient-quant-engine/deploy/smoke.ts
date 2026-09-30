@@ -115,6 +115,21 @@ export const DEFAULT_ROUTES: RouteSpec[] = [
   },
   { route: "/api/rhythm?symbol=NOPE", status: 404 },
   { route: "/api/rhythm?symbol=%3Cx%3E", status: 400 },
+  {
+    route: "/api/atlas",
+    expect: (j) => {
+      const sections = ["stateMap", "timing", "depth", "mix", "lifecycle", "intel"].map((k) => j[k] as { title?: unknown; conclusion?: unknown } | undefined)
+      const levers = (j.intel as { levers?: Array<{ verdict?: unknown }> } | undefined)?.levers
+      const nSignals = (j.header as { nSignals?: unknown } | undefined)?.nSignals
+      return sections.every((s) => typeof s?.title === "string" && typeof s.conclusion === "string") &&
+        Array.isArray(levers) &&
+        levers[0]?.verdict === "baseline" &&
+        typeof nSignals === "number" &&
+        Array.isArray(j.actions)
+        ? undefined
+        : "Atlas ไม่ครบ 6 มุม / คันโยก / ข้อเสนอ"
+    },
+  },
   { route: "/api/meta", expect: (j) => ((j.access as { canWrite?: unknown } | undefined)?.canWrite === true && typeof (j.data as { label?: unknown } | undefined)?.label === "string" ? undefined : "meta ไม่ครบ") },
 ]
 
