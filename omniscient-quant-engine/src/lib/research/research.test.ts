@@ -3,6 +3,7 @@ import { apexFor, loadRiskContext, metaRiskFor } from "@/lib/quant/engine/dossie
 import { getDecision } from "@/lib/quant/engine/api"
 import { assembleDeepResearch } from "./deep"
 import { deepResearchFilename, renderDeepResearchMarkdown } from "./markdown"
+import { getRhythm } from "@/lib/rhythm/service"
 import { getDeepResearch, narrativeEvidence, parseNarrative } from "./service"
 import type { DeepResearchReport } from "./types"
 
@@ -17,7 +18,7 @@ describe("research/deep — ประกอบจากผลของทุก�
   test("ครบทุกหัวข้อตามลำดับ · หุ้นที่ไม่มี = null · ไม่สนตัวพิมพ์", async () => {
     expect(tse.symbol).toBe("TSE")
     expect(tse.sections.map((s) => s.key)).toEqual([
-      "market", "technical", "fundamental", "dependence", "factor", "flows", "synthesis", "gates", "risk", "sizing", "evidence",
+      "market", "technical", "fundamental", "dependence", "factor", "flows", "rhythm", "synthesis", "gates", "risk", "sizing", "evidence",
     ])
     expect(tse.strands.length).toBe(13)
     for (const s of tse.sections) {
@@ -54,6 +55,19 @@ describe("research/deep — ประกอบจากผลของทุก�
     for (const f of flows.facts.filter((x) => x.label.startsWith("NVDR"))) expect(f.note).toBe("จำลอง")
   })
 
+  test("จังหวะตลาด: เป็นข้อมูลประกอบ (ไม่โหวต) · ตัวเลขตรงกับหน้าจังหวะตลาด · บอกผลการปรับทดสอบหลายช่องเสมอ", async () => {
+    const sec = tse.sections.find((s) => s.key === "rhythm")!
+    expect(sec.stance).toBe("info")
+    const r = await getRhythm("TSE")
+    if (!r.ok) throw new Error(r.reason)
+    const fact = (label: string) => sec.facts.find((f) => f.label === label)
+    expect(fact("สัญญาณเข้าซื้อของ TSE")!.value).toContain(`(${r.data.gates.overall.counts.SIGNAL} ครั้ง)`)
+    expect(fact("วันล่าสุดคล้ายวันแบบ")!.value).toContain(r.data.dayMap.clusters[r.data.dayMap.latest.cluster].label)
+    expect(fact("หุ้นเคลื่อนแรงพร้อมกันวันล่าสุด")!.value).toBe(`${r.data.breadth.latest.extreme} / ${r.data.breadth.nStocks} ตัว`)
+    expect(sec.bullets.join(" ")).toContain("ไม่ได้ร่วมโหวต")
+    expect(sec.bullets[0]).toMatch(/ปรับการทดสอบ|ปรับหลายช่อง|ไม่มีเดือนหรือวันใด/)
+  })
+
   test("ท่าทีของหัวข้อมาจากโหวตของสายหลักฐาน (ไม่สร้างสัญญาณใหม่)", async () => {
     const vote = (key: string) => tse.strands.find((s) => s.key === key)!
     const market = tse.sections.find((s) => s.key === "market")!
@@ -80,6 +94,7 @@ describe("research/deep — ประกอบจากผลของทุก�
       apex: apexFor(ctx, "TSE", meta)!,
       backtest: ctx.bt,
       flows: null,
+      rhythm: null,
       robustness: null,
       data: { kind: "real", label: "ทดสอบ" },
       rules: { hashShort: "abc", version: "t", matchesRegistered: true },

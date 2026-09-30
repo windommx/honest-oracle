@@ -17,7 +17,7 @@ import {
   summarizeGateBlocks,
   type GateBlockMatrix,
 } from './compute';
-import type { BreadthPanel, DayMapPanel, RhythmResponse, SectorPanel } from './types';
+import type { BreadthPanel, DayMapPanel, RhythmResponse, RhythmSummary, SectorPanel } from './types';
 
 export interface RhythmBase {
   t0: number;
@@ -81,4 +81,21 @@ export async function getRhythm(symbol: string): Promise<RhythmResult> {
   const state = await loadMarketState();
   const provenance = await getDataProvenance();
   return rhythmFromState(state, symbol, { kind: provenance.kind, label: provenance.label });
+}
+
+/** ย่อผลเต็มเหลือตัวเลขที่ Command Center ใช้ (เดือนล่าสุดของด่านที่บล็อก · วันแบบไหน · ความกว้าง) */
+export function rhythmSummary(r: RhythmResponse): RhythmSummary {
+  const cl = r.dayMap.clusters[r.dayMap.latest.cluster];
+  const m = r.gates.months[r.gates.months.length - 1];
+  const gatesOnly = r.gates.categories.filter((c) => c.key !== 'SIGNAL');
+  const top = gatesOnly.reduce((a, c) => (m.shares[c.key] > m.shares[a.key] ? c : a), gatesOnly[0]);
+  return {
+    asOf: r.asOf,
+    nStocks: r.breadth.nStocks,
+    data: r.data,
+    breadth: { value: r.breadth.latest.breadth, mean20: r.breadth.latest.breadthMean20, extreme: r.breadth.latest.extreme },
+    dayType: { id: cl.id, label: cl.label, share: cl.share, fwdUp: cl.fwdUp, baselineUp: r.dayMap.baseline.fwdUp, recent: r.dayMap.recent.map((x) => x.c) },
+    gates: { month: m.month, top: { key: top.key, label: top.label, share: m.shares[top.key] }, signalShare: m.shares.SIGNAL },
+    findings: [r.breadth.title, r.seasonality.title, r.sectors.title, r.dayMap.title, r.gates.title],
+  };
 }

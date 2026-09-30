@@ -68,11 +68,13 @@ bun run dev                   # http://localhost:3000 (ฟังเฉพาะ 
 5. **อะไรบล็อกสัญญาณ** (← ใครเริ่ม turn): ต่อหุ้น-วัน นับ "ด่านแรกที่ไม่ผ่าน" G1→G5 หรือสัญญาณ (pullback/momentum) ด้วย `evaluateGates` ตัวเดียวกับ backtest (light mode) · 100% stacked รายเดือน + จำนวนสัญญาณ · ทุกหุ้นหรือหุ้นที่เลือก
 
 - สี: categorical 6 ช่องผ่าน validator (adjacent CVD ΔE ≥ 8.4) · แผนที่วัน (scatter) ใช้ 2 สี (กลุ่มที่เลือก/วันล่าสุด) + เทา · heatmap = diverging น้ำเงิน↔แดง จุดกลางเทา ความสว่างเท่ากันทั้งสองฝั่ง · heatmap มีตารางข้อมูล + ค่าเมื่อชี้
-- API: `GET /api/rhythm?symbol=SET|สัญลักษณ์` (จำกัดความถี่แบบรายงานหนัก · คำนวณครั้งเดียวต่อเวอร์ชันข้อมูล ~0.4 วินาทีกับข้อมูลสาธิต) · โค้ด: `src/lib/rhythm/` (pure + test) · `src/components/rhythm/`
+- องค์ประกอบจากกราฟต้นฉบับ: บรรทัดตัวเลขสำคัญใต้หัวข้อ · ตัวเลขทุกช่องของ heatmap + กรอบช่องสูงสุด/ต่ำสุด · แท่งขอบบน/ขวาพร้อมค่าและเส้นเฉลี่ย · คำอธิบายวันพุ่งในกราฟ · การกระจายรายเดือน (มัธยฐาน/p90/สูงสุด) · ป้ายชื่อหมวดในพื้นที่ซ้อน · แท่งคู่รายเดือนพร้อมยอดรวม + N_eff · ป้ายกลุ่มพร้อม % ของวันและเส้นทาง 5 วันล่าสุด · % ในแท่งซ้อนของด่าน
+- หลอมรวมกับหน้าเดิม: **Command Center** มีแถบ "จังหวะตลาด" (วันนี้คล้ายวันแบบไหน · % หุ้นเหนือ MA20 · หุ้นเคลื่อนแรงพร้อมกัน · ด่านที่บล็อกมากสุดเดือนนี้ → ลิงก์ไปหน้าเต็ม) · **Deep Research** มีหัวข้อจังหวะของหุ้น · cache อุ่นตอนเริ่มเซิร์ฟเวอร์
+- API: `GET /api/rhythm?symbol=SET|สัญลักษณ์&view=full|summary` (จำกัดความถี่แบบรายงานหนัก · คำนวณครั้งเดียวต่อเวอร์ชันข้อมูล ~0.4 วินาทีกับข้อมูลสาธิต · summary = ตัวเลขย่อของ Command Center) · โค้ด: `src/lib/rhythm/` (pure + test) · `src/components/rhythm/`
 
 ## Deep Research (รายงานเชิงลึกรายหุ้น)
 
-แท็บ **จักรวาลหลัก → Deep Research** — เลือกหุ้น 1 ตัวแล้วได้รายงานฉบับเดียวที่รวมผลของทุกชั้น เรียงเป็น 11 หัวข้อ: ภาวะตลาด · เทคนิคและจังหวะเข้า · พื้นฐานและมูลค่า (PIT) · ความสัมพันธ์กับตลาด (copula) · ปัจจัยหลายมุมมอง · เงินไหล (สถาบัน · NVDR · short sale) · หลอมรวม 13 สาย · 5 Gates และแผนเทรด · ความเสี่ยง (CVaR · Risk MDX · Risk of Ruin) · ขนาดไม้ (Kelly-Vol · CVaR · MDX) · หลักฐานย้อนหลัง (walk-forward + ความทนทานข้าม seed)
+แท็บ **จักรวาลหลัก → Deep Research** — เลือกหุ้น 1 ตัวแล้วได้รายงานฉบับเดียวที่รวมผลของทุกชั้น เรียงเป็น 12 หัวข้อ: ภาวะตลาด · เทคนิคและจังหวะเข้า · พื้นฐานและมูลค่า (PIT) · ความสัมพันธ์กับตลาด (copula) · ปัจจัยหลายมุมมอง · เงินไหล (สถาบัน · NVDR · short sale) · จังหวะตลาด & จังหวะของหุ้น (วันแบบไหน · ด่านที่บล็อกหุ้นนี้ · ฤดูกาล + FDR — ข้อมูลประกอบ ไม่โหวต) · หลอมรวม 13 สาย · 5 Gates และแผนเทรด · ความเสี่ยง (CVaR · Risk MDX · Risk of Ruin) · ขนาดไม้ (Kelly-Vol · CVaR · MDX) · หลักฐานย้อนหลัง (walk-forward + ความทนทานข้าม seed)
 
 - ทุกหัวข้อบอก **มุมมอง** (หนุน / ถ่วง / กลาง / งดออกเสียง / ข้อมูล) ที่มาจากโหวตของสายหลักฐานเดิม — ไม่สร้างสัญญาณใหม่ · ตัวเลขมาจากการคำนวณชุดเดียวกับแท็บ Decision / Meta-Risk / Apex (`src/lib/quant/engine/dossiers.ts`) จึงตรงกันทุกหน้า
 - สรุปภาพรวม, สิ่งที่อาจทำให้ข้อสรุปผิด (kill switch, ความเสี่ยงสูงสุด, เงื่อนไขโมเดลตาย), แผนการเดินเกม, เช็กลิสต์ Part IV/V และ **ข้อจำกัดของรายงาน** (ข้อมูลจำลอง, สถานะการล็อกกติกา, ไม่ใช่คำแนะนำการลงทุน) สร้างด้วยกฎตายตัว — ไม่ต้องมี LLM
@@ -83,11 +85,11 @@ bun run dev                   # http://localhost:3000 (ฟังเฉพาะ 
 
 ```bash
 bun run build                                                   # next build (standalone) + คัดลอก static/public
-DATABASE_URL="file:/abs/path/omniscient-quant-engine/db/custom.db" bun run start   # node .next/standalone/server.js ที่ 127.0.0.1:3000
+bun run start                                                   # node .next/standalone/server.js ที่ 127.0.0.1:3000 (ใช้ .env เดียวกับ dev ได้เลย)
 # เปิดให้เครื่องอื่นใช้: ตั้ง OQE_AUTH_PASSWORD ก่อน แล้ว bun run start:lan (ฟัง 0.0.0.0)
 ```
 
-- โหมด standalone ใช้ `DATABASE_URL` แบบ **absolute path** (path สัมพัทธ์ถูกตีความจากตำแหน่ง Prisma client ในโฟลเดอร์ standalone)
+- `DATABASE_URL` แบบสัมพัทธ์ (`file:../db/custom.db`) ใช้ได้ทุกโหมด — standalone server chdir ไป `.next/standalone` ทำให้ Prisma client หาไฟล์ไม่เจอ ("Unable to open the database file") แอปจึงแปลงเป็น absolute เทียบ `<โปรเจกต์>/prisma/` ให้เอง (`src/lib/sqlite-path.ts`) · path absolute และ Docker (`file:/data/app.db`) ใช้ตามเดิม
 - ตอนเริ่ม server อุ่น cache งานหนัก (panel, backtest, board, factors, dependence) ในพื้นหลัง — ผู้ใช้คนแรกไม่ต้องรอคำนวณ · ปิดด้วย `OQE_WARM_CACHE=0` · สถานะที่ `/api/health` (`cache`)
 - Log เป็น JSON 1 บรรทัดต่อเหตุการณ์ในโปรดักชัน (`OQE_LOG_FORMAT=text` อ่านง่ายตอน dev, `LOG_LEVEL`) · ค่าที่ชื่อเหมือนความลับถูกปิดเสมอ · error 500 ส่ง `errorId` ให้ client และรายละเอียดอยู่ใน log เท่านั้น
 - Docker: `docker compose up -d --build` (บังคับตั้ง `OQE_AUTH_PASSWORD`) · image seed DB ลง volume `/data` ครั้งแรก (`OQE_SEED_DB=demo|empty|none`) · **image ยังไม่ได้ build ทดสอบ** (sandbox ไม่มีเครือข่ายสำหรับ docker)
@@ -147,7 +149,7 @@ CI: `.github/workflows/omniscient-quant-engine.yml` รันคำสั่ง�
 | `GET /api/audit-log` | ประวัติการกระทำ (ล่าสุดก่อน, กรองด้วย `action`) |
 | `GET/POST /api/research/deep/{symbol}` | Deep Research รายหุ้น รวมผลทุกชั้น (`?format=md` = ไฟล์ Markdown · POST = เรียบเรียงด้วย LLM) |
 | `GET /api/flows` · `GET /api/flows/{SET\|symbol}` | รายชื่อ SET + หุ้นไทยแยกหมวด · แดชบอร์ดเงินไหล (อนุกรมรายสัปดาห์, ตารางซื้อ/ขาย/สุทธิ, ช่วงเวลา, Flow Index, NVDR/short sale) |
-| `GET /api/rhythm?symbol=SET\|symbol` | จังหวะตลาด 5 แผง (symbol ใช้กับฤดูกาล + ด่านที่บล็อก · 404 หุ้นไม่มี · 409 ข้อมูลไม่พอ) |
+| `GET /api/rhythm?symbol=SET\|symbol&view=full\|summary` | จังหวะตลาด 5 แผง (symbol ใช้กับฤดูกาล + ด่านที่บล็อก · summary = ตัวเลขย่อ · 404 หุ้นไม่มี · 409 ข้อมูลไม่พอ) |
 | `GET /api/board` · `GET /api/decision/{symbol}` | Decision Board ทุกตัว · 5-Gate + trade plan + risk MC + history |
 | `GET /api/analytics/factors` · `GET /api/analytics/dependence` | Multi-View factor model + volcano · Θ matrix + decouple |
 | `GET /api/backtest` | walk-forward + gate attribution + calibration + hit-rate CI + rules stamp |

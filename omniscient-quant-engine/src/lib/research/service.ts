@@ -13,6 +13,7 @@ import { riskAssessment } from '@/lib/quant/engine/risk';
 import { peekSeedRobustness } from '@/lib/quant/engine/robustness';
 import { RULES } from '@/lib/quant/engine/rules';
 import { rulesStamp } from '@/lib/quant/engine/rules-registry';
+import { rhythmFromState } from '@/lib/rhythm/service';
 import { buildSynthesisDossier } from '@/lib/quant/engine/synthesis';
 import { assembleDeepResearch } from './deep';
 import type { DeepResearchReport, ResearchNarrative } from './types';
@@ -34,6 +35,8 @@ export async function getDeepResearch(symbol: string): Promise<DeepResearchRepor
   const risk = riskAssessment(state.stocks[si].rows.slice(-100), RULES.risk.budgetPct, RULES.risk.nu, RULES.risk.paths, 777);
   const f = flowsFromState(state, sym);
   const flows = f ? buildFlowDashboard(f.entity, f.days, '1y', 'nvdr', flowSource(f.entity)) : null;
+  const data = { kind: provenance.kind, label: provenance.label };
+  const rh = rhythmFromState(state, sym, data);
   return assembleDeepResearch({
     state,
     symbol: sym,
@@ -44,8 +47,9 @@ export async function getDeepResearch(symbol: string): Promise<DeepResearchRepor
     apex,
     backtest: ctx.bt,
     flows,
+    rhythm: rh.ok ? rh.data : null,
     robustness: peekSeedRobustness(),
-    data: { kind: provenance.kind, label: provenance.label },
+    data,
     rules: { hashShort: rules.hashShort, version: rules.version, matchesRegistered: rules.matchesRegistered },
   });
 }

@@ -269,6 +269,7 @@ function HomeShell() {
                 setSymbol(s);
                 setView(v ?? 'decision');
               }}
+              onNavigate={navigate}
             />
           ) : view === 'terminal' ? (
             <TerminalView symbol={symbol} onSymbolChange={setSymbol} tick={tick} />

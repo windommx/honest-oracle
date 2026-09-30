@@ -196,6 +196,17 @@ async function main(): Promise<number> {
       }),
     )
 
+    checks.push(
+      await check("Command Center: แถบจังหวะตลาด (วันแบบไหน · ความกว้าง · ด่านที่บล็อก) → กดแล้วไปหน้าจังหวะตลาด", async () => {
+        const strip = page.getByRole("region", { name: "จังหวะตลาดวันนี้" })
+        await strip.getByText("วันนี้คล้ายวันแบบ").waitFor({ timeout: 60_000 })
+        if ((await strip.getByText("ด่านที่บล็อกมากสุดเดือนนี้").count()) === 0) return "ไม่มีด่านที่บล็อก"
+        await strip.getByRole("button", { name: "ดูจังหวะตลาด →" }).click()
+        await page.locator("#rhythm-gates-h").waitFor({ timeout: 60_000 })
+        await nav(page, "Command Center")
+      }),
+    )
+
     for (const v of VIEWS) {
       const t0 = Date.now()
       try {
@@ -314,10 +325,10 @@ async function main(): Promise<number> {
       }
       if (v.key === "research") {
         checks.push(
-          await check("Deep Research: 11 หัวข้อ + 13 สาย · เปลี่ยนหุ้น · ดาวน์โหลด Markdown · ไม่มี LLM → ปุ่ม AI ปิด · ตอนพิมพ์ซ่อนเมนู", async () => {
+          await check("Deep Research: 12 หัวข้อ (รวมจังหวะตลาด) + 13 สาย · เปลี่ยนหุ้น · ดาวน์โหลด Markdown · ไม่มี LLM → ปุ่ม AI ปิด · ตอนพิมพ์ซ่อนเมนู", async () => {
             await page.getByRole("heading", { level: 2, name: /^TSE · / }).waitFor({ timeout: 30_000 })
             const sections = await page.locator("article.research-print section[id^='research-'] h3").count()
-            if (sections !== 11) return `มี ${sections} หัวข้อ (คาด 11)`
+            if (sections !== 12) return `มี ${sections} หัวข้อ (คาด 12)`
             if ((await page.getByRole("region", { name: "ตารางหลักฐาน 13 สาย" }).locator("tbody tr").count()) !== 13) return "ตาราง 13 สายไม่ครบ"
             if (!(await page.getByRole("button", { name: "เรียบเรียงด้วย AI" }).isDisabled())) return "ปุ่ม AI ยังกดได้ทั้งที่ไม่มี LLM"
             await page.getByRole("combobox", { name: "เลือกหุ้นสำหรับ Deep Research" }).click()

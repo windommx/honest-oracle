@@ -39,6 +39,68 @@ import type {
   BoardRowT,
   SeriesResponse,
 } from '@/lib/quant/api-types';
+import type { RhythmSummary } from '@/lib/rhythm/types';
+
+// ─── จังหวะตลาด (ย่อ) — ลิงก์ไปหน้าเต็ม ────────────────────────────────────────
+
+function RhythmStrip({ tick, onOpen }: { tick: number; onOpen?: () => void }) {
+  const q = useApi<RhythmSummary>(`/api/rhythm?view=summary&tick=${tick}`);
+  const r = q.data;
+  return (
+    <section aria-label="จังหวะตลาดวันนี้" className="mt-4 border-t border-white/[0.06] pt-4">
+      <div className="flex items-center justify-between gap-3">
+        <MicroLabel>จังหวะตลาด</MicroLabel>
+        {onOpen && (
+          <button
+            type="button"
+            onClick={onOpen}
+            className="min-h-6 rounded-md border border-zinc-700 px-2 text-[11px] text-zinc-300 transition-colors hover:bg-zinc-800 hover:text-zinc-100"
+          >
+            ดูจังหวะตลาด →
+          </button>
+        )}
+      </div>
+      {q.error ? (
+        <p className="mt-2 text-[11px] text-rose-300">โหลดจังหวะตลาดไม่สำเร็จ: {q.error}</p>
+      ) : !r ? (
+        <p role="status" className="mt-2 text-[11px] text-zinc-500">
+          กำลังคำนวณ…
+        </p>
+      ) : (
+        <dl className="mt-2.5 grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-4">
+          <div className="min-w-0">
+            <dt className="text-[10px] text-zinc-500">วันนี้คล้ายวันแบบ</dt>
+            <dd className="mt-0.5 truncate text-[13px] font-semibold text-zinc-100" title={r.dayType.label}>
+              {r.dayType.id + 1} · {r.dayType.label}
+            </dd>
+            <dd className="font-mono text-[10px] text-zinc-500 tabular-nums">
+              {r.dayType.share.toFixed(0)}% ของวัน · 5 วัน: {r.dayType.recent.map((c) => c + 1).join('→')}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-[10px] text-zinc-500">หุ้นเหนือ MA20</dt>
+            <dd className="mt-0.5 font-mono text-[15px] font-semibold text-zinc-100 tabular-nums">{r.breadth.value.toFixed(0)}%</dd>
+            <dd className="font-mono text-[10px] text-zinc-500 tabular-nums">เฉลี่ย 20 วัน {r.breadth.mean20.toFixed(0)}%</dd>
+          </div>
+          <div>
+            <dt className="text-[10px] text-zinc-500">เคลื่อนแรงพร้อมกัน</dt>
+            <dd className="mt-0.5 font-mono text-[15px] font-semibold text-zinc-100 tabular-nums">
+              {r.breadth.extreme}/{r.nStocks}
+            </dd>
+            <dd className="text-[10px] text-zinc-500">|ret| &gt; 2σ ของตัวเอง</dd>
+          </div>
+          <div className="min-w-0">
+            <dt className="text-[10px] text-zinc-500">ด่านที่บล็อกมากสุดเดือนนี้</dt>
+            <dd className="mt-0.5 truncate text-[13px] font-semibold text-zinc-100">
+              {r.gates.top.label} <span className="font-mono tabular-nums">{r.gates.top.share.toFixed(0)}%</span>
+            </dd>
+            <dd className="font-mono text-[10px] text-zinc-500 tabular-nums">สัญญาณ {r.gates.signalShare.toFixed(1)}% ของหุ้น-วัน</dd>
+          </div>
+        </dl>
+      )}
+    </section>
+  );
+}
 
 // ─── module-level helpers ────────────────────────────────────────────────────
 
@@ -124,11 +186,14 @@ export function CommandCenter({
   boardLoading,
   tick,
   onOpenSymbol,
+  onNavigate,
 }: {
   board: BoardResponse | null;
   boardLoading: boolean;
   tick: number;
   onOpenSymbol: (symbol: string, view?: 'terminal' | 'decision') => void;
+  /** ไปแท็บอื่นโดยไม่เปลี่ยนหุ้น (เช่น จังหวะตลาด) */
+  onNavigate?: (view: string) => void;
 }) {
   const [symbol, setSymbol] = useState('TSE');
   const [tf, setTf] = useState<'1D' | '1W'>('1D');
@@ -284,6 +349,8 @@ export function CommandCenter({
               </div>
               <BreadthBar adv={breadth.adv} dec={breadth.dec} flat={breadth.flat} className="mt-2.5" />
             </div>
+
+            <RhythmStrip tick={tick} onOpen={onNavigate ? () => onNavigate('rhythm') : undefined} />
           </Panel>
 
           {/* A2 — สุขภาพเอนจิน (KPI วินัย Part IV) */}

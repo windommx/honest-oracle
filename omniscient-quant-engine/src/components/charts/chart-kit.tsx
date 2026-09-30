@@ -22,8 +22,8 @@ export interface LegendItem {
   color: string;
   value?: string;
   dashed?: boolean;
-  /** รูปของ swatch: เส้น (ค่าเริ่มต้น) · ช่องสี (แท่ง/พื้นที่) */
-  shape?: 'line' | 'box';
+  /** รูปของ swatch: เส้น (ค่าเริ่มต้น) · ช่องสี (แท่ง/พื้นที่) · กรอบโปร่ง (แท่งโปร่ง) */
+  shape?: 'line' | 'box' | 'outline';
 }
 
 export function Legend({ items }: { items: LegendItem[] }) {
@@ -31,8 +31,12 @@ export function Legend({ items }: { items: LegendItem[] }) {
     <ul className="mb-1 flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-zinc-300">
       {items.map((it) => (
         <li key={it.label} className="flex items-center gap-1.5">
-          {it.shape === 'box' ? (
-            <span className="inline-block h-2.5 w-2.5 shrink-0 rounded-sm" style={{ background: it.color }} aria-hidden />
+          {it.shape === 'box' || it.shape === 'outline' ? (
+            <span
+              className="inline-block h-2.5 w-2.5 shrink-0 rounded-sm"
+              style={it.shape === 'box' ? { background: it.color } : { boxShadow: `inset 0 0 0 1.5px ${it.color}` }}
+              aria-hidden
+            />
           ) : (
             <svg width="14" height="6" aria-hidden className="shrink-0">
               <line x1="0" y1="3" x2="14" y2="3" stroke={it.color} strokeWidth="2" strokeDasharray={it.dashed ? '4 2' : undefined} />

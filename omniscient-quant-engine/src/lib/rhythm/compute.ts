@@ -3,7 +3,7 @@
 // ตัวเลขทุกตัวมาจากชุดข้อมูลเดียวกับ Terminal/Decision · ด่านสัญญาณใช้ evaluateGates ตัวเดียวกับ backtest (light mode)
 // ============================================================
 
-import { sectorLabel, thDate, TH_MONTH } from '@/lib/flows/format';
+import { sectorLabel, thDate, thMonthTick, TH_MONTH } from '@/lib/flows/format';
 import { evaluateGates } from '@/lib/quant/engine/gates';
 import { START_T, type MarketState } from '@/lib/quant/engine/types';
 import { mulberry32 } from '@/lib/quant/rng';
@@ -119,6 +119,38 @@ export function computeBreadth(state: MarketState, t0: number, t1: number): Brea
   }));
   const p90ByMonth = new Map(monthly.map((m) => [m.month, m.p90]));
 
+  // breadth รายเดือน (ทุกเดือนในหน้าต่าง) + ตาราง เดือน × วันในสัปดาห์ ของ 12 เดือนล่าสุด
+  const breadthByMonth = new Map<string, number[]>();
+  const heatAcc = new Map<string, number[][]>();
+  for (let t = t0; t <= t1; t++) {
+    const d = state.dates[t];
+    const k = monthKey(d);
+    const list = breadthByMonth.get(k) ?? [];
+    list.push(breadth[t]);
+    breadthByMonth.set(k, list);
+    const wd = d.getUTCDay() - 1;
+    if (wd < 0 || wd > 4) continue;
+    const row = heatAcc.get(k) ?? WEEKDAYS.map(() => []);
+    row[wd].push(breadth[t]);
+    heatAcc.set(k, row);
+  }
+  const monthBreadth = [...breadthByMonth].map(([month, xs]) => ({
+    month,
+    mean: round(mean(xs), 1),
+    pctAbove50: round(pctOf(xs.filter((x) => x > 50).length, xs.length), 0),
+    n: xs.length,
+  }));
+  const heatMonths = [...heatAcc.keys()].slice(-12);
+  const heat: BreadthPanel['heat'] = {
+    rows: heatMonths,
+    cols: WEEKDAYS,
+    cells: heatMonths.map((k) => heatAcc.get(k)!.map((xs) => ({ value: xs.length ? round(mean(xs), 0) : null, n: xs.length }))),
+    rowMeta: heatMonths.map((k) => {
+      const m = monthBreadth.find((x) => x.month === k)!;
+      return { mean: m.mean, pctAbove50: m.pctAbove50, n: m.n };
+    }),
+  };
+
   const days: BreadthDay[] = [];
   for (let t = t0; t <= t1; t++) {
     days.push({
@@ -194,10 +226,22 @@ export function computeBreadth(state: MarketState, t0: number, t1: number): Brea
 
   const L = days[days.length - 1];
   const medExtreme = median(days.map((d) => d.extreme));
+  // เดือนแรกของหน้าต่างมักไม่เต็มเดือน → เทียบจากเดือนแรกที่มี ≥ 10 วันทำการ
+  const firstFull = Math.max(0, monthBreadth.findIndex((m) => m.n >= 10));
+  const mb0 = monthBreadth[firstFull];
+  const mb1 = monthBreadth[monthBreadth.length - 1];
+  const ex0 = monthly.find((m) => m.month === mb0.month) ?? monthly[0];
+  const quarterDays = days.filter((d) => d.extreme >= n / 4).length;
+  const summary =
+    `breadth เฉลี่ยรายเดือน ${mb0.mean.toFixed(0)}% (${thMonthTick(mb0.month)}) → ${mb1.mean.toFixed(0)}% (${thMonthTick(mb1.month)}) · ` +
+    `วันที่หุ้นเกินครึ่งอยู่เหนือ MA20 ${mb0.pctAbove50}% → ${mb1.pctAbove50}% · ` +
+    `p90 หุ้นเคลื่อนแรง/วัน ${ex0.p90} → ${monthly[monthly.length - 1].p90} ตัว · ` +
+    `วันที่หุ้น ≥ 1/4 ของตลาดเคลื่อนแรงพร้อมกัน ${quarterDays} วัน (${round(pctOf(quarterDays, days.length), 1)}%)`;
   const tone =
     L.breadthMean20 >= 60 ? 'หุ้นส่วนใหญ่อยู่ในขาขึ้นระยะสั้น' : L.breadthMean20 <= 40 ? 'อ่อนแอเป็นวงกว้าง' : 'ก้ำกึ่ง ไม่มีฝั่งใดครองตลาด';
   return {
     title: `ความกว้างของตลาด: หุ้น ${L.breadth.toFixed(0)}% ปิดเหนือ MA20 (เฉลี่ย 20 วัน ${L.breadthMean20.toFixed(0)}%) — ${tone}`,
+    summary,
     basis:
       `${n} หุ้น · ${thDate(days[0].date)} – ${thDate(L.date)} (${days.length} วันทำการ) · breadth = % หุ้นที่ปิดเหนือเส้นเฉลี่ย 20 วัน · ` +
       `“เคลื่อนแรงผิดปกติ” = |ผลตอบแทนวันนั้น| > 2σ ของหุ้นตัวเองใน 60 วันก่อนหน้า (มัธยฐาน ${round(medExtreme, 1)} ตัว/วัน) — ` +
@@ -208,6 +252,7 @@ export function computeBreadth(state: MarketState, t0: number, t1: number): Brea
     riskOffSpans,
     regimeShift,
     monthly,
+    heat,
     calendar,
     latest: { date: L.date, breadth: L.breadth, breadthMean20: L.breadthMean20, extreme: L.extreme },
   };
@@ -291,9 +336,26 @@ export function computeSeasonality(state: MarketState, symbol: string): Seasonal
   for (let t = 1; t < state.dates.length; t++) occurrences.add(monthKey(state.dates[t]));
   const perMonth = TH_MONTH.map((_, i) => [...occurrences].filter((k) => Number(k.slice(5)) === i + 1).length);
   const filledCells = cells.flat().filter((c) => c.n > 0);
+  let maxCell: SeasonalityPanel['maxCell'] = null;
+  let minCell: SeasonalityPanel['minCell'] = null;
+  cells.forEach((row, r) =>
+    row.forEach((c, ci) => {
+      if (c.value === null || c.n < 5) return;
+      if (!maxCell || c.value > cells[maxCell.r][maxCell.c].value!) maxCell = { r, c: ci };
+      if (!minCell || c.value < cells[minCell.r][minCell.c].value!) minCell = { r, c: ci };
+    }),
+  );
+  const cellText = (x: { r: number; c: number } | null) =>
+    x ? `${WEEKDAYS[x.r]} × ${TH_MONTH[x.c]} ${signed(cells[x.r][x.c].value!)}%/วัน (${cells[x.r][x.c].n} วัน)` : '—';
+  const wdRanked = weekdays.filter((w) => w.mean !== null).sort((a, b) => b.mean! - a.mean!);
+  const summary =
+    `ช่องสูงสุด ${cellText(maxCell)} · ต่ำสุด ${cellText(minCell)} · ` +
+    (wdRanked.length ? `วันในสัปดาห์: ${wdRanked[0].label} ดีสุด (${signed(wdRanked[0].mean!)}%) · ${wdRanked[wdRanked.length - 1].label} แย่สุด (${signed(wdRanked[wdRanked.length - 1].mean!)}%) · ` : '') +
+    `วันที่ปิดบวก ${all.length ? round(pctOf(all.filter((x) => x > 0).length, all.length), 0) : 0}% ของทั้งหมด`;
   return {
     symbol: st ? st.symbol : MARKET_SYMBOL,
     label,
+    summary,
     title:
       best && worst
         ? `${short}: เดือนที่เฉลี่ยดีสุด ${best.label} (${signed(best.mean!)}%/วัน) · แย่สุด ${worst.label} (${signed(worst.mean!)}%/วัน) — ${verdict}`
@@ -312,6 +374,8 @@ export function computeSeasonality(state: MarketState, symbol: string): Seasonal
     nDays: all.length,
     start: first,
     end: lastDate,
+    maxCell,
+    minCell,
   };
 }
 
@@ -396,6 +460,7 @@ export function computeSectors(state: MarketState, t0: number, t1: number): Sect
     return {
       month,
       totalValue: Math.round(totalValue),
+      totalFlow: withFlow ? Math.round(totalMag) : null,
       value: v.map((x) => round(pctOf(x, totalValue), 1)),
       flow: withFlow ? mag.map((x) => round(pctOf(x, totalMag), 1)) : null,
       flowNet: withFlow ? net.map((x) => Math.round(x)) : null,
@@ -408,9 +473,19 @@ export function computeSectors(state: MarketState, t0: number, t1: number): Sect
   const nEff = round(nEffective(latestShares), 2);
   const labels = keys.map((k) => (k === OTHER_SECTOR ? 'หมวดอื่น ๆ' : sectorLabel(k)));
   const top = latestShares.indexOf(Math.max(...latestShares));
+  // เทียบ 3 เดือน (63 วันทำการ) — หมวดที่สัดส่วนเพิ่ม/ลดมากสุด
+  const back = rolling[Math.max(0, rolling.length - 1 - 63)];
+  const delta = latestShares.map((v, k) => round(v - back.shares[k], 1));
+  const gain = delta.indexOf(Math.max(...delta));
+  const loss = delta.indexOf(Math.min(...delta));
+  const value20 = acc.reduce((a, b) => a + b, 0);
+  const summary =
+    `เทียบ ${thDate(back.date)}: ${labels[gain]} ${signed(delta[gain], 1)} จุด · ${labels[loss]} ${signed(delta[loss], 1)} จุด · ` +
+    `N_eff ${nEffective(back.shares).toFixed(1)} → ${nEff.toFixed(1)} · มูลค่าซื้อขาย 20 วันล่าสุด ${Math.round(value20).toLocaleString('en-US')} ล้านบาท`;
   const concentration = nEff <= K * 0.5 ? 'กระจุกตัว' : nEff >= K * 0.8 ? 'กระจายตัวดี' : 'กระจายตัวปานกลาง';
   return {
     title: `${labels[top]} ครองมูลค่าซื้อขาย ${latestShares[top].toFixed(0)}% (20 วันล่าสุด) · N_eff ${nEff.toFixed(1)} จาก ${K} หมวด — ${concentration}`,
+    summary,
     basis:
       `มูลค่าซื้อขาย ≈ ปริมาณ × ราคาปิด (ล้านบาท) ของหุ้น ${state.stocks.length} ตัวในแพลตฟอร์ม (ไม่ใช่ทั้งตลาด) · สัดส่วนสะสม 20 วันทำการ · ` +
       `N_eff = 1/Σ(สัดส่วน²) = จำนวนหมวดที่มีน้ำหนักจริง (สูงสุด ${K}) · ` +
@@ -625,6 +700,13 @@ export function computeDayMap(state: MarketState, t0: number, t1: number): DayMa
   const cl = clusters[latest.c];
   const baseline = fwdStats(ts.map((_, i) => i));
   const e = round((pc.explained[0] + pc.explained[1]) * 100, 0);
+  const recent = points.slice(-5);
+  const axX = axis(0);
+  const axY = axis(1);
+  const summary =
+    `5 วันล่าสุด: กลุ่ม ${recent.map((r) => r.c + 1).join(' → ')} · ` +
+    `แกนนอน ≈ ${axX.top.slice(0, 2).map((x) => x.feature).join(' + ')} (${axX.explained}%) · แกนตั้ง ≈ ${axY.top.slice(0, 2).map((x) => x.feature).join(' + ')} (${axY.explained}%)` +
+    (cl.fwdUp !== null && baseline.fwdUp !== null ? ` · หลังวันแบบกลุ่มนี้ SET 5 วันบวก ${cl.fwdUp}% ของครั้ง (ทั้งช่วง ${baseline.fwdUp}%)` : '');
   return {
     title:
       `วันล่าสุด (${thDate(latest.date)}) อยู่ในกลุ่ม “${cl.label}” — ${cl.share.toFixed(0)}% ของวันเป็นแบบนี้` +
@@ -633,12 +715,14 @@ export function computeDayMap(state: MarketState, t0: number, t1: number): DayMa
       `แต่ละจุด = 1 วันทำการ (${n} วัน) · ตัวแปรระดับตลาด ${DAY_FEATURES.length} ตัวแปลงเป็น z-score แล้วฉายลง 2 มิติด้วย PCA (อธิบายความแปรปรวน ${e}%) · ` +
       `จัดกลุ่มด้วย k-means (k=${k}, seed คงที่) บนทั้ง ${DAY_FEATURES.length} มิติ ไม่ใช่บนภาพ 2 มิติ · ` +
       `ผลตอบแทน 5 วันถัดไปเป็นสถิติย้อนหลังในตัวอย่าง (หน้าต่างซ้อนกัน) — ไม่ใช่สัญญาณซื้อขาย`,
+    summary,
     features: DAY_FEATURES.map((f) => f.label),
-    axes: [axis(0), axis(1)],
+    axes: [axX, axY],
     points,
     clusters,
     baseline,
     latest: { date: latest.date, cluster: latest.c, x: latest.x, y: latest.y },
+    recent,
   };
 }
 
@@ -735,12 +819,21 @@ export function summarizeGateBlocks(state: MarketState, m: GateBlockMatrix, scop
   const lastMonths = months.slice(-3);
   const recentSignal = lastMonths.reduce((a, x) => a + x.counts.SIGNAL, 0);
   const recentTotal = lastMonths.reduce((a, x) => a + x.total, 0);
+  const topBlocker = (m: GateBlockCounts) => gatesOnly.reduce((a, c) => (m.shares[c.key] > m.shares[a.key] ? c : a), gatesOnly[0]);
+  const fullTotal = Math.max(...months.map((m) => m.total));
+  const m0 = months.find((m) => m.total >= fullTotal * 0.45) ?? months[0];
+  const m1 = months[months.length - 1];
+  const summary =
+    `ด่านที่บล็อกมากสุด: ${topBlocker(m0).label} (${thMonthTick(m0.month)}) → ${topBlocker(m1).label} (${thMonthTick(m1.month)}) · ` +
+    `สัญญาณ 3 เดือนล่าสุด ${round(pctOf(recentSignal, recentTotal), 1).toFixed(1)}% เทียบทั้งช่วง ${tot.shares.SIGNAL.toFixed(1)}% · ` +
+    `pullback ${tot.pullback} · momentum ${tot.momentum} ครั้ง`;
   return {
     scope: st ? st.symbol : 'ALL',
     label,
     title:
       `${st ? `${st.symbol}: ` : ''}${tot.shares[worst.key].toFixed(0)}% ของ${unit}ติดด่าน ${worst.label} ก่อนด่านอื่น — ` +
       `มีสัญญาณเข้าซื้อ ${tot.shares.SIGNAL.toFixed(1)}% (${tot.counts.SIGNAL} ครั้ง) · 3 เดือนล่าสุด ${round(pctOf(recentSignal, recentTotal), 1).toFixed(1)}%`,
+    summary,
     basis:
       `นับต่อ${unit} (${tot.total.toLocaleString('en-US')} ${unit}, ${months.length} เดือน) ว่า “ด่านแรกที่ไม่ผ่าน” ตามลำดับ G1→G5 คือด่านไหน · ` +
       'ผ่านครบ = สัญญาณ pullback · ผ่าน G1–G4 + breakout = สัญญาณ momentum · ' +

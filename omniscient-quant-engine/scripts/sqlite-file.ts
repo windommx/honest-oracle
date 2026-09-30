@@ -6,22 +6,13 @@
 import { Database } from "bun:sqlite"
 import { closeSync, openSync, readSync } from "node:fs"
 import path from "node:path"
+import { resolveSqliteFile as resolveSqliteFileRule } from "@/lib/sqlite-path"
 
 const APP_ROOT = path.resolve(import.meta.dir, "..")
 
-/**
- * path ไฟล์ SQLite จาก DATABASE_URL ตามกติกาของ Prisma: path สัมพัทธ์นับจากโฟลเดอร์ของ schema.prisma
- * (file:../db/custom.db → <app>/db/custom.db) · ตัด query string · ไม่ใช่ file: → null
- */
+/** path ไฟล์ SQLite จาก DATABASE_URL ตามกติกาของ Prisma (กติกาเดียวกับ Prisma client ของแอป — src/lib/sqlite-path.ts) */
 export function resolveSqliteFile(url: string | undefined, schemaDir: string = path.join(APP_ROOT, "prisma")): string | null {
-  const u = (url ?? "").trim().replace(/^["']|["']$/g, "")
-  if (!u.startsWith("file:")) return null
-  let p = u.slice("file:".length)
-  const q = p.indexOf("?")
-  if (q >= 0) p = p.slice(0, q)
-  if (p.startsWith("//")) p = p.slice(2) // file:///abs/path
-  if (!p) return null
-  return path.isAbsolute(p) ? path.normalize(p) : path.resolve(schemaDir, p)
+  return resolveSqliteFileRule(url, schemaDir)
 }
 
 export interface SqliteInfo {

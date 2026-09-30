@@ -15,6 +15,7 @@ import type { RobustnessReport } from '@/lib/quant/engine/robustness';
 import type { EvidenceStrand, SynthesisDossier } from '@/lib/quant/engine/synthesis';
 import type { MarketState } from '@/lib/quant/engine/types';
 import type { FlowDashboard } from '@/lib/flows/types';
+import type { RhythmResponse } from '@/lib/rhythm/types';
 import type { DeepResearchReport, Fact, ResearchSection, ResearchStrand, Stance } from './types';
 
 export interface DeepResearchInput {
@@ -27,6 +28,8 @@ export interface DeepResearchInput {
   apex: ApexDossier;
   backtest: BacktestResult | undefined;
   flows: FlowDashboard | null;
+  /** จังหวะตลาดของหุ้นนี้ (ฤดูกาล + ด่านที่บล็อก) + บริบทตลาด · null = ข้อมูลย้อนหลังไม่พอ */
+  rhythm: RhythmResponse | null;
   robustness: RobustnessReport | null;
   data: { kind: string; label: string };
   rules: { hashShort: string; version: string; matchesRegistered: boolean };
@@ -71,6 +74,63 @@ function combinedStance(strands: Array<EvidenceStrand | undefined>): Stance {
 }
 
 const passText = (ok: boolean) => (ok ? 'ผ่าน' : 'ไม่ผ่าน');
+
+/** หัวข้อจังหวะตลาด: วันล่าสุดคล้ายวันแบบไหน · ความกว้าง · ด่านที่บล็อกหุ้นนี้ · ฤดูกาลของหุ้นนี้ (บอกผลการปรับทดสอบหลายช่องเสมอ) */
+function rhythmSection(symbol: string, rh: RhythmResponse | null): ResearchSection {
+  const base = { key: 'rhythm', title: 'จังหวะตลาด & จังหวะของหุ้น', layer: 'จังหวะตลาด' };
+  if (!rh) {
+    return { ...base, stance: 'abstain', summary: 'ข้อมูลย้อนหลังไม่พอสำหรับวิเคราะห์จังหวะตลาด', facts: [], bullets: [] };
+  }
+  const sgn = (x: number, d = 2) => `${sign(x)}${Math.abs(x).toFixed(d)}`;
+  const cl = rh.dayMap.clusters[rh.dayMap.latest.cluster];
+  const b = rh.breadth.latest;
+  const g = rh.gates;
+  const gatesOnly = g.categories.filter((c) => c.key !== 'SIGNAL');
+  const top = gatesOnly.reduce((a, c) => (g.overall.shares[c.key] > g.overall.shares[a.key] ? c : a), gatesOnly[0]);
+  const last3 = g.months.slice(-3);
+  const sig3Total = last3.reduce((a, m) => a + m.total, 0);
+  const sig3 = sig3Total ? (last3.reduce((a, m) => a + m.counts.SIGNAL, 0) / sig3Total) * 100 : 0;
+  const se = rh.seasonality;
+  const ranked = se.byMonth.filter((m) => m.mean !== null && m.n >= 10).sort((x, y) => y.mean! - x.mean!);
+  const tested = [...se.byMonth, ...se.byWeekday].filter((m) => m.q !== null);
+  const fdr = tested.filter((m) => m.q! < 0.1).map((m) => m.label);
+  const raw = tested.filter((m) => m.tStat !== null && Math.abs(m.tStat) >= 2).map((m) => m.label);
+  const seasonNote = fdr.length
+    ? `ต่างจากศูนย์หลังปรับการทดสอบ ${tested.length} ช่อง: ${fdr.join(', ')}`
+    : raw.length
+      ? `|t| ≥ 2 ที่ ${raw.join(', ')} แต่ไม่ผ่านการปรับหลายช่อง — อาจเป็นความบังเอิญ`
+      : 'ไม่มีเดือนหรือวันใดต่างจากศูนย์อย่างมีนัย';
+  const facts: Fact[] = [
+    {
+      label: 'วันล่าสุดคล้ายวันแบบ',
+      value: `กลุ่ม ${cl.id + 1} · ${cl.label}`,
+      note: `${cl.share.toFixed(0)}% ของวัน${cl.fwd5 !== null && rh.dayMap.baseline.fwd5 !== null ? ` · SET 5 วันถัดไปเฉลี่ย ${sgn(cl.fwd5)}% (ทั้งช่วง ${sgn(rh.dayMap.baseline.fwd5)}%) · ย้อนหลังในตัวอย่าง` : ''}`,
+    },
+    { label: 'ความกว้างของตลาด', value: pctV(b.breadth, 0), note: `หุ้นปิดเหนือ MA20 · เฉลี่ย 20 วัน ${pctV(b.breadthMean20, 0)}` },
+    { label: 'หุ้นเคลื่อนแรงพร้อมกันวันล่าสุด', value: `${b.extreme} / ${rh.breadth.nStocks} ตัว`, note: '|ผลตอบแทน| > 2σ ของตัวเองใน 60 วัน' },
+    { label: `ด่านที่บล็อก ${symbol} บ่อยสุด`, value: `${top.label} ${pctV(g.overall.shares[top.key])}`, note: `ของ ${g.overall.total} วัน · ${top.desc}` },
+    { label: `สัญญาณเข้าซื้อของ ${symbol}`, value: `${pctV(g.overall.shares.SIGNAL)} ของวัน (${g.overall.counts.SIGNAL} ครั้ง)`, note: `3 เดือนล่าสุด ${pctV(sig3)} · pullback ${g.overall.pullback} · momentum ${g.overall.momentum}` },
+  ];
+  if (ranked.length) {
+    facts.push({
+      label: `ฤดูกาลของ ${symbol}`,
+      value: `ดีสุด ${ranked[0].label} ${sgn(ranked[0].mean!)}%/วัน · แย่สุด ${ranked[ranked.length - 1].label} ${sgn(ranked[ranked.length - 1].mean!)}%/วัน`,
+      note: seasonNote,
+    });
+  }
+  return {
+    ...base,
+    stance: 'info',
+    summary:
+      `ตลาดวันล่าสุดเป็นแบบ “${cl.label}” (${cl.share.toFixed(0)}% ของวันในช่วงเดียวกัน) · breadth ${pctV(b.breadth, 0)} · ` +
+      `${symbol} ติดด่าน ${top.label} บ่อยสุด (${pctV(g.overall.shares[top.key])} ของวัน) และมีสัญญาณ ${pctV(g.overall.shares.SIGNAL)} ของวัน`,
+    facts,
+    bullets: [
+      `ฤดูกาล: ${seasonNote}`,
+      'สถิติย้อนหลังในตัวอย่างเดียวกัน — ใช้ประกอบบริบท ไม่ได้ร่วมโหวตในหลอมรวม 13 สาย และไม่เปลี่ยนสัญญาณ',
+    ],
+  };
+}
 
 // ───────────────────────── ประกอบรายงาน ─────────────────────────
 
@@ -212,6 +272,9 @@ export function assembleDeepResearch(input: DeepResearchInput): DeepResearchRepo
     facts: flowFacts,
     bullets: flowBullets,
   });
+
+  // 6b) จังหวะตลาด & จังหวะของหุ้น — สถิติเชิงพรรณนาจากหน้าจังหวะตลาด (ไม่ร่วมโหวต ไม่เปลี่ยนสัญญาณ)
+  sections.push(rhythmSection(symbol, input.rhythm));
 
   // 7) หลอมรวม 13 สาย
   const liveStrands = syn.strands.filter((s) => !isAbstain(s));

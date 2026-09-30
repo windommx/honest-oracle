@@ -89,9 +89,9 @@ export const DEFAULT_ROUTES: RouteSpec[] = [
   {
     route: "/api/research/deep/TSE",
     expect: (j) =>
-      Array.isArray(j.sections) && (j.sections as unknown[]).length === 11 && Array.isArray(j.caveats) && Array.isArray(j.strands) && (j.strands as unknown[]).length === 13
+      Array.isArray(j.sections) && (j.sections as unknown[]).length === 12 && Array.isArray(j.caveats) && Array.isArray(j.strands) && (j.strands as unknown[]).length === 13
         ? undefined
-        : "Deep Research ต้องมี 11 หัวข้อ + 13 สาย + ข้อจำกัด",
+        : "Deep Research ต้องมี 12 หัวข้อ + 13 สาย + ข้อจำกัด",
   },
   { route: "/api/research/deep/SCB?format=md", contentType: "text/markdown" },
   { route: "/api/research/deep/NOPE", status: 404 },
@@ -109,6 +109,10 @@ export const DEFAULT_ROUTES: RouteSpec[] = [
     },
   },
   { route: "/api/rhythm?symbol=kbank", expect: (j) => ((j.gates as { scope?: unknown }).scope === "KBANK" && (j.seasonality as { symbol?: unknown }).symbol === "KBANK" ? undefined : "จังหวะตลาดรายหุ้นไม่ตรงหุ้น") },
+  {
+    route: "/api/rhythm?view=summary",
+    expect: (j) => (Array.isArray(j.findings) && (j.findings as unknown[]).length === 5 && !("dayMap" in j) ? undefined : "สรุปจังหวะตลาดไม่ครบ/ส่งข้อมูลเต็มมา"),
+  },
   { route: "/api/rhythm?symbol=NOPE", status: 404 },
   { route: "/api/rhythm?symbol=%3Cx%3E", status: 400 },
   { route: "/api/meta", expect: (j) => ((j.access as { canWrite?: unknown } | undefined)?.canWrite === true && typeof (j.data as { label?: unknown } | undefined)?.label === "string" ? undefined : "meta ไม่ครบ") },

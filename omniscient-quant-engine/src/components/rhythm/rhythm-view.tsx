@@ -20,13 +20,15 @@ import { cn } from '@/lib/utils';
 import {
   BreadthCalendar,
   BreadthChart,
+  BreadthMonthHeat,
   CATEGORICAL,
   ClusterProfile,
   DayMapChart,
   ExtremeChart,
+  ExtremeMonthlyChart,
   GateShareChart,
   SeasonalityHeatmap,
-  SectorMonthlyChart,
+  SectorMonthlyPairs,
   SectorShareChart,
   SignalCountChart,
 } from './rhythm-charts';
@@ -42,7 +44,7 @@ const PANELS = [
   { id: 'rhythm-gates', name: 'อะไรบล็อกสัญญาณ' },
 ] as const;
 
-function Panel({ index, finding, basis, children }: { index: number; finding: string; basis: string; children: ReactNode }) {
+function Panel({ index, finding, summary, basis, children }: { index: number; finding: string; summary: string; basis: string; children: ReactNode }) {
   const { id, name } = PANELS[index];
   return (
     <section id={id} aria-labelledby={`${id}-h`} className="scroll-mt-4 space-y-3 rounded-2xl border border-zinc-800/80 bg-zinc-950/40 p-3 sm:p-4">
@@ -53,6 +55,7 @@ function Panel({ index, finding, basis, children }: { index: number; finding: st
         <h3 id={`${id}-h`} className="mt-0.5 text-sm font-semibold leading-snug text-zinc-50">
           {finding}
         </h3>
+        <p className="mt-1 font-mono text-[11px] leading-relaxed text-zinc-300">{summary}</p>
       </header>
       {children}
       <p className="text-[11px] leading-relaxed text-zinc-400">{basis}</p>
@@ -214,27 +217,26 @@ export function RhythmView() {
             </ol>
           </nav>
 
-          <Panel index={0} finding={d.breadth.title} basis={d.breadth.basis}>
+          <Panel index={0} finding={d.breadth.title} summary={d.breadth.summary} basis={d.breadth.basis}>
+            <BreadthChart p={d.breadth} />
+            <ExtremeChart p={d.breadth} />
             <div className="grid gap-3 @min-[1100px]:grid-cols-2">
-              <ExtremeChart p={d.breadth} />
-              <BreadthChart p={d.breadth} />
+              <ExtremeMonthlyChart p={d.breadth} />
+              <BreadthMonthHeat p={d.breadth} />
             </div>
             <BreadthCalendar p={d.breadth} />
           </Panel>
 
-          <Panel index={1} finding={d.seasonality.title} basis={d.seasonality.basis}>
+          <Panel index={1} finding={d.seasonality.title} summary={d.seasonality.summary} basis={d.seasonality.basis}>
             <SeasonalityHeatmap p={d.seasonality} />
           </Panel>
 
-          <Panel index={2} finding={d.sectors.title} basis={d.sectors.basis}>
+          <Panel index={2} finding={d.sectors.title} summary={d.sectors.summary} basis={d.sectors.basis}>
             <SectorShareChart p={d.sectors} />
-            <div className={cn('grid gap-3', d.sectors.hasFlows && '@min-[900px]:grid-cols-2')}>
-              <SectorMonthlyChart p={d.sectors} measure="value" />
-              {d.sectors.hasFlows && <SectorMonthlyChart p={d.sectors} measure="flow" />}
-            </div>
+            <SectorMonthlyPairs p={d.sectors} />
           </Panel>
 
-          <Panel index={3} finding={d.dayMap.title} basis={d.dayMap.basis}>
+          <Panel index={3} finding={d.dayMap.title} summary={d.dayMap.summary} basis={d.dayMap.basis}>
             <div className="grid gap-3 @min-[1100px]:grid-cols-2">
               <DayMapChart p={d.dayMap} selected={selected} />
               <div className="min-w-0 space-y-3">
@@ -244,7 +246,7 @@ export function RhythmView() {
             </div>
           </Panel>
 
-          <Panel index={4} finding={d.gates.title} basis={d.gates.basis}>
+          <Panel index={4} finding={d.gates.title} summary={d.gates.summary} basis={d.gates.basis}>
             <div className="grid gap-3 @min-[1100px]:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
               <div className="min-w-0 space-y-3">
                 <GateShareChart p={d.gates} />

@@ -18,7 +18,7 @@ import {
   summarizeGateBlocks,
   type GateBlockMatrix,
 } from "./compute"
-import { getRhythm, rhythmBase, rhythmFromState } from "./service"
+import { getRhythm, rhythmBase, rhythmFromState, rhythmSummary } from "./service"
 import type { BreadthPanel, DayMapPanel, SectorPanel } from "./types"
 
 // ข้อมูลจำลองของแพลตฟอร์ม (deterministic ตาม seed ของ RULES) — ไม่แตะ DB
@@ -322,6 +322,19 @@ describe("rhythm/service", () => {
     expect(rhythmFromState(state, "NOPE", data)).toEqual({ ok: false, reason: "unknown_symbol" })
     const short = { ...state, dates: state.dates.slice(0, START_T + 10) }
     expect(rhythmFromState(short, "SET", data)).toEqual({ ok: false, reason: "insufficient_data" })
+  })
+
+  test("สรุปย่อของ Command Center: ตัวเลขตรงกับผลเต็ม · ด่านที่บล็อกของเดือนล่าสุด", () => {
+    const full = rhythmFromState(state, "SET", { kind: "synthetic", label: "ทดสอบ" })
+    if (!full.ok) throw new Error(full.reason)
+    const sm = rhythmSummary(full.data)
+    expect(sm.findings).toEqual([full.data.breadth.title, full.data.seasonality.title, full.data.sectors.title, full.data.dayMap.title, full.data.gates.title])
+    expect(sm.breadth.value).toBe(full.data.breadth.latest.breadth)
+    expect(sm.dayType.label).toBe(full.data.dayMap.clusters[full.data.dayMap.latest.cluster].label)
+    expect(sm.dayType.recent.length).toBe(5)
+    const m = full.data.gates.months[full.data.gates.months.length - 1]
+    expect(sm.gates.month).toBe(m.month)
+    expect(sm.gates.top.share).toBe(Math.max(m.shares.G1, m.shares.G2, m.shares.G3, m.shares.G4, m.shares.G5))
   })
 
   test("getRhythm ใช้ข้อมูลใน DB + ป้ายที่มาของข้อมูล", async () => {

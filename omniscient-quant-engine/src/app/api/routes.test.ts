@@ -147,7 +147,7 @@ describe("LLM routes / งานหนัก — ตรวจ input ก่อน
     expect(ok.status).toBe(200)
     const report = (await ok.json()) as { symbol: string; sections: unknown[]; caveats: string[] }
     expect(report.symbol).toBe("TSE")
-    expect(report.sections.length).toBe(11)
+    expect(report.sections.length).toBe(12)
     expect(report.caveats.at(-1)).toContain("ไม่ใช่คำแนะนำการลงทุน")
     const md = await deep.GET(req("GET", "/api/research/deep/TSE?format=md"), p("TSE"))
     expect(md.status).toBe(200)
@@ -232,5 +232,11 @@ describe("/api/rhythm — จังหวะตลาด", () => {
     for (const bad of ["a b", "<x>", "TOOLONGSYMBOL12345"]) {
       expect((await rhythm.GET(req("GET", `/api/rhythm?symbol=${encodeURIComponent(bad)}`))).status).toBe(400)
     }
+    const sum = await rhythm.GET(req("GET", "/api/rhythm?view=summary"))
+    expect(sum.status).toBe(200)
+    const sj = (await sum.json()) as Record<string, unknown>
+    expect((sj.findings as string[]).length).toBe(5)
+    expect("dayMap" in sj).toBe(false)
+    expect((await rhythm.GET(req("GET", "/api/rhythm?view=everything"))).status).toBe(400)
   }, 120_000)
 })

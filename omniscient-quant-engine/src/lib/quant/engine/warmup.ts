@@ -1,11 +1,12 @@
 /**
  * warmup.ts — อุ่น cache งานหนักตอนเซิร์ฟเวอร์เริ่ม (src/instrumentation.ts) แทนที่จะให้ผู้ใช้คนแรกรอ
- * panel → probs/backtest → board → factors → dependence → volcano · ทีละขั้นและคืน event loop ระหว่างขั้น
+ * panel → probs/backtest → board → factors → dependence → volcano → จังหวะตลาด · ทีละขั้นและคืน event loop ระหว่างขั้น
  * (คำขอที่เข้ามาระหว่างอุ่นได้รับบริการ — ใช้ cache ชุดเดียวกัน ไม่คำนวณซ้ำ)
  * ปิดได้ด้วย OQE_WARM_CACHE=0 · สถานะแสดงที่ /api/health (cache)
  */
 
 import { log } from '@/lib/log';
+import { rhythmBase } from '@/lib/rhythm/service';
 import { getBacktest, getBoard, getFactorModel, getThetaMatrix, getVolcano } from './api';
 import { ensureSeeded, loadMarketState } from './panel';
 
@@ -47,6 +48,7 @@ export async function warmCaches(): Promise<WarmState> {
     ['factors', getFactorModel],
     ['dependence', getThetaMatrix],
     ['volcano', getVolcano],
+    ['rhythm', async () => rhythmBase(await loadMarketState())],
   ];
   try {
     for (const [name, fn] of steps) {

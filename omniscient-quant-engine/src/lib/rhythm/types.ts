@@ -31,6 +31,8 @@ export interface BreadthDay {
 
 export interface BreadthPanel {
   title: string;
+  /** บรรทัดตัวเลขสำคัญใต้หัวข้อ (แบบกราฟต้นฉบับ) */
+  summary: string;
   basis: string;
   nStocks: number;
   days: BreadthDay[];
@@ -42,6 +44,8 @@ export interface BreadthPanel {
   regimeShift: { date: string; to: 'risk_on' | 'risk_off'; daysAgo: number; note: string } | null;
   /** การกระจายของจำนวนหุ้นเคลื่อนแรงต่อวัน รายเดือน */
   monthly: Array<{ month: string; median: number; p90: number; max: number; n: number }>;
+  /** breadth เฉลี่ย เดือน × วันในสัปดาห์ (12 เดือนล่าสุด) + ขอบขวา: เฉลี่ยทั้งเดือน | % วันที่ breadth > 50% */
+  heat: { rows: string[]; cols: string[]; cells: HeatCell[][]; rowMeta: Array<{ mean: number; pctAbove50: number; n: number }> };
   /** ปฏิทิน breadth รายวัน 52 สัปดาห์ล่าสุด: สัปดาห์ (เริ่มวันจันทร์) × จ.–ศ. · null = ไม่มีวันซื้อขาย */
   calendar: Array<{ week: string; days: Array<{ date: string; breadth: number } | null> }>;
   latest: { date: string; breadth: number; breadthMean20: number; extreme: number };
@@ -62,6 +66,7 @@ export interface SeasonalityPanel {
   symbol: string;
   label: string;
   title: string;
+  summary: string;
   basis: string;
   /** แถว = วันในสัปดาห์ (จ.–ศ.) · คอลัมน์ = เดือน (ม.ค.–ธ.ค.) · ค่า = ผลตอบแทนเฉลี่ยต่อวัน (%) */
   rows: string[];
@@ -73,10 +78,14 @@ export interface SeasonalityPanel {
   nDays: number;
   start: string;
   end: string;
+  /** ช่องที่ค่าเฉลี่ยสูงสุด / ต่ำสุด (เฉพาะช่องที่มี ≥ 5 วัน) */
+  maxCell: { r: number; c: number } | null;
+  minCell: { r: number; c: number } | null;
 }
 
 export interface SectorPanel {
   title: string;
+  summary: string;
   basis: string;
   /** ลำดับคงที่ตามจักรวาลหุ้น (สีตามหมวด ไม่ใช่ตามอันดับ) */
   sectors: Array<{ key: string; label: string; nStocks: number }>;
@@ -86,6 +95,8 @@ export interface SectorPanel {
   monthly: Array<{
     month: string;
     totalValue: number;
+    /** Σ|เงินไหลสุทธิสถาบันของแต่ละหมวด| ทั้งเดือน (ล้านบาท) */
+    totalFlow: number | null;
     value: number[];
     flow: number[] | null;
     /** เงินไหลสุทธิสถาบันของหมวด (ล้านบาท, มีเครื่องหมาย) */
@@ -127,6 +138,7 @@ export interface DayMapAxis {
 
 export interface DayMapPanel {
   title: string;
+  summary: string;
   basis: string;
   features: string[];
   axes: [DayMapAxis, DayMapAxis];
@@ -135,6 +147,8 @@ export interface DayMapPanel {
   /** ค่าฐานของทั้งช่วง (เทียบกับรายกลุ่ม) */
   baseline: { fwd5: number | null; fwdUp: number | null; nFwd: number };
   latest: { date: string; cluster: number; x: number; y: number };
+  /** 5 วันทำการล่าสุด (เก่า → ใหม่) — เส้นทางบนแผนที่ */
+  recent: Array<{ date: string; c: number; x: number; y: number }>;
 }
 
 export type GateBlockKey = 'G1' | 'G2' | 'G3' | 'G4' | 'G5' | 'SIGNAL';
@@ -152,6 +166,7 @@ export interface GateBlockPanel {
   scope: string;
   label: string;
   title: string;
+  summary: string;
   basis: string;
   categories: Array<{ key: GateBlockKey; label: string; desc: string }>;
   months: Array<GateBlockCounts & { month: string }>;
@@ -171,4 +186,16 @@ export interface RhythmResponse {
   sectors: SectorPanel;
   dayMap: DayMapPanel;
   gates: GateBlockPanel;
+}
+
+/** สรุปสั้นสำหรับ Command Center (ไม่ส่งอนุกรมทั้งหมด) */
+export interface RhythmSummary {
+  asOf: string;
+  nStocks: number;
+  data: { kind: string; label: string };
+  breadth: { value: number; mean20: number; extreme: number };
+  dayType: { id: number; label: string; share: number; fwdUp: number | null; baselineUp: number | null; recent: number[] };
+  gates: { month: string; top: { key: GateBlockKey; label: string; share: number }; signalShare: number };
+  /** หัวข้อ (ข้อค้นพบ) ของทั้ง 5 แผง */
+  findings: string[];
 }
