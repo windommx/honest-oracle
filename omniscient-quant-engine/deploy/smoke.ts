@@ -130,6 +130,19 @@ export const DEFAULT_ROUTES: RouteSpec[] = [
         : "Atlas ไม่ครบ 6 มุม / คันโยก / ข้อเสนอ"
     },
   },
+  {
+    route: "/api/workflow",
+    expect: (j) =>
+      Array.isArray(j.steps) && (j.steps as unknown[]).length === 6 && typeof (j.baseline as { stats?: unknown } | undefined)?.stats === "object" && Array.isArray(j.ledger)
+        ? undefined
+        : "กระบวนการทำงานไม่ครบ 6 ขั้น / ฐานความคาดหวัง / สมุดไม้",
+  },
+  {
+    route: "/api/workflow/run",
+    method: "POST",
+    body: {},
+    expect: (j) => (typeof (j.report as { session?: unknown } | undefined)?.session === "string" ? undefined : "รันรอบแล้วไม่มีรายงาน"),
+  },
   { route: "/api/meta", expect: (j) => ((j.access as { canWrite?: unknown } | undefined)?.canWrite === true && typeof (j.data as { label?: unknown } | undefined)?.label === "string" ? undefined : "meta ไม่ครบ") },
 ]
 

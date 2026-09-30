@@ -107,6 +107,13 @@ export const RATE_RULES: readonly RateRule[] = [
     label: "นำเข้าข้อมูลตลาด",
   },
   {
+    name: "workflow-run",
+    methods: ["POST"],
+    test: (p) => p === "/api/workflow/run",
+    spec: perMin(6, 6),
+    label: "รันรอบการทำงานประจำวัน",
+  },
+  {
     name: "heavy-report",
     methods: ["GET", "HEAD"],
     test: (p) =>
@@ -118,7 +125,8 @@ export const RATE_RULES: readonly RateRule[] = [
       p.startsWith("/api/research/deep/") ||
       p === "/api/research/robustness" ||
       p === "/api/rhythm" ||
-      p === "/api/atlas",
+      p === "/api/atlas" ||
+      p === "/api/workflow",
     spec: perMin(60, 30),
     label: "รายงานที่คำนวณหนัก",
   },

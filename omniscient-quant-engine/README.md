@@ -1,6 +1,6 @@
 # Omniscient Quant Engine — Full-Cycle Multi-View Quant Platform
 
-แพลตฟอร์มเทรดเชิงระบบ "7 ชั้น" **สำหรับหุ้นไทย (SET/mai) เท่านั้น** หน้าเดียว (`/`) ภาษาไทยทั้งระบบ: L0 ข้อมูล point-in-time → L1 มุมมองเดี่ยว → L2 Dependence (Clayton copula Θ / lower-tail) → L3 Multi-View factor integration (PCA + enrichment + bipartite) → L4 walk-forward + gate attribution → L5 Monte Carlo CVaR sizing → L6 5-Gate execution + journal → L∞ Meta-Risk (ruin math, defense-in-depth, Risk MDX 7 มิติ, antifragility) → L7 Apex (Kelly-Vol sizing, microstructure, crisis MC, model registry) พร้อม "หลอมรวม" (convergent-evidence synthesis 13 สาย), เงินไหลนักลงทุน (ประเภทนักลงทุน SET · NVDR · short sale), **จังหวะตลาด** (ความกว้าง/หุ้นเคลื่อนพร้อมกัน · ฤดูกาล · สัดส่วนรายหมวด · แผนที่วันซื้อขาย · ด่านที่บล็อกสัญญาณ), **Atlas พฤติกรรมระบบ** (วิจัยเอนจินแบบ 360° 6 มุม + ข้อเสนอจากผลที่ผ่านเกณฑ์สถิติเท่านั้น), **Deep Research** (รายงานเชิงลึกรายหุ้นที่รวมผลทุกชั้นเป็นฉบับเดียว), Market Intelligence Terminal และ Command Center
+แพลตฟอร์มเทรดเชิงระบบ "7 ชั้น" **สำหรับหุ้นไทย (SET/mai) เท่านั้น** หน้าเดียว (`/`) ภาษาไทยทั้งระบบ: L0 ข้อมูล point-in-time → L1 มุมมองเดี่ยว → L2 Dependence (Clayton copula Θ / lower-tail) → L3 Multi-View factor integration (PCA + enrichment + bipartite) → L4 walk-forward + gate attribution → L5 Monte Carlo CVaR sizing → L6 5-Gate execution + journal → L∞ Meta-Risk (ruin math, defense-in-depth, Risk MDX 7 มิติ, antifragility) → L7 Apex (Kelly-Vol sizing, microstructure, crisis MC, model registry) พร้อม "หลอมรวม" (convergent-evidence synthesis 13 สาย), เงินไหลนักลงทุน (ประเภทนักลงทุน SET · NVDR · short sale), **จังหวะตลาด** (ความกว้าง/หุ้นเคลื่อนพร้อมกัน · ฤดูกาล · สัดส่วนรายหมวด · แผนที่วันซื้อขาย · ด่านที่บล็อกสัญญาณ), **Atlas พฤติกรรมระบบ** (วิจัยเอนจินแบบ 360° 6 มุม + ข้อเสนอจากผลที่ผ่านเกณฑ์สถิติเท่านั้น), **กระบวนการทำงาน** (วงจรประจำวัน: บันทึกสัญญาณก่อนตลาดเปิด → โบรกเกอร์กระดาษ → หลักฐาน forward เทียบความคาดหวัง), **Deep Research** (รายงานเชิงลึกรายหุ้นที่รวมผลทุกชั้นเป็นฉบับเดียว), Market Intelligence Terminal และ Command Center
 
 > **ขอบเขต: หุ้นไทยเท่านั้น** — ไม่มีตลาดต่างประเทศ ฟิวเจอร์ส หรือคริปโต · ข้อมูลที่นำเข้าต้องเป็นหุ้นไทยสกุลเงินบาท (ชุดข้อมูลที่ระบุสกุลอื่นถูกปฏิเสธ · Yahoo ดึงเฉพาะสัญลักษณ์ `.BK` และตรวจว่าเป็น THB)
 
@@ -72,6 +72,22 @@ bun run dev                   # http://localhost:3000 (ฟังเฉพาะ 
 - หลอมรวมกับหน้าเดิม: **Command Center** มีแถบ "จังหวะตลาด" (วันนี้คล้ายวันแบบไหน · % หุ้นเหนือ MA20 · หุ้นเคลื่อนแรงพร้อมกัน · ด่านที่บล็อกมากสุดเดือนนี้ → ลิงก์ไปหน้าเต็ม) · **Deep Research** มีหัวข้อจังหวะของหุ้น · cache อุ่นตอนเริ่มเซิร์ฟเวอร์
 - API: `GET /api/rhythm?symbol=SET|สัญลักษณ์&view=full|summary` (จำกัดความถี่แบบรายงานหนัก · คำนวณครั้งเดียวต่อเวอร์ชันข้อมูล ~0.4 วินาทีกับข้อมูลสาธิต · summary = ตัวเลขย่อของ Command Center) · โค้ด: `src/lib/rhythm/` (pure + test) · `src/components/rhythm/`
 
+## กระบวนการทำงาน (Operating Cycle)
+
+แท็บ **ศูนย์ควบคุม → กระบวนการทำงาน** — วงจรประจำวันหลังตลาดปิดที่ใช้งานได้จริง แต่ละขั้นมีสถานะ (พร้อม / ระวัง / ติดขัด / รอ) และปุ่มของขั้นนั้น:
+
+1. **ข้อมูลตลาด** — ความสดตามปฏิทิน SET (ข้อมูลค้าง ≥ 2 วันซื้อขาย = ไม่บันทึกสัญญาณใหม่จากราคาเก่า)
+2. **ล็อกกติกา** (pre-registration) — ผล forward นับเฉพาะไม้ที่บันทึกหลังล็อกด้วยกติกาชุดนั้น · แก้กติกาหลังล็อก = ต้องล็อกใหม่ ผลเริ่มนับใหม่
+3. **สัญญาณรอบล่าสุด** — ชุดเดียวกับ Decision Board
+4. **บันทึกก่อนตลาดเปิด** — "รันรอบนี้" บันทึกทุกสัญญาณลง **Journal** (ป้าย `[รอบอัตโนมัติ]` · หนึ่งหุ้นต่อหนึ่งวันสัญญาณ รันซ้ำไม่ซ้ำ) พร้อมคำสั่งตามแผนเทรด: pullback = ตั้งซื้อที่ขอบบนของโซนเข้า · momentum = ซื้อที่ราคาเปิด · ราคาตั้งซื้อ/stop ปัดลงตามช่วงราคา (tick) ของ SET ให้ส่งได้จริง · อายุคำสั่ง 3 วันทำการ · เส้นตาย = 10:00 น. ของวันซื้อขายถัดไป
+5. **ติดตามผล (โบรกเกอร์กระดาษ)** — อ่านเฉพาะแท่งหลังวันสัญญาณ: เปิดต่ำกว่า stop = ยกเลิก · ออกที่ stop ของแผน / เป้า +2R / ถือครบ 5 วันทำการ · แท่งเดียวแตะทั้งสองฝั่ง = นับ stop · วันที่ได้ของตรวจเฉพาะ stop · แท่งหยุดซื้อขายไม่จับคู่ · อัปเดตสถานะใน Journal ไปข้างหน้าเท่านั้น (PLANNED → EXECUTED → CLOSED / SKIPPED) รายการที่จบแล้วไม่แตะอีก
+6. **เทียบความคาดหวัง** — หลักฐาน forward = ไม้จาก **ข้อมูลจริง** + **กติกาที่ล็อก** + **บันทึกก่อนตลาดเปิดรอบถัดไป** เทียบกับ "การเล่นซ้ำย้อนหลัง" (สัญญาณทุกตัวก่อนวันล็อก ผ่านโบรกเกอร์กระดาษชุดเดียวกัน) ด้วย z ของผลเฉลี่ยต่อไม้ (R) เมื่อมี ≥ 10 ไม้ปิด · ต่ำกว่าคาดอย่างมีนัย = สัญญาณเตือนให้พักระบบ · ขาดทุนติดกันที่โอกาสเกิด < 1% = เตือน
+
+- ข้อมูลจำลอง: ซ้อมได้ครบทุกขั้น แต่ไม้ที่บันทึกไม่นับเป็นหลักฐาน forward (บอกเหตุผลทุกไม้: ข้อมูลจำลอง / ยังไม่ล็อก / บันทึกก่อนล็อก / กติกาชุดอื่น / บันทึกหลังตลาดเปิด)
+- **สิ่งที่การเล่นซ้ำบอกบนข้อมูลสาธิต:** เมื่อต้องส่งคำสั่งที่ทำได้จริง (ตั้งซื้อในโซน · ปัดตาม tick · คำสั่งหมดอายุ) สัญญาณ 195 ครั้งได้ของ 50.8% ของคำสั่ง · ชนะ 42.7% · ผลเฉลี่ย −0.09R [−0.28, +0.13] (รวม −8.0R) — ต่างจากการจำลองแบบ "ซื้อที่ราคาปิด" ใน Atlas (+0.11R) ผลจึงไวต่อวิธีส่งคำสั่งมาก และยังไม่มีหลักฐานว่ามี edge ก่อนเก็บผล forward
+- **ใช้กับข้อมูลจริง:** `bun scripts/fetch-yahoo.ts --universe demo --yes` (ต้องเข้าถึง `query1.finance.yahoo.com`) หรือ CSV → ล็อกกติกา → ตั้ง cron หลัง 17:45 น. `bun scripts/daily-cycle.ts --fetch yahoo` (exit 3 = ข้อมูลค้าง) หรือเปิด `OQE_CYCLE_AUTO=1` ให้เซิร์ฟเวอร์รันรอบเองเมื่อข้อมูลของวันเข้า (ตรวจทุก 10 นาที · รันครั้งเดียวต่อรอบ)
+- API: `GET /api/workflow` (จำกัดความถี่แบบรายงานหนัก) · `POST /api/workflow/run` (ผู้ดูแลเท่านั้น · 6 ครั้ง/นาที · ActionLog `workflow.run`) · โค้ด: `src/lib/workflow/` (pure + test) · `src/components/workflow/` · `scripts/daily-cycle.ts`
+
 ## Atlas พฤติกรรมระบบ (System Atlas)
 
 แท็บ **MY LAB → Atlas พฤติกรรมระบบ** — วิจัยเอนจิน 5 ด่านแบบ 360° ตามรูปแบบ "Grid Behavior Atlas" (6 มุม A–F) ทุกมุมมี **หัวข้อ = ข้อค้นพบ · ฐานข้อมูล · สรุปพร้อมช่วงความเชื่อมั่น/ค่า p · ที่มา (โมดูลที่คำนวณ)** และบอกตรง ๆ เมื่อ "ยังสรุปไม่ได้"
@@ -106,6 +122,7 @@ bun run start                                                   # node .next/sta
 
 - `DATABASE_URL` แบบสัมพัทธ์ (`file:../db/custom.db`) ใช้ได้ทุกโหมด — standalone server chdir ไป `.next/standalone` ทำให้ Prisma client หาไฟล์ไม่เจอ ("Unable to open the database file") แอปจึงแปลงเป็น absolute เทียบ `<โปรเจกต์>/prisma/` ให้เอง (`src/lib/sqlite-path.ts`) · path absolute และ Docker (`file:/data/app.db`) ใช้ตามเดิม
 - ตอนเริ่ม server อุ่น cache งานหนัก (panel, backtest, board, factors, dependence) ในพื้นหลัง — ผู้ใช้คนแรกไม่ต้องรอคำนวณ · ปิดด้วย `OQE_WARM_CACHE=0` · สถานะที่ `/api/health` (`cache`)
+- `OQE_CYCLE_AUTO=1` = รันรอบการทำงานประจำวันเองหลัง 17:45 น. (วันซื้อขาย) เมื่อข้อมูลของวันนั้นเข้าแล้ว — ดึงข้อมูลเองด้วย cron `bun scripts/daily-cycle.ts --fetch yahoo`
 - Log เป็น JSON 1 บรรทัดต่อเหตุการณ์ในโปรดักชัน (`OQE_LOG_FORMAT=text` อ่านง่ายตอน dev, `LOG_LEVEL`) · ค่าที่ชื่อเหมือนความลับถูกปิดเสมอ · error 500 ส่ง `errorId` ให้ client และรายละเอียดอยู่ใน log เท่านั้น
 - Docker: `docker compose up -d --build` (บังคับตั้ง `OQE_AUTH_PASSWORD`) · image seed DB ลง volume `/data` ครั้งแรก (`OQE_SEED_DB=demo|empty|none`) · **image ยังไม่ได้ build ทดสอบ** (sandbox ไม่มีเครือข่ายสำหรับ docker)
 
@@ -145,8 +162,8 @@ bun run verify     # typecheck · lint (max-warnings 0) · test · test:ops · b
 bun run test       # bun test src — unit + engine invariants + route handlers + component tests (happy-dom) บน SQLite ชั่วคราว
 bun run test:ops   # smoke checker + e2e budget + สคริปต์ ops ผ่าน CLI จริง (ingest-csv → engine-check → backup-db → restore-db)
 bun run smoke      # หลัง build: standalone server บนสำเนา DB → ทุก route (status, JSON เคร่งครัด, validation 400/404/422, header ความปลอดภัย)
-bun run e2e        # Playwright + axe: 16 มุมมอง desktop (+ เงินไหล KBANK 3y, จังหวะตลาด KBANK, Atlas ไฮไลต์กลุ่มวัน, Deep Research KBANK) + มือถือ 390px (รวมเงินไหล, จังหวะตลาด, Atlas, Deep Research)
-                   #   ต้องไม่มี violation ของ WCAG 2.1 AA/2.2 target-size (งบ 0) + interaction หลัก 18 ข้อ · รายงาน/ภาพหน้าจอที่ .e2e/
+bun run e2e        # Playwright + axe: 17 มุมมอง desktop (+ เงินไหล KBANK 3y, จังหวะตลาด KBANK, Atlas ไฮไลต์กลุ่มวัน, Deep Research KBANK, กระบวนการทำงานหลังรันรอบ) + มือถือ 390px
+                   #   ต้องไม่มี violation ของ WCAG 2.1 AA/2.2 target-size (งบ 0) + interaction หลัก 19 ข้อ · รายงาน/ภาพหน้าจอที่ .e2e/
 bun deploy/smoke.ts --db empty   # ทางที่สอง: DB เปล่า → auto-seed
 ```
 
@@ -165,6 +182,7 @@ CI: `.github/workflows/omniscient-quant-engine.yml` รันคำสั่ง�
 | `GET/POST /api/research/deep/{symbol}` | Deep Research รายหุ้น รวมผลทุกชั้น (`?format=md` = ไฟล์ Markdown · POST = เรียบเรียงด้วย LLM) |
 | `GET /api/flows` · `GET /api/flows/{SET\|symbol}` | รายชื่อ SET + หุ้นไทยแยกหมวด · แดชบอร์ดเงินไหล (อนุกรมรายสัปดาห์, ตารางซื้อ/ขาย/สุทธิ, ช่วงเวลา, Flow Index, NVDR/short sale) |
 | `GET /api/rhythm?symbol=SET\|symbol&view=full\|summary` | จังหวะตลาด 5 แผง (symbol ใช้กับฤดูกาล + ด่านที่บล็อก · summary = ตัวเลขย่อ · 404 หุ้นไม่มี · 409 ข้อมูลไม่พอ) |
+| `GET /api/workflow` · `POST /api/workflow/run` | กระบวนการทำงานประจำวัน: 6 ขั้น + คำสั่งของรอบล่าสุด + สมุดไม้กระดาษ (Journal) + หลักฐาน forward เทียบการเล่นซ้ำย้อนหลัง + สัญญาณเตือน · POST = รันรอบ (บันทึก + อัปเดตสถานะ · ผู้ดูแลเท่านั้น) |
 | `GET /api/atlas` | Atlas พฤติกรรมระบบ 6 มุม (แผนที่สถานะตลาด · จังหวะเวลา · สัญญาณพร้อมกัน · ส่วนผสมกำไร/ขาดทุน · ไม้เริ่ม/จบ + กติกาออกทางเลือก · AUC + ปรับคันโยกแบบ walk-forward) + ข้อเสนอ · 409 ข้อมูลไม่พอ |
 | `GET /api/board` · `GET /api/decision/{symbol}` | Decision Board ทุกตัว · 5-Gate + trade plan + risk MC + history |
 | `GET /api/analytics/factors` · `GET /api/analytics/dependence` | Multi-View factor model + volcano · Θ matrix + decouple |
@@ -185,6 +203,7 @@ CI: `.github/workflows/omniscient-quant-engine.yml` รันคำสั่ง�
 | `src/lib/research/` · `src/components/research/` | Deep Research: ประกอบรายงานจากทุกชั้น (pure) · Markdown · บริการโหลด + prompt LLM · หน้าจอรายงาน |
 | `src/lib/flows/` · `src/components/flows/` | เงินไหลนักลงทุน: generator + รายสัปดาห์ + Flow Index · แดชบอร์ด |
 | `src/lib/rhythm/` · `src/components/rhythm/` · `src/components/charts/chart-kit.tsx` | จังหวะตลาด: คำนวณ 5 แผงจาก MarketState (pure) + cache ต่อเวอร์ชันข้อมูล · หน้าจอ · ชิ้นส่วนกราฟ/สี/tooltip ที่ใช้ร่วมกับหน้าเงินไหลและ Atlas |
+| `src/lib/workflow/` · `src/components/workflow/` · `scripts/daily-cycle.ts` | กระบวนการทำงาน: โบรกเกอร์กระดาษ (pure) · รอบประจำวัน (บันทึก/อัปเดต Journal) · การเล่นซ้ำย้อนหลัง · ตัวตั้งเวลา · หน้าจอ · CLI สำหรับ cron |
 | `src/lib/atlas/` · `src/components/atlas/` | Atlas พฤติกรรมระบบ: ไม้จำลองจากสัญญาณ + 6 มุม + สถิติ (block bootstrap · AUC ถ่วงน้ำหนัก · เลื่อนวงกลม · BH-FDR) แบบ pure · หน้าจอ + forest plot |
 | `src/lib/data/` | calendar (SET) · freshness · csv · yahoo · ingest (ตรวจ/ทำความสะอาด/แทนที่) · provenance · service |
 | `src/lib/ops/backup.ts` · `src/lib/log.ts` · `src/lib/audit.ts` · `src/lib/http/responses.ts` | backup ออนไลน์ · structured logger · ActionLog · คำตอบมาตรฐาน (400/404/500 + errorId) + zod |

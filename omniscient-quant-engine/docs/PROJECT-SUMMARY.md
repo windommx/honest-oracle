@@ -25,11 +25,11 @@
 
 ## 2. โครงสร้างระบบ
 
-### 2.1 มุมมอง 16 มุมมอง (จาก `src/app/page.tsx`) — ขอบเขตหุ้นไทย (SET/mai) เท่านั้น
+### 2.1 มุมมอง 17 มุมมอง (จาก `src/app/page.tsx`) — ขอบเขตหุ้นไทย (SET/mai) เท่านั้น
 
 | กลุ่ม | มุมมอง |
 |---|---|
-| ศูนย์ควบคุม | **Command Center** (หน้าแรก) · **Terminal** (Market Intelligence: watchlist + กราฟเทียน + AI panel) |
+| ศูนย์ควบคุม | **Command Center** (หน้าแรก) · **กระบวนการทำงาน** (Task 23: วงจรประจำวัน — ข้อมูล → ล็อกกติกา → สัญญาณ → บันทึกลง Journal ก่อนตลาดเปิด → โบรกเกอร์กระดาษ → หลักฐาน forward เทียบการเล่นซ้ำย้อนหลัง · ตัวตั้งเวลา `OQE_CYCLE_AUTO` + `scripts/daily-cycle.ts`) · **Terminal** (Market Intelligence: watchlist + กราฟเทียน + AI panel) |
 | จักรวาลหลัก | ภาพรวม (KPI + Signal of the Day + 7-Layer map + Decision Board 22 ตัว) · **หลอมรวม** (synthesis 13 สาย) · **Deep Research** (Task 19: รายงานเชิงลึกรายหุ้น 12 หัวข้อจากทุกชั้น รวมจังหวะของหุ้น + Markdown/PDF + เรียบเรียงด้วย LLM) |
 | วิเคราะห์ | Multi-View (factors F1–F4, variance decomposition, enrichment, bipartite, volcano, PCA, trajectories) · Dependence (Θ chart, KDE, 22×22 Θ heatmap, decouple) · Decision (5-Gate checklist + trade plan + gate ribbon) · **เงินไหลนักลงทุน** (Task 18: SET 4 ประเภทนักลงทุน · NVDR + short sale รายหุ้น · Flow Index 6/36 เดือน) · **จังหวะตลาด** (Task 20: หุ้นเคลื่อนพร้อมกัน + breadth · ฤดูกาลวัน×เดือน + FDR · สัดส่วนมูลค่ารายหมวด + N_eff · แผนที่วัน PCA + k-means · ด่านที่บล็อกสัญญาณรายเดือน) |
 | ความเสี่ยง | Risk & Sizing (CVaR calculator, MC histogram, L-VaR, circuit breakers) · **Meta-Risk (L∞)** · **Apex (L7)** |

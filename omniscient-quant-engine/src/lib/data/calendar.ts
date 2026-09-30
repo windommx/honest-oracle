@@ -9,6 +9,8 @@
 
 /** เวลาที่ถือว่าข้อมูล EOD พร้อมแล้ว (นาทีนับจากเที่ยงคืนกรุงเทพ) — SET ปิด ~16:35–16:40 + เผื่อ feed อัปเดต */
 export const EOD_READY_MINUTES = 17 * 60 + 30
+/** SET เปิดจับคู่ช่วงเช้า 10:00 น. — คำสั่งของรอบถัดไปต้องบันทึกก่อนเวลานี้ */
+export const SET_OPEN_MINUTES = 10 * 60
 
 export const SET_HOLIDAYS: Readonly<Record<string, string>> = {
   // ---- 2025 ----
@@ -80,6 +82,19 @@ export function prevTradingDay(date: string): string {
   let d = shift(date, -1)
   for (let i = 0; i < 30 && !isTradingDay(d); i++) d = shift(d, -1)
   return d
+}
+
+/** วันซื้อขายถัดไปหลัง date (ไม่รวม date) */
+export function nextTradingDay(date: string): string {
+  let d = shift(date, 1)
+  for (let i = 0; i < 30 && !isTradingDay(d); i++) d = shift(d, 1)
+  return d
+}
+
+/** เวลาเปิดตลาด (UTC) ของวันซื้อขายถัดไปหลัง date — เส้นตายของการบันทึกคำสั่งที่เกิดจากราคาปิดของ date */
+export function nextSessionOpen(date: string): Date {
+  const d = nextTradingDay(date)
+  return new Date(Date.parse(`${d}T00:00:00Z`) + (SET_OPEN_MINUTES - 7 * 60) * 60_000)
 }
 
 /** จำนวนวันซื้อขายในช่วง (a, b] — b ≤ a = 0 · ใช้วัดว่า "ตามหลังกี่วันซื้อขาย" */

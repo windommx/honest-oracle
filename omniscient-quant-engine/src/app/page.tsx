@@ -19,6 +19,7 @@ import { FlowDashboardView } from '@/components/flows/flow-dashboard';
 import { DeepResearchView } from '@/components/research/deep-research-view';
 import { RhythmView } from '@/components/rhythm/rhythm-view';
 import { AtlasView } from '@/components/atlas/atlas-view';
+import { WorkflowView } from '@/components/workflow/workflow-view';
 import { FirstRunGuide } from '@/components/first-run-guide';
 import { AppMetaProvider, dataKindTag, useAppMeta } from '@/components/providers/app-meta';
 import { OverviewTab } from '@/components/quant/overview-tab';
@@ -74,6 +75,7 @@ type ViewKey =
   | 'flows'
   | 'rhythm'
   | 'atlas'
+  | 'workflow'
   | 'research';
 
 export default function Home() {
@@ -284,6 +286,11 @@ function HomeShell() {
             // จังหวะตลาดใช้ความกว้างเต็มจอ — กราฟเวลายาว + แผนที่วันคู่กับตาราง
             <div className="w-full px-3 py-4 sm:px-5">
               <RhythmView />
+            </div>
+          ) : view === 'workflow' ? (
+            // กระบวนการทำงานใช้ความกว้างเต็มจอ — การ์ดขั้นตอน 3 คอลัมน์ + ตารางคำสั่ง/สมุดไม้กระดาษ
+            <div className="w-full px-3 py-4 sm:px-5">
+              <WorkflowView />
             </div>
           ) : view === 'atlas' ? (
             // Atlas ใช้ความกว้างเต็มจอ — แผนที่คู่ตาราง + forest plot หลายคอลัมน์

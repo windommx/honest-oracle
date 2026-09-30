@@ -3,7 +3,7 @@
 // proxy/สิทธิ์ทดสอบแยกใน src/lib/security/security.test.ts · ทั้งระบบผ่าน HTTP จริงทดสอบใน deploy/smoke.ts
 // ============================================================
 
-import { beforeAll, describe, expect, test } from "bun:test"
+import { afterAll, beforeAll, describe, expect, test } from "bun:test"
 import { db } from "@/lib/db"
 import { ensureSeeded } from "@/lib/quant/engine/panel"
 import * as analyst from "./analyst/[symbol]/route"
@@ -15,6 +15,8 @@ import * as robustness from "./research/robustness/route"
 import * as rhythm from "./rhythm/route"
 import * as rules from "./rules/route"
 import * as system from "./system/route"
+import * as workflow from "./workflow/route"
+import * as workflowRun from "./workflow/run/route"
 
 const BASE = "http://localhost:3000"
 function req(method: string, path: string, body?: unknown): Request {
@@ -264,5 +266,34 @@ describe("/api/atlas — Atlas พฤติกรรมระบบ", () => {
     for (const a of body.actions) expect(["try", "keep", "watch"]).toContain(a.tone)
     const again = (await (await atlas.GET()).json()) as { header: unknown }
     expect(again.header).toEqual(body.header)
+  }, 180_000)
+})
+
+describe("/api/workflow — กระบวนการทำงานประจำวัน", () => {
+  const tag = "[รอบอัตโนมัติ]"
+  afterAll(async () => {
+    await db.journalEntry.deleteMany({ where: { notes: { startsWith: tag } } })
+  })
+
+  test("GET = 6 ขั้น + ฐานความคาดหวัง · POST run = บันทึกสัญญาณของรอบล่าสุด + ActionLog workflow.run · รันซ้ำไม่ซ้ำรายการ", async () => {
+    await db.journalEntry.deleteMany({ where: { notes: { startsWith: tag } } })
+    const res = await workflow.GET()
+    expect(res.status).toBe(200)
+    const body = (await res.json()) as { steps: Array<{ key: string }>; today: unknown[]; baseline: { stats: { signals: number } }; session: string }
+    expect(body.steps.map((s) => s.key)).toEqual(["data", "rules", "signals", "record", "track", "evaluate"])
+    expect(body.baseline.stats.signals).toBeGreaterThan(0)
+    const since = new Date()
+    const run = await workflowRun.POST(req("POST", "/api/workflow/run"))
+    expect(run.status).toBe(200)
+    const { report } = (await run.json()) as { report: { session: string; recorded: number; alreadyRecorded: number } }
+    expect(report.session).toBe(body.session)
+    expect(report.recorded).toBe(body.today.length)
+    const log = await actionAfter("workflow.run", since)
+    expect(log.method).toBe("POST")
+    expect(log.detail).toMatchObject({ session: body.session, recorded: body.today.length })
+    const again = (await (await workflowRun.POST(req("POST", "/api/workflow/run"))).json()) as { report: { recorded: number; alreadyRecorded: number } }
+    expect(again.report.recorded).toBe(0)
+    expect(again.report.alreadyRecorded).toBe(body.today.length)
+    expect(await db.journalEntry.count({ where: { notes: { startsWith: tag } } })).toBe(body.today.length)
   }, 180_000)
 })

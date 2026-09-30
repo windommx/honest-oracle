@@ -7,7 +7,7 @@
 //   ตัวเลือก: --db <ไฟล์ .db | empty> --port 3220 --out .e2e --headed
 //
 // ผ่านเมื่อ:
-//  - ทุกมุมมอง (16 แท็บ desktop + มือถือ 390px) ไม่มี axe violation ของ WCAG 2.0/2.1 A–AA + 2.2 target-size เกินงบ (AXE_BUDGET)
+//  - ทุกมุมมอง (17 แท็บ desktop + มือถือ 390px) ไม่มี axe violation ของ WCAG 2.0/2.1 A–AA + 2.2 target-size เกินงบ (AXE_BUDGET)
 //  - มือถือไม่มี scroll แนวนอนทั้งหน้า · ไม่มี console error / page error
 //  - interaction หลักทำงาน: คำแนะนำครั้งแรก, ⌘K, ล็อกกติกา, robustness, Apex size ใน Decision, journal P&L (commit ตอน blur),
 //    ปุ่ม AI ถูกปิดพร้อมคำอธิบายเมื่อไม่มี LLM, /terms, 404
@@ -36,10 +36,11 @@ export const VIEWS: Array<{ key: string; label: string }> = [
   { key: "rhythm", label: "จังหวะตลาด" },
   { key: "atlas", label: "Atlas พฤติกรรมระบบ" },
   { key: "research", label: "Deep Research" },
+  { key: "workflow", label: "กระบวนการทำงาน" },
   { key: "dashboard", label: "Command Center" },
 ]
 
-const MOBILE_SHOT: Record<string, string> = { "เงินไหลนักลงทุน": "flows", "จังหวะตลาด": "rhythm", "Atlas พฤติกรรมระบบ": "atlas", "Deep Research": "research" }
+const MOBILE_SHOT: Record<string, string> = { "เงินไหลนักลงทุน": "flows", "จังหวะตลาด": "rhythm", "Atlas พฤติกรรมระบบ": "atlas", "Deep Research": "research", "กระบวนการทำงาน": "workflow" }
 
 /**
  * งบ violation ต่อ rule ของ axe (จำนวน node สูงสุดที่ยอมรับต่อมุมมอง) — ค่าเริ่มต้น 0 ทุก rule
@@ -344,6 +345,28 @@ async function main(): Promise<number> {
           }),
         )
       }
+      if (v.key === "workflow") {
+        checks.push(
+          await check("กระบวนการทำงาน: 6 ขั้นพร้อมป้ายสถานะ · กดรันรอบ → บันทึกคำสั่งของรอบล่าสุดลง Journal · รันซ้ำไม่ซ้ำรายการ", async () => {
+            const steps = page.getByRole("region", { name: "ขั้นตอนของรอบนี้" })
+            await steps.waitFor({ timeout: 60_000 })
+            if ((await steps.getByRole("heading", { level: 4 }).count()) !== 6) return "ขั้นตอนไม่ครบ 6 ขั้น"
+            const run = page.getByRole("button", { name: "รันรอบนี้" }).first()
+            const done = page.waitForResponse((r) => r.url().endsWith("/api/workflow/run") && r.request().method() === "POST", { timeout: 60_000 })
+            await run.click()
+            const res = await done
+            if (res.status() !== 200) return `รันรอบตอบ HTTP ${res.status()}`
+            const { report } = (await res.json()) as { report: { recorded: number; alreadyRecorded: number } }
+            await settle(page)
+            const pending = await page.getByText("ยังไม่บันทึก", { exact: true }).count()
+            if (pending !== 0) return `ยังมี ${pending} คำสั่งที่ไม่ได้บันทึกหลังรันรอบ`
+            const again = await page.request.post(`${base}/api/workflow/run`, { data: {} })
+            const second = (await again.json()) as { report: { recorded: number; alreadyRecorded: number } }
+            if (second.report.recorded !== 0 || second.report.alreadyRecorded !== report.recorded + report.alreadyRecorded) return `รันซ้ำแล้วบันทึกซ้ำ (${JSON.stringify(second.report)})`
+            views.push(await measure(page, "กระบวนการทำงาน (หลังรันรอบ)", 1440, Date.now(), o.out, "desktop-workflow-ran.png"))
+          }),
+        )
+      }
       if (v.key === "research") {
         checks.push(
           await check("Deep Research: 12 หัวข้อ (รวมจังหวะตลาด) + 13 สาย · เปลี่ยนหุ้น · ดาวน์โหลด Markdown · ไม่มี LLM → ปุ่ม AI ปิด · ตอนพิมพ์ซ่อนเมนู", async () => {
@@ -420,7 +443,7 @@ async function main(): Promise<number> {
     await m.goto(`${base}/`, { waitUntil: "domcontentloaded" })
     await settle(m)
     views.push(await measure(m, "Command Center (มือถือ)", 390, tm, o.out, "mobile-dashboard.png"))
-    for (const label of ["Decision (L6)", "Apex (L7)", "Backtest & Journal", "เงินไหลนักลงทุน", "จังหวะตลาด", "Atlas พฤติกรรมระบบ", "Deep Research"]) {
+    for (const label of ["Decision (L6)", "Apex (L7)", "Backtest & Journal", "เงินไหลนักลงทุน", "จังหวะตลาด", "Atlas พฤติกรรมระบบ", "Deep Research", "กระบวนการทำงาน"]) {
       const t0 = Date.now()
       try {
         await m.getByRole("button", { name: "เปิดเมนูนำทาง" }).first().click({ timeout: 10_000 })

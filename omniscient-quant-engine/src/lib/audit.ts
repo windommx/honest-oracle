@@ -12,6 +12,7 @@ import { requestActor } from "@/lib/security/request-actor"
 export type ActionName =
   | "journal.create" | "journal.update" | "journal.delete" | "journal.seed"
   | "data.seed" | "data.ingest" | "rules.register" | "audit.run" | "synthesis.run" | "analyst.chat" | "research.deep"
+  | "workflow.run"
 
 /** คืน Promise ที่ไม่มีวัน reject — route เรียกแบบ `void logAction(...)` (ไม่รอ) · test รอได้ */
 export function logAction(req: Request, action: ActionName, status: number, detail?: Record<string, unknown>): Promise<void> {
@@ -34,6 +35,21 @@ export function logAction(req: Request, action: ActionName, status: number, deta
       .catch(fail)
   } catch (e) {
     // serialize detail ไม่ได้ตั้งแต่ตอนเรียก (เช่น object วนซ้ำ) — ไม่ให้ log ทำคำขอหลักพัง
+    fail(e)
+    return Promise.resolve()
+  }
+}
+
+/** การกระทำของระบบเอง (ตัวตั้งเวลา / สคริปต์ CLI) — ไม่มีคำขอ HTTP · method = SYSTEM · รอได้ ไม่มีวัน reject */
+export function logSystemAction(actor: string, action: ActionName, detail?: Record<string, unknown>): Promise<void> {
+  const fail = (e: unknown) => log.warn("action log write failed", { action, error: (e as Error)?.message ?? String(e) })
+  try {
+    const safe = detail === undefined ? undefined : (JSON.parse(JSON.stringify(detail)) as Prisma.InputJsonValue)
+    return db.actionLog
+      .create({ data: { actor, action, method: "SYSTEM", path: "internal", status: 200, detail: safe } })
+      .then(() => log.info("action", { actor, action, method: "SYSTEM", detail }))
+      .catch(fail)
+  } catch (e) {
     fail(e)
     return Promise.resolve()
   }

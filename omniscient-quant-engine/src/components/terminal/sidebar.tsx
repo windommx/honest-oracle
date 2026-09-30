@@ -22,6 +22,7 @@ import {
   Sparkles,
   Target,
   Waypoints,
+  Workflow,
   type LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -54,6 +55,7 @@ const NAV_GROUPS: NavGroupDef[] = [
     icon: Gauge,
     items: [
       { key: 'dashboard', label: 'Command Center', icon: Gauge },
+      { key: 'workflow', label: 'กระบวนการทำงาน', icon: Workflow },
       { key: 'terminal', label: 'ตลาดสด · Terminal', icon: Monitor },
     ],
   },
