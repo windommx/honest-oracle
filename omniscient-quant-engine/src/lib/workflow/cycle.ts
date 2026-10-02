@@ -67,7 +67,7 @@ const signed = (v: number, d = 2) => `${v > 0 ? '+' : v < 0 ? '−' : '±'}${Mat
 const px = (v: number | null) => (v === null ? '—' : v >= 100 ? v.toFixed(1) : v.toFixed(2));
 const roundCI = (c: AtlasCI): AtlasCI => ({ mean: round(c.mean, 3), lo: round(c.lo, 3), hi: round(c.hi, 3) });
 
-export const EXIT_LABEL: Record<ExitKind, string> = { target: 'ถึงเป้า', stop: 'โดน stop', time: 'หมดเวลา' };
+export const EXIT_LABEL: Record<ExitKind, string> = { target: 'ถึงเป้า', stop: 'โดน stop', time: 'หมดเวลา', trail: 'หลุดเส้น EMA' };
 
 /** meta ของรอบประจำวันใน gates JSON — null = รายการที่ผู้ใช้บันทึกเอง */
 export function cycleMetaOf(gates: unknown): CycleMeta | null {
@@ -222,7 +222,7 @@ export function paperStats(rows: Array<Pick<PaperResult, 'state' | 'fill' | 'rNe
   const closed = rows.filter((r) => r.state === 'closed' && r.rNet !== null);
   const decided = filled + expired + gaps;
   const rs = closed.map((r) => r.rNet!);
-  const byExit: Record<ExitKind, number> = { target: 0, stop: 0, time: 0 };
+  const byExit: Record<ExitKind, number> = { target: 0, stop: 0, time: 0, trail: 0 };
   for (const r of closed) if (r.exit) byExit[r.exit.kind]++;
   return {
     signals: rows.length,

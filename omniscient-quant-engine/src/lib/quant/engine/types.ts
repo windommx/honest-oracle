@@ -91,6 +91,8 @@ export interface StockPanel {
   coverage?: { fundamentals: boolean; flows: boolean };
   /** OHLC + ปริมาณ (ล้านหุ้น) เรียงตาม MarketState.dates — วันที่เติมช่องว่าง: o=h=l=c=ราคาล่าสุด, ปริมาณ 0 (close อยู่ใน rows) */
   ohlcv: { open: number[]; high: number[]; low: number[]; volume: number[] };
+  /** งบรายไตรมาสที่มี period + กำไรสุทธิ (เรียงตามวันประกาศ ms) — ใช้หาการเติบโต QoQ/YoY ณ วันใดวันหนึ่งแบบ point-in-time */
+  quarters?: Array<{ period: string; announce: number; netProfitM: number }>;
 }
 
 export interface MarketState {

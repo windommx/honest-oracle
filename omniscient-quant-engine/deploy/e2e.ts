@@ -37,6 +37,7 @@ export const VIEWS: Array<{ key: string; label: string }> = [
   { key: "atlas", label: "Atlas พฤติกรรมระบบ" },
   { key: "winrate", label: "เป้าหมายชนะ 80%" },
   { key: "walkforward", label: "ทดสอบเดินหน้า (Walk-forward)" },
+  { key: "neotic", label: "สแกน Neotic 3D" },
   { key: "research", label: "Deep Research" },
   { key: "workflow", label: "กระบวนการทำงาน" },
   { key: "dashboard", label: "Command Center" },
@@ -48,6 +49,7 @@ const MOBILE_SHOT: Record<string, string> = {
   "Atlas พฤติกรรมระบบ": "atlas",
   "เป้าหมายชนะ 80%": "winrate",
   "ทดสอบเดินหน้า (Walk-forward)": "walkforward",
+  "สแกน Neotic 3D": "neotic",
   "Deep Research": "research",
   "กระบวนการทำงาน": "workflow",
 }
@@ -397,6 +399,27 @@ async function main(): Promise<number> {
           }),
         )
       }
+      if (v.key === "neotic") {
+        checks.push(
+          await check("สแกน Neotic 3D: คำตัดสิน · แผนที่โซน · กรองตารางสแกน · กรวย 5 ขั้น · ความพร้อมของข้อมูล · ดาวน์โหลด CSV/สคริปต์ PyBroker ได้จริง", async () => {
+            await page.locator("#neo-verdict-h").waitFor({ timeout: 90_000 })
+            if ((await page.getByRole("img", { name: /แผนภาพกระจายของ \d+ หุ้น/ }).count()) !== 1) return "ไม่มีแผนที่โซน"
+            const group = page.getByRole("group", { name: "กรองตารางสแกน" })
+            const rs = group.getByRole("button", { name: /^RS ≥/ })
+            await rs.click()
+            if ((await rs.getAttribute("aria-pressed")) !== "true") return "กรองตารางสแกนไม่ได้"
+            if ((await page.getByRole("list", { name: "กรวยเงื่อนไขของกติกา Neotic 3D" }).getByRole("listitem").count()) !== 5) return "กรวยไม่ครบ 5 ขั้น"
+            if ((await page.getByRole("region", { name: "ความพร้อมของข้อมูลสำหรับกติกานี้" }).getByRole("listitem").count()) < 8) return "รายการความพร้อมไม่ครบ"
+            for (const [fmt, type] of [["csv", "text/csv"], ["py", "text/x-python"]] as const) {
+              const res = await page.request.get(`${base}/api/neotic/export?format=${fmt}`)
+              if (res.status() !== 200) return `ดาวน์โหลด ${fmt} ตอบ HTTP ${res.status()}`
+              if (!(res.headers()["content-type"] ?? "").includes(type)) return `ดาวน์โหลด ${fmt} ไม่ใช่ ${type}`
+            }
+            await settle(page)
+            views.push(await measure(page, "สแกน Neotic 3D (กรอง RS ≥ 80)", 1440, Date.now(), o.out, "desktop-neotic-rs.png"))
+          }),
+        )
+      }
       if (v.key === "workflow") {
         checks.push(
           await check("กระบวนการทำงาน: 6 ขั้นพร้อมป้ายสถานะ · กดรันรอบ → บันทึกคำสั่งของรอบล่าสุดลง Journal · รันซ้ำไม่ซ้ำรายการ", async () => {
@@ -495,7 +518,7 @@ async function main(): Promise<number> {
     await m.goto(`${base}/`, { waitUntil: "domcontentloaded" })
     await settle(m)
     views.push(await measure(m, "Command Center (มือถือ)", 390, tm, o.out, "mobile-dashboard.png"))
-    for (const label of ["Decision (L6)", "Apex (L7)", "Backtest & Journal", "เงินไหลนักลงทุน", "จังหวะตลาด", "Atlas พฤติกรรมระบบ", "เป้าหมายชนะ 80%", "ทดสอบเดินหน้า (Walk-forward)", "Deep Research", "กระบวนการทำงาน"]) {
+    for (const label of ["Decision (L6)", "Apex (L7)", "Backtest & Journal", "เงินไหลนักลงทุน", "จังหวะตลาด", "Atlas พฤติกรรมระบบ", "เป้าหมายชนะ 80%", "ทดสอบเดินหน้า (Walk-forward)", "สแกน Neotic 3D", "Deep Research", "กระบวนการทำงาน"]) {
       const t0 = Date.now()
       try {
         await m.getByRole("button", { name: "เปิดเมนูนำทาง" }).first().click({ timeout: 10_000 })

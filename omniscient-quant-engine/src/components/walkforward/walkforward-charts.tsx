@@ -406,7 +406,7 @@ export function MaeMfeTable({ m }: { m: WalkforwardResponse['maeMfe'] }) {
 
 // ─────────────────────────── ตารางไม้ ───────────────────────────
 
-const EXIT_TH: Record<WfTrade['exitKind'], string> = { target: 'ถึงเป้า', stop: 'stop', time: 'ครบวัน' };
+const EXIT_TH: Record<WfTrade['exitKind'], string> = { target: 'ถึงเป้า', stop: 'stop', time: 'ครบวัน', trail: 'หลุด EMA' };
 
 export function TradesTable({ trades, label }: { trades: WfTrade[]; label: string }) {
   return (

@@ -21,7 +21,7 @@ import {
   type JournalLike,
   type StatusContext,
 } from "./cycle"
-import { EXEC, floorToTick, scaledStop, setTick, simulatePlan, type Bars, type PlanInput } from "./execution"
+import { EXEC, emaOf, floorToTick, scaledStop, setTick, simulatePlan, type Bars, type PlanInput } from "./execution"
 import { barsOf, replayBaseline } from "./replay"
 import { shouldRunCycle } from "./scheduler"
 import { getWorkflow, runCycle } from "./service"
@@ -102,6 +102,50 @@ describe("workflow/โบรกเกอร์กระดาษ — ทำต�
     expect(halted.fill!.index).toBe(2)
     expect(simulatePlan(mk([signal]), 0, { ...pullback, stop: 101 }).state).toBe("invalid")
     expect(simulatePlan(mk([signal]), 0, { ...pullback, limit: 90 }).state).toBe("invalid")
+  })
+
+  test("EMA ของราคาปิด: เริ่มด้วยค่าเฉลี่ย period วันแรก แล้วถ่วงด้วย 2/(n+1) · cache ต่ออาร์เรย์", () => {
+    const close = [1, 2, 3, 4]
+    const e = emaOf(close, 3)
+    expect(Number.isNaN(e[0]) && Number.isNaN(e[1])).toBe(true)
+    expect(e[2]).toBe(2)
+    expect(e[3]).toBe(3)
+    expect(emaOf(close, 3)).toBe(e)
+    expect([...emaOf([5, 6], 3)].every(Number.isNaN)).toBe(true)
+  })
+
+  test("ออกตามเส้น EMA: ปิดต่ำกว่าเส้น → ขายที่ราคาเปิดวันซื้อขายถัดไป · เปิดต่ำกว่า stop = stop · ข้ามวันหยุดซื้อขาย", () => {
+    // ซื้อราคาเปิด 100 · stop 5% จากราคาได้ของ = 95 · เป้า 3R = 115 · EMA 3 วัน: วันที่ 3 ปิด 100.5 < EMA 101.08
+    const momentum: PlanInput = { kind: "momentum", close: 100, limit: null, stop: 95, stopPct: 5 }
+    const rule = { orderDays: 3, holdDays: 60, targetR: 3, costPct: 0, trailEma: 3 }
+    const head: Array<[number, number, number, number, number?]> = [signal, [100, 103, 99.5, 102], [102, 104, 101, 103], [103, 104, 100, 100.5]]
+    const r = simulatePlan(mk([...head, [100.2, 101, 99, 100]]), 0, momentum, rule)
+    expect(r.fill).toMatchObject({ index: 1, price: 100 })
+    expect(r.target).toBe(115)
+    expect(r.exit).toMatchObject({ index: 4, kind: "trail", price: 100.2 })
+    expect(r.days).toBe(3)
+    expect(r.retPct).toBe(0.2)
+    // MAE = low วันได้ของ 99.5 (0.5% = 0.1R) · MFE = high 104 (ได้ของที่ราคาเปิดจึงนับ high ทั้งวัน) · วันออกนับเฉพาะราคาเปิด
+    expect([r.maePct, r.maeR, r.mfePct, r.mfeR]).toEqual([0.5, 0.1, 4, 0.8])
+    // สัญญาณออกค้างอยู่ แล้ววันถัดไปเปิดกระโดดต่ำกว่า stop = ออกที่ราคาเปิดในชื่อ stop
+    expect(simulatePlan(mk([...head, [94, 95, 93, 94]]), 0, momentum, rule).exit).toMatchObject({ index: 4, kind: "stop", price: 94 })
+    // วันหยุดซื้อขาย (ปริมาณ 0) ขายไม่ได้ → ขายที่ราคาเปิดของวันซื้อขายถัดไป
+    expect(simulatePlan(mk([...head, [100.5, 100.5, 100.5, 100.5, 0], [99.8, 100, 99, 99.5]]), 0, momentum, rule).exit).toMatchObject({ index: 5, kind: "trail", price: 99.8 })
+    // ไม่ตั้ง trailEma = พฤติกรรมเดิม (ถือจนครบวัน)
+    expect(simulatePlan(mk([...head, [100.2, 101, 99, 100]]), 0, momentum, { ...rule, trailEma: undefined, holdDays: 3 }).exit).toMatchObject({ index: 4, kind: "time", price: 100 })
+  })
+
+  test("stop เป็น % ใต้ราคาได้ของ (แบบ stop_loss_pct ของ PyBroker): เปิดกระโดดขึ้นแล้ว stop ขยับตามราคาได้ของ", () => {
+    const plan: PlanInput = { kind: "momentum", close: 100, limit: null, stop: 95, stopPct: 5 }
+    // ได้ของที่ราคาเปิด 104 → stop = ปัด tick(98.8) = 98.75 · R = 5.25 · วันถัดไป low 98.7 แตะ stop
+    const r = simulatePlan(mk([signal, [104, 106, 103, 105], [101, 102, 98.7, 99]]), 0, plan, { orderDays: 3, holdDays: 10, targetR: 3, costPct: 0 })
+    expect(r.fill!.price).toBe(104)
+    expect(r.target).toBe(104 + 3 * 5.25)
+    expect(r.exit).toMatchObject({ index: 2, kind: "stop", price: 98.75 })
+    expect(r.r).toBe(-1)
+    // stop ของแผนยังใช้กันซื้อของที่เปิดหลุดก่อนได้ของ · % นอกช่วง 0–100 = แผนผิดรูป
+    expect(simulatePlan(mk([signal, [94, 96, 93, 95]]), 0, plan).state).toBe("gap")
+    expect(simulatePlan(mk([signal, [100, 101, 99, 100]]), 0, { ...plan, stopPct: 0 }).state).toBe("invalid")
   })
 
   test("ผลสุทธิหักค่าธรรมเนียมไป-กลับ · ไม้ที่กำไรน้อยกว่าค่าธรรมเนียม = แพ้ · stop ตามตัวคูณวัดจากราคาตั้งซื้อ", () => {

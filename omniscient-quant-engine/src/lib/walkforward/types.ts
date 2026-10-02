@@ -6,6 +6,7 @@
 
 import type { AtlasCI } from '@/lib/atlas/types';
 import type { WinFilter } from '@/lib/winrate/types';
+import type { ExitKind } from '@/lib/workflow/execution';
 
 /** วิธีเลือกกติกาออกในแต่ละหน้าต่าง (ตั้งไว้ก่อนดูผล) */
 export type OptimizerKey = 'locked' | 'maxExp' | 'maxWin' | 'maeMfe';
@@ -105,7 +106,7 @@ export interface WfTrade {
   cumPct: number;
   bars: number;
   pctPerBar: number;
-  exitKind: 'target' | 'stop' | 'time';
+  exitKind: ExitKind;
   maeR: number | null;
   mfeR: number | null;
   config: string;

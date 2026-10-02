@@ -172,7 +172,8 @@ export interface PanelStockInput {
   beta: number;
   /** volume = ล้านหุ้น (หน่วยเดียวกับ generator) · open/high/low ไม่มี = ใช้ close */
   prices: Array<{ date: Date; close: number; volume: number; open?: number | null; high?: number | null; low?: number | null }>;
-  fundamentals: Array<{ announceDate: Date; pe: number; pb: number; roe: number; de: number; revenueGrowth: number }>;
+  /** period (เช่น "2025-Q1") + กำไรสุทธิรายไตรมาส (ล้านบาท) ใช้คำนวณการเติบโต QoQ/YoY แบบ point-in-time (สแกน Neotic 3D) */
+  fundamentals: Array<{ announceDate: Date; pe: number; pb: number; roe: number; de: number; revenueGrowth: number; period?: string; netProfitM?: number }>;
   flows: Array<{ date: Date; netFlowM: number }>;
 }
 
@@ -191,7 +192,7 @@ export function generatedToPanelInput(gen: GeneratedMarket): PanelStockInput[] {
       close: c,
       volume: s.series.volume[t],
     })),
-    fundamentals: s.fundamentals.map((f) => ({ announceDate: f.announceDate, pe: f.pe, pb: f.pb, roe: f.roe, de: f.de, revenueGrowth: f.revenueGrowth })),
+    fundamentals: s.fundamentals.map((f) => ({ announceDate: f.announceDate, pe: f.pe, pb: f.pb, roe: f.roe, de: f.de, revenueGrowth: f.revenueGrowth, period: f.period, netProfitM: f.netProfitM })),
     flows: s.flows.map((f) => ({ date: f.date, netFlowM: f.netFlowM })),
   }));
 }
@@ -349,6 +350,10 @@ export function buildPanel(input: PanelStockInput[]): MarketState {
       rows,
       coverage: { fundamentals: s.fundamentals.length > 0, flows: s.flows.length > 0 },
       ohlcv: { ...perStockOhl[si], volume: vols },
+      quarters: s.fundamentals
+        .filter((f) => typeof f.period === 'string' && f.period.length > 0 && Number.isFinite(f.netProfitM))
+        .map((f) => ({ period: f.period!, announce: f.announceDate.getTime(), netProfitM: f.netProfitM! }))
+        .sort((a, b) => a.announce - b.announce),
     };
   });
 

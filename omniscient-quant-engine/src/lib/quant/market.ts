@@ -126,11 +126,12 @@ function regimeAt(frac: number): RegimeSpec {
   return REGIME_SCRIPT[REGIME_SCRIPT.length - 1];
 }
 
-export function generateMarket(seed = 20250817): GeneratedMarket {
+/** endDate = วันสุดท้ายของข้อมูล (ไม่ใส่ = วันนี้) — test ตรึงวันได้เพื่อให้ปฏิทินงบเทียบกับราคาไม่เลื่อนตามวันที่รัน */
+export function generateMarket(seed = 20250817, endDate?: Date): GeneratedMarket {
   const rand = mulberry32(seed);
   const gauss = gaussianFactory(rand);
   const tDist = studentTFactory(rand, 5); // fat tails
-  const dates = tradingDates(N_DAYS);
+  const dates = tradingDates(N_DAYS, endDate);
   const n = dates.length;
 
   // ── Market index proxy with occasional fat-tail jumps ──

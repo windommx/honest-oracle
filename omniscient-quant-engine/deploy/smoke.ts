@@ -145,6 +145,21 @@ export const DEFAULT_ROUTES: RouteSpec[] = [
   { route: "/api/walkforward/export?format=py", contentType: "text/x-python" },
   { route: "/api/walkforward/export?format=xls", status: 400 },
   {
+    route: "/api/neotic",
+    expect: (j) => {
+      const scan = j.scan as unknown[] | undefined
+      const steps = (j.funnel as { steps?: unknown[] } | undefined)?.steps
+      const ready = j.readiness as unknown[] | undefined
+      const level = (j.verdict as { level?: unknown } | undefined)?.level
+      return Array.isArray(scan) && scan.length > 0 && Array.isArray(steps) && steps.length === 5 && Array.isArray(ready) && ready.length >= 8 && typeof level === "string"
+        ? undefined
+        : "สแกน Neotic 3D ไม่ครบ (ตารางสแกน / กรวย 5 ขั้น / ความพร้อมของข้อมูล / คำตัดสิน)"
+    },
+  },
+  { route: "/api/neotic/export?format=csv", contentType: "text/csv" },
+  { route: "/api/neotic/export?format=py", contentType: "text/x-python" },
+  { route: "/api/neotic/export?format=xls", status: 400 },
+  {
     route: "/api/winrate",
     expect: (j) => {
       const plan = j.plan as Array<{ key?: unknown }> | undefined

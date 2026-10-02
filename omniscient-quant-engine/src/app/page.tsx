@@ -19,6 +19,7 @@ import { FlowDashboardView } from '@/components/flows/flow-dashboard';
 import { DeepResearchView } from '@/components/research/deep-research-view';
 import { RhythmView } from '@/components/rhythm/rhythm-view';
 import { AtlasView } from '@/components/atlas/atlas-view';
+import { NeoticView } from '@/components/neotic/neotic-view';
 import { WalkforwardView } from '@/components/walkforward/walkforward-view';
 import { WinrateView } from '@/components/winrate/winrate-view';
 import { WorkflowView } from '@/components/workflow/workflow-view';
@@ -79,6 +80,7 @@ type ViewKey =
   | 'atlas'
   | 'winrate'
   | 'walkforward'
+  | 'neotic'
   | 'workflow'
   | 'research';
 
@@ -310,6 +312,11 @@ function HomeShell() {
             // ทดสอบเดินหน้าใช้ความกว้างเต็มจอ — แผนภาพหน้าต่าง + forest plot คู่ + ตารางไม้กว้าง
             <div className="w-full px-3 py-4 sm:px-5">
               <WalkforwardView />
+            </div>
+          ) : view === 'neotic' ? (
+            // สแกน Neotic 3D ใช้ความกว้างเต็มจอ — แผนที่โซนคู่ตารางสแกน + กรวย + ตารางไม้
+            <div className="w-full px-3 py-4 sm:px-5">
+              <NeoticView />
             </div>
           ) : (
             <div className="mx-auto w-full max-w-7xl px-4 py-5 sm:px-6">

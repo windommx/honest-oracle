@@ -17,6 +17,8 @@ import * as rules from "./rules/route"
 import * as system from "./system/route"
 import * as walkforward from "./walkforward/route"
 import * as walkforwardExport from "./walkforward/export/route"
+import * as neotic from "./neotic/route"
+import * as neoticExport from "./neotic/export/route"
 import * as winrate from "./winrate/route"
 import * as workflow from "./workflow/route"
 import * as workflowRun from "./workflow/run/route"
@@ -319,6 +321,36 @@ describe("/api/walkforward — ทดสอบเดินหน้า (แน�
     expect(await py.text()).toContain("pybroker.hyperparam")
     expect((await walkforwardExport.GET(req("GET", "/api/walkforward/export?format=xls"))).status).toBe(400)
     expect((await walkforwardExport.GET(req("GET", "/api/walkforward/export"))).status).toBe(400)
+  }, 180_000)
+})
+
+describe("/api/neotic — สแกน Neotic 3D", () => {
+  test("สแกนทุกหุ้น ณ วันล่าสุด · กรวย 5 ขั้น · ความพร้อมของข้อมูล · ข้อมูลสาธิตยังไม่มีสัญญาณ (ปริมาณไม่ถึง) · ส่งออก CSV/สคริปต์ · format ผิด = 400", async () => {
+    const res = await neotic.GET()
+    expect(res.status).toBe(200)
+    const body = (await res.json()) as {
+      scan: Array<{ symbol: string; zone: string }>
+      funnel: { steps: Array<{ key: string; count: number }>; binding: string }
+      readiness: Array<{ key: string; status: string }>
+      verdict: { level: string }
+      spec: { thresholds: { rsDiv: number; knee: number; distB: number; volTrigger: number } }
+    }
+    expect(body.scan.length).toBe(22)
+    expect(body.spec.thresholds).toEqual({ rsDiv: 80, knee: 5, distB: 15, volTrigger: 2.5 })
+    expect(body.funnel.steps.map((s) => s.key)).toEqual(["days", "rs", "zone", "growth", "volume"])
+    expect(body.funnel.binding).toBe("volume")
+    expect(body.verdict.level).toBe("insufficient")
+    expect(body.readiness.find((r) => r.key === "kind")?.status).toBe("warn")
+    const csv = await neoticExport.GET(req("GET", "/api/neotic/export?format=csv"))
+    expect(csv.status).toBe(200)
+    expect(csv.headers.get("content-type")).toContain("text/csv")
+    expect(csv.headers.get("content-disposition")).toContain("neotic_pybroker.csv")
+    expect((await csv.text()).startsWith("date,symbol,open,high,low,close,volume,rs_rank,dist_52wh,vol_ratio,eps_qoq,eps_yoy,ema_20,neo_signal")).toBe(true)
+    const py = await neoticExport.GET(req("GET", "/api/neotic/export?format=py"))
+    expect(py.headers.get("content-type")).toContain("text/x-python")
+    expect(await py.text()).toContain("stop_loss_pct")
+    expect((await neoticExport.GET(req("GET", "/api/neotic/export?format=xls"))).status).toBe(400)
+    expect((await neoticExport.GET(req("GET", "/api/neotic/export"))).status).toBe(400)
   }, 180_000)
 })
 
