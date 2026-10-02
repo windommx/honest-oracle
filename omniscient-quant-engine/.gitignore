@@ -1,0 +1,38 @@
+# dependencies
+node_modules
+/.pnp
+.pnp.*
+
+# next.js
+/.next/
+/out/
+/build
+
+# env — ความลับอยู่ในไฟล์ .env ของแต่ละเครื่อง (ตัวอย่างที่ไม่มีความลับ: .env.example)
+.env
+.env.local
+.env.*.local
+
+# logs
+*.log
+dev.log
+server.log
+
+# typescript / editor / os
+*.tsbuildinfo
+next-env.d.ts
+.DS_Store
+*.pem
+
+# ไฟล์ที่ระบบเขียนตอนรัน (ไม่ใช่ซอร์ส)
+db/*.db-journal
+db/*.db-wal
+db/*.db-shm
+data/backups/
+
+# z.ai container leftovers (ไม่ใช้ใน repo นี้)
+.z-ai-config
+.zscripts/
+
+# ผล E2E/axe + ภาพหน้าจอ (bun run e2e)
+/.e2e/

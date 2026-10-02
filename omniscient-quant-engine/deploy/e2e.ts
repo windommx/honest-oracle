@@ -1,0 +1,556 @@
+/// <reference types="bun-types" />
+// ============================================================
+// E2E + accessibility gate ของ build โปรดักชัน (Playwright + axe-core) — ใช้ใน CI และ bun run verify
+//
+//   bun deploy/e2e.ts                        # เปิด standalone server เองบนสำเนา db/custom.db (LLM ปิด)
+//   bun deploy/e2e.ts --base-url http://127.0.0.1:3000
+//   ตัวเลือก: --db <ไฟล์ .db | empty> --port 3220 --out .e2e --headed
+//
+// ผ่านเมื่อ:
+//  - ทุกมุมมอง (17 แท็บ desktop + มือถือ 390px) ไม่มี axe violation ของ WCAG 2.0/2.1 A–AA + 2.2 target-size เกินงบ (AXE_BUDGET)
+//  - มือถือไม่มี scroll แนวนอนทั้งหน้า · ไม่มี console error / page error
+//  - interaction หลักทำงาน: คำแนะนำครั้งแรก, ⌘K, ล็อกกติกา, robustness, Apex size ใน Decision, journal P&L (commit ตอน blur),
+//    ปุ่ม AI ถูกปิดพร้อมคำอธิบายเมื่อไม่มี LLM, /terms, 404
+// ผลอยู่ที่ <out>/e2e-report.json + ภาพหน้าจอ (ไม่ commit — อยู่ใน .gitignore)
+// ============================================================
+
+import { mkdirSync, writeFileSync } from "node:fs"
+import path from "node:path"
+import axe from "axe-core"
+import { chromium, type Page } from "playwright"
+import { APP_ROOT, startStandaloneServer, type ServerHandle } from "./server"
+
+export const VIEWS: Array<{ key: string; label: string }> = [
+  { key: "terminal", label: "ตลาดสด · Terminal" },
+  { key: "overview", label: "ภาพรวม" },
+  { key: "synthesis", label: "หลอมรวม" },
+  { key: "decision", label: "Decision (L6)" },
+  { key: "multiview", label: "Multi-View (L3)" },
+  { key: "dependence", label: "Dependence (L2)" },
+  { key: "risk", label: "Risk & Sizing (L5)" },
+  { key: "metarisk", label: "Meta-Risk (L∞)" },
+  { key: "apex", label: "Apex (L7)" },
+  { key: "backtest", label: "Backtest & Journal" },
+  { key: "auditor", label: "AI Auditor" },
+  { key: "flows", label: "เงินไหลนักลงทุน" },
+  { key: "rhythm", label: "จังหวะตลาด" },
+  { key: "atlas", label: "Atlas พฤติกรรมระบบ" },
+  { key: "winrate", label: "เป้าหมายชนะ 80%" },
+  { key: "walkforward", label: "ทดสอบเดินหน้า (Walk-forward)" },
+  { key: "neotic", label: "สแกน Neotic 3D" },
+  { key: "research", label: "Deep Research" },
+  { key: "workflow", label: "กระบวนการทำงาน" },
+  { key: "dashboard", label: "Command Center" },
+]
+
+const MOBILE_SHOT: Record<string, string> = {
+  "เงินไหลนักลงทุน": "flows",
+  "จังหวะตลาด": "rhythm",
+  "Atlas พฤติกรรมระบบ": "atlas",
+  "เป้าหมายชนะ 80%": "winrate",
+  "ทดสอบเดินหน้า (Walk-forward)": "walkforward",
+  "สแกน Neotic 3D": "neotic",
+  "Deep Research": "research",
+  "กระบวนการทำงาน": "workflow",
+}
+
+/**
+ * งบ violation ต่อ rule ของ axe (จำนวน node สูงสุดที่ยอมรับต่อมุมมอง) — ค่าเริ่มต้น 0 ทุก rule
+ * เพิ่มรายการได้เฉพาะเมื่อมีเหตุผลที่บันทึกไว้ (เช่น ข้อจำกัดของไลบรารีกราฟที่แก้จากฝั่งเราไม่ได้)
+ */
+export const AXE_BUDGET: Record<string, { max: number; reason: string }> = {}
+
+const AXE_TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"]
+
+export interface AxeFinding {
+  id: string
+  impact: string | null
+  nodes: number
+  help: string
+  targets: string[]
+}
+
+export interface ViewResult {
+  view: string
+  viewport: number
+  ms: number
+  overflowPx: number
+  violations: AxeFinding[]
+  overBudget: string[]
+  error?: string
+}
+
+/** violation ที่เกินงบ (pure — ทดสอบได้) */
+export function overBudget(findings: AxeFinding[], budget: Record<string, { max: number }> = AXE_BUDGET): string[] {
+  return findings.filter((f) => f.nodes > (budget[f.id]?.max ?? 0)).map((f) => `${f.id} ×${f.nodes}`)
+}
+
+function parseArgs(argv: string[]) {
+  const get = (name: string) => {
+    const i = argv.indexOf(name)
+    return i >= 0 ? argv[i + 1] : undefined
+  }
+  const dbArg = get("--db")
+  return {
+    baseUrl: get("--base-url")?.replace(/\/+$/, ""),
+    db: dbArg === "empty" ? "empty" : path.resolve(dbArg ?? path.join(APP_ROOT, "db", "custom.db")),
+    port: Number(get("--port") ?? 3220),
+    out: path.resolve(get("--out") ?? path.join(APP_ROOT, ".e2e")),
+    headed: argv.includes("--headed"),
+  }
+}
+
+/** รอให้หน้านิ่ง: network ว่าง + ไม่มี aria-busy / spinner (ไม่รอ .animate-pulse ซึ่งเป็นเอฟเฟกต์ถาวรบางจุด) */
+async function settle(page: Page, timeoutMs = 60_000) {
+  await page.waitForLoadState("networkidle", { timeout: timeoutMs }).catch(() => {})
+  const t0 = Date.now()
+  while (Date.now() - t0 < timeoutMs) {
+    const busy = await page.locator('[aria-busy="true"], .animate-spin').count()
+    if (busy === 0) break
+    await page.waitForTimeout(250)
+  }
+  await page.waitForTimeout(300)
+}
+
+async function runAxe(page: Page): Promise<AxeFinding[]> {
+  await page.addScriptTag({ content: axe.source })
+  return page.evaluate(async (tags) => {
+    const w = window as unknown as { axe: { run: (ctx: Document, opts: unknown) => Promise<{ violations: Array<{ id: string; impact: string | null; help: string; nodes: Array<{ target: unknown[] }> }> }> } }
+    const res = await w.axe.run(document, { runOnly: { type: "tag", values: tags }, resultTypes: ["violations"] })
+    return res.violations.map((v) => ({ id: v.id, impact: v.impact, nodes: v.nodes.length, help: v.help, targets: v.nodes.slice(0, 6).map((n) => n.target.map(String).join(" ")) }))
+  }, AXE_TAGS)
+}
+
+async function overflowPx(page: Page): Promise<number> {
+  return page.evaluate(() => Math.max(document.documentElement.scrollWidth, document.body.scrollWidth) - window.innerWidth)
+}
+
+async function nav(page: Page, label: string) {
+  await page.getByRole("button", { name: label, exact: true }).locator("visible=true").first().click({ timeout: 15_000 })
+  await settle(page)
+}
+
+async function measure(page: Page, view: string, viewport: number, t0: number, out: string, shot: string): Promise<ViewResult> {
+  const violations = await runAxe(page)
+  const res: ViewResult = { view, viewport, ms: Date.now() - t0, overflowPx: Math.max(0, await overflowPx(page)), violations, overBudget: overBudget(violations) }
+  await page.screenshot({ path: path.join(out, shot) }).catch(() => {})
+  return res
+}
+
+interface Check {
+  name: string
+  ok: boolean
+  detail?: string
+}
+
+async function check(name: string, fn: () => Promise<string | undefined | void>): Promise<Check> {
+  try {
+    const problem = await fn()
+    return problem ? { name, ok: false, detail: problem } : { name, ok: true }
+  } catch (e) {
+    return { name, ok: false, detail: (e as Error).message.split("\n")[0].slice(0, 300) }
+  }
+}
+
+async function main(): Promise<number> {
+  const o = parseArgs(process.argv.slice(2))
+  mkdirSync(o.out, { recursive: true })
+  let server: ServerHandle | null = null
+  let base = o.baseUrl ?? ""
+  if (!o.baseUrl) {
+    try {
+      server = await startStandaloneServer({ db: o.db, port: o.port, runtime: "node" })
+    } catch (e) {
+      console.error((e as Error).message)
+      return 1
+    }
+    base = server.base
+  }
+  const browser = await chromium.launch({ headless: !o.headed })
+  const consoleErrors: string[] = []
+  const pageErrors: string[] = []
+  const views: ViewResult[] = []
+  const checks: Check[] = []
+  const report: Record<string, unknown> = { base, startedAt: new Date().toISOString() }
+  try {
+    // ───────── desktop ─────────
+    const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, locale: "th-TH" })
+    const page = await ctx.newPage()
+    page.on("console", (m) => {
+      // หน้า 404 ที่ตั้งใจเปิด → browser log "Failed to load resource: 404" ของเอกสารหลัก — ไม่นับเป็นข้อผิดพลาด
+      if (m.type() === "error" && !m.location().url.includes("/no-such-page")) consoleErrors.push(m.text().slice(0, 300))
+    })
+    page.on("pageerror", (e) => pageErrors.push(String(e).slice(0, 300)))
+
+    const tFirst = Date.now()
+    await page.goto(`${base}/`, { waitUntil: "domcontentloaded" })
+    await page.getByText("MARKET BREADTH", { exact: false }).first().waitFor({ timeout: 60_000 }).catch(() => {})
+    report.timeToCommandCenterMs = Date.now() - tFirst
+    await settle(page)
+
+    checks.push(
+      await check("คำแนะนำครั้งแรก: แสดงครั้งแรก → ปิดแล้วไม่กลับมาหลังโหลดใหม่", async () => {
+        const guide = page.getByRole("region", { name: "เริ่มต้นใช้งานใน 1 นาที" })
+        if ((await guide.count()) === 0) return "ไม่พบกล่องคำแนะนำครั้งแรก"
+        views.push(await measure(page, "Command Center + คำแนะนำครั้งแรก", 1440, tFirst, o.out, "desktop-first-run.png"))
+        await page.getByRole("button", { name: "เข้าใจแล้ว ไม่ต้องแสดงอีก" }).click()
+        if ((await guide.count()) !== 0) return "กดปิดแล้วยังแสดง"
+        await page.reload({ waitUntil: "domcontentloaded" })
+        await settle(page)
+        if ((await page.getByRole("region", { name: "เริ่มต้นใช้งานใน 1 นาที" }).count()) !== 0) return "โหลดใหม่แล้วกลับมาแสดง"
+      }),
+    )
+    checks.push(
+      await check("แถบล่าง: ป้ายที่มาของข้อมูลจาก provenance + ลิงก์ข้อกำหนด + กติกา", async () => {
+        const footer = page.locator("footer").last()
+        const text = (await footer.textContent()) ?? ""
+        if (!/ข้อมูลจำลอง|ข้อมูลจริง/.test(text)) return `ไม่มีป้ายข้อมูล: ${text.slice(0, 160)}`
+        if (!text.includes("กติกา")) return "ไม่มีสถานะกติกา"
+        if ((await footer.getByRole("link", { name: "ข้อกำหนดและข้อจำกัด" }).count()) === 0) return "ไม่มีลิงก์ข้อกำหนด"
+      }),
+    )
+
+    checks.push(
+      await check("Command Center: แถบจังหวะตลาด (วันแบบไหน · ความกว้าง · ด่านที่บล็อก) → กดแล้วไปหน้าจังหวะตลาด", async () => {
+        const strip = page.getByRole("region", { name: "จังหวะตลาดวันนี้" })
+        await strip.getByText("วันนี้คล้ายวันแบบ").waitFor({ timeout: 60_000 })
+        if ((await strip.getByText("ด่านที่บล็อกมากสุดเดือนนี้").count()) === 0) return "ไม่มีด่านที่บล็อก"
+        await strip.getByRole("button", { name: "ดูจังหวะตลาด →" }).click()
+        await page.locator("#rhythm-gates-h").waitFor({ timeout: 60_000 })
+        await nav(page, "Command Center")
+      }),
+    )
+
+    for (const v of VIEWS) {
+      const t0 = Date.now()
+      try {
+        await nav(page, v.label)
+        views.push(await measure(page, v.label, 1440, t0, o.out, `desktop-${v.key}.png`))
+      } catch (e) {
+        views.push({ view: v.label, viewport: 1440, ms: Date.now() - t0, overflowPx: 0, violations: [], overBudget: [], error: (e as Error).message.split("\n")[0] })
+        continue
+      }
+      if (v.key === "decision") {
+        checks.push(
+          await check("Decision: แสดงขนาดสุดท้ายของ Apex (Kelly-Vol × MDX)", async () => {
+            await page.getByText("ขนาดสุดท้าย (Apex)", { exact: false }).first().waitFor({ timeout: 30_000 })
+          }),
+        )
+      }
+      if (v.key === "apex") {
+        checks.push(
+          await check("Apex: แถว Risk MDX override + ช่วงความเชื่อมั่นของ P(win)", async () => {
+            if ((await page.getByText("Risk MDX override").count()) === 0) return "ไม่มีแถว Risk MDX override"
+            if ((await page.getByText("95% CI", { exact: false }).count()) === 0) return "ไม่มีช่วงความเชื่อมั่น"
+          }),
+        )
+      }
+      if (v.key === "backtest") {
+        checks.push(
+          await check("Backtest: hit rate มี 95% CI · ล็อกกติกาแล้วป้ายเปลี่ยนเป็น 'ตรงกับที่ล็อกไว้'", async () => {
+            if ((await page.getByText("95% CI", { exact: false }).count()) === 0) return "hit rate ไม่มี CI"
+            await page.getByRole("button", { name: "ล็อกกติกาชุดนี้" }).click()
+            await page.getByText("ตรงกับที่ล็อกไว้").first().waitFor({ timeout: 20_000 })
+          }),
+        )
+        checks.push(
+          await check("Backtest: รันความทนทานข้าม seed ได้คำตัดสิน", async () => {
+            await page.getByRole("button", { name: "รันทดสอบ 5 seed" }).click()
+            await page.getByText(/ทนทาน \(STABLE\)|ปนกัน \(MIXED\)|ไม่ทนทาน \(UNSTABLE\)/).first().waitFor({ timeout: 120_000 })
+            views.push(await measure(page, "Backtest + ผล robustness", 1440, Date.now(), o.out, "desktop-backtest-robustness.png"))
+          }),
+        )
+        checks.push(
+          await check("Journal: เติมตัวอย่าง → แก้ P&L แล้วบันทึกตอนออกจากช่อง (PATCH ครั้งเดียว)", async () => {
+            await page.getByRole("button", { name: "เติมตัวอย่างจาก Decision Board" }).click()
+            const input = page.getByRole("spinbutton", { name: /^P&L % ของ/ }).first()
+            await input.waitFor({ timeout: 30_000 })
+            let patches = 0
+            const patchCount = () => patches // อ่านผ่านฟังก์ชัน: ค่าเปลี่ยนจาก event handler (TS narrowing ไม่เห็น)
+            page.on("request", (r) => {
+              if (r.method() === "PATCH" && r.url().includes("/api/journal")) patches++
+            })
+            await input.fill("2.5")
+            await page.waitForTimeout(300)
+            if (patchCount() !== 0) return `ส่ง PATCH ระหว่างพิมพ์ ${patchCount()} ครั้ง`
+            const done = page.waitForResponse((r) => r.request().method() === "PATCH" && r.url().includes("/api/journal"), { timeout: 15_000 })
+            await input.press("Tab")
+            const res = await done
+            if (res.status() !== 200) return `PATCH ตอบ ${res.status()}`
+            await page.waitForTimeout(300)
+            if (patchCount() !== 1) return `PATCH ${patchCount()} ครั้ง (คาด 1)`
+          }),
+        )
+      }
+      if (v.key === "auditor") {
+        checks.push(
+          await check("AI Auditor: ไม่มี LLM → ปุ่มถูกปิดพร้อมคำอธิบายวิธีตั้งค่า", async () => {
+            if (!(await page.getByRole("button", { name: "รัน Audit ตอนนี้" }).isDisabled())) return "ปุ่มยังกดได้"
+            if ((await page.getByText("ยังไม่ได้ตั้งค่า LLM", { exact: false }).count()) === 0) return "ไม่มีคำอธิบาย"
+          }),
+        )
+      }
+      if (v.key === "synthesis") {
+        checks.push(
+          await check("หลอมรวม: ไม่มี LLM → ปุ่ม AI ถูกปิดพร้อมคำอธิบาย", async () => {
+            if (!(await page.getByRole("button", { name: "หลอมรวมด้วย AI" }).isDisabled())) return "ปุ่มยังกดได้"
+            if ((await page.getByText("ยังไม่ได้ตั้งค่า LLM", { exact: false }).count()) === 0) return "ไม่มีคำอธิบาย"
+          }),
+        )
+      }
+      if (v.key === "flows") {
+        checks.push(
+          await check("เงินไหล: SET 4 ประเภทนักลงทุนเริ่มต้น → เลือก KBANK + ช่วง 3y → หัวข้อ/ตาราง/มาตรวัด/short sale อัปเดต", async () => {
+            await page.getByRole("heading", { name: /เงินไหลนักลงทุน – SET \(ทั้งตลาด\)/ }).waitFor({ timeout: 20_000 })
+            const table = page.getByRole("region", { name: "ตารางการซื้อขายตามประเภทนักลงทุน" })
+            for (const g of ["นักลงทุนต่างประเทศ", "สถาบันในประเทศ", "บัญชีบริษัทหลักทรัพย์", "นักลงทุนทั่วไปในประเทศ"]) {
+              if ((await table.getByRole("rowheader", { name: g }).count()) === 0) return `ตารางไม่มีแถว ${g}`
+            }
+            await page.locator("nav summary", { hasText: "ธนาคาร" }).click()
+            await page.getByRole("button", { name: /^KBANK/ }).click()
+            await page.getByRole("button", { name: "3y", exact: true }).click()
+            await page.getByRole("heading", { name: /เงินไหลนักลงทุน – KBANK/ }).waitFor({ timeout: 20_000 })
+            await settle(page)
+            if ((await page.getByRole("button", { name: "3y", exact: true }).getAttribute("aria-pressed")) !== "true") return "ปุ่มช่วงไม่เปลี่ยนสถานะ"
+            if ((await page.getByRole("img", { name: /^Flow Index 6 เดือน/ }).count()) === 0) return "ไม่มีมาตรวัด Flow Index"
+            if ((await page.getByRole("meter", { name: "Short sale % ของมูลค่าซื้อขาย" }).count()) === 0) return "ไม่มีมาตรวัด short sale"
+            views.push(await measure(page, "เงินไหลนักลงทุน (KBANK, 3y)", 1440, Date.now(), o.out, "desktop-flows-kbank.png"))
+          }),
+        )
+      }
+      if (v.key === "rhythm") {
+        checks.push(
+          await check("จังหวะตลาด: 5 แผง + สรุปข้อค้นพบ · เลือก KBANK → ฤดูกาล/ด่านสัญญาณเป็นของ KBANK · เลือกกลุ่มวันบนแผนที่", async () => {
+            await page.locator("#rhythm-gates-h").waitFor({ timeout: 60_000 })
+            const panels = await page.locator("section[id^='rhythm-'] h3").count()
+            if (panels !== 5) return `มี ${panels} แผง (คาด 5)`
+            if ((await page.getByRole("navigation", { name: "สรุปข้อค้นพบ" }).getByRole("link").count()) !== 5) return "สรุปข้อค้นพบไม่ครบ 5 ข้อ"
+            if (!(await page.locator("#rhythm-gates-h").innerText()).includes("ของหุ้น-วันติดด่าน")) return "ด่านสัญญาณเริ่มต้นไม่ใช่ทุกหุ้น"
+            await page.getByLabel("ฤดูกาล + ด่านสัญญาณของ").selectOption("KBANK")
+            await page.locator("#rhythm-gates-h", { hasText: /^KBANK: / }).waitFor({ timeout: 30_000 })
+            if (!(await page.locator("#rhythm-season-h").innerText()).startsWith("KBANK:")) return "หัวข้อฤดูกาลไม่เปลี่ยนเป็น KBANK"
+            const pick = page.getByRole("region", { name: "ตารางกลุ่มของวันซื้อขาย" }).getByRole("button").last()
+            await pick.click()
+            if ((await pick.getAttribute("aria-pressed")) !== "true") return "เลือกกลุ่มวันไม่ได้"
+            await settle(page)
+            views.push(await measure(page, "จังหวะตลาด (KBANK)", 1440, Date.now(), o.out, "desktop-rhythm-kbank.png"))
+          }),
+        )
+      }
+      if (v.key === "atlas") {
+        checks.push(
+          await check("Atlas: 6 มุม + สรุป 6 ข้อ · ข้อเสนอมีป้ายประเภท · คันโยกมีคำตัดสิน · กดกลุ่มวันแล้วแผนที่เปลี่ยนเป็นโหมดไฮไลต์", async () => {
+            await page.locator("#atlas-f-h").waitFor({ timeout: 90_000 })
+            const sections = await page.locator("section[id^='atlas-'] h3[id$='-h']").count()
+            if (sections !== 6) return `มี ${sections} มุม (คาด 6)`
+            if ((await page.getByRole("navigation", { name: "หกมุมของ Atlas" }).getByRole("link").count()) !== 6) return "สรุปข้อค้นพบไม่ครบ 6 ข้อ"
+            const actions = page.getByRole("region", { name: "ข้อเสนอเพื่อเพิ่มประสิทธิภาพ" }).getByRole("listitem")
+            if ((await actions.count()) === 0) return "ไม่มีข้อเสนอ"
+            if (!/^(ทดลอง|คงไว้|เฝ้าระวัง)/.test((await actions.first().innerText()).trim())) return "ข้อเสนอไม่มีป้ายประเภท"
+            if ((await page.getByText("กติกาปัจจุบัน", { exact: true }).count()) !== 2) return "ไม่มีแถวฐาน (กติกาปัจจุบัน) ครบทั้งกติกาออกและคันโยก"
+            const pick = page.getByRole("region", { name: "ตารางผลของระบบตามกลุ่มวัน" }).getByRole("button").last()
+            await pick.click()
+            if ((await pick.getAttribute("aria-pressed")) !== "true") return "เลือกกลุ่มวันไม่ได้"
+            if ((await page.getByRole("button", { name: "ไฮไลต์กลุ่มวัน" }).getAttribute("aria-pressed")) !== "true") return "แผนที่ไม่เปลี่ยนเป็นโหมดไฮไลต์กลุ่ม"
+            await settle(page)
+            views.push(await measure(page, "Atlas (ไฮไลต์กลุ่มวัน)", 1440, Date.now(), o.out, "desktop-atlas-cluster.png"))
+          }),
+        )
+      }
+      if (v.key === "winrate") {
+        checks.push(
+          await check("เป้าหมายชนะ 80%: คำตอบสั้นมีป้ายระดับ · แผน 6 ขั้นพร้อมสถานะ · ตาราง config เลื่อนได้ · กดเปลี่ยน stop แล้วกราฟกับดักเปลี่ยนตาม", async () => {
+            const plan = page.getByRole("region", { name: /แผน 6 ขั้น/ })
+            await plan.waitFor({ timeout: 90_000 })
+            if ((await plan.getByRole("heading", { level: 4 }).count()) !== 6) return "แผนไม่ครบ 6 ขั้น"
+            const verdict = page.locator("#winrate-verdict-h")
+            if (((await verdict.innerText()).trim()).length < 10) return "ไม่มีคำตอบสั้น"
+            const table = page.getByRole("region", { name: /ตาราง config ที่ชนะถึง 80%/ })
+            if ((await table.count()) === 1 && (await table.getAttribute("tabindex")) !== "0") return "ตาราง config เลื่อนด้วยคีย์บอร์ดไม่ได้"
+            const stops = page.getByRole("group", { name: "stop" }).getByRole("button")
+            const target = stops.first()
+            const name = (await target.innerText()).trim()
+            await target.click()
+            if ((await target.getAttribute("aria-pressed")) !== "true") return "เลือก stop ไม่ได้"
+            if ((await page.getByRole("img", { name: new RegExp(`อัตราชนะตามระยะเป้า \\(stop ${name.replace("×", "")}×`) }).count()) !== 1) return "กราฟกับดักไม่เปลี่ยนตาม stop ที่เลือก"
+            await settle(page)
+            views.push(await measure(page, "เป้าหมายชนะ 80% (stop แคบสุด)", 1440, Date.now(), o.out, "desktop-winrate-stop.png"))
+          }),
+        )
+      }
+      if (v.key === "walkforward") {
+        checks.push(
+          await check("ทดสอบเดินหน้า: คำตัดสิน · หน้าต่าง train→test · กับดัก 9 ข้อ · สลับตารางไม้ · ดาวน์โหลด CSV/สคริปต์ PyBroker ได้จริง", async () => {
+            await page.locator("#wf-verdict-h").waitFor({ timeout: 90_000 })
+            const folds = await page.getByRole("region", { name: /หน้าต่าง train → test/ }).getByRole("listitem").count()
+            if (folds < 1) return "ไม่มีหน้าต่าง"
+            if ((await page.getByRole("region", { name: /กับดัก 9 ข้อ/ }).getByRole("listitem").count()) !== 9) return "กับดักไม่ครบ 9 ข้อ"
+            const group = page.getByRole("group", { name: "วิธีที่แสดงในตาราง" })
+            const last = group.getByRole("button").last()
+            await last.click()
+            if ((await last.getAttribute("aria-pressed")) !== "true") return "สลับตารางไม้ไม่ได้"
+            for (const [fmt, type] of [["csv", "text/csv"], ["py", "text/x-python"]] as const) {
+              const res = await page.request.get(`${base}/api/walkforward/export?format=${fmt}`)
+              if (res.status() !== 200) return `ดาวน์โหลด ${fmt} ตอบ HTTP ${res.status()}`
+              if (!(res.headers()["content-type"] ?? "").includes(type)) return `ดาวน์โหลด ${fmt} ไม่ใช่ ${type}`
+            }
+            await settle(page)
+            views.push(await measure(page, "ทดสอบเดินหน้า (ตารางไม้ MAE/MFE)", 1440, Date.now(), o.out, "desktop-walkforward-trades.png"))
+          }),
+        )
+      }
+      if (v.key === "neotic") {
+        checks.push(
+          await check("สแกน Neotic 3D: คำตัดสิน · แผนที่โซน · กรองตารางสแกน · กรวย 5 ขั้น · ความพร้อมของข้อมูล · ดาวน์โหลด CSV/สคริปต์ PyBroker ได้จริง", async () => {
+            await page.locator("#neo-verdict-h").waitFor({ timeout: 90_000 })
+            if ((await page.getByRole("img", { name: /แผนภาพกระจายของ \d+ หุ้น/ }).count()) !== 1) return "ไม่มีแผนที่โซน"
+            const group = page.getByRole("group", { name: "กรองตารางสแกน" })
+            const rs = group.getByRole("button", { name: /^RS ≥/ })
+            await rs.click()
+            if ((await rs.getAttribute("aria-pressed")) !== "true") return "กรองตารางสแกนไม่ได้"
+            if ((await page.getByRole("list", { name: "กรวยเงื่อนไขของกติกา Neotic 3D" }).getByRole("listitem").count()) !== 5) return "กรวยไม่ครบ 5 ขั้น"
+            if ((await page.getByRole("region", { name: "ความพร้อมของข้อมูลสำหรับกติกานี้" }).getByRole("listitem").count()) < 8) return "รายการความพร้อมไม่ครบ"
+            for (const [fmt, type] of [["csv", "text/csv"], ["py", "text/x-python"]] as const) {
+              const res = await page.request.get(`${base}/api/neotic/export?format=${fmt}`)
+              if (res.status() !== 200) return `ดาวน์โหลด ${fmt} ตอบ HTTP ${res.status()}`
+              if (!(res.headers()["content-type"] ?? "").includes(type)) return `ดาวน์โหลด ${fmt} ไม่ใช่ ${type}`
+            }
+            await settle(page)
+            views.push(await measure(page, "สแกน Neotic 3D (กรอง RS ≥ 80)", 1440, Date.now(), o.out, "desktop-neotic-rs.png"))
+          }),
+        )
+      }
+      if (v.key === "workflow") {
+        checks.push(
+          await check("กระบวนการทำงาน: 6 ขั้นพร้อมป้ายสถานะ · กดรันรอบ → บันทึกคำสั่งของรอบล่าสุดลง Journal · รันซ้ำไม่ซ้ำรายการ", async () => {
+            const steps = page.getByRole("region", { name: "ขั้นตอนของรอบนี้" })
+            await steps.waitFor({ timeout: 60_000 })
+            if ((await steps.getByRole("heading", { level: 4 }).count()) !== 6) return "ขั้นตอนไม่ครบ 6 ขั้น"
+            const run = page.getByRole("button", { name: "รันรอบนี้" }).first()
+            const done = page.waitForResponse((r) => r.url().endsWith("/api/workflow/run") && r.request().method() === "POST", { timeout: 60_000 })
+            await run.click()
+            const res = await done
+            if (res.status() !== 200) return `รันรอบตอบ HTTP ${res.status()}`
+            const { report } = (await res.json()) as { report: { recorded: number; alreadyRecorded: number } }
+            await settle(page)
+            const pending = await page.getByText("ยังไม่บันทึก", { exact: true }).count()
+            if (pending !== 0) return `ยังมี ${pending} คำสั่งที่ไม่ได้บันทึกหลังรันรอบ`
+            const again = await page.request.post(`${base}/api/workflow/run`, { data: {} })
+            const second = (await again.json()) as { report: { recorded: number; alreadyRecorded: number } }
+            if (second.report.recorded !== 0 || second.report.alreadyRecorded !== report.recorded + report.alreadyRecorded) return `รันซ้ำแล้วบันทึกซ้ำ (${JSON.stringify(second.report)})`
+            views.push(await measure(page, "กระบวนการทำงาน (หลังรันรอบ)", 1440, Date.now(), o.out, "desktop-workflow-ran.png"))
+          }),
+        )
+      }
+      if (v.key === "research") {
+        checks.push(
+          await check("Deep Research: 12 หัวข้อ (รวมจังหวะตลาด) + 13 สาย · เปลี่ยนหุ้น · ดาวน์โหลด Markdown · ไม่มี LLM → ปุ่ม AI ปิด · ตอนพิมพ์ซ่อนเมนู", async () => {
+            await page.getByRole("heading", { level: 2, name: /^TSE · / }).waitFor({ timeout: 30_000 })
+            const sections = await page.locator("article.research-print section[id^='research-'] h3").count()
+            if (sections !== 12) return `มี ${sections} หัวข้อ (คาด 12)`
+            if ((await page.getByRole("region", { name: "ตารางหลักฐาน 13 สาย" }).locator("tbody tr").count()) !== 13) return "ตาราง 13 สายไม่ครบ"
+            if (!(await page.getByRole("button", { name: "เรียบเรียงด้วย AI" }).isDisabled())) return "ปุ่ม AI ยังกดได้ทั้งที่ไม่มี LLM"
+            await page.getByRole("combobox", { name: "เลือกหุ้นสำหรับ Deep Research" }).click()
+            await page.getByRole("option", { name: "KBANK", exact: true }).click()
+            await page.getByRole("heading", { level: 2, name: /^KBANK · / }).waitFor({ timeout: 30_000 })
+            const href = await page.getByRole("link", { name: "ดาวน์โหลด Markdown" }).getAttribute("href")
+            if (!href?.includes("/api/research/deep/KBANK?format=md")) return `ลิงก์ดาวน์โหลดผิด: ${href}`
+            const md = await page.request.get(`${base}${href}`)
+            if (!md.ok() || !(md.headers()["content-type"] ?? "").includes("text/markdown")) return `ดาวน์โหลด Markdown ไม่ได้ (HTTP ${md.status()})`
+            if (!(await md.text()).startsWith("# Deep Research — KBANK")) return "เนื้อหา Markdown ไม่ตรงหุ้น"
+            await page.emulateMedia({ media: "print" })
+            const printOk = (await page.locator("aside").first().isHidden()) && (await page.locator("article.research-print").isVisible())
+            await page.emulateMedia({ media: "screen" })
+            if (!printOk) return "ตอนพิมพ์ยังแสดงเมนูข้าง หรือไม่แสดงรายงาน"
+            await settle(page)
+            views.push(await measure(page, "Deep Research (KBANK)", 1440, Date.now(), o.out, "desktop-research-kbank.png"))
+          }),
+        )
+      }
+      if (v.key === "terminal") {
+        checks.push(
+          await check("Terminal: ช่องแชท AI ถูกปิดพร้อมคำอธิบายเมื่อไม่มี LLM", async () => {
+            if (!(await page.getByRole("textbox", { name: "ถาม AI นักวิเคราะห์" }).isDisabled())) return "ช่องแชทยังพิมพ์ได้"
+          }),
+        )
+      }
+    }
+
+    checks.push(
+      await check("⌘K: เปิดค้นหา → พิมพ์ SCB → Enter → Terminal ของ SCB", async () => {
+        await page.keyboard.press("Control+k")
+        const dialog = page.getByRole("dialog")
+        await dialog.waitFor({ timeout: 10_000 })
+        await page.keyboard.type("SCB")
+        await page.keyboard.press("Enter")
+        await settle(page)
+        if ((await page.getByText("SCB", { exact: true }).count()) === 0) return "ไม่ได้เปิด SCB"
+      }),
+    )
+
+    checks.push(
+      await check("/terms: หน้าข้อกำหนดโหลดได้และผ่าน axe", async () => {
+        const t0 = Date.now()
+        const res = await page.goto(`${base}/terms`, { waitUntil: "domcontentloaded" })
+        if (res?.status() !== 200) return `HTTP ${res?.status()}`
+        await page.getByRole("heading", { level: 1, name: "ข้อกำหนดและข้อจำกัดของการใช้งาน" }).waitFor({ timeout: 10_000 })
+        views.push(await measure(page, "/terms", 1440, t0, o.out, "desktop-terms.png"))
+      }),
+    )
+    checks.push(
+      await check("404: หน้าที่ไม่มีอยู่ตอบ 404 พร้อมทางกลับ", async () => {
+        const res = await page.goto(`${base}/no-such-page`, { waitUntil: "domcontentloaded" })
+        if (res?.status() !== 404) return `HTTP ${res?.status()}`
+        if ((await page.getByText("ไม่พบหน้าที่ต้องการ").count()) === 0) return "ไม่มีข้อความ 404"
+        views.push(await measure(page, "404", 1440, Date.now(), o.out, "desktop-404.png"))
+      }),
+    )
+    await ctx.close()
+
+    // ───────── มือถือ 390px ─────────
+    const mctx = await browser.newContext({ viewport: { width: 390, height: 844 }, locale: "th-TH", isMobile: true, hasTouch: true })
+    const m = await mctx.newPage()
+    m.on("console", (msg) => {
+      if (msg.type() === "error") consoleErrors.push(`[mobile] ${msg.text().slice(0, 300)}`)
+    })
+    m.on("pageerror", (e) => pageErrors.push(`[mobile] ${String(e).slice(0, 300)}`))
+    const tm = Date.now()
+    await m.goto(`${base}/`, { waitUntil: "domcontentloaded" })
+    await settle(m)
+    views.push(await measure(m, "Command Center (มือถือ)", 390, tm, o.out, "mobile-dashboard.png"))
+    for (const label of ["Decision (L6)", "Apex (L7)", "Backtest & Journal", "เงินไหลนักลงทุน", "จังหวะตลาด", "Atlas พฤติกรรมระบบ", "เป้าหมายชนะ 80%", "ทดสอบเดินหน้า (Walk-forward)", "สแกน Neotic 3D", "Deep Research", "กระบวนการทำงาน"]) {
+      const t0 = Date.now()
+      try {
+        await m.getByRole("button", { name: "เปิดเมนูนำทาง" }).first().click({ timeout: 10_000 })
+        await nav(m, label)
+        views.push(await measure(m, `${label} (มือถือ)`, 390, t0, o.out, `mobile-${MOBILE_SHOT[label] ?? label.split(" ")[0].toLowerCase()}.png`))
+      } catch (e) {
+        views.push({ view: `${label} (มือถือ)`, viewport: 390, ms: Date.now() - t0, overflowPx: 0, violations: [], overBudget: [], error: (e as Error).message.split("\n")[0] })
+      }
+    }
+    await mctx.close()
+  } finally {
+    await browser.close()
+    server?.stop()
+  }
+
+  const failedViews = views.filter((v) => v.error || v.overBudget.length > 0 || (v.viewport <= 400 && v.overflowPx > 1))
+  const failedChecks = checks.filter((c) => !c.ok)
+  Object.assign(report, { views, checks, consoleErrors, pageErrors, budget: AXE_BUDGET, finishedAt: new Date().toISOString() })
+  writeFileSync(path.join(o.out, "e2e-report.json"), JSON.stringify(report, null, 2))
+
+  for (const v of views) {
+    const bad = v.error ? `ERROR ${v.error}` : [v.overBudget.length ? `axe: ${v.overBudget.join(", ")}` : "", v.viewport <= 400 && v.overflowPx > 1 ? `ล้นแนวนอน ${v.overflowPx}px` : ""].filter(Boolean).join(" · ")
+    console.log(`${bad ? "FAIL" : "PASS"}  ${String(v.viewport).padStart(4)}px  ${String(v.ms).padStart(6)} ms  ${v.view}${bad ? `  ← ${bad}` : ""}`)
+    if (bad) for (const f of v.violations.filter((x) => v.overBudget.some((b) => b.startsWith(x.id)))) console.log(`        ${f.id} (${f.impact}): ${f.targets.slice(0, 4).join(" | ")}`)
+  }
+  for (const c of checks) console.log(`${c.ok ? "PASS" : "FAIL"}  ${c.name}${c.detail ? `  ← ${c.detail}` : ""}`)
+  if (consoleErrors.length) console.log(`console error ${consoleErrors.length}: ${consoleErrors.slice(0, 5).join(" | ")}`)
+  if (pageErrors.length) console.log(`page error ${pageErrors.length}: ${pageErrors.slice(0, 5).join(" | ")}`)
+  console.log(`\nมุมมอง ${views.length - failedViews.length}/${views.length} ผ่าน · interaction ${checks.length - failedChecks.length}/${checks.length} ผ่าน · Command Center แสดงผลใน ${report.timeToCommandCenterMs} ms · รายงาน ${path.relative(APP_ROOT, path.join(o.out, "e2e-report.json"))}`)
+  return failedViews.length === 0 && failedChecks.length === 0 && consoleErrors.length === 0 && pageErrors.length === 0 ? 0 : 1
+}
+
+if (import.meta.main) {
+  main().then((code) => process.exit(code))
+}
