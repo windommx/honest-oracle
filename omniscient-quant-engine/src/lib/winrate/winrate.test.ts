@@ -69,6 +69,10 @@ const res = (rNet: number | null, state: PaperResult["state"] = "closed"): Paper
   days: state === "closed" ? 2 : null,
   barsSeen: 5,
   eventDate: null,
+  maePct: null,
+  mfePct: null,
+  maeR: null,
+  mfeR: null,
 })
 
 describe("winrate/lab", () => {

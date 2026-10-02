@@ -19,6 +19,7 @@ import { FlowDashboardView } from '@/components/flows/flow-dashboard';
 import { DeepResearchView } from '@/components/research/deep-research-view';
 import { RhythmView } from '@/components/rhythm/rhythm-view';
 import { AtlasView } from '@/components/atlas/atlas-view';
+import { WalkforwardView } from '@/components/walkforward/walkforward-view';
 import { WinrateView } from '@/components/winrate/winrate-view';
 import { WorkflowView } from '@/components/workflow/workflow-view';
 import { FirstRunGuide } from '@/components/first-run-guide';
@@ -77,6 +78,7 @@ type ViewKey =
   | 'rhythm'
   | 'atlas'
   | 'winrate'
+  | 'walkforward'
   | 'workflow'
   | 'research';
 
@@ -303,6 +305,11 @@ function HomeShell() {
             // เป้าหมายชนะ 80% ใช้ความกว้างเต็มจอ — กราฟคู่ + แผนภาพกระจายคู่กรวย + ตาราง config
             <div className="w-full px-3 py-4 sm:px-5">
               <WinrateView />
+            </div>
+          ) : view === 'walkforward' ? (
+            // ทดสอบเดินหน้าใช้ความกว้างเต็มจอ — แผนภาพหน้าต่าง + forest plot คู่ + ตารางไม้กว้าง
+            <div className="w-full px-3 py-4 sm:px-5">
+              <WalkforwardView />
             </div>
           ) : (
             <div className="mx-auto w-full max-w-7xl px-4 py-5 sm:px-6">

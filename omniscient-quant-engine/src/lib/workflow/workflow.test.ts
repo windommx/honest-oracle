@@ -55,6 +55,25 @@ describe("workflow/โบรกเกอร์กระดาษ — ทำต�
     expect(gapUp.exit).toMatchObject({ kind: "target", price: 108 })
   })
 
+  test("MAE/MFE แบบระมัดระวัง: low วันได้ของนับเสมอ · high วันได้ของนับเฉพาะได้ของที่ราคาเปิด · วันออกตัดที่ราคาออก", () => {
+    // limit ได้ของกลางวัน (เปิด 99 > 98): high 100 ของวันได้ของอาจเกิดก่อนได้ของ → ไม่นับ · low 97 นับ · ออกที่เป้า 106 = MFE 2R
+    const t1 = simulatePlan(mk([signal, [99, 100, 97, 99], [99, 103, 98, 102], [103, 110, 102, 109]]), 0, pullback)
+    expect(t1).toMatchObject({ state: "closed", maeR: 0.25, mfeR: 2, maePct: 1.02, mfePct: 8.163 })
+    // ได้ของที่ราคาเปิดแล้วโดน stop วันเดียวกัน: MAE = ถึง stop พอดี · MFE = 0 (ไม่รู้ว่าขึ้นก่อนหรือหลัง)
+    const t2 = simulatePlan(mk([signal, [100, 104, 93, 95]]), 0, { kind: "momentum", close: 100, limit: null, stop: 94 })
+    expect(t2).toMatchObject({ state: "closed", maeR: 1, mfeR: 0 })
+    // เปิดต่ำกว่า limit (ได้ของที่ราคาเปิด 97) → high วันได้ของนับ · หมดเวลา = นับทั้งแท่งสุดท้าย
+    const rule = { orderDays: 3, holdDays: 2, targetR: null }
+    const t3 = simulatePlan(mk([signal, [97, 101, 96.5, 100], [100, 102, 99, 101], [101, 103, 100, 102]]), 0, pullback, rule)
+    expect(t3).toMatchObject({ state: "closed", maeR: 0.167, mfeR: 2, exit: { kind: "time", price: 102 } })
+    // โดน stop วันถัดไป: MAE ตัดที่ราคาออก (ไม่ใช่ low 90 ที่เกิดหลังออก) · เปิดกระโดดต่ำกว่า stop = MAE ถึงราคาเปิด
+    expect(simulatePlan(mk([signal, [99, 99.5, 97.5, 98], [96, 97, 90, 92]]), 0, pullback)).toMatchObject({ maeR: 1, mfeR: 0 })
+    expect(simulatePlan(mk([signal, [99, 99.5, 97.5, 98], [92, 93, 90, 91]]), 0, pullback)).toMatchObject({ maeR: 1.5 })
+    // ยังถือ = ค่าถึงวันล่าสุด · ไม่ได้ของ = null
+    expect(simulatePlan(mk([signal, [99, 100, 97, 99], [99, 101, 98, 100]]), 0, pullback)).toMatchObject({ state: "open", maeR: 0.25, mfeR: 0.75 })
+    expect(simulatePlan(mk([signal, [93, 95, 92, 94]]), 0, pullback)).toMatchObject({ state: "gap", maeR: null, mfeR: null })
+  })
+
   test("เปิดต่ำกว่า stop = ยกเลิก (gap) · ไม่ได้ราคาใน 3 วัน = หมดอายุ · ยังไม่ครบ 3 วัน = คำสั่งยังรอ", () => {
     expect(simulatePlan(mk([signal, [93, 95, 92, 94]]), 0, pullback).state).toBe("gap")
     const noFill = mk([signal, [100, 101, 99, 100], [100, 102, 99, 101], [101, 102, 99.5, 101]])

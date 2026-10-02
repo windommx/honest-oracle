@@ -38,7 +38,7 @@ import type { CycleReport, ForwardReason, LedgerRow, PaperStats, WorkflowRespons
 
 const keyOf = (d: Date) => d.toISOString().slice(0, 10);
 const bangkokDate = (d: Date) => new Date(d.getTime() + 7 * 3_600_000).toISOString().slice(0, 10);
-const INVALID: PaperResult = { state: 'invalid', fill: null, exit: null, target: null, r: null, retPct: null, rNet: null, retNetPct: null, days: null, barsSeen: 0, eventDate: null };
+const INVALID: PaperResult = { state: 'invalid', fill: null, exit: null, target: null, r: null, retPct: null, rNet: null, retNetPct: null, days: null, barsSeen: 0, eventDate: null, maePct: null, mfePct: null, maeR: null, mfeR: null };
 
 /** แท่งราคาของทุกหุ้น (สร้างเมื่อใช้) + ดัชนีวันที่ของ MarketState */
 function priceIndex(state: MarketState) {

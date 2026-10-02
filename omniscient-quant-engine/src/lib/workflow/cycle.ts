@@ -125,7 +125,7 @@ export function paperNote(meta: CycleMeta, stop: number, res: PaperResult): stri
 export function decisionRecord(row: BoardRowLike, session: string, ctx: { rulesHash: string; dataKind: string }) {
   const kind: CycleMeta['kind'] = row.signal === 'ENTRY_MOMENTUM' ? 'momentum' : 'pullback';
   const meta: CycleMeta = { v: 1, session, kind, limit: kind === 'pullback' ? floorToTick(row.entryHigh) : null, rulesHash: ctx.rulesHash, dataKind: ctx.dataKind };
-  const pending: PaperResult = { state: 'order', fill: null, exit: null, target: null, r: null, retPct: null, rNet: null, retNetPct: null, days: null, barsSeen: 0, eventDate: null };
+  const pending: PaperResult = { state: 'order', fill: null, exit: null, target: null, r: null, retPct: null, rNet: null, retNetPct: null, days: null, barsSeen: 0, eventDate: null, maePct: null, mfePct: null, maeR: null, mfeR: null };
   return {
     runDate: new Date(`${session}T10:00:00Z`),
     symbol: row.symbol,

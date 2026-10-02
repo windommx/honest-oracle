@@ -15,6 +15,8 @@ import * as robustness from "./research/robustness/route"
 import * as rhythm from "./rhythm/route"
 import * as rules from "./rules/route"
 import * as system from "./system/route"
+import * as walkforward from "./walkforward/route"
+import * as walkforwardExport from "./walkforward/export/route"
 import * as winrate from "./winrate/route"
 import * as workflow from "./workflow/route"
 import * as workflowRun from "./workflow/run/route"
@@ -295,6 +297,28 @@ describe("/api/winrate — เป้าหมายชนะ 80% อย่าง
     expect(body.power.note.length).toBeGreaterThan(20)
     const again = (await (await winrate.GET()).json()) as { cells: unknown[] }
     expect(again.cells).toEqual(body.cells)
+  }, 180_000)
+})
+
+describe("/api/walkforward — ทดสอบเดินหน้า (แนว PyBroker)", () => {
+  test("4 วิธีเลือกกติกาออก · หน้าต่าง train → test · กับดัก 9 ข้อ · ส่งออก CSV/สคริปต์เป็นไฟล์ดาวน์โหลด · format ผิด = 400", async () => {
+    const res = await walkforward.GET()
+    expect(res.status).toBe(200)
+    const body = (await res.json()) as { optimizers: Array<{ key: string }>; folds: unknown[]; traps: unknown[]; trades: unknown[]; verdict: { level: string } }
+    expect(body.optimizers.map((o) => o.key)).toEqual(["locked", "maxExp", "maxWin", "maeMfe"])
+    expect(body.folds.length).toBeGreaterThan(0)
+    expect(body.traps.length).toBe(9)
+    expect(["evidence", "none", "worse"]).toContain(body.verdict.level)
+    const csv = await walkforwardExport.GET(req("GET", "/api/walkforward/export?format=csv"))
+    expect(csv.status).toBe(200)
+    expect(csv.headers.get("content-type")).toContain("text/csv")
+    expect(csv.headers.get("content-disposition")).toContain("oqe_pybroker.csv")
+    expect((await csv.text()).startsWith("date,symbol,open,high,low,close,volume,oqe_signal")).toBe(true)
+    const py = await walkforwardExport.GET(req("GET", "/api/walkforward/export?format=py"))
+    expect(py.headers.get("content-type")).toContain("text/x-python")
+    expect(await py.text()).toContain("pybroker.hyperparam")
+    expect((await walkforwardExport.GET(req("GET", "/api/walkforward/export?format=xls"))).status).toBe(400)
+    expect((await walkforwardExport.GET(req("GET", "/api/walkforward/export"))).status).toBe(400)
   }, 180_000)
 })
 

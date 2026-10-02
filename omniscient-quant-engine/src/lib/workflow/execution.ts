@@ -7,6 +7,9 @@
 //        ผลสุทธิ = หักค่าธรรมเนียมไป-กลับ costPct · ไม้ "ชนะ" = ผลสุทธิ > 0 · ค่าทั้งหมดอยู่ใน RULES.execution (ล็อกได้)
 //        แท่งเดียวแตะทั้ง stop และเป้า = นับ stop ก่อน · วันที่ได้ของตรวจเฉพาะ stop (ไม่รู้ลำดับราคาในวัน)
 //        แท่งที่หยุดซื้อขาย (ปริมาณ 0) ไม่จับคู่ทั้งซื้อและขาย แต่นับเป็นวันทำการที่ผ่านไป
+//  MAE/MFE (ราคาวิ่งสวน/วิ่งตามลึกสุดระหว่างถือ) วัดจากราคาได้ของแบบระมัดระวังเพราะไม่รู้ลำดับราคาในวัน:
+//        low ของวันได้ของนับเสมอ (หลังแตะราคาตั้งซื้อ ราคาต้องลงต่อถึง low) · high ของวันได้ของนับเฉพาะเมื่อได้ของที่ราคาเปิด
+//        วันออกที่ stop: MAE = ถึงราคาออก ไม่นับ high วันนั้น · วันออกที่เป้า: MFE = ถึงราคาเป้า · ออกเพราะหมดเวลา: นับทั้งแท่ง
 // ใช้ทั้งกับไม้ที่บันทึกจริงในรอบประจำวัน และกับการเล่นซ้ำย้อนหลัง (ฐานความคาดหวัง) — กติกาเดียวกันทุกจุด
 // ============================================================
 
@@ -75,6 +78,14 @@ export interface PaperResult {
   barsSeen: number;
   /** แท่งที่เกิดเหตุการณ์ล่าสุด (ยกเลิก/หมดอายุ/ได้ของ/ออก) */
   eventDate: string | null;
+  /** ราคาวิ่งสวนลึกสุดระหว่างถือ (% ของราคาได้ของ · ≥ 0) · ไม้ที่ยังถือ = ถึงวันล่าสุด · null = ไม่ได้ของ */
+  maePct: number | null;
+  /** ราคาวิ่งตามลึกสุดระหว่างถือ (% ของราคาได้ของ · ≥ 0) */
+  mfePct: number | null;
+  /** MAE เป็นหน่วย R (ระยะ stop ที่ใช้จริง) */
+  maeR: number | null;
+  /** MFE เป็นหน่วย R */
+  mfeR: number | null;
 }
 
 const round = (v: number, d: number) => Math.round(v * 10 ** d) / 10 ** d;
@@ -82,7 +93,7 @@ const round = (v: number, d: number) => Math.round(v * 10 ** d) / 10 ** d;
 export function simulatePlan(bars: Bars, t: number, plan: PlanInput, rule: ExecRule = EXEC): PaperResult {
   const last = bars.dates.length - 1;
   const barsSeen = Math.max(0, last - t);
-  const base = { fill: null, exit: null, target: null, r: null, retPct: null, rNet: null, retNetPct: null, days: null, barsSeen };
+  const base = { fill: null, exit: null, target: null, r: null, retPct: null, rNet: null, retNetPct: null, days: null, barsSeen, maePct: null, mfePct: null, maeR: null, mfeR: null };
   const cost = rule.costPct ?? 0;
   const limitOk = plan.limit === null || (plan.limit > plan.stop && plan.limit > 0);
   if (!(plan.stop > 0) || !(plan.close > plan.stop) || !limitOk || t < 0 || t > last) {
@@ -93,6 +104,7 @@ export function simulatePlan(bars: Bars, t: number, plan: PlanInput, rule: ExecR
   const orderEnd = t + rule.orderDays;
   let fillIdx = -1;
   let fillPrice = 0;
+  let atOpen = false;
   for (let u = t + 1; u <= Math.min(orderEnd, last); u++) {
     if (!(bars.volume[u] > 0)) continue;
     const o = bars.open[u];
@@ -100,11 +112,13 @@ export function simulatePlan(bars: Bars, t: number, plan: PlanInput, rule: ExecR
     if (plan.limit === null) {
       fillIdx = u;
       fillPrice = o;
+      atOpen = true;
       break;
     }
     if (bars.low[u] <= plan.limit) {
       fillIdx = u;
       fillPrice = Math.min(o, plan.limit);
+      atOpen = o <= plan.limit;
       break;
     }
   }
@@ -116,27 +130,51 @@ export function simulatePlan(bars: Bars, t: number, plan: PlanInput, rule: ExecR
   const R = fillPrice - plan.stop;
   const target = rule.targetR === null ? null : fillPrice + rule.targetR * R;
   const fill = { index: fillIdx, date: bars.dates[fillIdx], price: round(fillPrice, 4) };
-  const done = (index: number, price: number, kind: ExitKind): PaperResult => ({
-    state: 'closed',
-    fill,
-    exit: { index, date: bars.dates[index], price: round(price, 4), kind },
-    target: target === null ? null : round(target, 4),
-    r: round((price - fillPrice) / R, 3),
-    retPct: round((price / fillPrice - 1) * 100, 3),
-    rNet: round((price - fillPrice - (fillPrice * cost) / 100) / R, 3),
-    retNetPct: round((price / fillPrice - 1) * 100 - cost, 3),
-    days: index - fillIdx,
-    barsSeen,
-    eventDate: bars.dates[index],
-  });
-  if (bars.low[fillIdx] <= plan.stop) return done(fillIdx, plan.stop, 'stop');
+  // ราคาต่ำสุด/สูงสุดระหว่างถือ (ดูกติกาในหัวไฟล์) — เริ่มที่ราคาได้ของ
+  let lo = Math.min(fillPrice, bars.low[fillIdx]);
+  let hi = atOpen ? Math.max(fillPrice, bars.high[fillIdx]) : fillPrice;
+  const excursion = () => {
+    const mae = Math.max(0, fillPrice - lo);
+    const mfe = Math.max(0, hi - fillPrice);
+    return {
+      maePct: round((mae / fillPrice) * 100, 3),
+      mfePct: round((mfe / fillPrice) * 100, 3),
+      maeR: round(mae / R, 3),
+      mfeR: round(mfe / R, 3),
+    };
+  };
+  const done = (index: number, price: number, kind: ExitKind): PaperResult => {
+    if (kind === 'stop') lo = Math.min(lo, price);
+    if (kind === 'target') hi = Math.max(hi, price);
+    return {
+      state: 'closed',
+      fill,
+      exit: { index, date: bars.dates[index], price: round(price, 4), kind },
+      target: target === null ? null : round(target, 4),
+      r: round((price - fillPrice) / R, 3),
+      retPct: round((price / fillPrice - 1) * 100, 3),
+      rNet: round((price - fillPrice - (fillPrice * cost) / 100) / R, 3),
+      retNetPct: round((price / fillPrice - 1) * 100 - cost, 3),
+      days: index - fillIdx,
+      barsSeen,
+      eventDate: bars.dates[index],
+      ...excursion(),
+    };
+  };
+  if (bars.low[fillIdx] <= plan.stop) {
+    lo = plan.stop; // ออกที่ stop แล้ว — low ที่ต่ำกว่านั้นเกิดหลังออก
+    hi = fillPrice; // ไม่รู้ว่าขึ้นก่อนหรือหลังโดน stop ในวันเดียวกัน
+    return done(fillIdx, plan.stop, 'stop');
+  }
   const holdEnd = fillIdx + rule.holdDays;
   for (let u = fillIdx + 1; u <= Math.min(holdEnd, last); u++) {
     if (!(bars.volume[u] > 0)) continue;
     const o = bars.open[u];
     if (bars.low[u] <= plan.stop) return done(u, o <= plan.stop ? o : plan.stop, 'stop');
+    lo = Math.min(lo, bars.low[u]);
     if (target !== null && bars.high[u] >= target) return done(u, o >= target ? o : target, 'target');
+    hi = Math.max(hi, bars.high[u]);
   }
   if (last >= holdEnd) return done(holdEnd, bars.close[holdEnd], 'time');
-  return { ...base, state: 'open', fill, target: target === null ? null : round(target, 4), eventDate: fill.date };
+  return { ...base, state: 'open', fill, target: target === null ? null : round(target, 4), eventDate: fill.date, ...excursion() };
 }

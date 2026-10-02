@@ -28,6 +28,8 @@ export async function GET() {
       { method: 'GET', path: '/api/flows · /api/flows/{SET|symbol}', what: 'เงินไหลนักลงทุน: SET 4 ประเภท · NVDR/short sale รายหุ้น (ข้อมูลจำลอง)' },
       { method: 'GET', path: '/api/workflow', what: 'กระบวนการทำงานประจำวัน: 6 ขั้น · สัญญาณรอบล่าสุด · ไม้กระดาษใน Journal · หลักฐาน forward เทียบการเล่นซ้ำย้อนหลัง · สัญญาณเตือน' },
       { method: 'POST', path: '/api/workflow/run', what: 'รันรอบประจำวัน: บันทึกสัญญาณก่อนตลาดเปิด + อัปเดตไม้กระดาษด้วยราคาล่าสุด (ผู้ดูแลเท่านั้น)' },
+      { method: 'GET', path: '/api/walkforward', what: 'ทดสอบเดินหน้า (แนว PyBroker): หน้าต่าง train → test · 4 วิธีเลือกกติกาออก · เทียบการสุ่มเข้า · bootstrap · ตารางไม้ + MAE/MFE · กับดัก 9 ข้อ' },
+      { method: 'GET', path: '/api/walkforward/export?format=csv|py', what: 'ส่งออกแท่งราคา + สัญญาณของ OQE เป็น CSV และสคริปต์ lib-pybroker 2.x สำหรับตรวจผลซ้ำ' },
       { method: 'GET', path: '/api/winrate', what: 'เป้าหมายชนะ 80% อย่างมีนัย: กริดกติกาออก 252 แบบเทียบการสุ่มเข้าแบบเดียวกัน · ช่วงค้นหา/ช่วงทดสอบ · ปรับการทดสอบหลายแบบ · จำนวนไม้ forward ที่ต้องใช้ · แผน 6 ขั้น' },
       { method: 'GET', path: '/api/atlas', what: 'Atlas พฤติกรรมระบบ: 6 มุม (แผนที่สถานะตลาด · จังหวะเวลา · สัญญาณพร้อมกัน · ส่วนผสมกำไร/ขาดทุน · ไม้เริ่ม/จบ · ทดสอบความฉลาด walk-forward + ปรับคันโยก)' },
       { method: 'GET', path: '/api/rhythm?symbol=SET|symbol', what: 'จังหวะตลาด: ความกว้าง/หุ้นเคลื่อนแรงพร้อมกัน · ฤดูกาลวัน×เดือน · สัดส่วนมูลค่ารายหมวด + N_eff · แผนที่วันซื้อขาย · ด่านที่บล็อกสัญญาณ' },

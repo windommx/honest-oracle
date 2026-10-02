@@ -131,6 +131,20 @@ export const DEFAULT_ROUTES: RouteSpec[] = [
     },
   },
   {
+    route: "/api/walkforward",
+    expect: (j) => {
+      const opts = j.optimizers as Array<{ key?: unknown }> | undefined
+      const folds = j.folds as unknown[] | undefined
+      const traps = j.traps as unknown[] | undefined
+      return Array.isArray(opts) && opts.length === 4 && Array.isArray(folds) && folds.length > 0 && Array.isArray(traps) && traps.length === 9 && Array.isArray(j.trades)
+        ? undefined
+        : "ทดสอบเดินหน้าไม่ครบ (4 วิธี / หน้าต่าง / กับดัก 9 ข้อ / ตารางไม้)"
+    },
+  },
+  { route: "/api/walkforward/export?format=csv", contentType: "text/csv" },
+  { route: "/api/walkforward/export?format=py", contentType: "text/x-python" },
+  { route: "/api/walkforward/export?format=xls", status: 400 },
+  {
     route: "/api/winrate",
     expect: (j) => {
       const plan = j.plan as Array<{ key?: unknown }> | undefined

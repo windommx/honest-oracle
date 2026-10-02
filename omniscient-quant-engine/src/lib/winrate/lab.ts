@@ -16,13 +16,12 @@
 //  5) จำนวนไม้ forward ที่ต้องใช้ยืนยัน (กำลัง 80%) × design effect ของการกระจุกตัวรายสัปดาห์
 // ============================================================
 
-import { evaluateGates } from '@/lib/quant/engine/gates';
 import type { MarketState } from '@/lib/quant/engine/types';
 import { mulberry32 } from '@/lib/quant/rng';
 import { bhFdr, mean, wilsonInterval } from '@/lib/quant/stats';
 import type { GateBlockMatrix } from '@/lib/rhythm/compute';
-import { EXEC, floorToTick, scaledStop, simulatePlan, type Bars, type ExecRule, type PaperResult } from '@/lib/workflow/execution';
-import { barsOf } from '@/lib/workflow/replay';
+import { EXEC, type ExecRule, type PaperResult } from '@/lib/workflow/execution';
+import { signalSet, simulateSignal, type SignalPlan, type SignalRow } from './signals';
 import { binomTailGE, clusterMean, sampleSize } from './stats';
 import type { WinCurve, WinFilter, WinRow, WinStats } from './types';
 
@@ -63,27 +62,20 @@ export const FILTER_LABEL: Record<WinFilter, string> = {
   quality: `P(ขึ้น) ≥ ${LAB.qualityMin}`,
 };
 
+/** ตัวกรองสัญญาณ (ตั้งไว้ก่อนดูผล) — ใช้ร่วมกับหน้าทดสอบเดินหน้า */
+export function passesFilter(filter: WinFilter, g: Pick<SignalRow, 'kind' | 'crowd' | 'plan'>): boolean {
+  return filter === 'all' || (filter === 'pullback' ? g.kind === 'pullback' : filter === 'uncrowded' ? g.crowd <= LAB.crowdMax : g.plan.probUp >= LAB.qualityMin);
+}
+
 export const configLabel = (c: { targetR: number; stopMult: number; holdDays: number; filter: WinFilter }) =>
   `เป้า ${c.targetR}R · stop ${c.stopMult}× · ถือ ${c.holdDays} วัน · ${FILTER_LABEL[c.filter]}`;
 
-interface Plan {
-  close: number;
-  zoneHi: number;
-  stopHard: number;
-  probUp: number;
-}
+export { weekOf } from './signals';
 
 type Period = 'discovery' | 'holdout' | 'embargo';
 
-interface LabSignal {
-  si: number;
-  t: number;
-  date: string;
-  week: string;
-  kind: 'pullback' | 'momentum';
-  crowd: number;
-  plan: Plan;
-  random: Array<{ u: number; plan: Plan }>;
+interface LabSignal extends SignalRow {
+  random: Array<{ u: number; plan: SignalPlan }>;
   period: Period;
 }
 
@@ -102,7 +94,6 @@ export interface LabResult {
   curves: WinCurve[];
 }
 
-const keyOf = (d: Date) => d.toISOString().slice(0, 10);
 const r1 = (v: number) => Math.round(v * 10) / 10;
 const r3 = (v: number) => {
   const r = Math.round(v * 1000) / 1000;
@@ -110,19 +101,6 @@ const r3 = (v: number) => {
 };
 /** p แสดง 4 ตำแหน่งแบบนัยสำคัญ (p เล็กมากต้องไม่ปัดเป็น 0) */
 const rp = (p: number) => (p >= 0.001 ? Math.round(p * 1e4) / 1e4 : Number(p.toPrecision(2)));
-
-/** วันจันทร์ของสัปดาห์ = กลุ่มของ standard error แบบ cluster-robust */
-export function weekOf(date: string): string {
-  const d = new Date(`${date}T00:00:00Z`);
-  const dow = (d.getUTCDay() + 6) % 7;
-  return new Date(d.getTime() - dow * 86_400_000).toISOString().slice(0, 10);
-}
-
-function simulate(bars: Bars, t: number, kind: LabSignal['kind'], plan: Plan, stopMult: number, rule: ExecRule): PaperResult {
-  const limit = kind === 'pullback' ? floorToTick(plan.zoneHi) : null;
-  const stop = floorToTick(scaledStop(limit ?? plan.close, plan.stopHard, stopMult));
-  return simulatePlan(bars, t, { kind, close: plan.close, limit, stop }, rule);
-}
 
 const isClosed = (r: PaperResult) => r.state === 'closed' && r.rNet !== null;
 
@@ -172,42 +150,9 @@ export function statsFor(idx: number[], weeks: string[], res: PaperResult[], q: 
 /** ทุก config ของกริด + เส้นอัตราชนะ/ผลสุทธิตามระยะเป้า — งานหนักของหน้า (cache ต่อ MarketState ที่ผู้เรียก) */
 export function computeLab(state: MarketState, gates: GateBlockMatrix): LabResult {
   const rng = mulberry32(LAB.seed);
-  const dates = state.dates.map(keyOf);
-  const N = dates.length;
-  const plans = new Map<number, Plan>();
-  const planAt = (si: number, t: number): Plan => {
-    const k = si * N + t;
-    let p = plans.get(k);
-    if (!p) {
-      const ev = evaluateGates(state, state.stocks[si].symbol, t, { light: true });
-      p = { close: state.stocks[si].rows[t].close, zoneHi: ev.plan.entryHigh, stopHard: ev.plan.stopHard, probUp: ev.probUp };
-      plans.set(k, p);
-    }
-    return p;
-  };
-  const crowd = new Array<number>(N).fill(0);
-  state.stocks.forEach((_, si) => {
-    for (let t = gates.t0; t <= gates.t1; t++) if (gates.cat[si][t - gates.t0] === 5) crowd[t]++;
-  });
-  const sigs: LabSignal[] = [];
-  state.stocks.forEach((_, si) => {
-    for (let t = gates.t0; t <= gates.t1; t++) {
-      const i = t - gates.t0;
-      if (gates.cat[si][i] !== 5) continue;
-      sigs.push({
-        si,
-        t,
-        date: dates[t],
-        week: weekOf(dates[t]),
-        kind: gates.kind[si][i] === 2 ? 'momentum' : 'pullback',
-        crowd: crowd[t],
-        plan: planAt(si, t),
-        random: [],
-        period: 'discovery',
-      });
-    }
-  });
-  sigs.sort((a, b) => a.t - b.t || a.si - b.si);
+  const set = signalSet(state, gates);
+  const { dates, planAt, bars } = set;
+  const sigs: LabSignal[] = set.sigs.map((g) => ({ ...g, random: [], period: 'discovery' }));
 
   // แบ่งช่วงตามเวลา + ตัดรอยต่อ
   const splitIdx = Math.min(Math.max(0, sigs.length - 1), Math.floor(sigs.length * LAB.discoveryShare));
@@ -230,14 +175,7 @@ export function computeLab(state: MarketState, gates: GateBlockMatrix): LabResul
     }
   }
 
-  const bars = state.stocks.map((_, si) => barsOf(state, si, dates));
   const weeks = sigs.map((g) => g.week);
-  const passes: Record<WinFilter, (g: LabSignal) => boolean> = {
-    all: () => true,
-    pullback: (g) => g.kind === 'pullback',
-    uncrowded: (g) => g.crowd <= LAB.crowdMax,
-    quality: (g) => g.plan.probUp >= LAB.qualityMin,
-  };
   const disc = sigs.map((_, i) => i).filter((i) => sigs[i].period === 'discovery');
   const hold = sigs.map((_, i) => i).filter((i) => sigs[i].period === 'holdout');
   const everyIdx = sigs.map((_, i) => i);
@@ -250,17 +188,17 @@ export function computeLab(state: MarketState, gates: GateBlockMatrix): LabResul
       curves.push(curve);
       for (const targetR of LAB.targetsR) {
         const rule: ExecRule = { orderDays: EXEC.orderDays, holdDays, targetR, costPct: EXEC.costPct };
-        const res = sigs.map((g) => simulate(bars[g.si], g.t, g.kind, g.plan, stopMult, rule));
+        const res = sigs.map((g) => simulateSignal(bars[g.si], g.t, g.kind, g.plan, stopMult, rule));
         const q: Array<number | null> = [];
         const qExp: Array<number | null> = [];
         for (const g of sigs) {
-          const rr = g.random.map((x) => simulate(bars[g.si], x.u, g.kind, x.plan, stopMult, rule)).filter(isClosed);
+          const rr = g.random.map((x) => simulateSignal(bars[g.si], x.u, g.kind, x.plan, stopMult, rule)).filter(isClosed);
           const ok = rr.length >= LAB.minRandomClosed;
           q.push(ok ? rr.filter((x) => x.rNet! > 0).length / rr.length : null);
           qExp.push(ok ? mean(rr.map((x) => x.retNetPct!)) : null);
         }
         for (const filter of LAB.filters) {
-          const keep = (i: number) => passes[filter](sigs[i]);
+          const keep = (i: number) => passesFilter(filter, sigs[i]);
           rows.push({
             key: `t${targetR}-s${stopMult}-h${holdDays}-${filter}`,
             targetR,
