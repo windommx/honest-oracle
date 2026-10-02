@@ -14,8 +14,8 @@ describe("e2e — งบ axe", () => {
     expect(overBudget([f("color-contrast", 3)], budget)).toEqual([])
     expect(overBudget([f("color-contrast", 4)], budget)).toEqual(["color-contrast ×4"])
   })
-  test("ครอบคลุมทั้ง 17 มุมมองของ sidebar (key ไม่ซ้ำ)", () => {
-    expect(VIEWS).toHaveLength(17)
-    expect(new Set(VIEWS.map((v) => v.key)).size).toBe(17)
+  test("ครอบคลุมทั้ง 18 มุมมองของ sidebar (key ไม่ซ้ำ)", () => {
+    expect(VIEWS).toHaveLength(18)
+    expect(new Set(VIEWS.map((v) => v.key)).size).toBe(18)
   })
 })

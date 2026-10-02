@@ -131,6 +131,24 @@ export const DEFAULT_ROUTES: RouteSpec[] = [
     },
   },
   {
+    route: "/api/winrate",
+    expect: (j) => {
+      const plan = j.plan as Array<{ key?: unknown }> | undefined
+      const cells = j.cells as unknown[] | undefined
+      const configs = (j.grid as { configs?: unknown } | undefined)?.configs
+      const level = (j.verdict as { level?: unknown } | undefined)?.level
+      return j.target === 80 &&
+        Array.isArray(plan) &&
+        plan.length === 6 &&
+        Array.isArray(cells) &&
+        cells.length === configs &&
+        typeof level === "string" &&
+        typeof (j.power as { note?: unknown } | undefined)?.note === "string"
+        ? undefined
+        : "เป้าหมายชนะ 80% ไม่ครบ (แผน 6 ขั้น / กริด / คำตัดสิน / จำนวนไม้)"
+    },
+  },
+  {
     route: "/api/workflow",
     expect: (j) =>
       Array.isArray(j.steps) && (j.steps as unknown[]).length === 6 && typeof (j.baseline as { stats?: unknown } | undefined)?.stats === "object" && Array.isArray(j.ledger)

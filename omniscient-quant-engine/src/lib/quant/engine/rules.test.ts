@@ -7,6 +7,8 @@ import { registerRules, rulesStamp } from "./rules-registry"
 // (บังคับให้การเปลี่ยนกติกาเป็นการตัดสินใจที่ตั้งใจและตรวจย้อนได้ ไม่ใช่การจูนเงียบ ๆ หลังเห็นผล backtest)
 const KNOWN_RULES: Record<string, string> = {
   "2026-09-28.1": "7aa407b1494de3145c2396a03daf127296487f88464f6846a648b57201f16e97",
+  // + execution (กติกาส่งคำสั่ง/ออก/ค่าธรรมเนียมของโบรกเกอร์กระดาษ) ย้ายเข้ามาอยู่ใต้การล็อก
+  "2026-10-02.1": "714a7708ec706ccbd4d169170ee62a37c491afd6249aea55a6af8ed3347cffc3",
 }
 
 describe("rules — กติกาเป็นข้อมูล + sha256", () => {

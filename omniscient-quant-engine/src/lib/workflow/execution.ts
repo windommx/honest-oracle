@@ -3,22 +3,24 @@
 //  เข้า: pullback = ตั้งซื้อ (limit) ที่ขอบบนของโซนเข้า · momentum = ซื้อที่ราคาเปิดวันถัดไป · คำสั่งมีอายุ orderDays วันทำการ
 //        ราคาตั้งซื้อและ stop ปัดลงตามช่วงราคาของ SET (floorToTick) ก่อนส่ง — ผู้เรียกเป็นผู้ปัด
 //        เปิดต่ำกว่า stop = แผนใช้ไม่ได้ ยกเลิกคำสั่ง (ไม่ซื้อของที่หลุด stop แล้ว)
-//  ออก: stop (stopHard ของแผน) · เป้า +targetR × R · หมดเวลาหลังถือ holdDays วันทำการ (ออกที่ราคาปิด)
+//  ออก: stop (stopHard ของแผน × stopMult) · เป้า +targetR × R · หมดเวลาหลังถือ holdDays วันทำการ (ออกที่ราคาปิด)
+//        ผลสุทธิ = หักค่าธรรมเนียมไป-กลับ costPct · ไม้ "ชนะ" = ผลสุทธิ > 0 · ค่าทั้งหมดอยู่ใน RULES.execution (ล็อกได้)
 //        แท่งเดียวแตะทั้ง stop และเป้า = นับ stop ก่อน · วันที่ได้ของตรวจเฉพาะ stop (ไม่รู้ลำดับราคาในวัน)
 //        แท่งที่หยุดซื้อขาย (ปริมาณ 0) ไม่จับคู่ทั้งซื้อและขาย แต่นับเป็นวันทำการที่ผ่านไป
 // ใช้ทั้งกับไม้ที่บันทึกจริงในรอบประจำวัน และกับการเล่นซ้ำย้อนหลัง (ฐานความคาดหวัง) — กติกาเดียวกันทุกจุด
 // ============================================================
 
-export const EXEC = {
-  /** คำสั่งซื้อมีอายุกี่วันทำการหลังวันสัญญาณ */
-  orderDays: 3,
-  /** ถือไม่เกินกี่วันทำการหลังวันที่ได้ของ */
-  holdDays: 5,
-  /** เป้ากำไรเป็นกี่เท่าของความเสี่ยงต่อไม้ (R = ราคาได้ของ − stop) */
-  targetR: 2,
-} as const;
+import { EXECUTION_RULES } from '@/lib/quant/engine/execution-rules';
 
-export type ExecRule = { orderDays: number; holdDays: number; targetR: number | null };
+/** กติกาการส่งคำสั่ง/ออก = RULES.execution (อยู่ใต้ hash ของการล็อก) */
+export const EXEC = EXECUTION_RULES;
+
+export type ExecRule = { orderDays: number; holdDays: number; targetR: number | null; costPct?: number };
+
+/** stop ตามตัวคูณระยะ — วัดจากราคาอ้างอิง (ราคาตั้งซื้อ หรือราคาปิดวันสัญญาณสำหรับ momentum) · ตัวคูณ 1 = stopHard ของแผน */
+export function scaledStop(ref: number, stopHard: number, mult: number): number {
+  return mult === 1 ? stopHard : ref - (ref - stopHard) * mult;
+}
 
 /** ช่วงราคาขั้นต่ำ (tick) ของหุ้นใน SET ตามระดับราคา */
 export function setTick(price: number): number {
@@ -63,6 +65,10 @@ export interface PaperResult {
   r: number | null;
   /** ผลตอบแทน % จากราคาได้ของ · null = ยังไม่ปิด */
   retPct: number | null;
+  /** ผลเป็น R หลังหักค่าธรรมเนียมไป-กลับ (ไม้ชนะ = rNet > 0) */
+  rNet: number | null;
+  /** ผลตอบแทน % หลังหักค่าธรรมเนียมไป-กลับ */
+  retNetPct: number | null;
   /** วันทำการที่ถือ (ได้ของ → ออก) */
   days: number | null;
   /** จำนวนแท่งหลังวันสัญญาณที่มีข้อมูลแล้ว */
@@ -76,7 +82,8 @@ const round = (v: number, d: number) => Math.round(v * 10 ** d) / 10 ** d;
 export function simulatePlan(bars: Bars, t: number, plan: PlanInput, rule: ExecRule = EXEC): PaperResult {
   const last = bars.dates.length - 1;
   const barsSeen = Math.max(0, last - t);
-  const base = { fill: null, exit: null, target: null, r: null, retPct: null, days: null, barsSeen };
+  const base = { fill: null, exit: null, target: null, r: null, retPct: null, rNet: null, retNetPct: null, days: null, barsSeen };
+  const cost = rule.costPct ?? 0;
   const limitOk = plan.limit === null || (plan.limit > plan.stop && plan.limit > 0);
   if (!(plan.stop > 0) || !(plan.close > plan.stop) || !limitOk || t < 0 || t > last) {
     return { ...base, state: 'invalid', eventDate: null };
@@ -116,6 +123,8 @@ export function simulatePlan(bars: Bars, t: number, plan: PlanInput, rule: ExecR
     target: target === null ? null : round(target, 4),
     r: round((price - fillPrice) / R, 3),
     retPct: round((price / fillPrice - 1) * 100, 3),
+    rNet: round((price - fillPrice - (fillPrice * cost) / 100) / R, 3),
+    retNetPct: round((price / fillPrice - 1) * 100 - cost, 3),
     days: index - fillIdx,
     barsSeen,
     eventDate: bars.dates[index],

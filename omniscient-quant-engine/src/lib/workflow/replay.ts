@@ -7,7 +7,7 @@
 import { evaluateGates } from '@/lib/quant/engine/gates';
 import type { MarketState } from '@/lib/quant/engine/types';
 import type { GateBlockMatrix } from '@/lib/rhythm/compute';
-import { floorToTick, simulatePlan, type Bars, type PaperResult } from './execution';
+import { EXEC, floorToTick, scaledStop, simulatePlan, type Bars, type PaperResult } from './execution';
 
 export interface ReplayTrade {
   session: string;
@@ -49,11 +49,12 @@ export function replayBaseline(state: MarketState, gates: GateBlockMatrix, befor
       if (ev.signal === 'NO_TRADE') continue;
       const kind = ev.signal === 'ENTRY_MOMENTUM' ? 'momentum' : 'pullback';
       bars ??= barsOf(state, si, dates);
+      const limit = kind === 'pullback' ? floorToTick(ev.plan.entryHigh) : null;
       const res = simulatePlan(bars, t, {
         kind,
         close: s.rows[t].close,
-        limit: kind === 'pullback' ? floorToTick(ev.plan.entryHigh) : null,
-        stop: floorToTick(ev.plan.stopHard),
+        limit,
+        stop: floorToTick(scaledStop(limit ?? s.rows[t].close, ev.plan.stopHard, EXEC.stopMult)),
       });
       trades.push({ session: dates[t], symbol: s.symbol, kind, res });
     }
@@ -67,13 +68,13 @@ export function replayBaseline(state: MarketState, gates: GateBlockMatrix, befor
   };
 }
 
-/** R สะสมตามวันออกของไม้ที่ปิดแล้ว (สำหรับกราฟ) */
+/** R สุทธิสะสมตามวันออกของไม้ที่ปิดแล้ว (สำหรับกราฟ) */
 export function equityCurve(results: Array<{ res: PaperResult }>): Array<{ date: string; cumR: number }> {
-  const closed = results.filter((x) => x.res.state === 'closed' && x.res.exit && x.res.r !== null).sort((a, b) => a.res.exit!.date.localeCompare(b.res.exit!.date));
+  const closed = results.filter((x) => x.res.state === 'closed' && x.res.exit && x.res.rNet !== null).sort((a, b) => a.res.exit!.date.localeCompare(b.res.exit!.date));
   const out: Array<{ date: string; cumR: number }> = [];
   let cum = 0;
   for (const x of closed) {
-    cum += x.res.r!;
+    cum += x.res.rNet!;
     const v = Math.round(cum * 100) / 100;
     if (out.length && out[out.length - 1].date === x.res.exit!.date) out[out.length - 1].cumR = v;
     else out.push({ date: x.res.exit!.date, cumR: v });

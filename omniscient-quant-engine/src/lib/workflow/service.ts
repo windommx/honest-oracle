@@ -34,11 +34,11 @@ import {
 import { EXEC, simulatePlan, type Bars, type PaperResult } from './execution';
 import { barsOf, equityCurve, replayBaseline, type ReplayBaseline } from './replay';
 import { CYCLE_READY_LABEL, cycleAutoEnabled } from './scheduler';
-import type { CycleReport, ForwardReason, LedgerRow, WorkflowResponse } from './types';
+import type { CycleReport, ForwardReason, LedgerRow, PaperStats, WorkflowResponse } from './types';
 
 const keyOf = (d: Date) => d.toISOString().slice(0, 10);
 const bangkokDate = (d: Date) => new Date(d.getTime() + 7 * 3_600_000).toISOString().slice(0, 10);
-const INVALID: PaperResult = { state: 'invalid', fill: null, exit: null, target: null, r: null, retPct: null, days: null, barsSeen: 0, eventDate: null };
+const INVALID: PaperResult = { state: 'invalid', fill: null, exit: null, target: null, r: null, retPct: null, rNet: null, retNetPct: null, days: null, barsSeen: 0, eventDate: null };
 
 /** แท่งราคาของทุกหุ้น (สร้างเมื่อใช้) + ดัชนีวันที่ของ MarketState */
 function priceIndex(state: MarketState) {
@@ -150,6 +150,20 @@ export async function latestSessionAndLastRun(): Promise<{ session: string | nul
   return { session, lastRunSession: typeof s === 'string' ? s : null };
 }
 
+/** สถิติไม้ forward ที่นับเป็นหลักฐานได้ (เกณฑ์เดียวกับหน้า "กระบวนการทำงาน") — ใช้ร่วมกับหน้า "เป้าหมายชนะ 80%" */
+export async function getForwardStats(): Promise<PaperStats> {
+  const state = await loadMarketState();
+  const [stamp, entries] = await Promise.all([rulesStamp(), cycleEntries()]);
+  const idx = priceIndex(state);
+  const lock = stamp.registered ? { hash: stamp.registered.hash, at: new Date(stamp.registered.at) } : null;
+  const counted: PaperResult[] = [];
+  for (const e of entries) {
+    const meta = cycleMetaOf(e.gates);
+    if (meta && forwardReason(e, meta, lock) === 'counted') counted.push(idx.resolve(e.symbol, meta, planOf(e, meta)));
+  }
+  return paperStats(counted);
+}
+
 export async function getWorkflow(now: Date = new Date()): Promise<WorkflowResponse> {
   const state = await loadMarketState();
   const [prov, stamp, board, entries, run] = await Promise.all([getDataProvenance(now), rulesStamp(), getBoard(), cycleEntries(), lastRunLog()]);
@@ -195,7 +209,7 @@ export async function getWorkflow(now: Date = new Date()): Promise<WorkflowRespo
   const baseline = baselineFor(state, lock ? bangkokDate(lock.at) : null);
   const baseStats = paperStats((baseline?.trades ?? []).map((x) => x.res));
   const byExitDate = (xs: Array<{ res: PaperResult }>) =>
-    xs.filter((x) => x.res.state === 'closed' && x.res.r !== null).sort((a, b) => a.res.exit!.date.localeCompare(b.res.exit!.date)).map((x) => x.res.r!);
+    xs.filter((x) => x.res.state === 'closed' && x.res.rNet !== null).sort((a, b) => a.res.exit!.date.localeCompare(b.res.exit!.date)).map((x) => x.res.rNet!);
   const fwdR = byExitDate(counted);
   const baseR = byExitDate(baseline?.trades ?? []);
   const comparison = compareForward(fwdR, baseR);
@@ -257,7 +271,7 @@ export async function getWorkflow(now: Date = new Date()): Promise<WorkflowRespo
       sessions: baseline?.sessions ?? 0,
       stats: baseStats,
       equity: equityCurve(baseline?.trades ?? []),
-      note: 'เล่นกระบวนการซ้ำย้อนหลังด้วยโบรกเกอร์กระดาษชุดเดียวกัน · แผน ณ วันนั้นใช้ risk แบบ parametric (เร็ว) — ต่างจาก Decision Board ที่ใช้ Monte Carlo เล็กน้อย · เป็นผลในตัวอย่าง (กติกาถูกจูนบนข้อมูลช่วงนี้)',
+      note: `เล่นกระบวนการซ้ำย้อนหลังด้วยโบรกเกอร์กระดาษชุดเดียวกัน (ผลสุทธิหลังค่าธรรมเนียมไป-กลับ ${EXEC.costPct}%) · แผน ณ วันนั้นใช้ risk แบบ parametric (เร็ว) — ต่างจาก Decision Board ที่ใช้ Monte Carlo เล็กน้อย · เป็นผลในตัวอย่าง (กติกาถูกจูนบนข้อมูลช่วงนี้)`,
     },
     comparison,
     alerts: buildAlerts(ctx),
@@ -271,6 +285,6 @@ export async function getWorkflow(now: Date = new Date()): Promise<WorkflowRespo
         }
       : null,
     schedule: { auto: cycleAutoEnabled(), readyAfter: CYCLE_READY_LABEL, cli: 'bun scripts/daily-cycle.ts' },
-    exec: { orderDays: EXEC.orderDays, holdDays: EXEC.holdDays, targetR: EXEC.targetR },
+    exec: { orderDays: EXEC.orderDays, holdDays: EXEC.holdDays, targetR: EXEC.targetR, stopMult: EXEC.stopMult, costPct: EXEC.costPct },
   };
 }

@@ -12,6 +12,7 @@
  */
 
 import { createHash } from 'node:crypto';
+import { EXECUTION_RULES } from './execution-rules';
 
 export const RULES = {
   /** seed ของ generator ข้อมูลจำลอง — worklog: "default seed 20250902 (healthy ending regime)" */
@@ -84,12 +85,14 @@ export const RULES = {
     edgeEps: 0.001,
   },
   ruin: { paths: 3000, tradesPerYear: 48, pRuin50Max: 5, portLossMaxPct: 2, plannedMaxPct: 80 },
+  /** การส่งคำสั่ง/ออก/ค่าธรรมเนียมของโบรกเกอร์กระดาษ — อยู่ในกติกาเพื่อให้การล็อกครอบคลุมกติกาออกด้วย */
+  execution: EXECUTION_RULES,
 } as const;
 
 export type Rules = typeof RULES;
 
 /** เปลี่ยนทุกครั้งที่แก้ค่าใน RULES (มนุษย์อ่าน) — hash คือตัวตัดสินจริง */
-export const RULES_VERSION = '2026-09-28.1';
+export const RULES_VERSION = '2026-10-02.1';
 
 /** ที่มาของค่า — ต้องแสดงคู่กับทุกผลลัพธ์ที่ใช้กติกาชุดนี้ */
 export const RULES_PROVENANCE = {

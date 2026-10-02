@@ -25,7 +25,7 @@
 
 ## 2. โครงสร้างระบบ
 
-### 2.1 มุมมอง 17 มุมมอง (จาก `src/app/page.tsx`) — ขอบเขตหุ้นไทย (SET/mai) เท่านั้น
+### 2.1 มุมมอง 18 มุมมอง (จาก `src/app/page.tsx`) — ขอบเขตหุ้นไทย (SET/mai) เท่านั้น
 
 | กลุ่ม | มุมมอง |
 |---|---|
@@ -33,7 +33,7 @@
 | จักรวาลหลัก | ภาพรวม (KPI + Signal of the Day + 7-Layer map + Decision Board 22 ตัว) · **หลอมรวม** (synthesis 13 สาย) · **Deep Research** (Task 19: รายงานเชิงลึกรายหุ้น 12 หัวข้อจากทุกชั้น รวมจังหวะของหุ้น + Markdown/PDF + เรียบเรียงด้วย LLM) |
 | วิเคราะห์ | Multi-View (factors F1–F4, variance decomposition, enrichment, bipartite, volcano, PCA, trajectories) · Dependence (Θ chart, KDE, 22×22 Θ heatmap, decouple) · Decision (5-Gate checklist + trade plan + gate ribbon) · **เงินไหลนักลงทุน** (Task 18: SET 4 ประเภทนักลงทุน · NVDR + short sale รายหุ้น · Flow Index 6/36 เดือน) · **จังหวะตลาด** (Task 20: หุ้นเคลื่อนพร้อมกัน + breadth · ฤดูกาลวัน×เดือน + FDR · สัดส่วนมูลค่ารายหมวด + N_eff · แผนที่วัน PCA + k-means · ด่านที่บล็อกสัญญาณรายเดือน) |
 | ความเสี่ยง | Risk & Sizing (CVaR calculator, MC histogram, L-VaR, circuit breakers) · **Meta-Risk (L∞)** · **Apex (L7)** |
-| MY LAB | Backtest & Journal (metrics + equity + attribution + calibration + CRUD) · **Atlas พฤติกรรมระบบ** (Task 22: วิจัยเอนจินแบบ 360° 6 มุม — แผนที่สถานะตลาด · จังหวะเวลา · สัญญาณพร้อมกัน · ส่วนผสมกำไร/ขาดทุน · ไม้เริ่ม/จบ + กติกาออกทางเลือก · AUC + ปรับคันโยก walk-forward · ข้อเสนอจากผลที่ผ่าน q < 0.1 เท่านั้น) · AI Auditor |
+| MY LAB | Backtest & Journal (metrics + equity + attribution + calibration + CRUD) · **Atlas พฤติกรรมระบบ** (Task 22: วิจัยเอนจินแบบ 360° 6 มุม — แผนที่สถานะตลาด · จังหวะเวลา · สัญญาณพร้อมกัน · ส่วนผสมกำไร/ขาดทุน · ไม้เริ่ม/จบ + กติกาออกทางเลือก · AUC + ปรับคันโยก walk-forward · ข้อเสนอจากผลที่ผ่าน q < 0.1 เท่านั้น) · **เป้าหมายชนะ 80%** (Task 24: กริดกติกาออก 252 แบบเทียบการสุ่มเข้าที่ใช้กติกาออกเดียวกัน · ช่วงค้นหา/ช่วงทดสอบ + embargo · cluster-robust t + BH-FDR · จำนวนไม้ forward ที่ต้องใช้ · แผน 6 ขั้นพร้อมสถานะ) · AI Auditor |
 
 ### 2.2 API 15 เส้น ณ Task 15 (App Router, ไม่ใช้ server action) — เส้นที่เพิ่มภายหลัง (rules, data, audit-log, meta, research, flows) ดูตาราง API ใน README
 
@@ -117,6 +117,7 @@ quotes 22 ตัว (sparkline 30 จุด), series 1D/1W + EMA/SMA/BB/Donchian
 | Meta-Risk | SCB P(ruin50) 0% · Sortino 1.19 / Calmar 0.95 / PF 1.56 / expectancy +1.107% · checklist 10/12 · TSE MDX 43 (LIQUIDITY 60, EXECUTION 72) · SCB MDX 32 · AF 95 ANTIFRAGILE |
 | Apex | SCB spread 0 bps · exit 0/100 · slippage 0.013% · CVaR จำกัดที่ 12.7% · survival 100 · TSE spread 252 bps · exit 40/100 · slippage 1.286% · final 5.0% · registry 6 ACTIVE / 1 PROBATION / 4 DEAD · systemHealth 52–55 |
 | AI Auditor (LLM จริงบน z.ai) | root cause = gate noise G2/G4/G5 · riskAdjustment 0.7 · confidence 0.8 |
+| เป้าหมายชนะ 80% (Task 24) | 11/252 config ชนะ ≥ 80% ในช่วงค้นหา (ผลสุทธิ > 0 ทั้ง 11) แต่การสุ่มเข้าด้วยกติกาออกเดียวกันชนะ 68–75% · ตัวที่ใกล้ที่สุด 0.33R/stop 2×/10 วัน ชนะ 84.3% เหนือการสุ่ม +16.2 จุด (p 0.034) แต่ q 0.96 หลังนับ 252 แบบ → ยังไม่มีหลักฐาน · พิสูจน์ต้องใช้ 136 ไม้ forward (≈ 4.2 ปี) · กติกาที่ล็อก (2R/1×/5 วัน) ชนะ 45.1% เทียบสุ่ม 48.1% |
 | Atlas พฤติกรรมระบบ (Task 22) | AUC ของ P(up) นอกตัวอย่าง 0.511 [0.481, 0.538] (ไม่ต่างจากโยนเหรียญ) · ไม่มีคันโยกใดผ่าน BH q < 0.1 · ไม่ใช้ G4 / เฉพาะ risk-on ไม่เปลี่ยนสัญญาณเลย · stop 20% ของไม้ = 67% ของขาดทุน · เพื่อนบ้านบนแผนที่ ρ 0.03 (p 0.74) |
 
 worklog ย้ำเสมอว่าตัวเลขจากข้อมูลจำลองพิสูจน์ว่า "ท่อถูก" ไม่ใช่ "edge มีจริง" — ค่าจริงในเครื่องคุณจะต่างเล็กน้อยเพราะ generator anchor วันทำการล่าสุดของวันที่ seed

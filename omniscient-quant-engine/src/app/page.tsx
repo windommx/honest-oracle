@@ -19,6 +19,7 @@ import { FlowDashboardView } from '@/components/flows/flow-dashboard';
 import { DeepResearchView } from '@/components/research/deep-research-view';
 import { RhythmView } from '@/components/rhythm/rhythm-view';
 import { AtlasView } from '@/components/atlas/atlas-view';
+import { WinrateView } from '@/components/winrate/winrate-view';
 import { WorkflowView } from '@/components/workflow/workflow-view';
 import { FirstRunGuide } from '@/components/first-run-guide';
 import { AppMetaProvider, dataKindTag, useAppMeta } from '@/components/providers/app-meta';
@@ -75,6 +76,7 @@ type ViewKey =
   | 'flows'
   | 'rhythm'
   | 'atlas'
+  | 'winrate'
   | 'workflow'
   | 'research';
 
@@ -296,6 +298,11 @@ function HomeShell() {
             // Atlas ใช้ความกว้างเต็มจอ — แผนที่คู่ตาราง + forest plot หลายคอลัมน์
             <div className="w-full px-3 py-4 sm:px-5">
               <AtlasView />
+            </div>
+          ) : view === 'winrate' ? (
+            // เป้าหมายชนะ 80% ใช้ความกว้างเต็มจอ — กราฟคู่ + แผนภาพกระจายคู่กรวย + ตาราง config
+            <div className="w-full px-3 py-4 sm:px-5">
+              <WinrateView />
             </div>
           ) : (
             <div className="mx-auto w-full max-w-7xl px-4 py-5 sm:px-6">

@@ -15,6 +15,7 @@ import {
   LineChart,
   Layers,
   Monitor,
+  Percent,
   Radar,
   ShieldAlert,
   ShieldCheck,
@@ -98,6 +99,7 @@ const NAV_GROUPS: NavGroupDef[] = [
     items: [
       { key: 'backtest', label: 'Backtest & Journal', icon: History },
       { key: 'atlas', label: 'Atlas พฤติกรรมระบบ', icon: Radar },
+      { key: 'winrate', label: 'เป้าหมายชนะ 80%', icon: Percent },
       { key: 'auditor', label: 'AI Auditor', icon: Sparkles },
     ],
   },

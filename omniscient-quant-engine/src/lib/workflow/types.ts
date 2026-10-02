@@ -36,7 +36,9 @@ export interface LedgerRow {
   state: PaperState;
   fill: { date: string; price: number } | null;
   exit: { date: string; price: number; kind: ExitKind } | null;
+  /** R สุทธิหลังค่าธรรมเนียมไป-กลับ */
   r: number | null;
+  /** % สุทธิหลังค่าธรรมเนียมไป-กลับ */
   retPct: number | null;
   days: number | null;
   /** สถานะใน journal (PLANNED/EXECUTED/CLOSED/SKIPPED) — null = ยังไม่ได้บันทึก */
@@ -54,6 +56,8 @@ export interface PaperStats {
   gaps: number;
   open: number;
   closed: number;
+  /** ไม้ที่ปิดแล้วได้ R สุทธิ > 0 */
+  wins: number;
   winRate: number | null;
   meanR: AtlasCI | null;
   meanRet: number | null;
@@ -93,7 +97,7 @@ export interface WorkflowResponse {
   alerts: WorkflowAlert[];
   lastRun: { at: string; actor: string; session: string | null; recorded: number; resolved: number } | null;
   schedule: { auto: boolean; readyAfter: string; cli: string };
-  exec: { orderDays: number; holdDays: number; targetR: number | null };
+  exec: { orderDays: number; holdDays: number; targetR: number | null; stopMult: number; costPct: number };
 }
 
 export interface CycleReport {

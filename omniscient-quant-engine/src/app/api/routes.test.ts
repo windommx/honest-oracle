@@ -15,6 +15,7 @@ import * as robustness from "./research/robustness/route"
 import * as rhythm from "./rhythm/route"
 import * as rules from "./rules/route"
 import * as system from "./system/route"
+import * as winrate from "./winrate/route"
 import * as workflow from "./workflow/route"
 import * as workflowRun from "./workflow/run/route"
 
@@ -266,6 +267,34 @@ describe("/api/atlas — Atlas พฤติกรรมระบบ", () => {
     for (const a of body.actions) expect(["try", "keep", "watch"]).toContain(a.tone)
     const again = (await (await atlas.GET()).json()) as { header: unknown }
     expect(again.header).toEqual(body.header)
+  }, 180_000)
+})
+
+describe("/api/winrate — เป้าหมายชนะ 80% อย่างมีนัยสำคัญ", () => {
+  test("กริดครบ · แผน 6 ขั้น · ข้อมูลจำลองบล็อกขั้นข้อมูล · กับดักรูปทรง (การสุ่มก็ชนะสูง) · เรียกซ้ำได้ผลเดิม", async () => {
+    const res = await winrate.GET()
+    expect(res.status).toBe(200)
+    const body = (await res.json()) as {
+      target: number
+      grid: { configs: number }
+      cells: unknown[]
+      plan: Array<{ key: string; status: string }>
+      verdict: { level: string; reasons: string[] }
+      trap: { win: number; baseline: number; pVs50: number } | null
+      data: { kind: string }
+      power: { note: string }
+    }
+    expect(body.target).toBe(80)
+    expect(body.cells.length).toBe(body.grid.configs)
+    expect(body.plan.map((p) => p.key)).toEqual(["data", "search", "holdout", "lock", "forward", "decide"])
+    expect(body.data.kind).toBe("synthetic")
+    expect(body.plan[0].status).toBe("block")
+    expect(body.verdict.reasons[0]).toContain("จำลอง")
+    expect(body.trap!.pVs50).toBeLessThan(0.001)
+    expect(body.trap!.baseline).toBeGreaterThan(50)
+    expect(body.power.note.length).toBeGreaterThan(20)
+    const again = (await (await winrate.GET()).json()) as { cells: unknown[] }
+    expect(again.cells).toEqual(body.cells)
   }, 180_000)
 })
 

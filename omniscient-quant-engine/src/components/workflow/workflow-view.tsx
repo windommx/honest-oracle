@@ -149,8 +149,8 @@ function LedgerTable({ rows }: { rows: LedgerRow[] }) {
             <th scope="col" className="px-2 py-1.5 text-left font-medium">คำสั่ง</th>
             <th scope="col" className={th}>ได้ของ</th>
             <th scope="col" className={th}>ออก</th>
-            <th scope="col" className={th}>R</th>
-            <th scope="col" className={th}>%</th>
+            <th scope="col" className={th}>R สุทธิ</th>
+            <th scope="col" className={th}>% สุทธิ</th>
             <th scope="col" className="px-2 py-1.5 text-left font-medium">หลักฐาน forward</th>
           </tr>
         </thead>
@@ -190,9 +190,9 @@ function CompareTable({ base, fwd }: { base: PaperStats; fwd: PaperStats }) {
     ['ได้ของ (% ของคำสั่งที่จบแล้ว)', `${base.filled} (${pct(base.fillRate)})`, `${fwd.filled} (${pct(fwd.fillRate)})`],
     ['หมดอายุ / ยกเลิกเพราะเปิดต่ำกว่า stop', `${base.expired} / ${base.gaps}`, `${fwd.expired} / ${fwd.gaps}`],
     ['ปิดแล้ว · ถึงเป้า / stop / หมดเวลา', `${base.closed} · ${base.byExit.target}/${base.byExit.stop}/${base.byExit.time}`, `${fwd.closed} · ${fwd.byExit.target}/${fwd.byExit.stop}/${fwd.byExit.time}`],
-    ['อัตราชนะ', pct(base.winRate), pct(fwd.winRate)],
-    ['ผลเฉลี่ยต่อไม้ (CI 95%)', ci(base), ci(fwd)],
-    ['ผลเฉลี่ยต่อไม้ (%)', base.meanRet === null ? '—' : `${signedFmt(base.meanRet)}%`, fwd.meanRet === null ? '—' : `${signedFmt(fwd.meanRet)}%`],
+    ['อัตราชนะ (สุทธิหลังค่าธรรมเนียม)', pct(base.winRate), pct(fwd.winRate)],
+    ['R สุทธิเฉลี่ยต่อไม้ (CI 95%)', ci(base), ci(fwd)],
+    ['% สุทธิเฉลี่ยต่อไม้', base.meanRet === null ? '—' : `${signedFmt(base.meanRet)}%`, fwd.meanRet === null ? '—' : `${signedFmt(fwd.meanRet)}%`],
     ['ถือเฉลี่ย (วันทำการ)', base.avgDays === null ? '—' : base.avgDays.toFixed(1), fwd.avgDays === null ? '—' : fwd.avgDays.toFixed(1)],
   ];
   return (
@@ -226,14 +226,14 @@ function EquityChart({ points, label }: { points: Array<{ date: string; cumR: nu
     const { active, payload } = props as TipProps<{ date: string; cumR: number }>;
     const p = payload?.[0]?.payload;
     if (!active || !p) return null;
-    return <TipBox title={thDate(p.date)} rows={[{ label: 'R สะสม', value: `${signedFmt(p.cumR)}R`, color: CATEGORICAL[0] }]} />;
+    return <TipBox title={thDate(p.date)} rows={[{ label: 'R สุทธิสะสม', value: `${signedFmt(p.cumR)}R`, color: CATEGORICAL[0] }]} />;
   };
   return (
     <ChartFrame
-      title="R สะสมของการเล่นซ้ำย้อนหลัง (ตามวันออก)"
+      title="R สุทธิสะสมของการเล่นซ้ำย้อนหลัง (ตามวันออก)"
       height={200}
-      label={`${label}: R สะสม ${last ? `${signedFmt(last.cumR)}R ณ ${thDate(last.date)}` : 'ยังไม่มีไม้ที่ปิด'}`}
-      note="เส้นขึ้น = ระบบทำกำไรเป็นหน่วยความเสี่ยงต่อไม้ (R) · เป็นผลในตัวอย่าง — ใช้เป็นความคาดหวัง ไม่ใช่คำสัญญา"
+      label={`${label}: R สุทธิสะสม ${last ? `${signedFmt(last.cumR)}R ณ ${thDate(last.date)}` : 'ยังไม่มีไม้ที่ปิด'}`}
+      note="เส้นขึ้น = ระบบทำกำไรหลังค่าธรรมเนียมเป็นหน่วยความเสี่ยงต่อไม้ (R) · เป็นผลในตัวอย่าง — ใช้เป็นความคาดหวัง ไม่ใช่คำสัญญา"
     >
       <ResponsiveContainer width="100%" height="100%">
         <LineChart data={points} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
@@ -307,7 +307,7 @@ export function WorkflowView() {
           {synthetic
             ? ' — ซ้อมกระบวนการได้ครบทุกขั้น แต่ไม้ที่บันทึกจากข้อมูลจำลองไม่นับเป็นหลักฐาน forward · ดู “ใช้กับข้อมูลจริง” ด้านล่าง'
             : ' — ไม้ที่บันทึกทันเวลาหลังล็อกกติกานับเป็นหลักฐาน forward'}{' '}
-          · ไม้กระดาษไม่หักค่าธรรมเนียม · ไม่ใช่คำแนะนำการลงทุน
+          · ผลไม้กระดาษหักค่าธรรมเนียมไป-กลับ {d.exec.costPct}% · ไม่ใช่คำแนะนำการลงทุน
         </p>
       )}
 
@@ -391,7 +391,7 @@ export function WorkflowView() {
               คำสั่งของรอบล่าสุด{d.session ? ` (จากราคาปิด ${thDate(d.session)})` : ''}
             </h3>
             <p className="text-[11px] leading-relaxed text-zinc-400">
-              pullback = ตั้งซื้อที่ขอบบนของโซนเข้า · momentum = ซื้อที่ราคาเปิด · คำสั่งมีอายุ {d.exec.orderDays} วันทำการ · เปิดต่ำกว่า stop = ยกเลิก · ออกเมื่อโดน stop / ถึงเป้า +{d.exec.targetR}R / ถือครบ {d.exec.holdDays} วันทำการ
+              pullback = ตั้งซื้อที่ขอบบนของโซนเข้า · momentum = ซื้อที่ราคาเปิด · ราคาปัดตาม tick ของ SET · คำสั่งมีอายุ {d.exec.orderDays} วันทำการ · เปิดต่ำกว่า stop = ยกเลิก · ออกเมื่อโดน stop{d.exec.stopMult !== 1 ? ` (${d.exec.stopMult}× ระยะของแผน)` : ''} / ถึงเป้า +{d.exec.targetR}R / ถือครบ {d.exec.holdDays} วันทำการ · หักค่าธรรมเนียมไป-กลับ {d.exec.costPct}% (อยู่ในกติกาที่ล็อก)
             </p>
             <TodayTable rows={d.today} session={d.session} />
           </section>

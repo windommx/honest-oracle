@@ -10,7 +10,7 @@ import { nextSessionOpen, nextTradingDay } from '@/lib/data/calendar';
 import { thDate } from '@/lib/flows/format';
 import { mulberry32 } from '@/lib/quant/rng';
 import { mean, std } from '@/lib/quant/stats';
-import { EXEC, floorToTick, type ExitKind, type PaperResult, type PlanInput } from './execution';
+import { EXEC, floorToTick, scaledStop, type ExitKind, type PaperResult, type PlanInput } from './execution';
 import type { ForwardReason, LedgerRow, PaperStats, WorkflowAlert, WorkflowResponse, WorkflowStep } from './types';
 
 /** ป้ายหน้าบันทึกของรายการที่รอบประจำวันสร้าง (ใช้ค้นใน journal) */
@@ -92,16 +92,18 @@ export function orderValidUntil(session: string, days = EXEC.orderDays): string 
 
 /** แผนที่ส่งเข้าโบรกเกอร์กระดาษ — stop ปัดลงตาม tick ของ SET (ราคาตั้งซื้อปัดไว้แล้วตอนบันทึก) */
 export function planOf(e: Pick<JournalLike, 'price' | 'stopHard'>, meta: CycleMeta): PlanInput {
-  return { kind: meta.kind, close: e.price, limit: meta.limit, stop: floorToTick(e.stopHard ?? 0) };
+  const ref = meta.limit ?? e.price;
+  return { kind: meta.kind, close: e.price, limit: meta.limit, stop: floorToTick(scaledStop(ref, e.stopHard ?? 0, EXEC.stopMult)) };
 }
 
-function orderText(meta: CycleMeta, stop: number | null): string {
+function orderText(meta: CycleMeta, stop: number): string {
   const buy = meta.limit === null ? 'ซื้อที่ราคาเปิดวันถัดไป' : `ตั้งซื้อ ≤ ${px(meta.limit)}`;
-  return `${CYCLE_TAG} ${meta.kind} · ${buy} (อายุคำสั่ง ${EXEC.orderDays} วันทำการ) · stop ${px(stop === null ? null : floorToTick(stop))} · เป้า +${EXEC.targetR}R · สัญญาณ ${thDate(meta.session)}`;
+  return `${CYCLE_TAG} ${meta.kind} · ${buy} (อายุคำสั่ง ${EXEC.orderDays} วันทำการ) · stop ${px(stop)} · เป้า +${EXEC.targetR}R · สัญญาณ ${thDate(meta.session)}`;
 }
 
 /** บันทึกอ่านง่ายของไม้กระดาษตามสถานะล่าสุด */
-export function paperNote(meta: CycleMeta, stop: number | null, res: PaperResult): string {
+/** บันทึกอ่านง่ายของไม้กระดาษตามสถานะล่าสุด (stop = stop ที่ส่งจริงจาก planOf) */
+export function paperNote(meta: CycleMeta, stop: number, res: PaperResult): string {
   const head = orderText(meta, stop);
   switch (res.state) {
     case 'order':
@@ -109,7 +111,7 @@ export function paperNote(meta: CycleMeta, stop: number | null, res: PaperResult
     case 'open':
       return `${head} · ได้ของ ${px(res.fill!.price)} (${thDate(res.fill!.date)}) · เป้า ${px(res.target)}`;
     case 'closed':
-      return `${head} · ได้ของ ${px(res.fill!.price)} (${thDate(res.fill!.date)}) · ออก ${px(res.exit!.price)} (${EXIT_LABEL[res.exit!.kind]} ${thDate(res.exit!.date)}) · ${signed(res.r!)}R`;
+      return `${head} · ได้ของ ${px(res.fill!.price)} (${thDate(res.fill!.date)}) · ออก ${px(res.exit!.price)} (${EXIT_LABEL[res.exit!.kind]} ${thDate(res.exit!.date)}) · สุทธิ ${signed(res.rNet!)}R (${signed(res.retNetPct!)}% หลังค่าธรรมเนียม ${EXEC.costPct}%)`;
     case 'expired':
       return `${head} · ไม่ได้ราคาใน ${EXEC.orderDays} วันทำการ → ยกเลิกคำสั่ง`;
     case 'gap':
@@ -123,7 +125,7 @@ export function paperNote(meta: CycleMeta, stop: number | null, res: PaperResult
 export function decisionRecord(row: BoardRowLike, session: string, ctx: { rulesHash: string; dataKind: string }) {
   const kind: CycleMeta['kind'] = row.signal === 'ENTRY_MOMENTUM' ? 'momentum' : 'pullback';
   const meta: CycleMeta = { v: 1, session, kind, limit: kind === 'pullback' ? floorToTick(row.entryHigh) : null, rulesHash: ctx.rulesHash, dataKind: ctx.dataKind };
-  const pending: PaperResult = { state: 'order', fill: null, exit: null, target: null, r: null, retPct: null, days: null, barsSeen: 0, eventDate: null };
+  const pending: PaperResult = { state: 'order', fill: null, exit: null, target: null, r: null, retPct: null, rNet: null, retNetPct: null, days: null, barsSeen: 0, eventDate: null };
   return {
     runDate: new Date(`${session}T10:00:00Z`),
     symbol: row.symbol,
@@ -139,7 +141,7 @@ export function decisionRecord(row: BoardRowLike, session: string, ctx: { rulesH
     probUp: row.probUp,
     status: 'PLANNED',
     pnlPct: null,
-    notes: paperNote(meta, row.stopHard, pending),
+    notes: paperNote(meta, planOf({ price: row.price, stopHard: row.stopHard }, meta).stop, pending),
   };
 }
 
@@ -156,8 +158,8 @@ export function journalUpdate(e: JournalLike, meta: CycleMeta, res: PaperResult)
   if (cur >= 2) return null;
   const status = statusOf(res.state);
   if (RANK[status] < cur) return null;
-  const notes = paperNote(meta, e.stopHard, res);
-  const pnlPct = res.state === 'closed' ? round(res.retPct!, 2) : null;
+  const notes = paperNote(meta, planOf(e, meta).stop, res);
+  const pnlPct = res.state === 'closed' ? round(res.retNetPct!, 2) : null;
   if (status === e.status && notes === e.notes && pnlPct === e.pnlPct) return null;
   return { status, pnlPct, notes };
 }
@@ -196,15 +198,15 @@ export function ledgerRow(
     name,
     kind: meta.kind,
     order: { type: meta.limit === null ? 'open' : 'limit', price: meta.limit, validUntil: orderValidUntil(meta.session) },
-    stop: floorToTick(base.stopHard),
+    stop: planOf(base, meta).stop,
     target: res.target,
     sizePct: base.sizePct,
     probUp: base.probUp,
     state: res.state,
     fill: res.fill ? { date: res.fill.date, price: res.fill.price } : null,
     exit: res.exit ? { date: res.exit.date, price: res.exit.price, kind: res.exit.kind } : null,
-    r: res.r,
-    retPct: res.retPct,
+    r: res.rNet,
+    retPct: res.retNetPct,
     days: res.days,
     journalStatus: e?.status ?? null,
     recordedAt: e ? e.createdAt.toISOString() : null,
@@ -212,14 +214,14 @@ export function ledgerRow(
   };
 }
 
-/** สถิติของไม้กระดาษ — CI ของผลเฉลี่ย (R) จาก bootstrap seed คงที่ */
-export function paperStats(rows: Array<Pick<PaperResult, 'state' | 'fill' | 'r' | 'retPct' | 'days' | 'exit'>>): PaperStats {
+/** สถิติของไม้กระดาษ (สุทธิหลังค่าธรรมเนียม · ชนะ = R สุทธิ > 0) — CI ของผลเฉลี่ยจาก bootstrap seed คงที่ */
+export function paperStats(rows: Array<Pick<PaperResult, 'state' | 'fill' | 'rNet' | 'retNetPct' | 'days' | 'exit'>>): PaperStats {
   const filled = rows.filter((r) => r.fill !== null).length;
   const expired = rows.filter((r) => r.state === 'expired').length;
   const gaps = rows.filter((r) => r.state === 'gap').length;
-  const closed = rows.filter((r) => r.state === 'closed' && r.r !== null);
+  const closed = rows.filter((r) => r.state === 'closed' && r.rNet !== null);
   const decided = filled + expired + gaps;
-  const rs = closed.map((r) => r.r!);
+  const rs = closed.map((r) => r.rNet!);
   const byExit: Record<ExitKind, number> = { target: 0, stop: 0, time: 0 };
   for (const r of closed) if (r.exit) byExit[r.exit.kind]++;
   return {
@@ -230,9 +232,10 @@ export function paperStats(rows: Array<Pick<PaperResult, 'state' | 'fill' | 'r' 
     gaps,
     open: rows.filter((r) => r.state === 'open').length,
     closed: closed.length,
+    wins: rs.filter((v) => v > 0).length,
     winRate: closed.length ? round((100 * rs.filter((v) => v > 0).length) / closed.length, 1) : null,
     meanR: closed.length ? roundCI(bootMean(rs, mulberry32(SEED), 400)) : null,
-    meanRet: closed.length ? round(mean(closed.map((r) => r.retPct!)), 3) : null,
+    meanRet: closed.length ? round(mean(closed.map((r) => r.retNetPct!)), 3) : null,
     sumR: round(rs.reduce((a, b) => a + b, 0), 2),
     avgDays: closed.length ? round(mean(closed.map((r) => r.days ?? 0)), 2) : null,
     byExit,
@@ -372,7 +375,7 @@ export function buildSteps(c: StatusContext): WorkflowStep[] {
     summary: `คำสั่งรอ ${c.orders} · ถืออยู่ ${c.positions} (รวม ${round(c.exposurePct, 1)}% ของพอร์ต) · ปิดแล้ว ${c.closed}`,
     detail: [
       `เข้า: pullback ตั้งซื้อที่ขอบบนของโซน · momentum ซื้อที่ราคาเปิด · คำสั่งอายุ ${EXEC.orderDays} วันทำการ · เปิดต่ำกว่า stop = ยกเลิก`,
-      `ออก: stop ของแผน · เป้า +${EXEC.targetR}R · ถือไม่เกิน ${EXEC.holdDays} วันทำการ · แท่งเดียวแตะทั้งสองฝั่ง = นับ stop`,
+      `ออก: stop ของแผน${EXEC.stopMult !== 1 ? ` × ${EXEC.stopMult}` : ''} · เป้า +${EXEC.targetR}R · ถือไม่เกิน ${EXEC.holdDays} วันทำการ · แท่งเดียวแตะทั้งสองฝั่ง = นับ stop · ผลหักค่าธรรมเนียมไป-กลับ ${EXEC.costPct}%`,
       ...(stale ? ['ยังไม่ได้อัปเดตสถานะด้วยราคาล่าสุด — รันรอบนี้'] : []),
     ],
     action: stale ? 'run-cycle' : null,

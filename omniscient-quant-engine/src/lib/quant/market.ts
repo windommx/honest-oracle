@@ -234,11 +234,14 @@ export function generateMarket(seed = 20250817): GeneratedMarket {
     };
 
     // ── PIT fundamentals: quarterly, announce = period end + 45d ──
+    // สิ้นงวด = สิ้นไตรมาสตามปฏิทินจริง (ไม่ใช่วันสุดท้ายของข้อมูลเลื่อนทีละ 3 เดือน — แบบนั้นเมื่อวันสุดท้ายอยู่ต้นไตรมาส
+    // ป้ายงวดจะเป็นไตรมาสที่ยังไม่จบตอนประกาศ = look-ahead)
     const fundamentals: FundamentalRow[] = [];
     const nQ = 10; // 10 quarters ending before the last day
+    const lastDay = dates[n - 1];
+    const lastQEnd = new Date(lastDay.getFullYear(), Math.floor(lastDay.getMonth() / 3) * 3, 0);
     for (let q = 0; q < nQ; q++) {
-      const periodEnd = new Date(dates[n - 1]);
-      periodEnd.setMonth(periodEnd.getMonth() - (nQ - 1 - q) * 3);
+      const periodEnd = new Date(lastQEnd.getFullYear(), lastQEnd.getMonth() + 1 - (nQ - 1 - q) * 3, 0);
       const announce = new Date(periodEnd);
       announce.setDate(announce.getDate() + 45);
       if (announce > dates[n - 1]) continue;

@@ -35,12 +35,20 @@ export const VIEWS: Array<{ key: string; label: string }> = [
   { key: "flows", label: "เงินไหลนักลงทุน" },
   { key: "rhythm", label: "จังหวะตลาด" },
   { key: "atlas", label: "Atlas พฤติกรรมระบบ" },
+  { key: "winrate", label: "เป้าหมายชนะ 80%" },
   { key: "research", label: "Deep Research" },
   { key: "workflow", label: "กระบวนการทำงาน" },
   { key: "dashboard", label: "Command Center" },
 ]
 
-const MOBILE_SHOT: Record<string, string> = { "เงินไหลนักลงทุน": "flows", "จังหวะตลาด": "rhythm", "Atlas พฤติกรรมระบบ": "atlas", "Deep Research": "research", "กระบวนการทำงาน": "workflow" }
+const MOBILE_SHOT: Record<string, string> = {
+  "เงินไหลนักลงทุน": "flows",
+  "จังหวะตลาด": "rhythm",
+  "Atlas พฤติกรรมระบบ": "atlas",
+  "เป้าหมายชนะ 80%": "winrate",
+  "Deep Research": "research",
+  "กระบวนการทำงาน": "workflow",
+}
 
 /**
  * งบ violation ต่อ rule ของ axe (จำนวน node สูงสุดที่ยอมรับต่อมุมมอง) — ค่าเริ่มต้น 0 ทุก rule
@@ -345,6 +353,27 @@ async function main(): Promise<number> {
           }),
         )
       }
+      if (v.key === "winrate") {
+        checks.push(
+          await check("เป้าหมายชนะ 80%: คำตอบสั้นมีป้ายระดับ · แผน 6 ขั้นพร้อมสถานะ · ตาราง config เลื่อนได้ · กดเปลี่ยน stop แล้วกราฟกับดักเปลี่ยนตาม", async () => {
+            const plan = page.getByRole("region", { name: /แผน 6 ขั้น/ })
+            await plan.waitFor({ timeout: 90_000 })
+            if ((await plan.getByRole("heading", { level: 4 }).count()) !== 6) return "แผนไม่ครบ 6 ขั้น"
+            const verdict = page.locator("#winrate-verdict-h")
+            if (((await verdict.innerText()).trim()).length < 10) return "ไม่มีคำตอบสั้น"
+            const table = page.getByRole("region", { name: /ตาราง config ที่ชนะถึง 80%/ })
+            if ((await table.count()) === 1 && (await table.getAttribute("tabindex")) !== "0") return "ตาราง config เลื่อนด้วยคีย์บอร์ดไม่ได้"
+            const stops = page.getByRole("group", { name: "stop" }).getByRole("button")
+            const target = stops.first()
+            const name = (await target.innerText()).trim()
+            await target.click()
+            if ((await target.getAttribute("aria-pressed")) !== "true") return "เลือก stop ไม่ได้"
+            if ((await page.getByRole("img", { name: new RegExp(`อัตราชนะตามระยะเป้า \\(stop ${name.replace("×", "")}×`) }).count()) !== 1) return "กราฟกับดักไม่เปลี่ยนตาม stop ที่เลือก"
+            await settle(page)
+            views.push(await measure(page, "เป้าหมายชนะ 80% (stop แคบสุด)", 1440, Date.now(), o.out, "desktop-winrate-stop.png"))
+          }),
+        )
+      }
       if (v.key === "workflow") {
         checks.push(
           await check("กระบวนการทำงาน: 6 ขั้นพร้อมป้ายสถานะ · กดรันรอบ → บันทึกคำสั่งของรอบล่าสุดลง Journal · รันซ้ำไม่ซ้ำรายการ", async () => {
@@ -443,7 +472,7 @@ async function main(): Promise<number> {
     await m.goto(`${base}/`, { waitUntil: "domcontentloaded" })
     await settle(m)
     views.push(await measure(m, "Command Center (มือถือ)", 390, tm, o.out, "mobile-dashboard.png"))
-    for (const label of ["Decision (L6)", "Apex (L7)", "Backtest & Journal", "เงินไหลนักลงทุน", "จังหวะตลาด", "Atlas พฤติกรรมระบบ", "Deep Research", "กระบวนการทำงาน"]) {
+    for (const label of ["Decision (L6)", "Apex (L7)", "Backtest & Journal", "เงินไหลนักลงทุน", "จังหวะตลาด", "Atlas พฤติกรรมระบบ", "เป้าหมายชนะ 80%", "Deep Research", "กระบวนการทำงาน"]) {
       const t0 = Date.now()
       try {
         await m.getByRole("button", { name: "เปิดเมนูนำทาง" }).first().click({ timeout: 10_000 })

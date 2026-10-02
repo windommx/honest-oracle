@@ -126,6 +126,7 @@ export const RATE_RULES: readonly RateRule[] = [
       p === "/api/research/robustness" ||
       p === "/api/rhythm" ||
       p === "/api/atlas" ||
+      p === "/api/winrate" ||
       p === "/api/workflow",
     spec: perMin(60, 30),
     label: "รายงานที่คำนวณหนัก",

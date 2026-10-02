@@ -21,7 +21,7 @@ import {
   type JournalLike,
   type StatusContext,
 } from "./cycle"
-import { EXEC, floorToTick, setTick, simulatePlan, type Bars, type PlanInput } from "./execution"
+import { EXEC, floorToTick, scaledStop, setTick, simulatePlan, type Bars, type PlanInput } from "./execution"
 import { barsOf, replayBaseline } from "./replay"
 import { shouldRunCycle } from "./scheduler"
 import { getWorkflow, runCycle } from "./service"
@@ -83,6 +83,17 @@ describe("workflow/โบรกเกอร์กระดาษ — ทำต�
     expect(halted.fill!.index).toBe(2)
     expect(simulatePlan(mk([signal]), 0, { ...pullback, stop: 101 }).state).toBe("invalid")
     expect(simulatePlan(mk([signal]), 0, { ...pullback, limit: 90 }).state).toBe("invalid")
+  })
+
+  test("ผลสุทธิหักค่าธรรมเนียมไป-กลับ · ไม้ที่กำไรน้อยกว่าค่าธรรมเนียม = แพ้ · stop ตามตัวคูณวัดจากราคาตั้งซื้อ", () => {
+    const tiny = simulatePlan(mk([signal, [99, 100, 97, 99], [98.2, 98.3, 98.1, 98.2], ...Array.from({ length: 4 }, () => [98.2, 98.3, 98.1, 98.2] as [number, number, number, number])]), 0, pullback, { ...EXEC, targetR: null })
+    expect(tiny.state).toBe("closed")
+    expect(tiny.retPct!).toBeGreaterThan(0) // กำไรก่อนค่าธรรมเนียม…
+    expect(tiny.retNetPct!).toBeLessThan(0) // …แต่ขาดทุนหลังหัก 0.30%
+    expect(tiny.rNet!).toBeLessThan(0)
+    expect(scaledStop(98, 94, 1)).toBe(94)
+    expect(scaledStop(98, 94, 1.5)).toBe(92)
+    expect(scaledStop(98, 94, 0.5)).toBe(96)
   })
 
   test("ราคาตั้งซื้อ/stop ปัดลงตามช่วงราคาของ SET (ส่งเข้าระบบซื้อขายได้จริง)", () => {
@@ -147,7 +158,7 @@ describe("workflow/รอบประจำวัน — บันทึก · �
     const pending = simulatePlan(mk([signal]), 0, pullback)
     expect(journalUpdate(entry({ status: "EXECUTED" }), meta, pending)).toBeNull() // ผู้ใช้ตั้ง EXECUTED เอง → ไม่ถอยกลับ
     const closed = simulatePlan(mk([signal, [99, 99, 93, 94]]), 0, pullback)
-    expect(journalUpdate(entry(), meta, closed)).toMatchObject({ status: "CLOSED", pnlPct: -4.08 })
+    expect(journalUpdate(entry(), meta, closed)).toMatchObject({ status: "CLOSED", pnlPct: -4.38 }) // −4.08% − ค่าธรรมเนียม 0.30%
     for (const s of ["CLOSED", "SKIPPED"]) expect(journalUpdate(entry({ status: s }), meta, closed)).toBeNull()
     expect(statusOf("expired")).toBe("SKIPPED")
     expect(statusOf("gap")).toBe("SKIPPED")
@@ -173,7 +184,7 @@ describe("workflow/รอบประจำวัน — บันทึก · �
       simulatePlan(mk([signal, [93, 95, 92, 94]]), 0, pullback),
       simulatePlan(mk([signal]), 0, pullback),
     ])
-    expect(st).toMatchObject({ signals: 4, filled: 1, expired: 1, gaps: 1, closed: 1, winRate: 0, fillRate: 33.3, sumR: -1 })
+    expect(st).toMatchObject({ signals: 4, filled: 1, expired: 1, gaps: 1, closed: 1, winRate: 0, fillRate: 33.3, sumR: -1.07 }) // −1R − ค่าธรรมเนียม
     expect(st.byExit.stop).toBe(1)
     const base = Array.from({ length: 200 }, (_, i) => (i % 2 ? 1.2 : -0.8))
     expect(compareForward([1, 2], base).verdict).toBe("insufficient")
@@ -271,7 +282,7 @@ describe("workflow/service — บันทึกลง Journal จริง (DB
     expect(wf.baseline.stats.closed).toBeGreaterThan(10)
     expect(wf.comparison.verdict).toBe("insufficient")
     expect(wf.alerts.some((a) => a.text.includes("ข้อมูลจำลอง"))).toBe(true)
-    expect(wf.exec).toEqual({ orderDays: EXEC.orderDays, holdDays: EXEC.holdDays, targetR: EXEC.targetR })
+    expect(wf.exec).toEqual({ ...EXEC })
   }, 180_000)
 
   test("อัปเดตไม้เก่าด้วยราคาที่เกิดขึ้นหลังจากนั้น — ตรงกับโบรกเกอร์กระดาษทุกประการ", async () => {
@@ -300,7 +311,7 @@ describe("workflow/service — บันทึกลง Journal จริง (DB
     expect(report.resolved).toBeGreaterThanOrEqual(expected.state === "order" ? 0 : 1)
     const after = await db.journalEntry.findUniqueOrThrow({ where: { id: created.id } })
     expect(after.status).toBe(statusOf(expected.state))
-    if (expected.state === "closed") expect(after.pnlPct!).toBeCloseTo(Math.round(expected.retPct! * 100) / 100, 9) // Journal เก็บ 2 ตำแหน่ง
+    if (expected.state === "closed") expect(after.pnlPct!).toBeCloseTo(Math.round(expected.retNetPct! * 100) / 100, 9) // Journal เก็บ % สุทธิ 2 ตำแหน่ง
     const row = (await getWorkflow()).ledger.find((r) => r.id === created.id)!
     expect(row.state).toBe(expected.state)
     // ฐานความคาดหวังใช้แผนแบบเดียวกัน: สัญญาณเดียวกันในการเล่นซ้ำให้ผลเท่ากัน
